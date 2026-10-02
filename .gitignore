@@ -1,0 +1,13 @@
+.vscode
+node_modules
+/build/local-scenes/
+/localSettings.js
+/build/sketchbook.min.js
+steam.txt
+dist
+blend
+/src/examples/old2/
+/src/examples/old23/
+/src/examples/diffs/
+/src/main/examples/diffs/
+sketchbook.min.js

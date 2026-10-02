@@ -1,0 +1,23 @@
+export const CATALOG_KEY = 'sketchbook.scenes.v1';
+export const BUILTIN_SCENES = [
+    { id: 'sandbox', name: 'Sketchbook · mappa originale', world: 'sketchbook' },
+    { id: 'liberty-city', name: 'Liberty City · Portland', world: 'liberty-city' }
+];
+export function loadCatalog(storage) {
+    let custom = [];
+    try { custom = JSON.parse(storage.getItem(CATALOG_KEY) || '[]'); } catch { /* preserve built-in scenes */ }
+    if (!Array.isArray(custom)) custom = [];
+    const ids = new Set(BUILTIN_SCENES.map(s => s.id));
+    return [...BUILTIN_SCENES, ...custom.filter(s => {
+        if (!s || typeof s.id !== 'string' || !/^[a-zA-Z0-9-]+$/.test(s.id) || ids.has(s.id) || !['sketchbook', 'liberty-city'].includes(s.world)) return false;
+        ids.add(s.id); return true;
+    }).map(s => ({ id: s.id, name: String(s.name).slice(0, 80), world: s.world }))];
+}
+export function createScene(storage, name, world, id) {
+    if (!name.trim() || !['sketchbook', 'liberty-city'].includes(world) || !/^[a-zA-Z0-9-]+$/.test(id)) throw new Error('Nome o mappa della scena non validi.');
+    const list = loadCatalog(storage);
+    if (list.some(s => s.id === id)) throw new Error('ID scena già presente.');
+    const scene = { id, name: name.trim().slice(0, 80), world };
+    storage.setItem(CATALOG_KEY, JSON.stringify([...list.filter(s => !BUILTIN_SCENES.some(b => b.id === s.id)), scene]));
+    return scene;
+}

@@ -1,0 +1,25 @@
+{
+    "include": [
+        "src/**/*",
+       
+    ],
+    "exclude": [
+        "src/main/",
+    ],
+    "compilerOptions": {
+        "module": "commonjs",
+        "target": "es6",
+        "sourceMap": true,
+        "moduleResolution": "node",
+        "declaration": true,
+        "stripInternal": true,
+        "declarationDir": "build/types",
+        //"outFile": "./types/index.d.ts",
+        "baseUrl": ".",
+        "paths": {
+            // "cannon" : ["src/lib/cannon/cannon"]
+        },
+  //      "allowJs": true,
+  //      "checkJs": true
+    }
+} 

@@ -1,0 +1,28 @@
+{
+    "include": [
+        "**/*",
+        "src/**/*.tsm",
+        "src/ts/vehicles/test.js",
+        "build/types/vehicles/index.js",
+        "src/index.js",
+        "src/codeTemplate.js"        
+, "../ts/sketchbook.js", "../ts/vehicles/MyCar.ts"    ],
+    "compilerOptions": {
+        "module": "esnext",
+        "target": "es2020",
+        "sourceMap": true,
+        "moduleResolution": "node",
+        "declaration": true,
+        "stripInternal": true,
+        "declarationDir": "build/types",
+        //"outFile": "./types/index.d.ts",
+        "baseUrl": ".",
+        "paths": {
+            // "cannon" : ["src/lib/cannon/cannon"]
+        },
+        
+        "types": ["./global.d.ts", "../ts/sketchbook.js", "build/types/characters/Character.js"], // or "types" folder path
+        "allowJs": true,
+        
+    }
+} 

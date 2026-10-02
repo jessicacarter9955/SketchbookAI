@@ -1,0 +1,236 @@
+name: Build APK & Bundle
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Capacitor dependencies
+        run: npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/assets
+
+      - name: Install Capacitor CLI globally
+        run: npm install -g @capacitor/cli
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Create Capacitor config for GitHub Pages
+        run: |
+          # Extract repository name and create app name/id
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          APP_NAME=$(echo "$REPO_NAME" | sed 's/-/ /g' | sed 's/\b\w/\U&/g')
+          # Convert dashes to underscores and ensure valid Java package format
+          SAFE_REPO_NAME=$(echo "$REPO_NAME" | sed 's/-/_/g' | sed 's/[^a-zA-Z0-9_]//g')
+          SAFE_ACTOR=$(echo "${GITHUB_ACTOR}" | sed 's/-/_/g' | sed 's/[^a-zA-Z0-9_]//g')
+          APP_ID="com.${SAFE_ACTOR}.${SAFE_REPO_NAME}"
+
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "App Name: $APP_NAME"
+          echo "App ID: $APP_ID"
+
+          # Create capacitor.config.json to use the published GitHub Pages URL
+          cat > capacitor.config.json << EOF
+          {
+            "appId": "$APP_ID",
+            "appName": "$APP_NAME",
+            "webDir": "dist",
+            "server": {
+              "url": "https://${GITHUB_ACTOR}.github.io/${GITHUB_REPOSITORY#*/}/",
+              "cleartext": true
+            }
+          }
+          EOF
+
+      - name: Initialize Capacitor and add Android
+        run: |
+          # Extract repository name and create app name/id (same as above)
+          REPO_NAME="${GITHUB_REPOSITORY#*/}"
+          APP_NAME=$(echo "$REPO_NAME" | sed 's/-/ /g' | sed 's/\b\w/\U&/g')
+          # Convert dashes to underscores and ensure valid Java package format
+          SAFE_REPO_NAME=$(echo "$REPO_NAME" | sed 's/-/_/g' | sed 's/[^a-zA-Z0-9_]//g')
+          SAFE_ACTOR=$(echo "${GITHUB_ACTOR}" | sed 's/-/_/g' | sed 's/[^a-zA-Z0-9_]//g')
+          APP_ID="com.${SAFE_ACTOR}.${SAFE_REPO_NAME}"
+
+          cap init "$APP_NAME" "$APP_ID" --web-dir=dist
+          cap add android
+
+      - name: Copy Capacitor config to Android assets
+        run: |
+          mkdir -p android/app/src/main/assets
+          cp capacitor.config.json android/app/src/main/assets/
+
+      - name: Setup icon and splash screen
+        run: |
+          # Install ImageMagick for image processing
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+          
+          # Create resources directory for Capacitor Assets
+          mkdir -p resources
+          
+          # Copy the icon from .github directory
+          cp .github/icon.png resources/icon.png
+          
+          # Create splash screen from icon (centered on white background)
+          convert .github/icon.png -resize 2732x2732 -background white -gravity center -extent 2732x2732 resources/splash.png
+          
+          echo "✅ Icon and splash screen prepared"
+
+      - name: Generate app icons and splash screens
+        run: |
+          # Generate icons and splash screens using Capacitor Assets
+          npx @capacitor/assets generate --iconBackgroundColor '#ffffff' --iconBackgroundColorDark '#000000' --splashBackgroundColor '#ffffff' --splashBackgroundColorDark '#000000'
+
+      - name: Sync Capacitor
+        run: cap sync android
+
+      - name: Add Android permissions
+        run: |
+          # Add internet permission to Android manifest
+          MANIFEST_FILE="android/app/src/main/AndroidManifest.xml"
+          if [ -f "$MANIFEST_FILE" ]; then
+            # Add internet permission if not already present
+            if ! grep -q "android.permission.INTERNET" "$MANIFEST_FILE"; then
+              sed -i '/<\/manifest>/i \    <uses-permission android:name="android.permission.INTERNET" />' "$MANIFEST_FILE"
+            fi
+            # Add network state permission
+            if ! grep -q "android.permission.ACCESS_NETWORK_STATE" "$MANIFEST_FILE"; then
+              sed -i '/<\/manifest>/i \    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />' "$MANIFEST_FILE"
+            fi
+            # Enable cleartext traffic for loading from GitHub Pages
+            if ! grep -q "android:usesCleartextTraffic" "$MANIFEST_FILE"; then
+              sed -i 's/<application/<application android:usesCleartextTraffic="true"/' "$MANIFEST_FILE"
+            fi
+          fi
+
+      - name: Download keystore from release
+        run: |
+          # Find the latest keystore release
+          KEYSTORE_RELEASE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases" | \
+            jq -r '.[] | select(.tag_name | startswith("keystore-")) | .tag_name' | head -1)
+          
+          if [ -z "$KEYSTORE_RELEASE" ]; then
+            echo "❌ No keystore release found. Please run the 'Create Android Keystore Release' workflow first."
+            exit 1
+          fi
+          
+          echo "📥 Downloading keystore from release: $KEYSTORE_RELEASE"
+          
+          # Get the download URL for the keystore asset
+          DOWNLOAD_URL=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/$KEYSTORE_RELEASE" | \
+            jq -r '.assets[] | select(.name | contains("keystore")) | .browser_download_url')
+          
+          if [ -z "$DOWNLOAD_URL" ]; then
+            echo "❌ Keystore asset not found in release $KEYSTORE_RELEASE"
+            exit 1
+          fi
+          
+          echo "Downloading from: $DOWNLOAD_URL"
+          
+          # Download the keystore archive
+          curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -o keystore.tar.gz "$DOWNLOAD_URL"
+          
+          # Extract the keystore
+          tar -xzf keystore.tar.gz
+          
+          # Move keystore to android/app directory
+          mkdir -p android/app
+          mv release.keystore android/app/
+          
+          echo "✅ Keystore downloaded and extracted successfully"
+
+      - name: Configure signing for release build
+        run: |
+          # Create signing configuration
+          cat > android/key.properties << EOF
+          storePassword=android123
+          keyPassword=android123
+          keyAlias=release
+          storeFile=release.keystore
+          EOF
+          
+          # Update build.gradle to use signing config
+          BUILD_GRADLE="android/app/build.gradle"
+          
+          # Add signing config loading at the top of the file
+          sed -i '1i def keystorePropertiesFile = rootProject.file("key.properties")\ndef keystoreProperties = new Properties()\nif (keystorePropertiesFile.exists()) {\n    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))\n}\n' "$BUILD_GRADLE"
+          
+          # Add signingConfigs block before buildTypes
+          sed -i '/android {/a \    signingConfigs {\n        release {\n            if (keystorePropertiesFile.exists()) {\n                keyAlias keystoreProperties["keyAlias"]\n                keyPassword keystoreProperties["keyPassword"]\n                storeFile file(keystoreProperties["storeFile"])\n                storePassword keystoreProperties["storePassword"]\n            }\n        }\n    }' "$BUILD_GRADLE"
+          
+          # Update release buildType to use signing config
+          sed -i '/buildTypes {/,/release {/{ /release {/a \            signingConfig signingConfigs.release\n            minifyEnabled false
+          }' "$BUILD_GRADLE"
+          
+          echo "✅ Signing configuration added to build.gradle"
+
+      - name: Build Android APK (Release)
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease
+
+      - name: Build Android App Bundle (AAB) for Google Play
+        run: |
+          cd android
+          ./gradlew bundleRelease
+
+      - name: Get current date
+        id: date
+        run: echo "date=$(date +'%Y.%m.%d-%H%M')" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.date.outputs.date }}
+          name: Release ${{ steps.date.outputs.date }}
+          body: |
+            Automated build from commit ${{ github.sha }}
+
+            **Changes:**
+            ${{ github.event.head_commit.message }}
+            
+            **Build Artifacts:**
+            - `app-release.apk` - Signed APK for direct installation
+            - `app-release.aab` - Signed Android App Bundle for Google Play Store
+            
+            **Installation:**
+            - For testing: Download and install the APK directly on your device
+            - For Google Play: Upload the AAB file to Google Play Console
+          draft: false
+          prerelease: false
+          files: |
+            android/app/build/outputs/apk/release/app-release.apk
+            android/app/build/outputs/bundle/release/app-release.aab
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

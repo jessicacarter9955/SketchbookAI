@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Two Boxes with lil-gui</title>
+    <style>
+        body {
+            margin: 0;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.18"></script>
+</head>
+
+<body>
+    <script>
+
+        class Box {
+            constructor(size = 1, color = 0x00ff00) {
+                this.size = size;
+                this.color = color;
+                this.mesh = this.createMesh();
+            }
+
+            createMesh() {
+                const geometry = new THREE.BoxGeometry(this.size, this.size, this.size);
+                const material = new THREE.MeshBasicMaterial({ color: this.color, wireframe: true });
+                return new THREE.Mesh(geometry, material);
+            }
+        }
+
+        // Set up the scene, camera, and renderer
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Create two instances of the Box class
+        const box1 = new Box(1, 0x00ff00);
+        const box2 = new Box(1, 0xff0000);
+        box2.mesh.position.x = 2;
+        scene.add(box1.mesh);
+        scene.add(box2.mesh);
+
+        // Position the camera
+        camera.position.z = 5;
+
+        // Set up lil-gui
+        const gui = new lil.GUI();
+
+        // Add a range slider for controlling the rotation speed
+        const rotationControl = {
+            speed: 0.01
+        };
+        gui.addFolder("Rotation Control");
+        let ctrl= gui.add(rotationControl, 'speed', 0, 0.1, 0.001).name('Rotation Speed');
+        ctrl.onChange((value) => {
+            box1.mesh.scale.x = value;            
+        });
+        ctrl.onChange((value) => {
+            box2.mesh.scale.x = value;            
+        });
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            box1.mesh.rotation.y += rotationControl.speed; // Apply rotation speed
+            box2.mesh.rotation.y += rotationControl.speed; // Apply rotation speed
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Handle window resizing
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+
+    </script>
+</body>
+
+</html>

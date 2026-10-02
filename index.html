@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Sketchbook</title>
+    <link rel="stylesheet" href="src/editor/editor.css">
+    <meta name="viewport" content="width=800, user-scalable=no">
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@3.1.6/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Solway:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cutive+Mono&display=swap" rel="stylesheet">    
+    <script src="https://cdn.tailwindcss.com" onload="tailwind.config = { corePlugins: {preflight: false,}}"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>    
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    
+</head>
+<style>
+/* Styles for dat.gui save-row */
+.dg .save-row {
+    background-color: #1a1a1a !important;
+    border-top: 1px solid #2c2c2c !important;
+    padding: 5px !important;
+}
+/* Styles for dat.gui save-row */
+.dg li.save-row {
+    width: 300px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.dg li.save-row select {
+    background-color: #2c2c2c !important;
+    color: #ddd !important;
+    border: none !important;
+    padding: 5px !important;
+    margin-right: 5px !important;
+    flex-grow: 1 !important;
+}
+
+.dg li.save-row .button {
+    background-color: #3c3c3c !important;
+    color: #ddd !important;
+    border: none !important;
+    padding: 5px 10px !important;
+    margin: 0 2px !important;
+    cursor: pointer !important;
+    transition: background-color 0.3s !important;
+}
+
+.dg li.save-row .button:hover {
+    background-color: #4c4c4c !important;
+}
+
+.dg li.save-row .button.gears {
+    width: 8px !important;
+    height: 8px !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+}
+
+
+
+input::-webkit-calendar-picker-indicator {
+  opacity: 0;
+
+  display: none; /* Hide the indicator completely */
+}
+
+/* Add styles for other browsers */
+input::-moz-calendar-picker-indicator {
+  opacity: 0;
+  display: none;
+}
+
+input::-ms-clear,
+input::-ms-reveal {
+  display: none;
+}
+
+    .swal2-popup {
+        background: rgba(255, 255, 255, 0.2) !important;
+        backdrop-filter: blur(6px) !important;
+    }
+    .progress-circle {
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top: 4px solid #ffffff;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        animation: spin 1s linear infinite;
+    }
+    .floating-code {
+        text-align: left;
+        color: #00ff00;
+        font-family: 'Cutive Mono', monospace;
+        font-size: 14px;
+        background: linear-gradient(to top, rgba(0,255,0,1) 0px, rgba(0,255,0,0) 100px);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        overflow: visible;
+        
+    }
+    .suggestion-bubble {
+        display: inline-block;
+        background-color: #f0f0f0;
+        padding: 5px 10px;
+        border-radius: 20px;
+        margin: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+    .suggestion-bubble:hover {
+        background-color: #e0e0e0;
+    }
+    /* Hide original code editor buttons */
+    #toggleEditor, #runCode {
+        display: none !important;
+    }
+    /* Editor menu bar styles */
+    #editorMenuBar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 40px;
+        background-color: #1e1e1e;
+        border-bottom: 1px solid #3c3c3c;
+        display: flex;
+        align-items: center;
+        padding: 0 10px;
+        z-index: 1000;
+        gap: 10px;
+    }
+    #editorMenuBar button {
+        background-color: #0e639c;
+        color: white;
+        border: none;
+        padding: 6px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: background-color 0.2s;
+    }
+    #editorMenuBar button:hover {
+        background-color: #1177bb;
+    }
+    #editorMenuBar button.quit-btn {
+        background-color: #d13438;
+    }
+    #editorMenuBar button.quit-btn:hover {
+        background-color: #e81123;
+    }
+    #editorMenuBar .editor-title {
+        color: #cccccc;
+        font-size: 14px;
+        margin-left: 10px;
+        flex-grow: 1;
+    }
+</style>
+<body class="relative bg-gray-100" >
+    <div id="app" tabindex="-1" style="outline: none;" @keydown="event => { if (!['INPUT', 'TEXTAREA'].includes(event.target.tagName)) event.preventDefault(); }">
+        <div id="loading-screen">
+            <div id="loading-screen-background"></div>
+            <h1 id="main-title" class="sb-font">Sketchbook A.I.</h1>
+            <div class="cubeWrap">
+                <div class="cube">
+                    <div class="faces1"></div>
+                    <div class="faces2"></div>     
+                </div> 
+            </div> 
+            <div id="loading-text">Loading...</div>
+        </div>
+        <div id="ui-container" style="display: none;">
+            <div class="left-panel">
+                <div id="controls" class="panel-segment flex-bottom"></div>
+            </div>
+        </div>
+        <pre id="floating-code" class="floating-code" v-html="floatingCode" style="font-size: 6px; position: absolute; width: 0px; height: 0px;"></pre>
+        <div class="fixed" :class="
+        (globalThis.isMobile ? 'top-4':'bottom-4' )
+         + ' left-1/2 transform -translate-x-1/2 z-50 flex flex-col items-center'" :style="{ opacity: isCursorLocked ? 1 : 1 }">
+            <div class="w-full max-w-xs relative" >
+              
+                <div class="progress-circle w-6 h-6 mr-2" :class="{ hidden: !isLoading }"></div>
+                <div v-if="variants.length > 0" class="flex justify-center mb-2">
+                    <button 
+                        v-for="(variant, index) in variants" 
+                        :key="index"
+                        :title="variant.lastError || variant.model"
+                        @click="!variant.processing ? switchVariant(index) : null"
+                        @contextmenu.prevent="copyCodeToClipboard(variant)"
+                        class="mx-1 px-3 py-1 rounded-full text-sm font-semibold"
+                        :class="{
+                            'bg-blue-500 text-white': currentVariant === index && !variant.lastError && !variant.processing,
+                            'bg-red-500 text-white': variant.lastError,
+                            'bg-gray-300 text-gray-700': currentVariant !== index && !variant.lastError || variant.processing,
+                            'opacity-50 ': variant.processing
+                        }"
+                        :disabled="variant.processing">
+                        <i v-if="index === 0" class='fas fa-undo'></i>
+                        <span v-else>{{ index }}</span>
+                    </button>
+                </div>
+                <div class="flex items-center">
+                    <div class="relative flex-grow">
+                        <input type="text" id="gpt-input" v-model="inputText" :placeholder="params.lastText || 'What would you like to create?'" class="input input-bordered w-full max-w-xs pr-10" list="suggestions" @keyup.enter=" sendInput()" />
+                        <datalist id="suggestions">
+                            <option v-for="suggestion in suggestions" :value="Array.isArray(suggestion) ? suggestion[0] : suggestion"></option>
+                        </datalist>
+                        <button id="stop-button" class="absolute right-2 top-1/2 transform -translate-y-1/2 bg-transparent border-none" v-if="isLoading" @click="abortController?.abort()">
+                            <i class="fas fa-stop"></i>
+                        </button>
+                        <button id="send-button" @mousedown="if(isMobile) inputText = ''" @click="sendInput" class="absolute right-2 top-1/2 transform -translate-y-1/2 bg-transparent border-none" v-else-if="inputText" style="background-color: rgba(255, 255, 255, 0);">
+                            <span class="hidden md:inline"><i class="fas fa-paper-plane"></i></span>
+                            <span class="md:hidden"><i class="fas fa-eraser"></i></span>
+                        </button>
+                        <button id="resend-button" class="absolute right-2 top-1/2 transform -translate-y-1/2 bg-transparent border-none" v-else-if="params.lastText" @click="sendInput">
+                            <i class="fas fa-redo-alt"></i>
+                        </button>
+                    </div>
+                    <button v-if="variant.lastError" class="bg-transparent border-none ml-2" @click="onClickError()" :title="variant.lastError">
+                        <i class="fas fa-exclamation-circle" style="color: red;"></i>
+                    </button>
+                </div>
+            </div>            
+        </div>
+        <div v-if="globalThis.isMobile" id="camera-button" class="camera-button" style="width: 100px; height: 100px; background-color: rgba(0, 0, 0, 0.7); border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);" @click="UploadFile()">
+            <i class="fas fa-camera" style="color: white; font-size: 32px;"></i>
+        </div>
+        <button id="show-3d-picker" class="fixed top-16 left-4 transform bg-transparent border-none z-50" onclick="picker.openModelPicker()">
+            <i class="fas fa-cube" style="font-size: 24px; color: #000;"></i>
+        </button>
+        <a href="editor.html" style="position:fixed;top:108px;left:16px;z-index:100;background:#13232e;color:#adf0bc;padding:10px;border-radius:6px">Editor mappa ↗</a>
+   
+    </div>
+    
+    <!-- Add this new div for the context menu -->
+    <div id="contextMenu" class="absolute hidden border shadow-md rounded-md p-2">
+        <button id="copyCoordinates" class="w-full text-left hover:bg-gray-100 px-2 py-1 rounded">Copy 3D Coordinates</button>                
+    </div>
+    <div id="editorApp" >
+        <button id="toggleEditor" class="fixed top-16 right-4 transform bg-transparent border-none z-50" @click="toggleEditor">
+            <i class="fas fa-code" style="font-size: 24px; color: #000;"></i>
+        </button>
+        <button id="runCode" class="fixed top-28 right-4 transform bg-transparent border-none z-50" @click="runCode">
+            <i class="fas fa-play" style="font-size: 24px; color: #000;"></i>
+        </button>
+        <div v-show="showEditor">
+            <div id="editorMenuBar">
+                <button @click="runCode" title="Run Code (Ctrl+Enter)">
+                    <i class="fas fa-play"></i>
+                    <span>Run</span>
+                </button>
+                <button @click="toggleEditor" class="quit-btn" title="Close Editor">
+                    <i class="fas fa-times"></i>
+                    <span>Quit</span>
+                </button>
+                <span class="editor-title">Code Editor</span>
+            </div>
+            <div id="editorElement" style="position: fixed; top: 40px; left: 0; width: 100%; height: calc(100% - 40px);"></div>
+        </div>
+    </div>
+    <script src="https://unpkg.com/typescript@latest/lib/typescript.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.4.7/dist/peerjs.min.js"></script>
+
+    <script src="build/sketchbook.min.js"></script>
+    <script src="src/main/helpers/helpers.js"></script>
+
+    <script src="src/errorHandling.js"></script>
+    <script src="src/stable3d.js"></script>
+    <script src="src/utils.js"></script>
+    <script src="src/patching.js"></script>
+    <script src="src/dragndrop.js"></script>
+    <script src="src/settings.js"></script>
+    <script src="src/gptapi.js"></script>
+    <script src="src/index.js"></script>
+    <script src="src/editor/sketchfab-client.js"></script>
+    <script src="3dPicker.js"></script>
+    <script src="localSettings.js"></script>
+    <script src="src/tts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+    <script src="codeEditor.js"></script>
+
+
+</body>
+</html>

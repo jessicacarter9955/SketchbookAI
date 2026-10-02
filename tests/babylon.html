@@ -1,0 +1,392 @@
+
+<!DOCTYPE html><html lang="en"><head><meta name="referrer" content="no-referrer-when-downgrade">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Realistic Off-Road Truck Simulator with Adjustable Settings</title>
+    <style>
+        html, body {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+        #instructions {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+            z-index: 2;
+        }
+        #gui-container {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 3;
+        }
+        #reset-button, #reset-truck-button {
+            position: absolute;
+            bottom: 10px;
+            z-index: 4;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-family: Arial, sans-serif;
+            background-color: #ff5555;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            opacity: 0.8;
+        }
+        #reset-button {
+            right: 10px;
+        }
+        #reset-truck-button {
+            right: 160px;
+        }
+        #reset-button:hover, #reset-truck-button:hover {
+            opacity: 1;
+        }
+    </style>
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/cannon.js"></script>
+    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
+</head>
+<body>
+    <canvas id="renderCanvas"></canvas>
+    <div id="instructions">
+        Use Arrow keys or WASD to control the off-road truck<br>
+        W/Up: Accelerate, S/Down: Brake/Reverse<br>
+        A/Left: Turn Left, D/Right: Turn Right
+    </div>
+    <div id="gui-container"></div>
+    <button id="reset-button">Reset Settings</button>
+    <button id="reset-truck-button">Reset Truck</button>
+
+    <script>(function() {
+const canvas = document.getElementById("renderCanvas");
+    const engine = new BABYLON.Engine(canvas, true);
+
+    // Default Settings
+    let config = {
+        debug: false, // Debug mode flag
+        gravity: -9.82, // Gravity value
+        chassisWidth: 3, // Width of the truck chassis
+        chassisHeight: 1, // Height of the truck chassis
+        chassisLength: 7, // Length of the truck chassis
+        chassisMass: 1500, // Mass of the truck chassis
+        wheelRadius: 1.25, // Radius of the wheels
+        wheelWidth: 1, // Width of the wheels
+        suspensionStiffness: 5, // Stiffness of the suspension
+        suspensionRestLength: 1.5, // Rest length of the suspension
+        maxSteerVal: 0.6, // Maximum steering value
+        maxForce: 2000, // Maximum force applied to the wheels
+        cameraDistance: 20, // Distance of the camera from the truck
+        cameraHeight: 10, // Height of the camera
+        axleWidth: 2.0, // Width of the axle
+        frontAxlePosition: 3.0, // Position of the front axle
+        rearAxlePosition: -3.0 // Position of the rear axle
+    };
+
+    // Load settings from localStorage or use default if invalid
+    try {
+        const storedSettings = JSON.parse(localStorage.getItem("truckSettings"));
+        if (storedSettings && typeof storedSettings === "object") {
+            config = { ...config, ...storedSettings };
+        }
+    } catch (e) {
+        console.error("Error loading settings:", e);
+    }
+
+    // Save settings to localStorage
+    function saveSettings() {
+        localStorage.setItem("truckSettings", JSON.stringify(config));
+    }
+
+    let scene, camera, truck, wheels = [];
+
+    const createScene = function() {
+        scene = new BABYLON.Scene(engine);
+        scene.enablePhysics(new BABYLON.Vector3(0, config.gravity, 0), new BABYLON.CannonJSPlugin());
+
+        camera = new BABYLON.ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 3, config.cameraDistance, new BABYLON.Vector3(0, 0, 0), scene);
+        camera.attachControl(canvas, true);
+
+        const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
+
+        // Ground
+        const ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 500, height: 500}, scene);
+        ground.material = new BABYLON.StandardMaterial("groundMat", scene);
+        ground.material.diffuseColor = new BABYLON.Color3(0.2, 0.5, 0.2);
+        ground.physicsImpostor = new BABYLON.PhysicsImpostor(ground, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.9 }, scene);
+
+        createTruck();
+        createRocks();
+
+        return scene;
+    };
+
+    function createTruck() {
+        // Chassis
+        truck = BABYLON.MeshBuilder.CreateBox("truck", {
+            width: config.chassisWidth,
+            height: config.chassisHeight,
+            depth: config.chassisLength
+        }, scene);
+        truck.position.y = 5; // Increase initial height
+        truck.material = new BABYLON.StandardMaterial("truckMat", scene);
+        truck.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
+
+        truck.physicsImpostor = new BABYLON.PhysicsImpostor(truck, BABYLON.PhysicsImpostor.BoxImpostor, {
+            mass: config.chassisMass,
+            friction: 0.5,
+            restitution: 0.2 // Reduce restitution
+        }, scene);
+
+        // Wheels
+        const wheelMaterial = new BABYLON.StandardMaterial("wheelMat", scene);
+        wheelMaterial.diffuseColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+
+        for (let i = 0; i < 4; i++) {
+            const wheel = BABYLON.MeshBuilder.CreateCylinder("wheel", {
+                diameter: config.wheelRadius * 2,
+                height: config.wheelWidth,
+                tessellation: 24
+            }, scene);
+            wheel.material = wheelMaterial;
+            wheel.rotate(BABYLON.Axis.Z, Math.PI / 2);
+
+            const xPos = (i % 2 === 0 ? 1 : -1) * config.axleWidth / 2;
+            const zPos = (i < 2 ? 1 : -1) * config.chassisLength / 2 * 0.8;
+            wheel.position = new BABYLON.Vector3(xPos, config.wheelRadius, zPos);
+
+            wheel.parent = truck;
+            wheels.push(wheel);
+
+            const wheelImpostor = new BABYLON.PhysicsImpostor(wheel, BABYLON.PhysicsImpostor.CylinderImpostor, {
+                mass: 50,
+                friction: 1, // Increase friction
+                restitution: 0.3
+            }, scene);
+
+            const joint = new BABYLON.MotorEnabledJoint(BABYLON.PhysicsJoint.WheelJoint, {
+                mainPivot: new BABYLON.Vector3(xPos, -config.chassisHeight / 2, zPos),
+                connectedPivot: new BABYLON.Vector3(0, 0, 0),
+                mainAxis: new BABYLON.Vector3(0, -1, 0),
+                connectedAxis: new BABYLON.Vector3(0, -1, 0),
+                nativeParams: {
+                    suspensionStiffness: config.suspensionStiffness,
+                    suspensionRestLength: config.suspensionRestLength,
+                    frictionSlip: 5 // Add friction slip
+                }
+            });
+            truck.physicsImpostor.addJoint(wheelImpostor, joint);
+        }
+    }
+
+    function createRocks() {
+        const rockMaterial = new BABYLON.StandardMaterial("rockMat", scene);
+        rockMaterial.diffuseColor = new BABYLON.Color3(0.4, 0.4, 0.4);
+
+        for (let i = 0; i < 50; i++) {
+            const radius = Math.random() * 2 + 0.5;
+            const rock = BABYLON.MeshBuilder.CreateSphere("rock", {diameter: radius * 2}, scene);
+            rock.material = rockMaterial;
+            rock.position = new BABYLON.Vector3(
+                Math.random() * 100 - 50,
+                radius / 2,
+                Math.random() * 100 - 50
+            );
+            rock.physicsImpostor = new BABYLON.PhysicsImpostor(rock, BABYLON.PhysicsImpostor.SphereImpostor, {
+                mass: 0,
+                restitution: 0.2
+            }, scene);
+        }
+    }
+
+    let forward = 0;
+    let turn = 0;
+
+    scene = createScene();
+
+    engine.runRenderLoop(function() {
+        // Apply forces to wheels
+        wheels.forEach((wheel, index) => {
+            const force = new BABYLON.Vector3(0, 0, -forward * config.maxForce);
+            wheel.applyImpulse(force, wheel.getAbsolutePosition());
+
+            if (index < 2) { // Front wheels
+                wheel.rotate(BABYLON.Axis.Y, turn * config.maxSteerVal);
+            }
+        });
+
+        // Update camera position
+        const truckPos = truck.getAbsolutePosition();
+        camera.target = truckPos;
+        const cameraOffset = new BABYLON.Vector3(0, config.cameraHeight, -config.cameraDistance);
+        camera.position = truckPos.add(cameraOffset);
+
+        scene.render();
+    });
+
+    window.addEventListener("resize", function() {
+        engine.resize();
+    });
+
+    // Controls
+    window.addEventListener("keydown", (event) => {
+        switch (event.key) {
+            case "ArrowUp":
+            case "w":
+                forward = 1;
+                break;
+            case "ArrowDown":
+            case "s":
+                forward = -1;
+                break;
+            case "ArrowLeft":
+            case "a":
+                turn = 1;
+                break;
+            case "ArrowRight":
+            case "d":
+                turn = -1;
+                break;
+        }
+    });
+
+    window.addEventListener("keyup", (event) => {
+        switch (event.key) {
+            case "ArrowUp":
+            case "w":
+            case "ArrowDown":
+            case "s":
+                forward = 0;
+                break;
+            case "ArrowLeft":
+            case "a":
+            case "ArrowRight":
+            case "d":
+                turn = 0;
+                break;
+        }
+    });
+
+    // GUI
+    const advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+
+    const panel = new BABYLON.GUI.StackPanel();
+    panel.width = "220px";
+    panel.horizontalAlignment = BABYLON.GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
+    panel.verticalAlignment = BABYLON.GUI.Control.VERTICAL_ALIGNMENT_TOP;
+    advancedTexture.addControl(panel);
+
+    function addSlider(property, min, max, step) {
+        const header = new BABYLON.GUI.TextBlock();
+        header.text = property;
+        header.height = "30px";
+        header.color = "white";
+        panel.addControl(header);
+
+        const slider = new BABYLON.GUI.Slider();
+        slider.minimum = min;
+        slider.maximum = max;
+        slider.value = config[property];
+        slider.height = "20px";
+        slider.width = "200px";
+        slider.onValueChangedObservable.add((value) => {
+            config[property] = value;
+            saveSettings();
+            updateTruck();
+        });
+        panel.addControl(slider);
+    }
+
+    addSlider("chassisWidth", 1, 5, 0.1);
+    addSlider("chassisHeight", 0.5, 3, 0.1);
+    addSlider("chassisLength", 3, 10, 0.1);
+    addSlider("chassisMass", 500, 5000, 100);
+    addSlider("wheelRadius", 0.5, 3, 0.1);
+    addSlider("wheelWidth", 0.5, 2, 0.1);
+    addSlider("suspensionStiffness", 5, 50, 1);
+    addSlider("maxSteerVal", 0, 1, 0.1);
+    addSlider("maxForce", 500, 5000, 100);
+
+    function updateTruck() {
+        // Update truck dimensions
+        truck.scaling = new BABYLON.Vector3(
+            config.chassisWidth,
+            config.chassisHeight,
+            config.chassisLength
+        );
+
+        // Update truck mass and center of mass
+        truck.physicsImpostor.mass = config.chassisMass;
+        truck.physicsImpostor.centerOfMass = new BABYLON.Vector3(0, -config.chassisHeight / 4, 0); // Lower center of mass
+
+        // Update wheel dimensions and positions
+        wheels.forEach((wheel, index) => {
+            wheel.scaling = new BABYLON.Vector3(
+                config.wheelRadius,
+                config.wheelWidth,
+                config.wheelRadius
+            );
+
+            const xPos = (index % 2 === 0 ? 1 : -1) * config.axleWidth / 2;
+            const zPos = (index < 2 ? 1 : -1) * config.chassisLength / 2 * 0.8;
+            wheel.position = new BABYLON.Vector3(xPos, config.wheelRadius, zPos);
+
+            // Update wheel joint parameters
+            const joint = truck.physicsImpostor.joints[index];
+            joint.updateParams({
+                suspensionStiffness: config.suspensionStiffness,
+                suspensionRestLength: config.suspensionRestLength,
+                frictionSlip: 5
+            });
+        });
+    }
+
+    // Reset Settings Button
+    document.getElementById("reset-button").addEventListener("click", () => {
+        Object.assign(config, {
+            debug: false,
+            gravity: -9.82,
+            chassisWidth: 3,
+            chassisHeight: 1,
+            chassisLength: 7,
+            chassisMass: 1500,
+            wheelRadius: 1.25,
+            wheelWidth: 1,
+            suspensionStiffness: 5,
+            suspensionRestLength: 1.5,
+            maxSteerVal: 0.6,
+            maxForce: 2000,
+            cameraDistance: 20,
+            cameraHeight: 10,
+            axleWidth: 2.0,
+            frontAxlePosition: 3.0,
+            rearAxlePosition: -3.0
+        });
+        saveSettings();
+        updateTruck();
+    });
+
+    // Reset Truck Button
+    document.getElementById("reset-truck-button").addEventListener("click", () => {
+        truck.position = new BABYLON.Vector3(0, 3, 0);
+        truck.rotationQuaternion = BABYLON.Quaternion.Identity();
+        truck.physicsImpostor.setLinearVelocity(BABYLON.Vector3.Zero());
+        truck.physicsImpostor.setAngularVelocity(BABYLON.Vector3.Zero());
+    });
+})();</script>
+
+</body></html>

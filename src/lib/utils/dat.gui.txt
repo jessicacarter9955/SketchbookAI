@@ -1,0 +1,146 @@
+// Simplified version of dat.gui.js
+
+export class GUI {
+    constructor() {
+        this.controllers = [];
+        this.folders = [];
+        this.domElement = document.createElement('div');
+        this.domElement.style.cssText = 'position:fixed;top:0;right:0;width:300px;background:rgba(0,0,0,0.7);color:#fff;padding:10px;font-family:Arial,sans-serif;';
+        document.body.appendChild(this.domElement);
+    }
+
+    add(object, property, min, max, step) {
+        const controller = new Controller(object, property, min, max, step);
+        this.controllers.push(controller);
+        this.domElement.appendChild(controller.domElement);
+        return controller;
+    }
+
+    addColor(object, property) {
+        const controller = new ColorController(object, property);
+        this.controllers.push(controller);
+        this.domElement.appendChild(controller.domElement);
+        return controller;
+    }
+
+    addFolder(name) {
+        const folder = new Folder(name);
+        this.folders.push(folder);
+        this.domElement.appendChild(folder.domElement);
+        return folder;
+    }
+
+    remember(object) {
+        // Simplified: just store initial values
+        this.initialValues = JSON.parse(JSON.stringify(object));
+    }
+
+    open() {
+        // This method is now a no-op since we're always showing the GUI
+    }
+}
+
+class Controller {
+    constructor(object, property, min, max, step) {
+        this.object = object;
+        this.property = property;
+        this.domElement = document.createElement('div');
+        this.domElement.style.marginBottom = '5px';
+
+        const label = document.createElement('span');
+        label.textContent = property + ': ';
+        this.domElement.appendChild(label);
+
+        this.input = document.createElement('input');
+        this.input.type = typeof object[property] === 'boolean' ? 'checkbox' : 'number';
+        this.input.value = object[property];
+        if (typeof min !== 'undefined') this.input.min = min;
+        if (typeof max !== 'undefined') this.input.max = max;
+        if (typeof step !== 'undefined') this.input.step = step;
+        
+        this.input.addEventListener('input', () => {
+            object[property] = this.input.type === 'checkbox' ? this.input.checked : parseFloat(this.input.value);
+            if (this.onChangeCallback) {
+                this.onChangeCallback(object[property]);
+            }
+        });
+
+        this.domElement.appendChild(this.input);
+
+        this.isListening = false;
+        this.onChangeCallback = null;
+    }
+
+    listen() {
+        this.isListening = true;
+        this.startListening();
+        return this;
+    }
+
+    startListening() {
+        if (this.isListening) {
+            requestAnimationFrame(() => {
+                this.updateDisplay();
+                this.startListening();
+            });
+        }
+    }
+
+    updateDisplay() {
+        const newValue = this.object[this.property];
+        if (this.input.type === 'checkbox') {
+            this.input.checked = newValue;
+        } else {
+            this.input.value = newValue;
+        }
+    }
+
+    onChange(callback) {
+        this.onChangeCallback = callback;
+        return this;
+    }
+
+    name(name) {
+        const label = this.domElement.querySelector('span');
+        if (label) {
+            label.textContent = name + ': ';
+        }
+        return this;
+    }
+}
+
+class ColorController extends Controller {
+    constructor(object, property) {
+        super(object, property);
+        this.input.type = 'color';
+        this.input.value = object[property];
+    }
+}
+
+class Folder {
+    constructor(name) {
+        this.domElement = document.createElement('div');
+        this.domElement.style.marginBottom = '10px';
+
+        const title = document.createElement('h3');
+        title.textContent = name;
+        title.style.margin = '0 0 5px 0';
+        this.domElement.appendChild(title);
+
+        this.controllers = [];
+    }
+
+    add(object, property, min, max, step) {
+        const controller = new Controller(object, property, min, max, step);
+        this.controllers.push(controller);
+        this.domElement.appendChild(controller.domElement);
+        return controller;
+    }
+
+    addColor(object, property) {
+        const controller = new ColorController(object, property);
+        this.controllers.push(controller);
+        this.domElement.appendChild(controller.domElement);
+        return controller;
+    }
+}
