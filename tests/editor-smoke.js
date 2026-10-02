@@ -36,6 +36,13 @@
         ok(imported.bytes.byteLength === bytes.byteLength && imported.metadata.author === 'Sketchbook', 'Portable package preserves GLB bytes and credits');
         editor.restore(editor.history.undo());
         ok(canonical(editor.scene()) === canonical(saved), 'Undo after import restores previous scene and assets');
+        const archive = await fetch('tests/fixtures/car-gltf.zip').then(r => r.arrayBuffer());
+        await editor.importBytes(archive, { name: 'ZIP car', author: 'Sketchbook' });
+        const zipAsset = editor.assets.get(editor.item().assetId);
+        ok(new DataView(zipAsset.bytes).getUint32(0, true) === 0x46546c67 && editor.item().name === 'ZIP car', 'glTF ZIP with relative buffer converts to a persisted embedded GLB');
+        const beforeBad = JSON.stringify(editor.scene());
+        try { await editor.importBytes(new ArrayBuffer(32), {name:'broken'}); } catch { /* expected */ }
+        ok(JSON.stringify(editor.scene()) === beforeBad, 'Invalid ZIP leaves the scene intact');
         const model = await new GLTFLoader().loadAsync('build/assets/boxman.glb'); model.scene.animations = model.animations;
         const player = new Character(model.scene); world.add(player); player.takeControl();
         editor.setActive(false); ok(!editor.active && !editor.orbit.enabled && !editor.gizmo.object, 'Play detaches editing controls');

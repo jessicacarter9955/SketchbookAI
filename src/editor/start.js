@@ -1,15 +1,16 @@
 import { loadCatalog, createScene } from './scene-catalog.mjs';
+import { sceneStorageKey, loadRevisions, saveRevision, forkScene } from './scene-revisions.mjs';
 
 const loading = document.getElementById('loading-screen');
 const query = new URLSearchParams(location.search);
 const catalog = loadCatalog(localStorage);
 const current = catalog.find(s => s.id === query.get('scene')) || catalog[0];
-const storageKey = current.id === 'sandbox' ? 'sketchbook.scene.v1' : `sketchbook.scene.${current.id}`;
+const storageKey = sceneStorageKey(current.id);
 const report = message => { loading.textContent = message; };
 
 function sceneControls(editor) {
     const manager = document.createElement('section'); manager.className = 'scene-manager';
-    manager.innerHTML = '<h2>LE TUE SCENE</h2><select aria-label="Scena attiva" class="wide"></select><button class="wide" data-new-scene>Nuova scena</button>';
+    manager.innerHTML = '<h2>LE TUE SCENE</h2><select aria-label="Scena attiva" class="wide"></select><button class="wide" data-new-scene>Nuova scena</button><button class="wide" data-fork>Crea copia / ramo</button><h2>REVISIONI LOCALI</h2><input class="wide" aria-label="Nome revisione" maxlength="80" placeholder="Es. Prima di cambiare il prato"><button class="wide" data-checkpoint>Salva revisione</button><select class="wide" aria-label="Revisione salvata"></select><button class="wide" data-restore>Apri revisione in una copia</button><p>Originali della mappa invariati. La prima revisione resta protetta; conserviamo le ultime 19. Esporta per un backup esterno.</p>';
     const select = manager.querySelector('select');
     catalog.forEach(scene => { const option = document.createElement('option'); option.value = scene.id; option.textContent = scene.name; option.selected = scene.id === current.id; select.append(option); });
     select.onchange = () => { editor.save(); location.href = `editor.html?scene=${encodeURIComponent(select.value)}`; };
@@ -18,11 +19,36 @@ function sceneControls(editor) {
     const dialog = document.createElement('dialog'); dialog.className = 'asset-picker scene-dialog';
     dialog.innerHTML = '<form><h2>Nuova scena</h2><label>Nome <input name="name" required maxlength="80" placeholder="Il mio quartiere"></label><label>Mappa <select name="world"><option value="liberty-city">Liberty City</option><option value="sketchbook">Sketchbook originale</option></select></label><p>Gli oggetti e gli abitanti di ogni scena vengono salvati separatamente.</p><button type="submit">Crea scena</button> <button type="button" data-cancel>Annulla</button><p role="status"></p></form>';
     document.body.append(dialog);
-    manager.querySelector('button').onclick = () => { dialog.querySelector('[name=world]').value = current.world; dialog.showModal(); };
+    let source = null;
+    const openDialog = state => {
+        source = state; dialog.querySelector('h2').textContent = state ? 'Copia indipendente della scena' : 'Nuova scena';
+        dialog.querySelector('[name=name]').value = state ? `${current.name} · copia` : '';
+        dialog.querySelector('[name=world]').value = current.world; dialog.querySelector('[name=world]').disabled = !!state;
+        dialog.querySelector('[role=status]').textContent = ''; dialog.showModal();
+    };
+    manager.querySelector('[data-new-scene]').onclick = () => openDialog(null);
+    manager.querySelector('[data-fork]').onclick = () => openDialog(editor.scene());
+    const revisionSelect = manager.querySelector('[aria-label="Revisione salvata"]');
+    const refreshRevisions = () => {
+        revisionSelect.replaceChildren();
+        loadRevisions(localStorage, storageKey).slice().reverse().forEach(r => { const option = document.createElement('option'); option.value = r.id; option.textContent = `${r.label} · ${new Date(r.time).toLocaleString()}`; revisionSelect.append(option); });
+    };
+    if (!loadRevisions(localStorage, storageKey).length) {
+        try { saveRevision(localStorage, storageKey, editor.scene(), 'Versione iniziale protetta', crypto.randomUUID()); }
+        catch (error) { editor.message(`Revisione non salvata: ${error.message}`); }
+    }
+    refreshRevisions();
+    manager.querySelector('[data-checkpoint]').onclick = () => editor.run(() => {
+        saveRevision(localStorage, storageKey, editor.scene(), manager.querySelector('[aria-label="Nome revisione"]').value || 'Revisione', crypto.randomUUID());
+        refreshRevisions(); editor.message('Revisione salvata. Puoi riaprirla in una copia senza sostituire questa scena.');
+    });
+    manager.querySelector('[data-restore]').onclick = () => { const record = loadRevisions(localStorage, storageKey).find(r => r.id === revisionSelect.value); if (record) openDialog(record.scene); };
     dialog.querySelector('[data-cancel]').onclick = () => dialog.close();
     dialog.querySelector('form').onsubmit = event => {
         event.preventDefault();
-        try { const created = createScene(localStorage, dialog.querySelector('[name=name]').value, dialog.querySelector('[name=world]').value, crypto.randomUUID()); editor.save(); location.href = `editor.html?scene=${created.id}`; }
+        try { const name = dialog.querySelector('[name=name]').value, id = crypto.randomUUID();
+            const created = source ? forkScene(localStorage, current, source, name, id) : createScene(localStorage, name, dialog.querySelector('[name=world]').value, id);
+            editor.save(); location.href = `editor.html?scene=${created.id}`; }
         catch (error) { dialog.querySelector('[role=status]').textContent = error.message; }
     };
     const hud = document.createElement('div'); hud.className = 'city-hud';
@@ -45,6 +71,7 @@ function sceneControls(editor) {
     if (world.levelRuntime) {
         const district = document.createElement('select'); district.setAttribute('aria-label', 'Quartiere Liberty City');
         world.levelRuntime.manifest.spawns.forEach(spawn => { const option = document.createElement('option'); option.value = spawn.id; option.textContent = spawn.name; district.append(option); });
+        district.value = current.spawn || 'spawn_portland';
         district.onchange = async () => {
             district.disabled = true; const spawn = world.levelRuntime.manifest.spawns.find(s => s.id === district.value);
             const wasPlaying = !editor.active; editor.setActive(true); loading.style.display = 'flex';
@@ -71,12 +98,26 @@ try {
         await world.levelRuntime.initialize(report);
     } else await world.initialize('build/assets/world.glb');
     const actors = new ActorLayer(world); await actors.initialize();
-    if (world.levelRuntime) actors.spawn.set(0, (world.levelRuntime.groundAt(0, 0, 5) ?? 0) + 1.2, 0);
+    if (world.levelRuntime) {
+        const spawn = world.levelRuntime.manifest.spawns.find(s => s.id === current.spawn)?.position || [0,0,0];
+        world.levelRuntime.transitioning = true;
+        try { await world.levelRuntime.ensure(new THREE.Vector3(...spawn), 350);
+            actors.spawn.set(spawn[0], (world.levelRuntime.groundAt(spawn[0], spawn[2], spawn[1]+5) ?? spawn[1]) + 1.2, spawn[2]);
+            world.respawnPosition.set(...actors.spawn.toArray()); world.levelRuntime.refreshPhysics(actors.spawn);
+        } finally { world.levelRuntime.transitioning = false; world.levelRuntime.lastRefresh = 0; }
+    }
     actors.resetPlayer();
     if (world.levelRuntime) { world.cameraOperator.theta = 180; world.cameraOperator.phi = 12; }
     globalThis.sceneEditor = new SceneEditor(world, { storageKey, worldId: current.world });
     const hadSaved = localStorage.getItem(storageKey) !== null;
     await sceneEditor.run(() => sceneEditor.restoreSaved());
+    if (!hadSaved && current.id === 'portland-lab') {
+        const original = localStorage.getItem(sceneStorageKey('liberty-city'));
+        if (original) {
+            localStorage.setItem(storageKey, original);
+            await sceneEditor.run(() => sceneEditor.restoreSaved());
+        }
+    }
     if (!hadSaved && current.id === 'liberty-city') {
         const objects = [];
         const add = (prefab, name, x, z, rotation = 0) => {

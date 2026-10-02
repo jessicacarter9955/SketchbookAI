@@ -28,7 +28,7 @@
             const title = document.createElement('h3'); title.textContent = model.name;
             const info = document.createElement('p'); info.textContent = `${model.user?.displayName || model.user?.username || 'Autore sconosciuto'} · ${model.license?.label || 'Verifica licenza'} · ${(model.faceCount || 0).toLocaleString()} facce`;
             const link = document.createElement('a'); link.textContent = 'Modello e licenza ↗'; link.href = safeURL(model.viewerUrl) || `https://sketchfab.com/models/${encodeURIComponent(model.uid)}`; link.target = '_blank'; link.rel = 'noopener noreferrer';
-            const add = document.createElement('button'); add.textContent = callback ? 'Aggiungi alla scena' : 'Scarica GLB'; add.disabled = busy;
+            const add = document.createElement('button'); add.textContent = callback ? 'Aggiungi alla scena' : 'Scarica modello'; add.disabled = busy;
             add.onclick = () => pick(model);
             const star = document.createElement('button'); star.textContent = favorites.some(f => f.uid === model.uid) ? '★ Salvato' : '☆ Preferito';
             star.onclick = () => { favorites = favorites.some(f => f.uid === model.uid) ? favorites.filter(f => f.uid !== model.uid) : [...favorites, model];

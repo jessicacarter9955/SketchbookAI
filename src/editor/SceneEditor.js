@@ -6,6 +6,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { clone } from 'three/examples/jsm/utils/SkeletonUtils';
 import { validateScene, History, SCENE_KEY } from './scene-data.mjs';
 import { AssetStore, checkGLB, encodeBytes, decodeBytes, MAX_BYTES } from './asset-store.mjs';
+import { modelToGLB } from './model-import';
 
 const labels = { box: 'Blocco', building: 'Edificio', road: 'Strada', tree: 'Albero', lamp: 'Lampione', car: 'Auto statica', vehicle: 'Auto guidabile', pedestrian: 'Abitante' };
 const copy = value => JSON.parse(JSON.stringify(value));
@@ -35,7 +36,7 @@ export class SceneEditor {
         this.root = document.createElement('div'); this.root.id = 'scene-editor';
         this.root.innerHTML = `<div class="editor-toolbar"><div class="editor-brand">SKETCHBOOK <small>WORLD EDITOR · PROTOTIPO URBANO</small></div>
             <button data-action="undo" title="Ctrl+Z">↶ Annulla</button><button data-action="redo" title="Ctrl+Y">↷ Ripeti</button><button data-action="export">Esporta scena</button><button data-action="import">Importa scena</button><button class="primary" data-action="play">▶ Prova</button></div>
-            <aside class="editor-panel editor-library"><h2>LIBRERIA</h2><button class="wide primary" data-action="search">Cerca su Sketchfab</button><button class="wide" data-action="glb">Importa GLB locale</button><p>Modelli salvati nel browser. Esporta la scena per portarli con te.</p>
+            <aside class="editor-panel editor-library"><h2>LIBRERIA</h2><button class="wide primary" data-action="search">Cerca su Sketchfab</button><button class="wide" data-action="glb">Importa GLB / ZIP</button><p>Modelli salvati nel browser. Esporta la scena per portarli con te.</p>
             <h2>PROTOTIPAZIONE RAPIDA</h2><div class="editor-grid">${Object.entries(labels).map(([key, label]) => `<button data-prefab="${key}">${label}</button>`).join('')}</div>
             <h2>SCENA <span data-count>0</span> / 500</h2><div class="editor-objects"></div><p>Gli oggetti della mappa originale non sono modificabili in questa versione.</p></aside>
             <aside class="editor-panel editor-inspector"><h2>PROPRIETÀ</h2><p data-empty>Seleziona un oggetto nella mappa o nell’elenco.</p><div data-properties hidden>
@@ -44,7 +45,7 @@ export class SceneEditor {
             <label><input name="collider" type="checkbox"> Collisione box statica</label><div class="editor-grid"><button data-action="place">Posiziona al clic</button><button data-action="ground">Appoggia a terra</button><button data-action="duplicate">Duplica</button><button data-action="delete">Elimina</button></div><p data-credit></p></div>
             <h2>GRIGLIA</h2><label>Scatto spostamento<select name="snap"><option value="0">Libero</option><option value="0.5">0,5 metri</option><option value="1" selected>1 metro</option><option value="5">5 metri</option></select></label><p>Rotazione: 15° con scatto attivo.<br>Usa «Auto guidabile» e «Abitante» per oggetti animati in modalità Prova. I modelli Sketchfab restano scenografia.</p></aside>
             <div class="editor-help">Trascina: orbita · Tasto destro: panoramica · Rotella: zoom · Clic: seleziona</div><div class="editor-footer" role="status" aria-live="polite" data-status>Editor pronto. Aggiungi un oggetto dalla libreria.</div>
-            <input type="file" data-file="glb" accept=".glb" hidden><input type="file" data-file="scene" accept=".json" hidden>`;
+            <input type="file" data-file="glb" accept=".glb,.zip" hidden><input type="file" data-file="scene" accept=".json" hidden>`;
         document.body.appendChild(this.root); this.snap = 1; this.gizmo.setTranslationSnap(1); this.gizmo.setRotationSnap(Math.PI / 12);
     }
     bind() {
@@ -64,7 +65,7 @@ export class SceneEditor {
             };
             if (actions[button.dataset.action]) this.run(actions[button.dataset.action]);
         });
-        $('[data-file=glb]').onchange = e => { const file = e.target.files[0]; e.target.value = ''; if (file) this.run(async () => { if (file.size > MAX_BYTES) throw new Error('Massimo 50 MB per GLB.'); await this.importBytes(await file.arrayBuffer(), { name: file.name }); }); };
+        $('[data-file=glb]').onchange = e => { const file = e.target.files[0]; e.target.value = ''; if (file) this.run(async () => { if (file.size > MAX_BYTES) throw new Error('Massimo 50 MB per modello.'); await this.importBytes(await file.arrayBuffer(), { name: file.name }); }); };
         $('[data-file=scene]').onchange = e => { const file = e.target.files[0]; e.target.value = ''; if (file) this.run(async () => { if (file.size > 75 * 1024 * 1024) throw new Error('Pacchetto scena troppo grande (massimo 75 MB).'); await this.importPackage(JSON.parse(await file.text())); }); };
         $('[name=snap]').onchange = e => { this.snap = Number(e.target.value); this.gizmo.setTranslationSnap(this.snap || null); this.gizmo.setRotationSnap(this.snap ? Math.PI / 12 : null); };
         $('[name=object-name]').onchange = e => { const item = this.item(); if (item) { item.name = e.target.value; this.commit(); } };
@@ -217,14 +218,16 @@ export class SceneEditor {
         return root;
     }
     async importBytes(bytes, metadata) {
+        bytes = await modelToGLB(bytes);
         const asset = { id: crypto.randomUUID(), bytes, metadata }; const template = await this.prepareAsset(asset);
         await this.store.putAll([asset]); this.assets.set(asset.id, asset); this.templates.set(asset.id, template);
         this.add({ assetId: asset.id, name: metadata.name || 'Modello' });
+        this.focus(); this.message(`“${metadata.name || 'Modello'}” aggiunto e selezionato nella scena.`);
     }
     async importURL(url, metadata) {
         if (this.busy) throw new Error('Attendi il completamento dell’operazione.');
         this.busy = true;
-        try { const response = await fetch(url); if (!response.ok) throw new Error(`Download: HTTP ${response.status}`); if (Number(response.headers.get('content-length')) > MAX_BYTES) throw new Error('Modello superiore a 50 MB.'); await this.importBytes(await response.arrayBuffer(), metadata); }
+        try { const response = await fetch(url, { signal: AbortSignal.timeout(120000) }); if (!response.ok) throw new Error(`Download: HTTP ${response.status}`); if (Number(response.headers.get('content-length')) > MAX_BYTES) throw new Error('Modello superiore a 50 MB.'); await this.importBytes(await response.arrayBuffer(), metadata); }
         finally { this.busy = false; }
     }
     async restoreSaved() {
@@ -262,4 +265,3 @@ export class SceneEditor {
         this.restore(scene); this.commit(); this.message('Scena importata. Puoi annullare per recuperare la precedente.');
     }
 }
-

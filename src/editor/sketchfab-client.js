@@ -5,7 +5,7 @@
         async request(url, signal) {
             const parsed = new URL(url);
             if (parsed.origin !== 'https://api.sketchfab.com' || !parsed.pathname.startsWith('/v3/')) throw new Error('URL Sketchfab non valida.');
-            const response = await this.fetcher(parsed.href, { signal, headers: this.token ? { Authorization: `Token ${this.token}` } : {} });
+            const response = await this.fetcher(parsed.href, { signal: signal || AbortSignal.timeout(30000), headers: this.token ? { Authorization: `Token ${this.token}` } : {} });
             if (!response.ok) {
                 const messages = { 401: 'Inserisci un token Sketchfab valido.', 403: 'Questo account non può scaricare il modello.', 429: 'Limite Sketchfab raggiunto. Riprova tra poco.' };
                 throw new Error(messages[response.status] || `Sketchfab: errore HTTP ${response.status}.`);

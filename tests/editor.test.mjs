@@ -4,7 +4,8 @@ import { createRequire } from 'node:module';
 import { readFile } from 'node:fs/promises';
 import { validateScene, History } from '../src/editor/scene-data.mjs';
 import { checkGLB, encodeBytes, decodeBytes } from '../src/editor/asset-store.mjs';
-import { loadCatalog, createScene } from '../src/editor/scene-catalog.mjs';
+import { loadCatalog, createScene, BUILTIN_SCENES } from '../src/editor/scene-catalog.mjs';
+import { saveRevision, loadRevisions, forkScene, sceneStorageKey } from '../src/editor/scene-revisions.mjs';
 const { SketchfabClient } = createRequire(import.meta.url)('../src/editor/sketchfab-client.js');
 const item = () => ({ id: 'one', prefab: 'tree', name: 'Albero', position: [1, 2, 3], rotation: [0, 0.5, 0], scale: [1, 2, 1], collider: true });
 const scene = () => ({ version: 1, objects: [item()] });
@@ -29,12 +30,23 @@ test('named scenes preserve separate identities and map associations', () => {
     createScene(storage, 'Quartiere con abitanti', 'liberty-city', 'city-test-1');
     createScene(storage, 'Quartiere vuoto', 'liberty-city', 'city-test-2');
     const catalog = loadCatalog(storage);
-    assert.equal(catalog.length, 4); assert.equal(catalog[2].world, 'liberty-city');
-    assert.notEqual(catalog[2].id, catalog[3].id);
+    assert.equal(catalog.length, BUILTIN_SCENES.length + 2); assert.equal(catalog.at(-2).world, 'liberty-city');
+    assert.notEqual(catalog.at(-2).id, catalog.at(-1).id);
     assert.throws(() => createScene(storage, 'Duplicato', 'sketchbook', 'city-test-1'));
     const cityScene = { version: 1, world: 'liberty-city', objects: [{ ...item(), prefab: 'vehicle' }, { ...item(), id: 'person', prefab: 'pedestrian' }] };
     assert.deepEqual(validateScene(cityScene), cityScene);
     assert.throws(() => validateScene({ ...cityScene, world: 'unknown' }));
+});
+test('revisions preserve the first state and forks never overwrite their source', () => {
+    const data = new Map(); const storage = {getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)};
+    const key = sceneStorageKey('sandbox'); storage.setItem(key, JSON.stringify(scene()));
+    for (let i=0;i<25;i++) { const state=scene(); state.objects[0].position[0]=i; saveRevision(storage,key,state,`Revision ${i}`,String(i)); }
+    const revisions=loadRevisions(storage,key); assert.equal(revisions.length,20); assert.equal(revisions[0].scene.objects[0].position[0],0);
+    forkScene(storage,{id:'sandbox',world:'sketchbook'},revisions[0].scene,'My branch','branch-1');
+    assert.equal(storage.getItem(key),JSON.stringify(scene()));
+    assert.equal(JSON.parse(storage.getItem(sceneStorageKey('branch-1'))).objects[0].position[0],0);
+    assert.equal(loadCatalog(storage).at(-1).parentId,'sandbox');
+    assert.throws(()=>forkScene(storage,{id:'sandbox',world:'sketchbook'},scene(),'Duplicate','branch-1'));
 });
 test('search encodes terms, translates common Italian nouns and omits invalid relevance sort', async () => {
     let request;
@@ -49,10 +61,10 @@ test('pagination cannot send the user token to another origin', async () => {
     await assert.rejects(client.search('car', { next: 'https://example.com/v3/search' }), /URL Sketchfab/);
     assert.equal(calls, 0);
 });
-test('download requires a user token and rejects zip-only responses', async () => {
+test('download requires a user token and accepts glTF ZIP responses', async () => {
     const client = new SketchfabClient(async () => ({ ok: true, json: async () => ({ gltf: { url: 'https://example.com/model.zip' } }) }));
     await assert.rejects(client.download('model123'), /token/); client.token = 'test-only-token';
-    await assert.rejects(client.download('model123'), /ZIP/);
+    assert.equal(await client.download('model123'), 'https://example.com/model.zip');
 });
 test('download returns only HTTPS GLB and reports rate limiting', async () => {
     let headers;
