@@ -1,3 +1,18 @@
+## Editor urbano locale
+
+```sh
+npm ci
+npm run editor
+```
+
+Apri `http://127.0.0.1:8401/editor.html`. L'editor include import GLB/ZIP glTF, ricerca Sketchfab, scene separate, copie/rami e revisioni locali. Il download Sketchfab richiede il token personale; la ricerca e gli import locali no. Le credenziali dei servizi AI vanno configurate personalmente: non sono incluse nel codice.
+
+Liberty City richiede la cartella locale della mappa convertita con `tools/import-liberty-city.py`; i dati della città non sono inclusi in Git. [Guida, fix verificate e analisi dell'editor avanzato](docs/editor-urbano.md).
+
+Verifiche: `npm test`, `npm run build` e, con il server avviato, `/tests/editor-smoke.html` (WebGL/IndexedDB) e `/tests/city-smoke.html` (richiede la città convertita).
+
+---
+
 # Sketchbook
 
 **World Editor:** run `npm run editor` to assemble and test scenes locally. See [the Italian editor guide and urban sandbox roadmap](EDITOR_IT.md). The original AI sandbox remains available at `index.html`.
