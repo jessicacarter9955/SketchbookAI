@@ -7,11 +7,12 @@
     dialog.innerHTML = `<header><div><small>LIBRERIA MODELLI</small><h2>Sketchfab</h2></div><button type="button" data-close aria-label="Chiudi libreria">×</button></header>
         <form class="asset-search"><input name="query" aria-label="Cerca modelli" placeholder="Alberi, auto, edifici…" maxlength="200"><button>Cerca</button></form>
         <div class="asset-filters"><label><input type="checkbox" name="animated"> Animati</label><label>Geometria <select name="faces"><option value="">Tutti</option><option value="10000">≤ 10.000 facce</option><option value="50000">≤ 50.000 facce</option></select></label><button type="button" data-favorites>Preferiti</button></div>
-        <details><summary>Accesso ai download</summary><label>Il tuo API token Sketchfab <input type="password" name="token" autocomplete="off" placeholder="Solo per questa sessione"></label><p>Usa il token del tuo account. Non viene salvato né incluso nella scena. <a href="https://sketchfab.com/settings/password" target="_blank" rel="noopener noreferrer">Impostazioni Sketchfab ↗</a></p></details>
+        <details><summary>Accesso ai download</summary><label>Il tuo API token Sketchfab <input type="password" name="token" autocomplete="off" placeholder="Solo per questa sessione"></label><p>La ricerca è pubblica; per importare serve l’accesso del tuo account. Il token non viene salvato. <a href="https://sketchfab.com/settings/password" target="_blank" rel="noopener noreferrer">Impostazioni Sketchfab ↗</a></p><button type="button" data-retry hidden>Riprova modello selezionato</button></details>
         <p role="status" aria-live="polite" data-status>Cerca un modello scaricabile o apri i preferiti.</p><div class="asset-results"></div><button type="button" data-more hidden>Altri risultati</button>`;
     document.body.appendChild(dialog);
     const $ = selector => dialog.querySelector(selector);
-    let models = [], next = null, controller, generation = 0, callback = null, busy = false;
+    let models = [], next = null, controller, generation = 0, callback = null, busy = false, pendingModel = null;
+    const errors = new Map();
     let favorites;
     try { favorites = JSON.parse(localStorage.getItem('sketchbook.favorites') || '[]'); if (!Array.isArray(favorites)) favorites = []; } catch { favorites = []; }
     const status = message => $('[data-status]').textContent = message;
@@ -20,6 +21,7 @@
         const container = $('.asset-results'); container.replaceChildren();
         for (const model of models) {
             const card = document.createElement('article');
+            card.dataset.model = model.uid;
             const img = document.createElement('img'); img.alt = ''; img.loading = 'lazy';
             const thumbnail = model.thumbnails?.images?.find(i => i.width >= 320) || model.thumbnails?.images?.[0];
             if (safeURL(thumbnail?.url)) img.src = safeURL(thumbnail.url);
@@ -31,7 +33,8 @@
             const star = document.createElement('button'); star.textContent = favorites.some(f => f.uid === model.uid) ? '★ Salvato' : '☆ Preferito';
             star.onclick = () => { favorites = favorites.some(f => f.uid === model.uid) ? favorites.filter(f => f.uid !== model.uid) : [...favorites, model];
                 try { localStorage.setItem('sketchbook.favorites', JSON.stringify(favorites)); } catch { status('Spazio preferiti esaurito.'); } render(); };
-            card.append(img, title, info, link, add, star); container.append(card);
+            const feedback = document.createElement('p'); feedback.className = 'asset-feedback'; feedback.setAttribute('role', 'alert'); feedback.textContent = errors.get(model.uid) || '';
+            card.append(img, title, info, link, add, star, feedback); container.append(card);
         }
         $('[data-more]').hidden = !next;
     }
@@ -48,20 +51,32 @@
         } catch (error) { if (request === generation && error.name !== 'AbortError') status(error.message); }
     }
     async function pick(model) {
-        if (busy) return; busy = true; render(); status('Download del modello…');
+        if (busy) return;
+        pendingModel = model; errors.delete(model.uid);
+        if (!client.token) {
+            const message = `Per aggiungere “${model.name}” inserisci il tuo token in Accesso ai download, poi premi Riprova. Nessun oggetto è stato aggiunto.`;
+            errors.set(model.uid, message); render(); status(message);
+            $('details').open = true; $('[data-retry]').hidden = false; $('[name=token]').focus(); $('[name=token]').scrollIntoView({block:'center'}); return;
+        }
+        busy = true; render(); status(`Download e importazione di “${model.name}”…`);
         const onPick = callback;
         try {
             const url = await client.download(model.uid);
             if (onPick) await onPick(url, { uid: model.uid, name: model.name, author: model.user?.displayName || model.user?.username || '', license: model.license?.label || '', licenseUrl: safeURL(model.license?.url), source: safeURL(model.viewerUrl) });
             else { const a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.click(); }
             dialog.close();
-        } catch (error) { status(error.message); }
+        } catch (error) {
+            const message = `“${model.name}”: ${error.message}`; errors.set(model.uid, message); status(message);
+            $('[data-retry]').hidden = false;
+            if (/token|account/i.test(error.message)) { $('details').open = true; $('[name=token]').focus(); }
+        }
         finally { busy = false; render(); }
     }
     $('.asset-search').onsubmit = e => { e.preventDefault(); search(); };
     $('[name=animated]').onchange = () => search();
     $('[name=faces]').onchange = () => search();
     $('[name=token]').oninput = e => client.token = e.target.value.trim();
+    $('[data-retry]').onclick = () => { if (pendingModel) pick(pendingModel); };
     $('[data-close]').onclick = () => { if (!busy) dialog.close(); };
     dialog.addEventListener('cancel', e => { if (busy) e.preventDefault(); });
     dialog.addEventListener('close', () => { controller?.abort(); generation++; });

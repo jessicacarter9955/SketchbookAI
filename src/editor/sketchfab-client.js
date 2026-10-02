@@ -24,8 +24,9 @@
             if (!/^[a-zA-Z0-9_-]+$/.test(uid)) throw new Error('ID Sketchfab non valido.');
             if (!this.token) throw new Error('Per scaricare serve il tuo token Sketchfab (resta solo in memoria).');
             const data = await this.request(`${API}models/${uid}/download`);
-            if (!data.glb?.url) throw new Error('Modello disponibile solo come archivio glTF/ZIP. Scaricalo dalla pagina del modello, converti in GLB e usa “Importa GLB”.');
-            const url = new URL(data.glb.url);
+            const download = data.glb || data.gltf;
+            if (!download?.url) throw new Error('Sketchfab non offre un file glTF/GLB scaricabile per questo modello.');
+            const url = new URL(download.url);
             if (url.protocol !== 'https:') throw new Error('URL di download non valida.');
             return url.href;
         }
