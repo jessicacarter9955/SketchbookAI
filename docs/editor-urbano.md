@@ -8,11 +8,21 @@
 - Scene separate Portland · laboratorio e Staunton · laboratorio. La prima copia gli oggetti salvati a Portland solo al primo avvio. La seconda parte dal punto di spawn di Staunton, con la mappa ma senza attori preinseriti.
 - «Crea copia / ramo», revisioni nominate e «Apri revisione in una copia». La prima revisione è conservata e le ultime 19 restano disponibili. Le copie condividono i byte degli asset locali ma hanno trasformazioni e oggetti indipendenti.
 
-Il download autenticato del Maple tree non è stato completato senza un token personale. Il clic ora espone il requisito, non finge di aver importato il modello. Non inserire il token in chat o nel repository: usa il campo della libreria. Per lavorare senza account puoi importare un GLB/ZIP locale o usare i prefab. GLTF Draco/KTX2 richiedono decoder aggiuntivi e non sono inclusi in questa revisione.
+Il 3 ottobre 2026 è stato recuperato un token valido dalla configurazione storica: il download del Maple tree di atrodler è stato autorizzato e il modello è stato aggiunto realmente a Portland · laboratorio tramite la ricerca «Albero». Il token risiede in `.local/sketchfab.json`, escluso da Git, e viene caricato automaticamente solo aprendo l'app su localhost/127.0.0.1. I token inseriti manualmente nel campo della libreria restano in memoria. La configurazione locale non viene trasferita con il repository. GLTF Draco/KTX2 richiedono decoder aggiuntivi e non sono inclusi in questa revisione.
 
 ## Si possono modificare strada, prato, lampioni ed edifici di Liberty City?
 
-Sì, è realizzabile, ma l'editor attuale modifica soltanto gli oggetti aggiunti sopra la mappa. Non implementa ancora lo spostamento dei singoli edifici della mappa, il pennello per materiali o la selezione di aree.
+Ora è disponibile il primo strumento per la mappa originale: selezione per materiale e area rettangolare, con erba animata, asfalto e sabbia. Gli edifici e i lampioni originali non sono ancora separabili o spostabili; quelli aggiunti dalla libreria rimangono modificabili individualmente.
+
+### Come modificare il prato
+
+1. Apri una copia della tua scena oppure **Portland · prato animato**, nuova scena dimostrativa indipendente.
+2. Nel pannello **Superfici della città**, premi **Scegli superficie nella mappa** e clicca il prato. L'anteprima evidenzia soltanto i triangoli del materiale campionato.
+3. Regola larghezza e profondità, oppure usa **Disegna area · 2 clic**. La fascia verticale esclude altri piani della mappa. Il rettangolo segue gli assi della mappa, fino a 200 × 200 m.
+4. Scegli Erba animata, Asfalto o Sabbia; regola densità e altezza dell'erba. Premi **Applica superficie**.
+5. Usa Annulla/Ripeti, elimina un intervento dall'elenco oppure salva una revisione e creane una copia. Esportazione e salvataggio automatico includono gli interventi.
+
+L'erba è geometria istanziata con vento, colore variabile e dissolvenza a distanza, implementata qui senza copiare gli shader Shadertoy. I triangoli vengono tagliati esattamente al bordo della selezione; strade con altre texture rimangono inalterate. Le collisioni e i file della città non cambiano. Un intervento successivo copre il precedente nella stessa zona. Limiti: 32 interventi, 24.000 fili per intervento/settore e 80.000 caricati complessivamente; la densità può quindi ridursi su aree grandi. L'anteprima conta soltanto i settori già caricati, mentre gli interventi salvati si riapplicano quando gli altri settori entrano in memoria. Non è ancora un pennello libero o una selezione poligonale.
 
 La cartella fornita è una conversione della mappa per BeamNG. Per esempio bridgeeast.dae e bridgewest.dae hanno nodi base00/start01, una mesh di collisione e due livelli di dettaglio: non un catalogo di oggetti con comportamento GTA. Il nostro importatore conserva il livello visivo più dettagliato, raggruppa i triangoli per texture e suddivide le collisioni in celle spaziali. Questo favorisce il caricamento, ma non conserva una selezione editor per edificio. Inoltre alcuni elementi possono essere già fusi nei DAE originali: conservare i nodi da solo non li separa.
 
@@ -28,7 +38,7 @@ Servono tre strumenti distinti:
 
 La soluzione robusta conserva i file sorgente immutabili e salva modifiche separatamente: oggetti nascosti, trasformazioni, sostituzioni materiali e maschere. Anche collisioni e selezione devono usare gli stessi ID; spostare solo la parte visibile lascerebbe muri invisibili o buchi nel pavimento.
 
-Per iniziare sceglierei proprio il tuo esempio: delimitare una zona a Portland, riconoscere il materiale del prato con un clic, visualizzare la maschera, applicare l'erba e annullare l'operazione. È un passaggio verificabile prima di costruire un editor completo tipo The Sims.
+Il primo passaggio del tuo esempio è implementato: delimitare una zona a Portland, riconoscere il materiale del prato con un clic, visualizzare la maschera, applicare l'erba e annullare l'operazione. Spostamento della geometria originale, selezione multipla e generatore di isole/strade restano i passi successivi.
 
 ## Shader di erba, acqua e città procedurale
 
@@ -89,6 +99,7 @@ I 474 MB circa della conversione Liberty City sono esclusi da Git. Il repository
 
 - Test Node per schema, revisioni, copie, ricerca e download.
 - Test browser WebGL/Cannon/IndexedDB: importazione GLB, ZIP glTF con buffer relativo, persistenza, esportazione, annulla/ripeti, rifiuto di ZIP non valido e passaggio gioco/editor.
-- Ricerca reale «Albero» e clic sul risultato Maple tree senza credenziali: apertura del campo token e spiegazione visibile.
+- Ricerca reale «Albero», download autenticato del Maple tree, importazione e selezione nella scena Portland.
+- Test superfici: taglio ai bordi, filtro materiale/quota, geometria e collisioni originali, erba istanziata, streaming riproducibile, annulla/ripeti, salvataggio/esportazione e compilazione shader.
 - Creazione di una revisione e apertura in una copia indipendente dal browser.
 - Build di produzione e controllo del diff prima del push.

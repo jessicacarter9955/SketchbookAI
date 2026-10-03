@@ -16,6 +16,9 @@ body.editor-page { margin:0; overflow:hidden; font-family:system-ui,sans-serif; 
 .editor-panel p { font-size:12px; color:#a9bfca; line-height:1.5; }
 .editor-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
 .editor-panel .wide { width:100%; margin-bottom:8px; }
+.editor-panel details { border-bottom:1px solid #405361; padding-bottom:16px; margin-bottom:18px; }
+.editor-panel summary { cursor:pointer; font-size:12px; color:#adf0bc; font-weight:600; }
+.editor-panel details select { max-width:100%; }
 .editor-panel label { display:block; font-size:12px; margin:12px 0 5px; }.editor-panel input { width:100%; }
 .editor-vector { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; }.editor-vector input { font-size:12px; padding:6px 3px; }
 .editor-objects { display:flex; flex-direction:column; gap:5px; max-height:240px; overflow-y:auto; }.editor-objects button { text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

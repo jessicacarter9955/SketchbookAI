@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
+import { SurfaceLayers } from './SurfaceLayers';
 
 const horizontalDistance = (point, bounds) => Math.hypot(Math.max(bounds[0][0] - point.x, 0, point.x - bounds[1][0]), Math.max(bounds[0][2] - point.z, 0, point.z - bounds[1][2]));
 
@@ -8,6 +9,7 @@ export class CityRuntime {
         this.world = world; this.loaded = new Map(); this.pending = new Map(); this.failed = new Map(); this.textures = new Map(); this.ready = false;
         this.root = new THREE.Group(); this.root.name = 'Liberty City'; world.graphicsWorld.add(this.root);
         this.base = 'build/local-scenes/liberty-city/'; this.lastRefresh = 0;
+        this.surfaces = new SurfaceLayers(this);
     }
     async initialize(report) {
         this.report = report;
@@ -58,8 +60,9 @@ export class CityRuntime {
                     alphaTest: this.manifest.textures[part.texture]?.alpha ? 0.45 : 0 });
             });
             geometry.computeBoundingBox(); geometry.computeBoundingSphere();
-            const mesh = new THREE.Mesh(geometry, materials); group.add(mesh); this.root.add(group);
-            this.loaded.set(sector.id, { meta, group, collision: new Float32Array(collisions), bodies: new Map() });
+            const mesh = new THREE.Mesh(geometry, materials); mesh.userData.citySectorId=sector.id; group.add(mesh); this.root.add(group);
+            const data={meta,group,mesh,vertices:new Float32Array(vertices),collision:new Float32Array(collisions),bodies:new Map()};
+            this.loaded.set(sector.id, data); this.surfaces.loadSector(sector.id,data);
             this.failed.delete(sector.id);
         })();
         this.pending.set(sector.id, task);
@@ -68,6 +71,7 @@ export class CityRuntime {
     }
     unload(id) {
         const data = this.loaded.get(id); if (!data) return;
+        this.surfaces.removeSector(id);
         data.bodies.forEach(body => this.world.physicsWorld.removeBody(body));
         data.group.traverse(node => { node.geometry?.dispose(); if (node.material) [].concat(node.material).forEach(m => m.dispose()); });
         for (const part of data.meta.groups) {
@@ -99,6 +103,7 @@ export class CityRuntime {
         }
     }
     update() {
+        this.surfaces.update();
         if (this.transitioning || !this.manifest || performance.now() - this.lastRefresh < 350) return;
         this.lastRefresh = performance.now();
         const position = this.focusPosition();

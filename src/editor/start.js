@@ -129,7 +129,17 @@ try {
         for (const [index, point] of [[-8, 2], [-10, 8], [7, 8], [12, 4]].entries()) add('pedestrian', `Abitante ${index + 1}`, ...point);
         sceneEditor.restore({ version: 1, world: current.world, objects }); sceneEditor.commit();
     }
+    if (!hadSaved && current.id === 'portland-grass') {
+        sceneEditor.restore({version:1,world:'liberty-city',objects:[],mapEdits:[{
+            id:'portland-grass-demo',name:'Prato di Portland',texture:'Grass_128HV.PNG',style:'grass',
+            bounds:[-15,-6,-60,15,-2,-30],seed:42,density:30,height:0.5
+        }]}); sceneEditor.commit();
+    }
     sceneControls(sceneEditor); loading.style.display = 'none';
+    if(current.id === 'portland-grass' && sceneEditor.mapEdits.length) {
+        const select=sceneEditor.surfaceTool.$('[data-layers]'); select.value=sceneEditor.mapEdits[0].id;
+        select.dispatchEvent(new Event('change')); sceneEditor.surfaceTool.cancel();
+    }
     if (query.get('play') === '1') sceneEditor.setActive(false);
     document.title = `${current.name} · Sketchbook`;
 } catch (error) {

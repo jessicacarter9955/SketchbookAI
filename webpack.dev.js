@@ -21,7 +21,7 @@ module.exports = merge(common, {
   devServer: {
     // progress: true,
     liveReload: false,hot:false,
-    host: '0.0.0.0',  // Allow access from any IP
+    host: '127.0.0.1',
     port: projectPort,
     static: {
       directory: path.join(__dirname),

@@ -1,3 +1,4 @@
+import { validateSurfaceEdits } from './surface-data.mjs';
 export const PREFABS = ['box', 'building', 'road', 'tree', 'lamp', 'car', 'vehicle', 'pedestrian'];
 export const SCENE_KEY = 'sketchbook.scene.v1';
 export function validateScene(value) {
@@ -19,7 +20,9 @@ export function validateScene(value) {
             position: [...item.position], rotation: [...item.rotation], scale: [...item.scale], collider: item.collider === true };
     });
     if (value.world !== undefined && !['sketchbook', 'liberty-city'].includes(value.world)) throw new Error('Mappa scena non riconosciuta.');
-    return { version: 1, ...(value.world ? { world: value.world } : {}), objects };
+    const mapEdits = value.mapEdits === undefined ? [] : validateSurfaceEdits(value.mapEdits);
+    if (mapEdits.length && value.world !== 'liberty-city') throw new Error('Le modifiche alla mappa richiedono Liberty City.');
+    return { version: 1, ...(value.world ? { world: value.world } : {}), objects, ...(mapEdits.length ? {mapEdits} : {}) };
 }
 export class History {
     constructor(initial, limit = 50) { this.states = [JSON.stringify(initial)]; this.index = 0; this.limit = limit; }

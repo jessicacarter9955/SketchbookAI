@@ -3,6 +3,7 @@ export const BUILTIN_SCENES = [
     { id: 'sandbox', name: 'Sketchbook · mappa originale', world: 'sketchbook' },
     { id: 'liberty-city', name: 'Liberty City · Portland', world: 'liberty-city' },
     { id: 'portland-lab', name: 'Portland · laboratorio', world: 'liberty-city', spawn: 'spawn_portland' },
+    { id: 'portland-grass', name: 'Portland · prato animato', world: 'liberty-city', spawn: 'spawn_portland' },
     { id: 'staunton-lab', name: 'Staunton · laboratorio', world: 'liberty-city', spawn: 'spawn_staunton_island' }
 ];
 export function loadCatalog(storage) {

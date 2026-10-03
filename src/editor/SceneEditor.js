@@ -7,6 +7,7 @@ import { clone } from 'three/examples/jsm/utils/SkeletonUtils';
 import { validateScene, History, SCENE_KEY } from './scene-data.mjs';
 import { AssetStore, checkGLB, encodeBytes, decodeBytes, MAX_BYTES } from './asset-store.mjs';
 import { modelToGLB } from './model-import';
+import { SurfaceTool } from './SurfaceTool';
 
 const labels = { box: 'Blocco', building: 'Edificio', road: 'Strada', tree: 'Albero', lamp: 'Lampione', car: 'Auto statica', vehicle: 'Auto guidabile', pedestrian: 'Abitante' };
 const copy = value => JSON.parse(JSON.stringify(value));
@@ -15,6 +16,7 @@ export class SceneEditor {
         this.storageKey = storageKey;
         this.worldId = worldId;
         this.world = world; this.active = false; this.busy = false; this.items = []; this.objects = new Map(); this.templates = new Map(); this.assets = new Map();
+        this.mapEdits = [];
         this.store = new AssetStore(); this.loader = new GLTFLoader(); this.history = new History(this.scene());
         this.group = new THREE.Group(); this.group.name = 'Editor objects'; world.graphicsWorld.add(this.group);
         this.orbit = new OrbitControls(world.camera, world.renderer.domElement); this.orbit.enabled = false; this.orbit.maxDistance = 400;
@@ -23,9 +25,10 @@ export class SceneEditor {
         this.gizmo.addEventListener('dragging-changed', e => { this.orbit.enabled = this.active && !e.value; if (!e.value) this.capture(); });
         this.gizmo.addEventListener('objectChange', () => { if (this.selected) { this.outline.setFromObject(this.objects.get(this.selected)); this.inspect(); } });
         this.mount(); this.bind(); world.sceneEditor = this; this.setActive(true);
+        if (world.levelRuntime?.surfaces) this.surfaceTool = new SurfaceTool(this);
         world.renderer.domElement.tabIndex = 0;
     }
-    scene() { return { version: 1, world: this.worldId, objects: copy(this.items) }; }
+    scene() { return { version: 1, world: this.worldId, objects: copy(this.items), ...(this.mapEdits.length ? {mapEdits:copy(this.mapEdits)} : {}) }; }
     message(text) { this.root.querySelector('[data-status]').textContent = text; }
     async run(action) {
         if (this.busy) return; this.busy = true;
@@ -38,7 +41,7 @@ export class SceneEditor {
             <button data-action="undo" title="Ctrl+Z">↶ Annulla</button><button data-action="redo" title="Ctrl+Y">↷ Ripeti</button><button data-action="export">Esporta scena</button><button data-action="import">Importa scena</button><button class="primary" data-action="play">▶ Prova</button></div>
             <aside class="editor-panel editor-library"><h2>LIBRERIA</h2><button class="wide primary" data-action="search">Cerca su Sketchfab</button><button class="wide" data-action="glb">Importa GLB / ZIP</button><p>Modelli salvati nel browser. Esporta la scena per portarli con te.</p>
             <h2>PROTOTIPAZIONE RAPIDA</h2><div class="editor-grid">${Object.entries(labels).map(([key, label]) => `<button data-prefab="${key}">${label}</button>`).join('')}</div>
-            <h2>SCENA <span data-count>0</span> / 500</h2><div class="editor-objects"></div><p>Gli oggetti della mappa originale non sono modificabili in questa versione.</p></aside>
+            <h2>SCENA <span data-count>0</span> / 500</h2><div class="editor-objects"></div><p>Gli oggetti aggiunti si possono spostare e scalare. Per il terreno originale usa «Superfici della città»; gli edifici originali non sono ancora separabili.</p></aside>
             <aside class="editor-panel editor-inspector"><h2>PROPRIETÀ</h2><p data-empty>Seleziona un oggetto nella mappa o nell’elenco.</p><div data-properties hidden>
             <label>Nome<input name="object-name" maxlength="120"></label><div class="editor-grid"><button data-mode="translate">Sposta · W</button><button data-mode="rotate">Ruota · E</button><button data-mode="scale">Scala · R</button><button data-action="focus">Inquadra · F</button></div>
             ${['position', 'rotation', 'scale'].map((field, i) => `<label>${['Posizione · metri', 'Rotazione · gradi', 'Scala'][i]}</label><div class="editor-vector">${['X', 'Y', 'Z'].map((axis, a) => `<input aria-label="${field} ${axis}" data-field="${field}" data-axis="${a}" type="number" step="${field === 'rotation' ? '15' : '0.1'}">`).join('')}</div>`).join('')}
@@ -84,6 +87,7 @@ export class SceneEditor {
             if (!this.active || this.busy || e.button !== 0 || !pointer || pointer.axis || Math.hypot(e.clientX - pointer.x, e.clientY - pointer.y) > 4) return;
             const rect = this.world.renderer.domElement.getBoundingClientRect();
             const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2((e.clientX - rect.left) / rect.width * 2 - 1, -(e.clientY - rect.top) / rect.height * 2 + 1), this.world.camera);
+            if (this.surfaceTool?.handlePick(ray)) return;
             if (this.placing && this.selected) {
                 const hit = this.surfaceHit(ray, this.objects.get(this.selected));
                 if (hit) { const o = this.objects.get(this.selected); o.position.copy(hit.point); if (this.snap) { o.position.x = Math.round(o.position.x / this.snap) * this.snap; o.position.z = Math.round(o.position.z / this.snap) * this.snap; } this.placing = false; this.capture(); }
@@ -101,11 +105,12 @@ export class SceneEditor {
                 e.preventDefault(); this.run(() => e.code === 'KeyS' ? this.exportScene() : e.code === 'KeyD' ? this.duplicate() : this.restore(e.code === 'KeyY' || e.shiftKey ? this.history.redo() : this.history.undo()));
             } else if (e.code === 'Delete') this.remove();
             else if (e.code === 'KeyF') this.focus();
-            else if (e.code === 'Escape') this.placing = false;
+            else if (e.code === 'Escape') { this.placing = false; this.surfaceTool?.cancel(); }
             else if ({ KeyW: 1, KeyE: 1, KeyR: 1 }[e.code]) this.gizmo.setMode({ KeyW: 'translate', KeyE: 'rotate', KeyR: 'scale' }[e.code]);
         });
     }
     setActive(active) {
+        this.surfaceTool?.cancel();
         this.world.inputManager.releaseInput();
         if (active && !this.active) this.world.actorLayer?.stop();
         if (!active && this.active) this.world.actorLayer?.start(this.items);
@@ -181,7 +186,7 @@ export class SceneEditor {
     }
     surfaceHit(ray, exclude) {
         const candidates = [];
-        this.world.graphicsWorld.traverse(o => { if (!o.isMesh || !o.visible) return; let p = o; while (p) { if (p === exclude || p === this.gizmo || p === this.outline || p === this.world.sky || !p.visible) return; p = p.parent; } candidates.push(o); });
+        this.world.graphicsWorld.traverse(o => { if (!o.isMesh || !o.visible) return; let p = o; while (p) { if (p === exclude || p === this.gizmo || p === this.outline || p === this.world.sky || p.userData.editorSurface || !p.visible) return; p = p.parent; } candidates.push(o); });
         return ray.intersectObjects(candidates, false)[0];
     }
     ground(object) {
@@ -204,7 +209,7 @@ export class SceneEditor {
     duplicate() { const item = this.item(); if (!item) return; if (this.items.length >= 500) throw new Error('Limite oggetti raggiunto.'); const next = copy(item); next.id = crypto.randomUUID(); next.name += ' copia'; next.position[0] += this.snap || 2; this.items.push(next); this.create(next); this.select(next.id); this.commit(); }
     destroyObject(id) { const object = this.objects.get(id); if (!object) return; if (object.userData.body) this.world.physicsWorld.removeBody(object.userData.body); this.group.remove(object); const item = this.items.find(i => i.id === id); if (!item?.assetId && !['vehicle', 'pedestrian'].includes(item?.prefab)) object.traverse(n => { n.geometry?.dispose(); if (n.material) n.material.dispose(); }); this.objects.delete(id); }
     remove() { if (!this.selected) return; const id = this.selected; this.select(null); this.destroyObject(id); this.items = this.items.filter(i => i.id !== id); this.commit(); }
-    restore(scene) { if (!scene) return; this.select(null); [...this.objects.keys()].forEach(id => this.destroyObject(id)); this.items = copy(scene.objects); this.items.forEach(item => this.create(item)); this.list(); this.save(); }
+    restore(scene) { if (!scene) return; this.select(null); [...this.objects.keys()].forEach(id => this.destroyObject(id)); this.items = copy(scene.objects); this.items.forEach(item => this.create(item)); this.mapEdits=copy(scene.mapEdits || []); this.world.levelRuntime?.surfaces.setEdits(this.mapEdits); this.surfaceTool?.refreshList(); this.list(); this.save(); }
     async prepareAsset(asset) {
         checkGLB(asset.bytes);
         const gltf = await this.loader.parseAsync(asset.bytes, '');
