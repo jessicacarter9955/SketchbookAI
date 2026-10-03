@@ -3,6 +3,8 @@ import { SceneEditor } from '../editor/SceneEditor';
 globalThis.SceneEditor = SceneEditor;
 import { CityRuntime } from '../editor/CityRuntime';
 import { ActorLayer } from '../editor/ActorLayer';
+import { IslandRuntime } from '../editor/IslandRuntime';
+globalThis.IslandRuntime = IslandRuntime;
 globalThis.CityRuntime = CityRuntime;
 globalThis.ActorLayer = ActorLayer;
 import * as THREEImport from 'three';

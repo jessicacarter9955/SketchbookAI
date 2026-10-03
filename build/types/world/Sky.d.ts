@@ -19,5 +19,6 @@ export declare class Sky extends THREE.Object3D implements IUpdatable {
     constructor(world: World);
     update(timeScale: number): void;
     refreshSunPosition(): void;
+    setAtmosphere(elevation: number, azimuth: number, haze: number, sunColor: number, intensity: number): void;
     refreshHemiIntensity(): void;
 }

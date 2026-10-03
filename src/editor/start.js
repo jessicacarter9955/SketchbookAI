@@ -17,7 +17,7 @@ function sceneControls(editor) {
     editor.root.querySelector('.editor-library').prepend(manager);
     editor.root.querySelector('.editor-brand small').textContent = current.name;
     const dialog = document.createElement('dialog'); dialog.className = 'asset-picker scene-dialog';
-    dialog.innerHTML = '<form><h2>Nuova scena</h2><label>Nome <input name="name" required maxlength="80" placeholder="Il mio quartiere"></label><label>Mappa <select name="world"><option value="liberty-city">Liberty City</option><option value="sketchbook">Sketchbook originale</option></select></label><p>Gli oggetti e gli abitanti di ogni scena vengono salvati separatamente.</p><button type="submit">Crea scena</button> <button type="button" data-cancel>Annulla</button><p role="status"></p></form>';
+    dialog.innerHTML = '<form><h2>Nuova scena</h2><label>Nome <input name="name" required maxlength="80" placeholder="Il mio quartiere"></label><label>Mappa <select name="world"><option value="liberty-city">Liberty City</option><option value="sketchbook">Sketchbook originale</option><option value="procedural-island">Isola procedurale</option></select></label><p>Gli oggetti e gli abitanti di ogni scena vengono salvati separatamente.</p><button type="submit">Crea scena</button> <button type="button" data-cancel>Annulla</button><p role="status"></p></form>';
     document.body.append(dialog);
     let source = null;
     const openDialog = state => {
@@ -38,6 +38,7 @@ function sceneControls(editor) {
         catch (error) { editor.message(`Revisione non salvata: ${error.message}`); }
     }
     refreshRevisions();
+    editor.root.addEventListener('scene-revision-saved', refreshRevisions);
     manager.querySelector('[data-checkpoint]').onclick = () => editor.run(() => {
         saveRevision(localStorage, storageKey, editor.scene(), manager.querySelector('[aria-label="Nome revisione"]').value || 'Revisione', crypto.randomUUID());
         refreshRevisions(); editor.message('Revisione salvata. Puoi riaprirla in una copia senza sostituire questa scena.');
@@ -69,9 +70,9 @@ function sceneControls(editor) {
     };
     hud.querySelector('[data-reset]').onclick = () => { world.actorLayer.resetPlayer(); if (!editor.active) { world.actorLayer.start(editor.items); world.renderer.domElement.focus(); } };
     if (world.levelRuntime) {
-        const district = document.createElement('select'); district.setAttribute('aria-label', 'Quartiere Liberty City');
+        const district = document.createElement('select'); district.setAttribute('aria-label', current.world==='liberty-city' ? 'Quartiere Liberty City' : 'Punto di partenza');
         world.levelRuntime.manifest.spawns.forEach(spawn => { const option = document.createElement('option'); option.value = spawn.id; option.textContent = spawn.name; district.append(option); });
-        district.value = current.spawn || 'spawn_portland';
+        district.value = current.spawn || world.levelRuntime.manifest.spawns[0].id;
         district.onchange = async () => {
             district.disabled = true; const spawn = world.levelRuntime.manifest.spawns.find(s => s.id === district.value);
             const wasPlaying = !editor.active; editor.setActive(true); loading.style.display = 'flex';
@@ -96,6 +97,10 @@ try {
         world.levelRuntime = new CityRuntime(world);
         await world.initialize(undefined, false); loading.style.display = 'flex';
         await world.levelRuntime.initialize(report);
+    } else if(current.world === 'procedural-island') {
+        world.levelRuntime = new IslandRuntime(world);
+        await world.initialize(undefined, false); loading.style.display = 'flex';
+        await world.levelRuntime.initialize();
     } else await world.initialize('build/assets/world.glb');
     const actors = new ActorLayer(world); await actors.initialize();
     if (world.levelRuntime) {
@@ -135,11 +140,21 @@ try {
             bounds:[-15,-6,-60,15,-2,-30],seed:42,density:30,height:0.5
         }]}); sceneEditor.commit();
     }
+    if (!hadSaved && current.world === 'procedural-island') {
+        const objects=[];
+        const add=(prefab,name,x,z,rotation=0)=>objects.push({id:crypto.randomUUID(),prefab,name,position:[x,world.levelRuntime.groundAt(x,z,50)+.04,z],rotation:[0,rotation,0],scale:[1,1,1],collider:prefab==='lamp'});
+        add('vehicle','Auto per attraversare il ponte',4,-2,Math.PI/2);
+        add('vehicle','Auto sull’isola est',205,2,-Math.PI/2);
+        for(const x of [-20,0,20,185,205,225]) add('lamp','Lampione',x,7);
+        for(const x of [-12,12]) add('pedestrian','Abitante',x,-12);
+        sceneEditor.restore({version:1,world:current.world,objects,generator:{...sceneEditor.generator,sky:current.id==='island-sunset'?'sunset':'day'}});sceneEditor.commit();
+    }
     sceneControls(sceneEditor); loading.style.display = 'none';
     if(current.id === 'portland-grass' && sceneEditor.mapEdits.length) {
         const select=sceneEditor.surfaceTool.$('[data-layers]'); select.value=sceneEditor.mapEdits[0].id;
         select.dispatchEvent(new Event('change')); sceneEditor.surfaceTool.cancel();
     }
+    sceneEditor.islandTool?.focus();
     if (query.get('play') === '1') sceneEditor.setActive(false);
     document.title = `${current.name} · Sketchbook`;
 } catch (error) {

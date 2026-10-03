@@ -8,6 +8,8 @@ import { validateScene, History, SCENE_KEY } from './scene-data.mjs';
 import { AssetStore, checkGLB, encodeBytes, decodeBytes, MAX_BYTES } from './asset-store.mjs';
 import { modelToGLB } from './model-import';
 import { SurfaceTool } from './SurfaceTool';
+import { IslandTool } from './IslandTool';
+import { DEFAULT_ISLAND } from './island-data.mjs';
 
 const labels = { box: 'Blocco', building: 'Edificio', road: 'Strada', tree: 'Albero', lamp: 'Lampione', car: 'Auto statica', vehicle: 'Auto guidabile', pedestrian: 'Abitante' };
 const copy = value => JSON.parse(JSON.stringify(value));
@@ -17,6 +19,7 @@ export class SceneEditor {
         this.worldId = worldId;
         this.world = world; this.active = false; this.busy = false; this.items = []; this.objects = new Map(); this.templates = new Map(); this.assets = new Map();
         this.mapEdits = [];
+        this.generator = worldId === 'procedural-island' ? copy(world.levelRuntime.config || DEFAULT_ISLAND) : undefined;
         this.store = new AssetStore(); this.loader = new GLTFLoader(); this.history = new History(this.scene());
         this.group = new THREE.Group(); this.group.name = 'Editor objects'; world.graphicsWorld.add(this.group);
         this.orbit = new OrbitControls(world.camera, world.renderer.domElement); this.orbit.enabled = false; this.orbit.maxDistance = 400;
@@ -26,9 +29,10 @@ export class SceneEditor {
         this.gizmo.addEventListener('objectChange', () => { if (this.selected) { this.outline.setFromObject(this.objects.get(this.selected)); this.inspect(); } });
         this.mount(); this.bind(); world.sceneEditor = this; this.setActive(true);
         if (world.levelRuntime?.surfaces) this.surfaceTool = new SurfaceTool(this);
+        if (this.generator) this.islandTool = new IslandTool(this);
         world.renderer.domElement.tabIndex = 0;
     }
-    scene() { return { version: 1, world: this.worldId, objects: copy(this.items), ...(this.mapEdits.length ? {mapEdits:copy(this.mapEdits)} : {}) }; }
+    scene() { return { version: 1, world: this.worldId, objects: copy(this.items), ...(this.mapEdits.length ? {mapEdits:copy(this.mapEdits)} : {}), ...(this.generator ? {generator:copy(this.generator)} : {}) }; }
     message(text) { this.root.querySelector('[data-status]').textContent = text; }
     async run(action) {
         if (this.busy) return; this.busy = true;
@@ -41,7 +45,7 @@ export class SceneEditor {
             <button data-action="undo" title="Ctrl+Z">↶ Annulla</button><button data-action="redo" title="Ctrl+Y">↷ Ripeti</button><button data-action="export">Esporta scena</button><button data-action="import">Importa scena</button><button class="primary" data-action="play">▶ Prova</button></div>
             <aside class="editor-panel editor-library"><h2>LIBRERIA</h2><button class="wide primary" data-action="search">Cerca su Sketchfab</button><button class="wide" data-action="glb">Importa GLB / ZIP</button><p>Modelli salvati nel browser. Esporta la scena per portarli con te.</p>
             <h2>PROTOTIPAZIONE RAPIDA</h2><div class="editor-grid">${Object.entries(labels).map(([key, label]) => `<button data-prefab="${key}">${label}</button>`).join('')}</div>
-            <h2>SCENA <span data-count>0</span> / 500</h2><div class="editor-objects"></div><p>Gli oggetti aggiunti si possono spostare e scalare. Per il terreno originale usa «Superfici della città»; gli edifici originali non sono ancora separabili.</p></aside>
+            <h2>SCENA <span data-count>0</span> / 500</h2><div class="editor-objects"></div><p>Gli oggetti aggiunti si possono spostare e scalare. ${this.worldId==='liberty-city'?'Per il terreno originale usa «Superfici della città»; gli edifici originali non sono ancora separabili.':this.worldId==='procedural-island'?'Usa il generatore per modificare terreno, ponte e cielo.':''}</p></aside>
             <aside class="editor-panel editor-inspector"><h2>PROPRIETÀ</h2><p data-empty>Seleziona un oggetto nella mappa o nell’elenco.</p><div data-properties hidden>
             <label>Nome<input name="object-name" maxlength="120"></label><div class="editor-grid"><button data-mode="translate">Sposta · W</button><button data-mode="rotate">Ruota · E</button><button data-mode="scale">Scala · R</button><button data-action="focus">Inquadra · F</button></div>
             ${['position', 'rotation', 'scale'].map((field, i) => `<label>${['Posizione · metri', 'Rotazione · gradi', 'Scala'][i]}</label><div class="editor-vector">${['X', 'Y', 'Z'].map((axis, a) => `<input aria-label="${field} ${axis}" data-field="${field}" data-axis="${a}" type="number" step="${field === 'rotation' ? '15' : '0.1'}">`).join('')}</div>`).join('')}
@@ -209,7 +213,12 @@ export class SceneEditor {
     duplicate() { const item = this.item(); if (!item) return; if (this.items.length >= 500) throw new Error('Limite oggetti raggiunto.'); const next = copy(item); next.id = crypto.randomUUID(); next.name += ' copia'; next.position[0] += this.snap || 2; this.items.push(next); this.create(next); this.select(next.id); this.commit(); }
     destroyObject(id) { const object = this.objects.get(id); if (!object) return; if (object.userData.body) this.world.physicsWorld.removeBody(object.userData.body); this.group.remove(object); const item = this.items.find(i => i.id === id); if (!item?.assetId && !['vehicle', 'pedestrian'].includes(item?.prefab)) object.traverse(n => { n.geometry?.dispose(); if (n.material) n.material.dispose(); }); this.objects.delete(id); }
     remove() { if (!this.selected) return; const id = this.selected; this.select(null); this.destroyObject(id); this.items = this.items.filter(i => i.id !== id); this.commit(); }
-    restore(scene) { if (!scene) return; this.select(null); [...this.objects.keys()].forEach(id => this.destroyObject(id)); this.items = copy(scene.objects); this.items.forEach(item => this.create(item)); this.mapEdits=copy(scene.mapEdits || []); this.world.levelRuntime?.surfaces.setEdits(this.mapEdits); this.surfaceTool?.refreshList(); this.list(); this.save(); }
+    restore(scene) {
+        if (!scene) return;
+        if(this.worldId==='procedural-island') {this.world.levelRuntime.generate(scene.generator || DEFAULT_ISLAND);this.generator=copy(this.world.levelRuntime.config);this.islandTool?.refresh();}
+        this.select(null); [...this.objects.keys()].forEach(id => this.destroyObject(id)); this.items = copy(scene.objects); this.items.forEach(item => this.create(item));
+        this.mapEdits=copy(scene.mapEdits || []); this.world.levelRuntime?.surfaces?.setEdits(this.mapEdits); this.surfaceTool?.refreshList(); this.list(); this.save();
+    }
     async prepareAsset(asset) {
         checkGLB(asset.bytes);
         const gltf = await this.loader.parseAsync(asset.bytes, '');

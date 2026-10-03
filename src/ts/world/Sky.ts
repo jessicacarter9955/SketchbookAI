@@ -119,6 +119,17 @@ export class Sky extends THREE.Object3D implements IUpdatable
 		this.skyMaterial.uniforms.cameraPos.value.copy(this.world.camera.position);
 	}
 
+	public setAtmosphere(elevation: number, azimuth: number, haze: number, sunColor: number, intensity: number): void
+	{
+		this.phi = elevation;
+		this.theta = azimuth;
+		this.skyMaterial.uniforms.turbidity.value = haze;
+		this.skyMaterial.uniforms.rayleigh.value = haze > 8 ? 0.4 : 1;
+		this.csm.lights.forEach(light => { light.color.set(sunColor); light.intensity = intensity; });
+		this.hemiLight.color.set(haze > 8 ? 0xb4c4ca : 0xc7e2f0);
+		this.hemiLight.groundColor.set(0x7b7767);
+	}
+
 	public refreshHemiIntensity(): void
 	{
 		this.hemiLight.intensity = this.minHemiIntensity + Math.pow(1 - (Math.abs(this._phi - 90) / 90), 0.25) * (this.maxHemiIntensity - this.minHemiIntensity);

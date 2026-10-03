@@ -68,7 +68,19 @@ Per usare un'altra auto serve una procedura di rigging nell'editor: orientamento
 
 ## Isola con ponte: struttura del generatore
 
-Questo è un generatore di mondo, non soltanto uno shader. La sequenza proposta è:
+### Prima versione disponibile
+
+Le nuove scene **Isola · ponte e costa** e **Isola · tramonto** sono indipendenti da Liberty City e non richiedono la cartella della mappa. Includono due isole, rilievi e costa generati da un seed, strada continua, ponte con parapetti e piloni, due auto guidabili, lampioni e abitanti Sketchbook.
+
+Il pannello **Isola, ponte e cielo** permette di cambiare seed, raggio (45–110 m), distanza fra le isole (30–140 m) e preset Giorno/Tramonto/Foschia. **Rigenera isole e ponte** salva prima una revisione e aggiorna terreno e collisioni insieme. Annulla/Ripeti, esportazione, importazione e copie conservano i parametri. Gli oggetti aggiunti manualmente mantengono le coordinate; se la nuova costa li lascia sospesi, usa Appoggia a terra o riposizionali.
+
+L'acqua usa l'oggetto Water incluso in Three.js, con riflessione della scena e normali animate generate localmente. Sole, illuminazione, nebbia e colore dell'acqua seguono il preset. Non è un porting degli shader Shadertoy indicati. Il cielo non contiene nuvole volumetriche e l'acqua non offre ancora nuoto o galleggiamento. La costa non ha ancora schiuma o un sistema di erosione; è una base procedurale giocabile, non un ambiente fotorealistico finito.
+
+Per giocare: scegli una delle nuove scene e premi **In auto**, poi WASD per guidare, Spazio per frenare, F per uscire e F2 per tornare all'editor. Il selettore Punto di partenza porta all'isola ovest, est o sul ponte. Il ponte è stato attraversato nel test fisico con l'auto inclusa.
+
+### Sviluppo successivo
+
+Il generatore attuale produce due isole e un collegamento rettilineo. Strade a curve liberamente disegnabili, isolati, lotti, traffico e selezione delle singole parti del terreno richiedono ulteriori strumenti. La sequenza proposta è:
 
 1. Un seed riproducibile genera forma dell'isola, quota, pendenze, costa e fondale.
 2. Punti di controllo definiscono strade e ponte. La strada adatta il terreno; il ponte mantiene una quota e genera piloni, parapetti e collisioni.
@@ -85,7 +97,7 @@ Liberty City usa attualmente MeshBasicMaterial con texture e colori dei vertici,
 
 Per migliorare il risultato servono materiali PBR coerenti (colore, rugosità, normali), texture adeguate, dettagli geometrici vicino alla camera, luce e cielo coordinati, riflessi, ombre con distanza limitata e livelli di dettaglio. Le ombre già disegnate nelle vecchie texture non si possono eliminare regolando il cielo. Non prometterei fotorealismo semplicemente applicando quei tre shader alla mappa esistente.
 
-Per il cielo: un pannello con ora del giorno, azimut, foschia e copertura nuvolosa; sole, luce ambientale, riflessi e nebbia devono cambiare insieme. Preparerei scene separate Giorno, Tramonto e Coperto per confrontare il risultato, senza alterare il riferimento originale. Questo pannello e questi preset atmosferici non sono inclusi nelle fix attuali.
+Per il cielo, le scene Isola includono ora tre preset coordinati con sole, luce ambientale, acqua e nebbia. I controlli continui di ora del giorno/azimut e le nuvole rimangono da implementare. Le scene Liberty City originali mantengono l'atmosfera precedente.
 
 ## Revisioni delle scene e GitHub
 
@@ -101,5 +113,6 @@ I 474 MB circa della conversione Liberty City sono esclusi da Git. Il repository
 - Test browser WebGL/Cannon/IndexedDB: importazione GLB, ZIP glTF con buffer relativo, persistenza, esportazione, annulla/ripeti, rifiuto di ZIP non valido e passaggio gioco/editor.
 - Ricerca reale «Albero», download autenticato del Maple tree, importazione e selezione nella scena Portland.
 - Test superfici: taglio ai bordi, filtro materiale/quota, geometria e collisioni originali, erba istanziata, streaming riproducibile, annulla/ripeti, salvataggio/esportazione e compilazione shader.
+- Test isola: terreno riproducibile, configurazione e copie, contatti fisici su strada e rilievi, attraversamento del ponte in auto, rigenerazione senza accumulare collisioni, annulla/ripeti, esportazione/importazione e shader dell'acqua.
 - Creazione di una revisione e apertura in una copia indipendente dal browser.
 - Build di produzione e controllo del diff prima del push.
