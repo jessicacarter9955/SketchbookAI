@@ -2,6 +2,17 @@
     const API = 'https://api.sketchfab.com/v3/';
     class SketchfabClient {
         constructor(fetcher = (...args) => fetch(...args)) { this.fetcher = fetcher; this.token = ''; }
+        async loadLocalToken(location = globalThis.location) {
+            if (!['localhost', '127.0.0.1', '[::1]'].includes(location?.hostname)) return false;
+            try {
+                const response = await this.fetcher('/.local/sketchfab.json', { cache: 'no-store', signal: AbortSignal.timeout(5000) });
+                if (!response.ok) return false;
+                const data = await response.json();
+                if (typeof data.token !== 'string' || !/^[a-zA-Z0-9_-]{20,200}$/.test(data.token)) return false;
+                if (!this.token) this.token = data.token;
+                return true;
+            } catch { return false; }
+        }
         async request(url, signal) {
             const parsed = new URL(url);
             if (parsed.origin !== 'https://api.sketchfab.com' || !parsed.pathname.startsWith('/v3/')) throw new Error('URL Sketchfab non valida.');

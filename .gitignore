@@ -2,6 +2,7 @@
 node_modules
 /build/local-scenes/
 /localSettings.js
+/.local/
 /build/sketchbook.min.js
 steam.txt
 dist

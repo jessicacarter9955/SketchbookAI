@@ -1,13 +1,14 @@
 /* Shared by the AI sandbox and the scene editor. No bundled credentials. */
 (function () {
     const client = new SketchfabClient();
+    const localAccess = client.loadLocalToken();
     const dialog = document.createElement('dialog');
     dialog.className = 'asset-picker';
     dialog.setAttribute('aria-label', 'Libreria Sketchfab');
     dialog.innerHTML = `<header><div><small>LIBRERIA MODELLI</small><h2>Sketchfab</h2></div><button type="button" data-close aria-label="Chiudi libreria">×</button></header>
         <form class="asset-search"><input name="query" aria-label="Cerca modelli" placeholder="Alberi, auto, edifici…" maxlength="200"><button>Cerca</button></form>
         <div class="asset-filters"><label><input type="checkbox" name="animated"> Animati</label><label>Geometria <select name="faces"><option value="">Tutti</option><option value="10000">≤ 10.000 facce</option><option value="50000">≤ 50.000 facce</option></select></label><button type="button" data-favorites>Preferiti</button></div>
-        <details><summary>Accesso ai download</summary><label>Il tuo API token Sketchfab <input type="password" name="token" autocomplete="off" placeholder="Solo per questa sessione"></label><p>La ricerca è pubblica; per importare serve l’accesso del tuo account. Il token non viene salvato. <a href="https://sketchfab.com/settings/password" target="_blank" rel="noopener noreferrer">Impostazioni Sketchfab ↗</a></p><button type="button" data-retry hidden>Riprova modello selezionato</button></details>
+        <details><summary>Accesso ai download</summary><label>API token Sketchfab <input type="password" name="token" autocomplete="off" placeholder="Solo per questa sessione"></label><p data-access>La ricerca è pubblica. Puoi usare la configurazione locale oppure inserire un token valido qui, solo per questa sessione. <a href="https://sketchfab.com/settings/password" target="_blank" rel="noopener noreferrer">Impostazioni Sketchfab ↗</a></p><button type="button" data-retry hidden>Riprova modello selezionato</button></details>
         <p role="status" aria-live="polite" data-status>Cerca un modello scaricabile o apri i preferiti.</p><div class="asset-results"></div><button type="button" data-more hidden>Altri risultati</button>`;
     document.body.appendChild(dialog);
     const $ = selector => dialog.querySelector(selector);
@@ -53,7 +54,10 @@
     async function pick(model) {
         if (busy) return;
         pendingModel = model; errors.delete(model.uid);
+        busy = true;
+        await localAccess;
         if (!client.token) {
+            busy = false;
             const message = `Per aggiungere “${model.name}” inserisci il tuo token in Accesso ai download, poi premi Riprova. Nessun oggetto è stato aggiunto.`;
             errors.set(model.uid, message); render(); status(message);
             $('details').open = true; $('[data-retry]').hidden = false; $('[name=token]').focus(); $('[name=token]').scrollIntoView({block:'center'}); return;
@@ -76,6 +80,7 @@
     $('[name=animated]').onchange = () => search();
     $('[name=faces]').onchange = () => search();
     $('[name=token]').oninput = e => client.token = e.target.value.trim();
+    localAccess.then(loaded => { if (loaded) { $('[name=token]').placeholder = 'Accesso locale configurato'; $('[data-access]').textContent = 'Accesso locale ripristinato: puoi aggiungere direttamente i modelli. La configurazione resta su questo PC ed è esclusa da Git.'; } });
     $('[data-retry]').onclick = () => { if (pendingModel) pick(pendingModel); };
     $('[data-close]').onclick = () => { if (!busy) dialog.close(); };
     dialog.addEventListener('cancel', e => { if (busy) e.preventDefault(); });

@@ -85,3 +85,14 @@ test('portable asset round-trip is byte-exact and refuses archives / external re
     new Uint8Array(invalid, 20).set(new TextEncoder().encode(json.padEnd(length)));
     assert.throws(() => checkGLB(invalid), /risorse esterne/);
 });
+
+test('local credentials load only on loopback and do not override manual input', async () => {
+    let calls = 0;
+    const client = new SketchfabClient(async () => { calls++; return { ok: true, json: async () => ({token:'local-test-credential-0000'}) }; });
+    assert.equal(await client.loadLocalToken({hostname:'example.com'}), false);
+    assert.equal(calls, 0);
+    assert.equal(await client.loadLocalToken({hostname:'127.0.0.1'}), true);
+    assert.equal(client.token, 'local-test-credential-0000');
+    client.token = 'manual'; await client.loadLocalToken({hostname:'localhost'});
+    assert.equal(client.token, 'manual');
+});
