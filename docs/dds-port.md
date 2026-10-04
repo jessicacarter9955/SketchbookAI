@@ -37,6 +37,19 @@ Motion Matching execution inside a browser.
 Next batches: weapon and action animation integration; then single-player
 inventory, equipping, aiming, shooting and reloading. AI and multiplayer follow.
 
+## Batch 2 scope
+
+Exports rifle and pistol meshes plus ready, aim, fire, reload and equip/unequip
+clips (21 exported character clips total). Upper-body weapon poses run after
+locomotion, so the legs remain animated while carrying a weapon. A calibrated
+right-hand grip follows the reload animation. The DDS camera uses a wider view.
+In the animation test stage, 1/2 select rifle/pistol, 3 holsters, right mouse aims,
+and R previews reload. Ammo and hit detection arrive in batch 3.
+
+Export is incremental: existing files are reused. Set `DDS_EXPORT_FORCE=1` in the
+environment when source assets change and need re-exporting. The browser smoke
+test additionally checks both weapon grips, scale, aim and reload animation.
+
 The source kit's included licence restricts asset redistribution and identifies
 some separately licensed animations (including downed states). Git commits contain
 original integration tools/code, not the purchased source or exported asset bytes.

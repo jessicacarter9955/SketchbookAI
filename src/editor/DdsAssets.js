@@ -38,5 +38,9 @@ export async function loadDdsPlayer() {
     });
     model.scene.animations = clips;
     model.scene.userData.playerProfile = 'dds';
+    model.weapons = {};
+    for (const [name, file] of Object.entries(manifest.weapons || {})) {
+        model.weapons[name] = (await loader.loadAsync(safeURL(file))).scene;
+    }
     return model;
 }

@@ -5,6 +5,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { Character } from '../ts/characters/Character';
 import { Car } from '../ts/vehicles/Car';
 import { loadDdsPlayer } from './DdsAssets';
+import { DdsCharacter } from './DdsCharacter';
 
 export class ActorLayer {
     constructor(world) { this.world = world; this.actors = []; this.spawn = new THREE.Vector3(0, 2, -5); }
@@ -19,7 +20,8 @@ export class ActorLayer {
     resetPlayer() {
         const old = this.world.editorPlayer;
         if (old) { old.stopControllingVehicle(); old.leaveSeat(); old.removeFromParent(); this.world.remove(old); }
-        const player = new Character(this.playerModel.scene); player.setPosition(...this.spawn.toArray());
+        const player = this.playerProfile === 'dds' ? new DdsCharacter(this.playerModel) : new Character(this.playerModel.scene);
+        player.setPosition(...this.spawn.toArray());
         player.userData.playerProfile = this.playerProfile;
         player.position.copy(this.spawn);
         this.world.add(player); player.takeControl(); this.world.editorPlayer = player;

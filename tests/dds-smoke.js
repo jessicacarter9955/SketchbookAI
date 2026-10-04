@@ -30,6 +30,17 @@
         canvas.dispatchEvent(new KeyboardEvent('keydown',{code:'ArrowRight',bubbles:true})); await step(10);
         canvas.dispatchEvent(new KeyboardEvent('keyup',{code:'ArrowRight',bubbles:true}));
         ok(theta !== world.cameraOperator.theta, 'Lateral camera control works with DDS player');
+        for (const name of ['rifle','pistol']) {
+            player.equipWeapon(name); player.aiming = true; await step(10);
+            ok(player.weapon.parent === player.mount && player.mount.parent.name==='hand_r', `${name} model follows the right hand`);
+            ok(player.upperName===`${name}_aim`, `${name} uses exported aim pose`);
+            const clip = player.upperClips.get(`${name}_reload`);
+            ok(clip && clip.tracks.length>30, `${name} reload has bound upper-body tracks`);
+            const hand = player.hand.quaternion.clone(); player.playUpper(`${name}_reload`,true); await step(30);
+            ok(player.hand.quaternion.angleTo(hand)>0.02, `${name} reload animates the hand`);
+            const bounds = new THREE.Box3().setFromObject(player.weapon).getSize(new THREE.Vector3());
+            ok(bounds.length()>0.1 && bounds.length()<3, `${name} is exported in meters`);
+        }
         actors.resetPlayer(); ok(world.editorPlayer.userData.playerProfile==='dds', 'Respawn preserves DDS player');
         result.textContent += '\nALL DDS CHECKS PASSED'; document.title='PASS · DDS checks';
     } catch(error) { result.textContent += '\nFAIL '+error.stack; document.title='FAIL · DDS checks'; }
