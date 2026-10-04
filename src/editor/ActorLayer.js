@@ -4,19 +4,23 @@ import { clone } from 'three/examples/jsm/utils/SkeletonUtils';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { Character } from '../ts/characters/Character';
 import { Car } from '../ts/vehicles/Car';
+import { loadDdsPlayer } from './DdsAssets';
 
 export class ActorLayer {
     constructor(world) { this.world = world; this.actors = []; this.spawn = new THREE.Vector3(0, 2, -5); }
-    async initialize() {
+    async initialize(profile) {
         [this.person, this.car] = await Promise.all(['boxman', 'car'].map(name => new GLTFLoader().loadAsync(`build/assets/${name}.glb`)));
         this.person.scene.animations = this.person.animations;
+        this.playerModel = profile === 'dds' ? await loadDdsPlayer() : this.person;
+        this.playerProfile = profile;
         this.world.actorLayer = this;
     }
     preview(type) { return clone(type === 'vehicle' ? this.car.scene : this.person.scene); }
     resetPlayer() {
         const old = this.world.editorPlayer;
         if (old) { old.stopControllingVehicle(); old.leaveSeat(); old.removeFromParent(); this.world.remove(old); }
-        const player = new Character(this.person.scene); player.setPosition(...this.spawn.toArray());
+        const player = new Character(this.playerModel.scene); player.setPosition(...this.spawn.toArray());
+        player.userData.playerProfile = this.playerProfile;
         player.position.copy(this.spawn);
         this.world.add(player); player.takeControl(); this.world.editorPlayer = player;
         return player;

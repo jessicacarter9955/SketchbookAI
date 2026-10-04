@@ -20,7 +20,7 @@ export function forkScene(storage, parent, scene, name, id) {
     const key = sceneStorageKey(id), catalog = storage.getItem(CATALOG_KEY);
     if (storage.getItem(key) !== null) throw new Error('La copia esiste già.');
     try {
-        const copy = createScene(storage, name, parent.world, id, { parentId: parent.id, spawn: parent.spawn });
+        const copy = createScene(storage, name, parent.world, id, { parentId: parent.id, spawn: parent.spawn, playerProfile:parent.playerProfile });
         storage.setItem(key, JSON.stringify(state));
         saveRevision(storage, key, state, 'Versione iniziale della copia', `${id}-initial`);
         return copy;

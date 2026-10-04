@@ -48,6 +48,15 @@ test('revisions preserve the first state and forks never overwrite their source'
     assert.equal(loadCatalog(storage).at(-1).parentId,'sandbox');
     assert.throws(()=>forkScene(storage,{id:'sandbox',world:'sketchbook'},scene(),'Duplicate','branch-1'));
 });
+test('DDS test scene and forks preserve their player profile without changing original maps', () => {
+    const data = new Map(), storage = {getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)};
+    const parent = loadCatalog(storage).find(s=>s.id==='dds-portland');
+    assert.equal(parent.world,'liberty-city'); assert.equal(parent.playerProfile,'dds');
+    forkScene(storage,parent,{version:1,world:'liberty-city',objects:[]},'DDS branch','dds-branch');
+    assert.equal(loadCatalog(storage).at(-1).playerProfile,'dds');
+    assert.equal(loadCatalog(storage).find(s=>s.id==='liberty-city').playerProfile,undefined);
+    assert.equal(storage.getItem(sceneStorageKey('dds-portland')),null);
+});
 test('search encodes terms, translates common Italian nouns and omits invalid relevance sort', async () => {
     let request;
     const client = new SketchfabClient(async url => { request = new URL(url); return { ok: true, json: async () => ({ results: [] }) }; });
