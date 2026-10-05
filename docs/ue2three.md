@@ -123,10 +123,11 @@ automated fixture coverage.
 ## Incremental roadmap / acceptance gates
 
 1. **Done:** scan, diagnostics, engine discovery, resumable graph and initial job UI.
-2. **In progress:** generic recipe-driven character export through Unreal,
-   source-byte fingerprints, staged resume and GLB validation are implemented.
-   Next: skeleton/bone/material validation in Three.js and a generated playable
-   character test scene.
+2. **Done for first real-project validation:** generic recipe-driven character
+   export through Unreal, source-byte fingerprints, staged resume, GLB validation,
+   required-bone/attachment validation, root-motion policy, animation aliases,
+   local runtime publishing and a playable Sketchbook `ue2three` profile.
+   The remaining acceptance gate is running this path against the local DDS UE 5.7 project.
 3. Animation mappings, root motion/retargeting and sustained runtime pose tests.
 4. Weapons, sockets, attachment transforms, animation events and shooting tests.
 5. Maps: actor hierarchy/transforms, static meshes, collisions, lights, cameras,
