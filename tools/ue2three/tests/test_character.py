@@ -6,7 +6,8 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from character import character_fingerprint, load_character_recipe, package_files, validate_character_output
+from character import (_publish_character, character_fingerprint, load_character_recipe,
+                       package_files, validate_character_output)
 
 
 class CharacterMigrationTests(unittest.TestCase):
@@ -29,6 +30,7 @@ class CharacterMigrationTests(unittest.TestCase):
                 "required_bones": ["root", "pelvis"],
                 "attachments": {"weapon": "hand_r"},
                 "root_motion": "strip_root_translation",
+                "animation_aliases": {"start_forward": "idle"},
             },
         }), encoding="utf-8")
 
@@ -39,6 +41,7 @@ class CharacterMigrationTests(unittest.TestCase):
         after, _ = character_fingerprint(self.project, recipe)
         self.assertNotEqual(before, after)
         self.assertEqual(package_files(self.project, "/Game/Hero/SK_Hero")[0].name, "SK_Hero.uasset")
+        self.assertEqual(recipe["runtime"]["animation_aliases"], {"start_forward": "idle"})
 
     def test_recipe_rejects_unsafe_id(self):
         self.recipe_path.write_text(json.dumps({
@@ -49,6 +52,33 @@ class CharacterMigrationTests(unittest.TestCase):
         }), encoding="utf-8")
         with self.assertRaises(ValueError):
             load_character_recipe(self.recipe_path)
+
+
+    def test_recipe_rejects_alias_to_missing_clip(self):
+        data = json.loads(self.recipe_path.read_text(encoding="utf-8"))
+        data["runtime"]["animation_aliases"] = {"move": "run"}
+        self.recipe_path.write_text(json.dumps(data), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "missing clips"):
+            load_character_recipe(self.recipe_path)
+
+    def test_publish_copies_only_validated_runtime_output_outside_source(self):
+        output = self.root / "workspace" / "out"
+        output.mkdir(parents=True)
+        (output / "character.glb").write_bytes(struct.pack("<4sII", b"glTF", 2, 12))
+        (output / "idle.glb").write_bytes(struct.pack("<4sII", b"glTF", 2, 12))
+        (output / "manifest.json").write_text(json.dumps({
+            "schema_version": 1,
+            "kind": "character",
+            "fingerprint": "a" * 64,
+            "mesh": "character.glb",
+            "clips": {"idle": "idle.glb"},
+        }), encoding="utf-8")
+        destination = self.root.parent / (self.root.name + "-published")
+        self.addCleanup(lambda: destination.exists() and __import__("shutil").rmtree(destination))
+        self.assertEqual(Path(_publish_character(output, destination, self.project)), destination.resolve())
+        self.assertTrue((destination / "manifest.json").is_file())
+        with self.assertRaisesRegex(ValueError, "source project"):
+            _publish_character(output, self.root / "Content" / "published", self.project)
 
     def test_output_validation_checks_manifest_fingerprint_and_glb_header(self):
         recipe = load_character_recipe(self.recipe_path)
