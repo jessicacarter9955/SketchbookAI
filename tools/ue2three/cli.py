@@ -35,6 +35,8 @@ def parser():
     character.add_argument("--workspace", type=Path, help="Local migration workspace, separate from source project")
     character.add_argument("--engine", help="Optional Unreal Engine installation root")
     character.add_argument("--force", action="store_true", help="Ignore a valid cached character export")
+    character.add_argument("--publish-dir", type=Path,
+                           help="Optional local directory to mirror the validated runtime assets")
     return result
 
 
@@ -62,9 +64,11 @@ def execute(args):
         atomic_json(latest, {"workspace": str(directory)})
         logger = Logger(directory)
         with workspace_lock(directory):
-            result = migrate_character(project, args.recipe, directory, args.engine, args.force, logger)
+            result = migrate_character(project, args.recipe, directory, args.engine, args.force, logger, args.publish_dir)
             atomic_json(directory / "character-last.json", result)
         print(f"Character {result['status']}: {result['output']}")
+        if result.get("published"):
+            print(f"Published runtime assets: {result['published']}")
         return 0
 
     if (directory / "state.json").exists():
