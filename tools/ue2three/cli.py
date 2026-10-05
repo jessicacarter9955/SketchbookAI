@@ -9,7 +9,7 @@ from scanner import collect_snapshot
 
 
 def parser():
-    result = argparse.ArgumentParser(description="ue2three: offline Unreal project inspection and resumable task planning (stage 1)")
+    result = argparse.ArgumentParser(description="ue2three: offline Unreal inspection and migration toolkit")
     result.add_argument("--version", action="version", version=TOOL_VERSION)
     commands = result.add_subparsers(dest="command", required=True)
     for name in ("scan", "plan", "resume", "retry", "skip", "revalidate", "report", "status", "dashboard"):
@@ -28,6 +28,13 @@ def parser():
             cmd.add_argument("--reason", required=True)
         if name == "dashboard":
             cmd.add_argument("--port", type=int, default=8766)
+
+    character = commands.add_parser("migrate-character", help="Export one recipe-defined Unreal skeletal character to validated GLB")
+    character.add_argument("project", type=Path, help="Editable Unreal .uproject")
+    character.add_argument("--recipe", type=Path, required=True, help="Character migration recipe JSON")
+    character.add_argument("--workspace", type=Path, help="Local migration workspace, separate from source project")
+    character.add_argument("--engine", help="Optional Unreal Engine installation root")
+    character.add_argument("--force", action="store_true", help="Ignore a valid cached character export")
     return result
 
 
@@ -41,12 +48,25 @@ def execute(args):
         project = project.resolve(strict=True)
         if project.suffix.lower() != ".uproject" or not project.is_file():
             raise ValueError("Expected an editable .uproject file")
+
     latest = Path.cwd() / ".local" / "ue2three" / "last-workspace.json"
     directory = args.workspace.resolve() if args.workspace else default_workspace(project) if project else None
     if directory is None and latest.is_file():
         directory = Path(read_json(latest)["workspace"]).resolve()
     if directory is None:
         raise ValueError("Provide --workspace from the initial scan (or a project path for scan/plan)")
+
+    if args.command == "migrate-character":
+        from character import migrate_character
+        directory = prepare_workspace(directory, project)
+        atomic_json(latest, {"workspace": str(directory)})
+        logger = Logger(directory)
+        with workspace_lock(directory):
+            result = migrate_character(project, args.recipe, directory, args.engine, args.force, logger)
+            atomic_json(directory / "character-last.json", result)
+        print(f"Character {result['status']}: {result['output']}")
+        return 0
+
     if (directory / "state.json").exists():
         state = load_state(directory)
         existing_project = Path(state["config"]["project"]).resolve()
@@ -57,15 +77,16 @@ def execute(args):
         state = new_state({"project": str(project), "engine": None, "registry": None})
     else:
         raise ValueError("No state.json found. Start with scan PROJECT --workspace DIRECTORY")
+
     directory = prepare_workspace(directory, project)
     if args.command in {"scan", "plan"}:
         atomic_json(latest, {"workspace": str(directory)})
     if args.command == "dashboard":
         from dashboard import serve
         return serve(directory, args.port)
+
     logger = Logger(directory)
     with workspace_lock(directory):
-        # Reload under the lock to avoid overwriting another process's transitions.
         if (directory / "state.json").exists():
             state = load_state(directory)
         config = state["config"]
@@ -80,6 +101,7 @@ def execute(args):
         verify_state(directory, state, logger)
         save_state(directory, state)
         logger.event("command", f"{args.command}: {directory}", command=args.command)
+
         if args.command in {"status", "report", "skip"}:
             if args.command == "skip":
                 skip_task(state, args.task, args.reason)
@@ -91,6 +113,7 @@ def execute(args):
             else:
                 print(f"Report: {directory / 'report.md'}")
             return 0
+
         try:
             state["source_verification_status"] = "running"
             save_state(directory, state)
@@ -107,12 +130,14 @@ def execute(args):
                 return 0
             ok = run(directory, state, snapshot, logger)
             build_report(directory, state)
-            logger.event("complete" if ok else "incomplete", f"Inspection {'complete' if ok else 'incomplete'}; converted assets: 0; fidelity: not evaluated")
+            logger.event("complete" if ok else "incomplete",
+                         f"Inspection {'complete' if ok else 'incomplete'}; converted assets: 0; fidelity: not evaluated")
             print(f"Report: {directory / 'report.md'}")
             return 0 if ok else 1
         except (OSError, ValueError, RuntimeError) as exc:
             state["source_verification_status"] = "failed"
-            state["last_error"] = {"time": utc(), "code": "SOURCE_SCAN_FAILED", "error": f"{type(exc).__name__}: {exc}"}
+            state["last_error"] = {"time": utc(), "code": "SOURCE_SCAN_FAILED",
+                                   "error": f"{type(exc).__name__}: {exc}"}
             save_state(directory, state)
             logger.event("error", state["last_error"]["error"], code="SOURCE_SCAN_FAILED")
             build_report(directory, state)
