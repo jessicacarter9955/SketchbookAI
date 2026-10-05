@@ -61,6 +61,33 @@ class CharacterMigrationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing clips"):
             load_character_recipe(self.recipe_path)
 
+    def test_engine_plugin_requirements_are_portable_and_validated(self):
+        data = json.loads(self.recipe_path.read_text(encoding="utf-8"))
+        data["export"] = {"required_engine_plugins": ["PoseSearch", "ControlRig"]}
+        self.recipe_path.write_text(json.dumps(data), encoding="utf-8")
+        recipe = load_character_recipe(self.recipe_path)
+        self.assertEqual(recipe["export"]["required_engine_plugins"], ["ControlRig", "PoseSearch"])
+        data["export"]["required_engine_plugins"] = ["../Outside"]
+        self.recipe_path.write_text(json.dumps(data), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "required_engine_plugins"):
+            load_character_recipe(self.recipe_path)
+
+    def test_attachment_assets_are_fingerprinted_and_transforms_checked(self):
+        package = self.root / "Content" / "Hero" / "Weapon.uasset"
+        package.write_bytes(b"weapon")
+        data = json.loads(self.recipe_path.read_text(encoding="utf-8"))
+        data["attachment_assets"] = {"tool": {"asset": "/Game/Hero/Weapon", "bone": "hand_r"}}
+        self.recipe_path.write_text(json.dumps(data), encoding="utf-8")
+        recipe = load_character_recipe(self.recipe_path)
+        fingerprint, records = character_fingerprint(self.project, recipe)
+        self.assertEqual(recipe["attachment_assets"]["tool"]["transform"]["scale"], [1.0, 1.0, 1.0])
+        self.assertIn("/Game/Hero/Weapon", {item["package"] for item in records})
+        self.assertEqual(len(fingerprint), 64)
+        data["attachment_assets"]["tool"]["transform"] = {"position": [0, float("nan"), 0]}
+        self.recipe_path.write_text(json.dumps(data), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "finite numbers"):
+            load_character_recipe(self.recipe_path)
+
     def test_publish_copies_only_validated_runtime_output_outside_source(self):
         output = self.root / "workspace" / "out"
         output.mkdir(parents=True)

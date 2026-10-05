@@ -16,6 +16,9 @@
         ok(!!skin && skin.skeleton.bones.length > 1, 'Migrated GLB contains a skinned skeleton');
         const required = player.userData.ue2three.runtime?.required_bones || [];
         ok(required.every(name => !!player.getObjectByName(name)), 'All required recipe bones exist in runtime clone');
+        const attachmentNames = Object.keys(player.userData.ue2three.attachment_assets || {});
+        ok(attachmentNames.every(name => !!player.getObjectByName(`ue2three_attachment_${name}`)),
+            'Configured generic attachment assets mount on their declared character sockets');
         ok(player.animations.some(clip => clip.name === 'idle'), 'Canonical idle animation is loaded');
         ok(player.animations.some(clip => clip.name === 'run'), 'Canonical run animation is loaded');
 
@@ -27,6 +30,18 @@
         };
         await step(90);
         ok(player.rayHasHit, 'Migrated character stands on existing Three.js/Cannon world');
+
+        const bones = [];
+        player.traverse(object => { if (object.isBone) bones.push(object); });
+        const pose = () => bones.flatMap(bone => [bone.position.x,bone.position.y,bone.position.z,
+            bone.quaternion.x,bone.quaternion.y,bone.quaternion.z,bone.quaternion.w]);
+        const beforePose = pose();
+        player.setAnimation('run',0);
+        await step(90);
+        const afterPose = pose();
+        ok(afterPose.every(Number.isFinite), 'Animation playback keeps every sampled bone transform finite');
+        ok(afterPose.some((value,index) => Math.abs(value-beforePose[index])>1e-3),
+            'Migrated run animation advances the character skeleton over sustained playback');
 
         const initial = player.position.clone();
         player.setViewVector(new THREE.Vector3(1,0,0)); player.triggerAction('up',true);

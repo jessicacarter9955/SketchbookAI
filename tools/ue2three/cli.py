@@ -12,12 +12,12 @@ def parser():
     result = argparse.ArgumentParser(description="ue2three: offline Unreal inspection and migration toolkit")
     result.add_argument("--version", action="version", version=TOOL_VERSION)
     commands = result.add_subparsers(dest="command", required=True)
-    for name in ("scan", "plan", "resume", "retry", "skip", "revalidate", "report", "status", "dashboard"):
+    for name in ("scan", "extract", "plan", "resume", "retry", "skip", "revalidate", "report", "status", "dashboard"):
         cmd = commands.add_parser(name)
         cmd.add_argument("--workspace", type=Path, help="Local task state directory, separate from source project")
-        if name in {"scan", "plan"}:
+        if name in {"scan", "extract", "plan"}:
             cmd.add_argument("project", type=Path, nargs="?", help="Editable .uproject; required for a new workspace")
-        if name in {"scan", "plan", "resume", "retry", "revalidate"}:
+        if name in {"scan", "extract", "plan", "resume", "retry", "revalidate"}:
             cmd.add_argument("--engine", help="Engine installation root; 'auto' restores discovery")
             reg = cmd.add_mutually_exclusive_group()
             reg.add_argument("--registry", type=Path, help="Optional JSON from registry_extract.py; never executes Unreal")
@@ -38,6 +38,12 @@ def parser():
     character.add_argument("--force", action="store_true", help="Ignore a valid cached character export")
     character.add_argument("--publish-dir", type=Path,
                            help="Optional local directory to mirror the validated runtime assets")
+    maps = commands.add_parser("migrate-maps", help="Export inventoried Unreal levels to cached, validated GLB scenes")
+    maps.add_argument("project", type=Path, help="Editable Unreal .uproject")
+    maps.add_argument("--workspace", type=Path, required=True, help="Verified ue2three scan and Asset Registry workspace")
+    maps.add_argument("--publish-dir", type=Path, required=True, help="Local output directory, outside the source project")
+    maps.add_argument("--engine", help="Optional matching Unreal Engine installation root")
+    maps.add_argument("--force", action="store_true", help="Re-export maps even when a valid cached GLB exists")
     return result
 
 
@@ -61,9 +67,12 @@ def execute(args):
             directory = None
 
     if args.command == "dashboard":
-        from dashboard import serve
         if directory is None:
             directory = Path.cwd() / ".local" / "ue2three"
+        if not (directory / "state.json").is_file():
+            from manager import serve
+            return serve(directory, args.port)
+        from dashboard import serve
         return serve(directory, args.port, args.open)
 
     if directory is None:
@@ -82,25 +91,39 @@ def execute(args):
             print(f"Published runtime assets: {result['published']}")
         return 0
 
+    if args.command == "migrate-maps":
+        from map_migration import migrate_maps
+        if not directory.is_dir():
+            raise ValueError("Map export requires a completed scan workspace")
+        logger = Logger(directory)
+        with workspace_lock(directory):
+            report = migrate_maps(project, directory, args.publish_dir, logger,
+                                  engine_override=args.engine, force=args.force)
+        print(f"Unreal maps exported: {report['counts']['exported']}; reused: {report['counts']['reused']}; failed: {report['counts']['failed']}")
+        print(f"Map report: {Path(args.publish_dir) / 'migration-report.json'}")
+        return 0 if report["counts"]["exported"] + report["counts"]["reused"] else 1
+
     if (directory / "state.json").exists():
         state = load_state(directory)
         existing_project = Path(state["config"]["project"]).resolve()
         if project and project != existing_project:
             raise ValueError("Workspace belongs to another project. Choose a different --workspace.")
         project = existing_project
-    elif project and args.command in {"scan", "plan"}:
+    elif project and args.command in {"scan", "extract", "plan"}:
         state = new_state({"project": str(project), "engine": None, "registry": None})
     else:
         raise ValueError("No state.json found. Start with scan PROJECT --workspace DIRECTORY")
 
     directory = prepare_workspace(directory, project)
-    if args.command in {"scan", "plan"}:
+    if args.command in {"scan", "extract", "plan"}:
         atomic_json(latest, {"workspace": str(directory)})
     logger = Logger(directory)
     with workspace_lock(directory):
         if (directory / "state.json").exists():
             state = load_state(directory)
         config = state["config"]
+        if args.command == "extract":
+            config["extract_engine"] = True
         if getattr(args, "engine", None):
             config["engine"] = None if args.engine == "auto" else str(Path(args.engine).resolve())
         if getattr(args, "without_registry", False):

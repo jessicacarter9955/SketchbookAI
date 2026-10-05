@@ -27,6 +27,18 @@
     "crouch_walk": "/Game/Characters/UEFN_Mannequin/Animations/Crouch/M_Neutral_Crouch_Loop_F",
     "heal": "/Game/Fixers/Animations/Mover/Injector/Mover_Injector_Use"
   },
+  "attachment_assets": {
+    "rifle": {
+      "asset": "/Game/Fixers/Weapons/GenericWeapons/Rifle/Mesh/SK_Rifle",
+      "bone": "hand_r",
+      "transform": {"position": [0, 0, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1]}
+    },
+    "pistol": {
+      "asset": "/Game/Fixers/Weapons/GenericWeapons/Pistol/Mesh/SK_Pistol",
+      "bone": "hand_r",
+      "transform": {"position": [0, 0, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1]}
+    }
+  },
   "runtime": {
     "root_motion": "strip_root_transform",
     "root_bone": "root",
@@ -61,6 +73,9 @@
     }
   },
   "export": {
-    "uniform_scale": 0.01
+    "uniform_scale": 0.01,
+    "required_engine_plugins": [
+      "PoseSearch"
+    ]
   }
 }

@@ -1,24 +1,41 @@
 # ue2three: offline migration toolkit
 
-## Current release: 0.2-dev, inspection + generic character migration
+## Current release: one-click project analysis and supported GLB migration
 
-This is stage 1 of the reusable toolkit. It scans editable Unreal projects,
-detects their engine association/installed version, inventories maps and plugins,
-hashes source inputs, records diagnostics, and maintains resumable inspection
-jobs. A local dashboard displays those jobs and invokes the real CLI.
+The local manager scans an editable Unreal project, extracts its Asset Registry,
+automatically prepares a character when it can match a mesh and animation set,
+and exports inventoried levels through Unreal's glTF exporter. Valid level GLBs
+are cached by their source dependencies, engine version, and exporter settings;
+an unchanged project can reuse those outputs. The DDS character profile is only
+used when its mesh exists in the selected project. Other projects use generic
+asset detection.
 
-Stage 1 inspection remains unchanged. Stage 2 now adds a recipe-driven
-skeletal-character exporter that uses the detected local Unreal Editor, writes
-validated GLB outputs, fingerprints the exact source package bytes, and can reuse
-valid staged GLBs after an interrupted export. It does not yet convert a whole
-project or reproduce arbitrary Blueprint/gameplay systems. Processing completion
-remains deliberately separate from visual/gameplay fidelity.
+Map exports contain only content the Unreal glTF exporter can represent, such as
+supported geometry, transforms, materials, cameras, and lights. This does not
+translate Blueprint execution, widget screens, dialogue, shops, inventory rules,
+AI, networking, or physics/collision into Three.js behavior. The migration report
+lists exported, reused, and failed maps and identifies unsupported content.
+Processing completion remains separate from visual/gameplay fidelity.
 
 No upload, AI, account, API key, network call, or package installation is needed.
 Use Python 3.12+ and files already on disk. Unreal itself will be required for
 engine package extraction; Blender will be optional for formats needing it.
 
 ## Run locally
+
+### Web manager (Windows)
+
+Double-click `tools/ue2three/start-web.vbs` to open the local project manager in
+Chrome without showing a terminal. The `.uproject` field defaults to the DDS sample
+path and **Sfoglia…** selects a different project. Press **Avvia** once. The
+manager shows analysis, character preparation, map export, and the activity log;
+when done, its scene list opens migrated Unreal levels or the playable Sketchbook
+character scene as an alternative. No character recipe selection is required.
+
+The manager listens only on `127.0.0.1:8766`; the Three.js preview server listens
+on `127.0.0.1:8401`. The browser sends the selected project path to that local
+server; it does not upload project files. Map previews are orbitable scene views,
+not recreated Unreal game logic.
 
 From this repository in PowerShell:
 
@@ -123,15 +140,21 @@ automated fixture coverage.
 ## Incremental roadmap / acceptance gates
 
 1. **Done:** scan, diagnostics, engine discovery, resumable graph and initial job UI.
-2. **Done for first real-project validation:** generic recipe-driven character
+2. **Done and validated against local DDS UE 5.7:** generic configuration-driven character
    export through Unreal, source-byte fingerprints, staged resume, GLB validation,
    required-bone/attachment validation, root-motion policy, animation aliases,
-   local runtime publishing and a playable Sketchbook `ue2three` profile.
-   The remaining acceptance gate is running this path against the local DDS UE 5.7 project.
-3. Animation mappings, root motion/retargeting and sustained runtime pose tests.
-4. Weapons, sockets, attachment transforms, animation events and shooting tests.
-5. Maps: actor hierarchy/transforms, static meshes, collisions, lights, cameras,
-   instanced foliage, streaming and explicit material/landscape limitations.
+   declared engine-plugin requirements, local runtime publishing and a playable
+   Sketchbook `ue2three` profile.
+3. **Character runtime verified:** root-motion filtering, aliases and 60-frame
+   animation sampling for each of 23 DDS clips (with the generic runtime loader).
+   Cross-skeleton retargeting and configurable semantic action maps remain open.
+4. **Generic asset mounting implemented:** SkeletalMesh/StaticMesh attachments can
+   be exported from config and mounted to a declared bone with a local transform;
+   DDS rifle and pistol exports were validated against UE 5.7. Animation events,
+   attachment calibration and shooting behavior remain open.
+5. **Initial map export implemented:** UE glTF level export, a cached scene list,
+   and per-map failure reports. DDS UE 5.7 testing is in progress; Blueprints,
+   collisions, streaming and gameplay behavior remain outside this conversion.
 6. Common gameplay object adapters with explicit reconstruction reports.
 7. Blueprint metadata/dependencies, native modules and plugin compatibility analysis.
 8. Conversion-quality validation, richer dashboard and multi-project regressions.

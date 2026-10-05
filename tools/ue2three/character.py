@@ -1,5 +1,6 @@
 """Recipe-driven character migration helpers shared by host CLI and Unreal exporter."""
 import os
+import math
 import re
 import shutil
 import struct
@@ -41,6 +42,32 @@ def load_character_recipe(path):
         if not isinstance(name, str) or not SAFE_NAME.fullmatch(name):
             raise ValueError(f"Unsafe clip name: {name!r}")
         normalized_clips[name] = _asset_path(asset, f"clip {name}")
+    attachment_assets = data.get("attachment_assets", {})
+    if not isinstance(attachment_assets, dict):
+        raise ValueError("attachment_assets must map portable names to Unreal asset definitions")
+    normalized_attachments = {}
+    for name, definition in attachment_assets.items():
+        if not isinstance(name, str) or not SAFE_NAME.fullmatch(name) or not isinstance(definition, dict):
+            raise ValueError("attachment_assets entries need safe names and object definitions")
+        asset = _asset_path(definition.get("asset"), f"attachment asset {name}")
+        bone = definition.get("bone")
+        if not isinstance(bone, str) or not bone:
+            raise ValueError(f"attachment {name} needs a bone/socket name")
+        transform = definition.get("transform", {})
+        if not isinstance(transform, dict):
+            raise ValueError(f"attachment {name}.transform must be an object")
+        normalized_transform = {}
+        for key, default in (("position", [0, 0, 0]), ("rotation", [0, 0, 0]), ("scale", [1, 1, 1])):
+            value = transform.get(key, default)
+            if not isinstance(value, list) or len(value) != 3 or any(
+                not isinstance(component, (int, float)) or isinstance(component, bool) or not math.isfinite(component)
+                for component in value
+            ):
+                raise ValueError(f"attachment {name}.transform.{key} must contain three finite numbers")
+            if key == "scale" and any(component <= 0 for component in value):
+                raise ValueError(f"attachment {name}.transform.scale must be positive")
+            normalized_transform[key] = [float(component) for component in value]
+        normalized_attachments[name] = {"asset": asset, "bone": bone, "transform": normalized_transform}
     runtime = data.get("runtime", {})
     if not isinstance(runtime, dict):
         raise ValueError("runtime must be an object")
@@ -72,15 +99,19 @@ def load_character_recipe(path):
     scale = export.get("uniform_scale", 0.01)
     if not isinstance(scale, (int, float)) or isinstance(scale, bool) or scale <= 0:
         raise ValueError("export.uniform_scale must be positive")
+    required_plugins = export.get("required_engine_plugins", [])
+    if not isinstance(required_plugins, list) or any(not isinstance(item, str) or not SAFE_NAME.fullmatch(item) for item in required_plugins):
+        raise ValueError("export.required_engine_plugins must be a list of safe Unreal engine plugin names")
     return {
         "schema_version": RECIPE_SCHEMA,
         "id": recipe_id,
         "mesh": mesh,
         "clips": dict(sorted(normalized_clips.items())),
+        "attachment_assets": dict(sorted(normalized_attachments.items())),
         "runtime": {"root_motion": root_motion, "root_bone": root_bone,
                     "required_bones": required_bones, "attachments": attachments,
                     "animation_aliases": dict(sorted(aliases.items()))},
-        "export": {"uniform_scale": float(scale)},
+        "export": {"uniform_scale": float(scale), "required_engine_plugins": sorted(set(required_plugins))},
         "recipe_path": str(path),
     }
 
@@ -119,7 +150,8 @@ def package_files(project, package):
 
 def character_fingerprint(project, recipe):
     project = Path(project).resolve()
-    assets = [recipe["mesh"], *recipe["clips"].values()]
+    assets = [recipe["mesh"], *recipe["clips"].values(),
+              *(item["asset"] for item in recipe.get("attachment_assets", {}).values())]
     records = []
     for package in sorted(set(assets)):
         files = package_files(project, package)
@@ -164,12 +196,19 @@ def validate_character_output(directory, expected_fingerprint=None):
     clips = data.get("clips")
     if not isinstance(clips, dict) or not clips:
         raise ValueError("Character manifest has no clips")
-    checked = {"mesh": validate_glb(directory / mesh_file), "clips": {}}
+    checked = {"mesh": validate_glb(directory / mesh_file), "clips": {}, "attachment_assets": {}}
     for name, filename in clips.items():
         if not isinstance(name, str) or not SAFE_NAME.fullmatch(name):
             raise ValueError("Invalid clip name in manifest")
         filename = _portable_file(filename, f"clip {name}")
         checked["clips"][name] = validate_glb(directory / filename)
+    for name, metadata in data.get("attachment_assets", {}).items():
+        if not isinstance(name, str) or not SAFE_NAME.fullmatch(name) or not isinstance(metadata, dict):
+            raise ValueError("Invalid attachment asset entry in manifest")
+        filename = _portable_file(metadata.get("file"), f"attachment {name}")
+        if not isinstance(metadata.get("bone"), str) or not metadata["bone"]:
+            raise ValueError(f"Attachment {name} has no attachment bone/socket")
+        checked["attachment_assets"][name] = validate_glb(directory / filename)
     return {"manifest": data, "validated": checked}
 
 
@@ -188,16 +227,21 @@ def _link_directory(link, target):
         link.symlink_to(target, target_is_directory=True)
 
 
-def prepare_character_scratch(project, directory, engine):
+def prepare_character_scratch(project, directory, engine, recipe):
     project, directory = Path(project).resolve(strict=True), Path(directory).resolve()
     scratch = directory / "scratch" / "character-export"
     scratch.mkdir(parents=True, exist_ok=True)
     _link_directory(scratch / "Content", project.parent / "Content")
     version_parts = engine.get("version_parts") or []
     association = ".".join(str(x) for x in version_parts[:2]) if len(version_parts) >= 2 else engine.get("requested_association", "")
-    atomic_json(scratch / "Export.uproject", {"FileVersion": 3, "EngineAssociation": association, "Plugins": [
-        {"Name": "PythonScriptPlugin", "Enabled": True}, {"Name": "GLTFExporter", "Enabled": True}
-    ]})
+    plugins = [{"Name": "PythonScriptPlugin", "Enabled": True}, {"Name": "GLTFExporter", "Enabled": True}]
+    plugin_root = Path(engine.get("root", "")) / "Engine" / "Plugins"
+    available_plugins = {descriptor.stem: descriptor for descriptor in plugin_root.rglob("*.uplugin")} if plugin_root.is_dir() else {}
+    for name in recipe["export"]["required_engine_plugins"]:
+        if name not in available_plugins:
+            raise RuntimeError(f"Required Unreal engine plugin is not installed: {name}")
+        plugins.append({"Name": name, "Enabled": True})
+    atomic_json(scratch / "Export.uproject", {"FileVersion": 3, "EngineAssociation": association, "Plugins": plugins})
     return scratch / "Export.uproject"
 
 
@@ -242,7 +286,7 @@ def migrate_character(project, recipe_path, workspace, engine_override=None, for
     engine = detect_engine(descriptor.get("EngineAssociation", ""), engine_override)
     if engine.get("status") != "detected" or not engine.get("executable"):
         raise RuntimeError("Matching Unreal Editor commandlet is required for character export")
-    scratch_project = prepare_character_scratch(project, workspace, engine)
+    scratch_project = prepare_character_scratch(project, workspace, engine, recipe)
     staging = workspace / "staging" / ("character-" + recipe["id"])
     recipe_runtime = {k: v for k, v in recipe.items() if k != "recipe_path"}
     recipe_runtime.update(fingerprint=fingerprint, source_project=str(project), source_files=sources)

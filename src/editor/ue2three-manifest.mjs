@@ -24,6 +24,21 @@ export function validateCharacterManifest(manifest) {
         if (!SAFE_ID.test(name) || typeof file !== 'string' || !SAFE_GLB.test(file))
             throw new Error('Invalid ue2three animation entry');
     }
+    if (manifest.attachment_assets !== undefined &&
+        (!manifest.attachment_assets || typeof manifest.attachment_assets !== 'object' || Array.isArray(manifest.attachment_assets)))
+        throw new Error('Invalid ue2three attachment_assets object');
+    for (const [name, metadata] of Object.entries(manifest.attachment_assets || {})) {
+        if (!SAFE_ID.test(name) || !metadata || typeof metadata !== 'object' ||
+            typeof metadata.file !== 'string' || !SAFE_GLB.test(metadata.file) ||
+            typeof metadata.bone !== 'string' || !metadata.bone)
+            throw new Error('Invalid ue2three attachment asset entry');
+        const transform = metadata.transform || {};
+        for (const key of ['position', 'rotation', 'scale']) {
+            if (transform[key] !== undefined && (!Array.isArray(transform[key]) || transform[key].length !== 3 ||
+                transform[key].some(value => typeof value !== 'number' || !Number.isFinite(value))))
+                throw new Error(`Invalid ue2three attachment ${name} ${key} transform`);
+        }
+    }
     const runtime = manifest.runtime || {};
     const policy = runtime.root_motion || 'preserve';
     if (!['preserve', 'strip_root_translation', 'strip_root_transform'].includes(policy))
@@ -65,6 +80,9 @@ export function validateCharacterRig(root, manifest) {
         const node = root.getObjectByName(bone);
         if (!node) missingBones.push(bone);
         else attachments[name] = node;
+    }
+    for (const metadata of Object.values(manifest.attachment_assets || {})) {
+        if (!root.getObjectByName(metadata.bone)) missingBones.push(metadata.bone);
     }
     const uniqueMissing = [...new Set(missingBones)];
     if (uniqueMissing.length) throw new Error('Missing required character bones/sockets: ' + uniqueMissing.join(', '));

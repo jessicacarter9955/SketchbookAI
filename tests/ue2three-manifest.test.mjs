@@ -54,6 +54,17 @@ test('rig validation resolves required bones and named attachments',()=>{
     assert.throws(()=>validateCharacterRig(root,manifest()),/pelvis/);
 });
 
+test('generic attachment asset metadata validates socket and runtime transform',()=>{
+    const definition={file:'attachment-tool.glb',bone:'hand_r',transform:{position:[0,0,0],rotation:[0,0,0],scale:[1,1,1]}};
+    const candidate=manifest({attachment_assets:{tool:definition}});
+    assert.equal(validateCharacterManifest(candidate).attachment_assets.tool.bone,'hand_r');
+    const root={getObjectByName:name=>['root','pelvis','hand_r'].includes(name)?{name}:null};
+    assert.equal(validateCharacterRig(root,candidate).weapon.name,'hand_r');
+    assert.throws(()=>validateCharacterManifest(manifest({attachment_assets:{tool:{...definition,file:'../weapon.glb'}}})),/attachment asset entry/);
+    const invalidTransform=manifest({attachment_assets:{tool:{...definition,transform:{position:[0,NaN,0]}}}});
+    assert.throws(()=>validateCharacterManifest(invalidTransform),/position transform/);
+});
+
 test('animation aliases clone source clips without overwriting real clips',()=>{
     const make=name=>({name,clone(){return make(this.name);}});
     const clips=[make('idle'),make('run')];

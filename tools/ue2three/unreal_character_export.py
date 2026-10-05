@@ -70,6 +70,16 @@ for name, path in sorted(recipe["clips"].items()):
     export(unreal.load_asset(path), filename, unreal.AnimSequence)
     clip_files[name] = filename
 
+attachment_files = {}
+for name, definition in sorted(recipe.get("attachment_assets", {}).items()):
+    asset = unreal.load_asset(definition["asset"])
+    if not isinstance(asset, (unreal.StaticMesh, unreal.SkeletalMesh)):
+        raise RuntimeError("Attachment must be a StaticMesh or SkeletalMesh: " + definition["asset"])
+    filename = "attachment-" + name + ".glb"
+    export(asset, filename, (unreal.StaticMesh, unreal.SkeletalMesh))
+    attachment_files[name] = {"file": filename, "bone": definition["bone"],
+                              "transform": definition.get("transform", {})}
+
 manifest = {
     "schema_version": 1,
     "kind": "character",
@@ -77,6 +87,7 @@ manifest = {
     "fingerprint": recipe["fingerprint"],
     "mesh": "character.glb",
     "clips": clip_files,
+    "attachment_assets": attachment_files,
     "runtime": recipe.get("runtime", {}),
     "source": {
         "project": recipe.get("source_project"),

@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 SCHEMA = 1
-TOOL_VERSION = "0.2.0-dev"
+TOOL_VERSION = "0.2.0"
 
 
 def utc():
@@ -61,7 +61,7 @@ class Logger:
             stream.write(json.dumps(record, ensure_ascii=True, sort_keys=True) + "\n")
         with (self.directory / "run.log").open("a", encoding="utf-8") as stream:
             stream.write(line + "\n")
-        if event in {"hash-start", "hash-progress", "hash-done", "task-start", "task-done", "task-failed", "complete", "incomplete", "error"}:
+        if event in {"hash-start", "hash-progress", "hash-done", "task-start", "task-done", "task-failed", "engine-start", "engine-progress", "engine-done", "complete", "incomplete", "error"}:
             atomic_json(self.directory / "progress.json", record)
 
 

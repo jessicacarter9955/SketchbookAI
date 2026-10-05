@@ -23,6 +23,16 @@ export async function loadUe2ThreeCharacter(baseURL, {fetchImpl=fetch, loader=ne
         clips.push(clip);
     }
     const expanded = expandAnimationAliases(clips, manifest.runtime);
+    const attachmentAssets = {};
+    for (const [name, metadata] of Object.entries(manifest.attachment_assets || {})) {
+        const gltf = await loader.loadAsync(base + metadata.file);
+        const asset = gltf.scene || gltf;
+        const transform = metadata.transform || {};
+        asset.position.fromArray(transform.position || [0,0,0]);
+        asset.rotation.set(...(transform.rotation || [0,0,0]), 'XYZ');
+        asset.scale.fromArray(transform.scale || [1,1,1]);
+        attachmentAssets[name] = {asset, bone: metadata.bone};
+    }
     scene.animations = expanded;
     scene.userData.ue2three = {
         recipeId: manifest.recipe_id,
@@ -37,6 +47,7 @@ export async function loadUe2ThreeCharacter(baseURL, {fetchImpl=fetch, loader=ne
         animations: expanded,
         manifest,
         attachments,
+        attachmentAssets,
         source: model
     };
 }

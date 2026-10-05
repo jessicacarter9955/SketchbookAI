@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ue2three · Mappa Unreal</title>
+  <style>
+    :root{color-scheme:dark;font:15px system-ui,sans-serif;background:#101923;color:#ecf3f9}
+    *{box-sizing:border-box}body{margin:0;overflow:hidden}#view{position:fixed;inset:0}
+    header{position:fixed;z-index:2;left:18px;top:16px;padding:12px 16px;border:1px solid #364b5e;border-radius:10px;background:#101923dd;backdrop-filter:blur(8px)}
+    h1{font-size:17px;margin:0 0 4px}p{font-size:13px;color:#bacbd8;margin:0}#status{position:fixed;z-index:2;left:18px;bottom:16px;padding:10px 13px;border-radius:8px;background:#101923dd;color:#c5d4df;max-width:min(80vw,800px)}
+    #status.error{color:#ffb5a8}a{color:#83d9ff}
+  </style>
+  <script type="importmap">
+    {"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}
+  </script>
+</head>
+<body>
+  <div id="view"></div>
+  <header><h1 id="title">Mappa Unreal migrata</h1><p>Anteprima della scena esportata da ue2three</p></header>
+  <div id="status" role="status">Caricamento della scena…</div>
+  <script type="module" src="/tools/ue2three/ue2three-level-viewer.js"></script>
+</body>
+</html>
