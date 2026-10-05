@@ -1,0 +1,70 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {
+    expandAnimationAliases,
+    safeLocalBaseURL,
+    stripRootMotionTracks,
+    validateCharacterManifest,
+    validateCharacterRig
+} from '../src/editor/ue2three-manifest.mjs';
+
+const fingerprint='a'.repeat(64);
+const manifest = overrides => ({
+    schema_version:1,
+    kind:'character',
+    recipe_id:'hero',
+    fingerprint,
+    mesh:'character.glb',
+    clips:{idle:'clip-idle.glb',run:'clip-run.glb'},
+    runtime:{
+        root_motion:'strip_root_transform',
+        root_bone:'root',
+        required_bones:['root','pelvis'],
+        attachments:{weapon:'hand_r'},
+        animation_aliases:{start_forward:'run'}
+    },
+    ...overrides
+});
+
+test('ue2three manifest accepts a portable local character definition',()=>{
+    assert.equal(validateCharacterManifest(manifest()).recipe_id,'hero');
+    assert.equal(safeLocalBaseURL('build/local-scenes/ue2three/hero'),'build/local-scenes/ue2three/hero/');
+    assert.throws(()=>safeLocalBaseURL('https://example.com/hero'),/local relative/);
+    assert.throws(()=>safeLocalBaseURL('../hero'),/local relative/);
+});
+
+test('root motion policy removes only the configured root transform tracks',()=>{
+    const tracks=[
+        {name:'root.position'},{name:'root.quaternion'},{name:'pelvis.position'},
+        {name:'Armature/root.position'},{name:'hand_r.quaternion'}
+    ];
+    assert.deepEqual(stripRootMotionTracks(tracks,{root_motion:'strip_root_translation',root_bone:'root'}).map(t=>t.name),
+        ['root.quaternion','pelvis.position','hand_r.quaternion']);
+    assert.deepEqual(stripRootMotionTracks(tracks,{root_motion:'strip_root_transform',root_bone:'root'}).map(t=>t.name),
+        ['pelvis.position','hand_r.quaternion']);
+    assert.equal(stripRootMotionTracks(tracks,{root_motion:'preserve'}).length,tracks.length);
+});
+
+test('rig validation resolves required bones and named attachments',()=>{
+    const names=new Set(['root','pelvis','hand_r']);
+    const root={getObjectByName:name=>names.has(name)?{name}:null};
+    const attachments=validateCharacterRig(root,manifest());
+    assert.equal(attachments.weapon.name,'hand_r');
+    names.delete('pelvis');
+    assert.throws(()=>validateCharacterRig(root,manifest()),/pelvis/);
+});
+
+test('animation aliases clone source clips without overwriting real clips',()=>{
+    const make=name=>({name,clone(){return make(this.name);}});
+    const clips=[make('idle'),make('run')];
+    const expanded=expandAnimationAliases(clips,manifest().runtime);
+    assert.deepEqual(expanded.map(c=>c.name),['idle','run','start_forward']);
+    assert.notEqual(expanded[2],clips[1]);
+    assert.throws(()=>expandAnimationAliases(clips,{animation_aliases:{missing:'walk'}}),/missing clip walk/);
+});
+
+test('invalid remote filenames and aliases are rejected early',()=>{
+    assert.throws(()=>validateCharacterManifest(manifest({mesh:'../evil.glb'})),/mesh filename/);
+    const bad=manifest();bad.runtime.animation_aliases={go:'../run'};
+    assert.throws(()=>validateCharacterManifest(bad),/animation aliases/);
+});
