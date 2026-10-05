@@ -53,6 +53,16 @@ def load_character_recipe(path):
     attachments = runtime.get("attachments", {})
     if not isinstance(attachments, dict) or any(not isinstance(k, str) or not isinstance(v, str) or not v for k, v in attachments.items()):
         raise ValueError("runtime.attachments must map names to bone/socket names")
+    aliases = runtime.get("animation_aliases", {})
+    if not isinstance(aliases, dict) or any(
+        not isinstance(k, str) or not SAFE_NAME.fullmatch(k) or
+        not isinstance(v, str) or not SAFE_NAME.fullmatch(v)
+        for k, v in aliases.items()
+    ):
+        raise ValueError("runtime.animation_aliases must map safe clip names to safe source names")
+    unknown_alias_sources = sorted(set(aliases.values()) - set(normalized_clips))
+    if unknown_alias_sources:
+        raise ValueError("runtime.animation_aliases reference missing clips: " + ", ".join(unknown_alias_sources))
     root_motion = runtime.get("root_motion", "preserve")
     if root_motion not in {"preserve", "strip_root_translation", "strip_root_transform"}:
         raise ValueError("runtime.root_motion is unsupported")
@@ -68,7 +78,8 @@ def load_character_recipe(path):
         "mesh": mesh,
         "clips": dict(sorted(normalized_clips.items())),
         "runtime": {"root_motion": root_motion, "root_bone": root_bone,
-                    "required_bones": required_bones, "attachments": attachments},
+                    "required_bones": required_bones, "attachments": attachments,
+                    "animation_aliases": dict(sorted(aliases.items()))},
         "export": {"uniform_scale": float(scale)},
         "recipe_path": str(path),
     }
