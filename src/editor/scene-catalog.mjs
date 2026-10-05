@@ -5,6 +5,7 @@ export const BUILTIN_SCENES = [
     { id: 'liberty-city', name: 'Liberty City · Portland', world: 'liberty-city' },
     { id: 'portland-lab', name: 'Portland · laboratorio', world: 'liberty-city', spawn: 'spawn_portland' },
     { id: 'dds-portland', name: 'DDS · Portland playtest', world: 'liberty-city', spawn: 'spawn_portland', playerProfile: 'dds' },
+    { id: 'ue2three-character', name: 'ue2three · migrated character', world: 'sketchbook', playerProfile: 'ue2three' },
     { id: 'portland-grass', name: 'Portland · prato animato', world: 'liberty-city', spawn: 'spawn_portland' },
     { id: 'staunton-lab', name: 'Staunton · laboratorio', world: 'liberty-city', spawn: 'spawn_staunton_island' },
     { id: 'island-bridge', name: 'Isola · ponte e costa', world: 'procedural-island', spawn:'island-west' },
