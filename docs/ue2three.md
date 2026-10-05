@@ -7,11 +7,12 @@ detects their engine association/installed version, inventories maps and plugins
 hashes source inputs, records diagnostics, and maintains resumable inspection
 jobs. A local dashboard displays those jobs and invokes the real CLI.
 
-**This release does not convert arbitrary projects or generate playable games.**
-The existing DDS exporter and playable Portland integration remain the validated
-reference for the next conversion adapters. They are not yet generic ue2three
-converters. All conversion stages are explicitly reported as unsupported.
-100% inspected is deliberately separate from visual/gameplay fidelity.
+Stage 1 inspection remains unchanged. Stage 2 now adds a recipe-driven
+skeletal-character exporter that uses the detected local Unreal Editor, writes
+validated GLB outputs, fingerprints the exact source package bytes, and can reuse
+valid staged GLBs after an interrupted export. It does not yet convert a whole
+project or reproduce arbitrary Blueprint/gameplay systems. Processing completion
+remains deliberately separate from visual/gameplay fidelity.
 
 No upload, AI, account, API key, network call, or package installation is needed.
 Use Python 3.12+ and files already on disk. Unreal itself will be required for
@@ -122,8 +123,10 @@ automated fixture coverage.
 ## Incremental roadmap / acceptance gates
 
 1. **Done:** scan, diagnostics, engine discovery, resumable graph and initial job UI.
-2. **Next:** recipe-driven character export through Unreal, skeleton/mesh/material
-   validation, cache dependencies and a generated playable Three.js test scene.
+2. **In progress:** generic recipe-driven character export through Unreal,
+   source-byte fingerprints, staged resume and GLB validation are implemented.
+   Next: skeleton/bone/material validation in Three.js and a generated playable
+   character test scene.
 3. Animation mappings, root motion/retargeting and sustained runtime pose tests.
 4. Weapons, sockets, attachment transforms, animation events and shooting tests.
 5. Maps: actor hierarchy/transforms, static meshes, collisions, lights, cameras,
