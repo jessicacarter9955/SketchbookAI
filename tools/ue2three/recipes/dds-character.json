@@ -39,6 +39,25 @@
     ],
     "attachments": {
       "weapon": "hand_r"
+    },
+    "animation_aliases": {
+      "start_forward": "run",
+      "start_left": "run",
+      "start_right": "run",
+      "start_back_left": "run",
+      "start_back_right": "run",
+      "stop": "idle",
+      "reset": "idle",
+      "drop_running": "drop_idle",
+      "drop_running_roll": "drop_idle",
+      "driving": "idle",
+      "sitting": "idle",
+      "sitting_shift_left": "idle",
+      "sitting_shift_right": "idle",
+      "sit_down_left": "idle",
+      "sit_down_right": "idle",
+      "stand_up_left": "idle",
+      "stand_up_right": "idle"
     }
   },
   "export": {
