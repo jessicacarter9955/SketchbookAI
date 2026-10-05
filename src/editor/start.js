@@ -102,7 +102,10 @@ try {
         await world.initialize(undefined, false); loading.style.display = 'flex';
         await world.levelRuntime.initialize();
     } else await world.initialize('build/assets/world.glb');
-    const actors = new ActorLayer(world); await actors.initialize(current.playerProfile);
+    const actors = new ActorLayer(world);
+    await actors.initialize(current.playerProfile, {
+        characterBase: query.get('character') || (current.playerProfile === 'ue2three' ? 'build/local-scenes/ue2three/current/' : undefined)
+    });
     if (world.levelRuntime) {
         const spawn = world.levelRuntime.manifest.spawns.find(s => s.id === current.spawn)?.position || [0,0,0];
         world.levelRuntime.transitioning = true;
