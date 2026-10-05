@@ -6,6 +6,8 @@ export async function loadDdsPlayer() {
     const response = await fetch(`${BASE}manifest.json`);
     if (!response.ok) throw new Error('DDS assets missing. Run tools/export-dds.ps1 with your editable Unreal project, then reload this scene.');
     const manifest = await response.json();
+    if(!manifest.clips?.crouch_walk || !manifest.clips?.heal || !manifest.weapons?.rifle || !manifest.weapons?.pistol)
+        throw new Error('DDS export is outdated. Run tools/export-dds.ps1 again to add the single-player assets.');
     const loader = new GLTFLoader();
     const safeURL = file => {
         if (typeof file !== 'string' || !/^[a-z0-9_-]+\.glb$/i.test(file)) throw new Error('Invalid DDS asset filename');
@@ -20,6 +22,18 @@ export async function loadDdsPlayer() {
         clip.tracks = clip.tracks.filter(track => !/^root\.(position|quaternion)$/.test(track.name));
         return clip;
     }));
+    const unequip = clips.find(clip=>clip.name==='rifle_unequip');
+    if(unequip) {
+        const equip=unequip.clone();equip.name='rifle_equip';
+        for(const track of equip.tracks) {
+            const original=track.values.slice(), times=track.times.slice(), stride=track.getValueSize();
+            for(let i=0;i<times.length;i++) {
+                track.times[i]=equip.duration-times[times.length-1-i];
+                for(let j=0;j<stride;j++)track.values[i*stride+j]=original[(times.length-1-i)*stride+j];
+            }
+        }
+        clips.push(equip);
+    }
     const aliases = {
         start_forward:'run', start_left:'run', start_right:'run', start_back_left:'run', start_back_right:'run',
         stop:'idle', reset:'idle', drop_running:'drop_idle', drop_running_roll:'drop_idle',
@@ -41,6 +55,9 @@ export async function loadDdsPlayer() {
     model.weapons = {};
     for (const [name, file] of Object.entries(manifest.weapons || {})) {
         model.weapons[name] = (await loader.loadAsync(safeURL(file))).scene;
+        if(manifest.weaponClips?.[name]) {
+            model.weapons[name].animations=(await loader.loadAsync(safeURL(manifest.weaponClips[name]))).animations;
+        }
     }
     return model;
 }

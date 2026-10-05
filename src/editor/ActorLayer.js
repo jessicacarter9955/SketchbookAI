@@ -23,6 +23,7 @@ export class ActorLayer {
         const player = this.playerProfile === 'dds' ? new DdsCharacter(this.playerModel) : new Character(this.playerModel.scene);
         player.setPosition(...this.spawn.toArray());
         player.userData.playerProfile = this.playerProfile;
+        if(this.playerProfile==='dds') player.setOrientation(new THREE.Vector3(0,0,-1),true);
         player.position.copy(this.spawn);
         this.world.add(player); player.takeControl(); this.world.editorPlayer = player;
         return player;

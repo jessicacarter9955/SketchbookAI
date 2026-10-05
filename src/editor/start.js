@@ -112,7 +112,7 @@ try {
         } finally { world.levelRuntime.transitioning = false; world.levelRuntime.lastRefresh = 0; }
     }
     actors.resetPlayer();
-    if (world.levelRuntime) { world.cameraOperator.theta = 180; world.cameraOperator.phi = 12; }
+    if (world.levelRuntime) { world.cameraOperator.theta = current.playerProfile==='dds'?0:180; world.cameraOperator.phi = 12; }
     globalThis.sceneEditor = new SceneEditor(world, { storageKey, worldId: current.world });
     const hadSaved = localStorage.getItem(storageKey) !== null;
     await sceneEditor.run(() => sceneEditor.restoreSaved());
@@ -149,7 +149,9 @@ try {
         for(const x of [-12,12]) add('pedestrian','Abitante',x,-12);
         sceneEditor.restore({version:1,world:current.world,objects,generator:{...sceneEditor.generator,sky:current.id==='island-sunset'?'sunset':'day'}});sceneEditor.commit();
     }
-    sceneControls(sceneEditor); loading.style.display = 'none';
+    sceneControls(sceneEditor);
+    if(current.playerProfile==='dds') new DdsGame(world,{key:`${storageKey}.dds-game`});
+    loading.style.display = 'none';
     if(current.id === 'portland-grass' && sceneEditor.mapEdits.length) {
         const select=sceneEditor.surfaceTool.$('[data-layers]'); select.value=sceneEditor.mapEdits[0].id;
         select.dispatchEvent(new Event('change')); sceneEditor.surfaceTool.cancel();

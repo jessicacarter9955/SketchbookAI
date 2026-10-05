@@ -16,6 +16,7 @@ export class InputManagerBase implements IUpdatable
 	private dragging = false;
 	private lastMouseX = 0;
 	private lastMouseY = 0;
+	private heldMouseButtons = new Set<number>();
 	private heldKeys = new Set<string>();
 
 	public boundOnMouseDown: (evt: any) => void;
@@ -114,6 +115,7 @@ export class InputManagerBase implements IUpdatable
 		if (this.ignoreInput(event)) return;
 		this.domElement.focus();
 		if (event.button === 0 || event.button === 2) {
+			this.heldMouseButtons.add(event.button);
 			this.dragging = true;
 			this.lastMouseX = event.clientX; this.lastMouseY = event.clientY;
 			if (event.button === 0 && this.pointerLock && this.domElement.requestPointerLock) {
@@ -141,7 +143,8 @@ export class InputManagerBase implements IUpdatable
 
 	public onMouseUp(event: MouseEvent): void
 	{
-		this.dragging = false;
+		this.heldMouseButtons.delete(event.button);
+		this.dragging = this.heldMouseButtons.size > 0;
 		if (this.world.sceneEditor?.active) return;
 
 		this.inputReceivers.forEach(receiver => {
@@ -176,8 +179,11 @@ export class InputManagerBase implements IUpdatable
 		});
 	}
 
-	public releaseInput(): void {
-		this.dragging = false;
+    public releaseInput(): void {
+        this.dragging = false;
+        this.heldMouseButtons.clear();
+        // A lost focus/editor transition must also release shooting and aiming.
+        for (const code of ['mouse0', 'mouse2']) this.inputReceivers.forEach(receiver => receiver.handleMouseButton(new MouseEvent('mouseup'), code, false));
 		for (const code of this.heldKeys) this.inputReceivers.forEach(receiver => receiver.handleKeyboardEvent(new KeyboardEvent('keyup', { code }), code, false));
 		this.heldKeys.clear();
 	}

@@ -114,6 +114,7 @@ export class SceneEditor {
         });
     }
     setActive(active) {
+        this.world.ddsGame?.setPaused(active);
         this.surfaceTool?.cancel();
         this.world.inputManager.releaseInput();
         if (active && !this.active) this.world.actorLayer?.stop();

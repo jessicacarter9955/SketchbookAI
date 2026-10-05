@@ -11,6 +11,7 @@ export declare class InputManagerBase implements IUpdatable {
     private dragging;
     private lastMouseX;
     private lastMouseY;
+    private heldMouseButtons;
     private heldKeys;
     boundOnMouseDown: (evt: any) => void;
     boundOnMouseMove: (evt: any) => void;

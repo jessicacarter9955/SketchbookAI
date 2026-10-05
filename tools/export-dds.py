@@ -34,10 +34,16 @@ ACTION_CLIPS = {
     'pistol_reload': '/Game/Fixers/Weapons/GenericWeapons/Pistol/Animations/AS_Reload_Pistol',
     'pistol_equip': '/Game/Fixers/Animations/Mover/EquipsUnequips/Mover_Equip_Pistol_1H_Stand',
     'crouch_idle': BASE + 'Animations/Idle/M_Neutral_Crouch_Idle_Loop',
+    'crouch_walk': BASE + 'Animations/Crouch/M_Neutral_Crouch_Loop_F',
+    'heal': '/Game/Fixers/Animations/Mover/Injector/Mover_Injector_Use',
 }
 WEAPONS = {
     'rifle': '/Game/Fixers/Weapons/GenericWeapons/Rifle/Mesh/SK_Rifle',
     'pistol': '/Game/Fixers/Weapons/GenericWeapons/Pistol/Mesh/SK_Pistol',
+}
+WEAPON_CLIPS = {
+    'rifle': '/Game/Fixers/Weapons/GenericWeapons/Rifle/Animations/Weap_Rifle_Fire',
+    'pistol': '/Game/Fixers/Weapons/GenericWeapons/Pistol/Animations/Weap_Pistol_Fire',
 }
 
 registry = unreal.AssetRegistryHelpers.get_asset_registry()
@@ -79,5 +85,11 @@ for name, path in paths.items():
 for name, path in WEAPONS.items():
     export(unreal.load_asset(path), name + '.glb')
     manifest['weapons'][name] = name + '.glb'
+options.export_preview_mesh = False
+manifest['weaponClips'] = {}
+for name, path in WEAPON_CLIPS.items():
+    filename = 'weapon_' + name + '_fire.glb'
+    export(unreal.load_asset(path), filename)
+    manifest['weaponClips'][name] = filename
 (OUT / 'manifest.json').write_text(json.dumps(manifest, indent=2))
 unreal.log('DDS_EXPORT_DONE')

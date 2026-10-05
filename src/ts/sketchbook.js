@@ -49,6 +49,8 @@ import * as statesLibrary from './characters/character_states/_stateLibrary';
 globalThis.CharacterStates = statesLibrary;
 
 import { Character } from './characters/Character';
+import { DdsGame } from '../editor/DdsGame';
+globalThis.DdsGame = DdsGame;
 globalThis.Character = Character;
 import { KeyBinding } from './core/KeyBinding';
 globalThis.KeyBinding = KeyBinding;
