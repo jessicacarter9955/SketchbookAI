@@ -201,7 +201,28 @@ def prepare_character_scratch(project, directory, engine):
     return scratch / "Export.uproject"
 
 
-def migrate_character(project, recipe_path, workspace, engine_override=None, force=False, logger=None):
+def _publish_character(final, publish_dir, project):
+    if publish_dir is None:
+        return None
+    final, destination = Path(final).resolve(strict=True), Path(publish_dir).resolve()
+    source_root = Path(project).resolve().parent
+    if destination == source_root or source_root in destination.parents:
+        raise ValueError("Published runtime assets must not be written inside the Unreal source project")
+    if destination == final or final in destination.parents:
+        raise ValueError("Publish directory must be separate from the migration output")
+    temp = destination.with_name(destination.name + ".tmp")
+    if temp.exists():
+        shutil.rmtree(temp)
+    temp.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(final, temp)
+    validate_character_output(temp)
+    if destination.exists():
+        shutil.rmtree(destination)
+    temp.replace(destination)
+    return str(destination)
+
+
+def migrate_character(project, recipe_path, workspace, engine_override=None, force=False, logger=None, publish_dir=None):
     project = Path(project).resolve(strict=True)
     recipe = load_character_recipe(recipe_path)
     workspace = prepare_workspace(workspace, project)
@@ -212,7 +233,9 @@ def migrate_character(project, recipe_path, workspace, engine_override=None, for
             validated = validate_character_output(final, fingerprint)
             if logger:
                 logger.event("reuse", f"character {recipe['id']}: cached export valid", task="character-export")
-            return {"status": "reused", "output": str(final), "fingerprint": fingerprint, **validated}
+            published = _publish_character(final, publish_dir, project)
+            return {"status": "reused", "output": str(final), "published": published,
+                    "fingerprint": fingerprint, **validated}
         except (OSError, ValueError):
             pass
     descriptor = read_json(project)
@@ -245,7 +268,9 @@ def migrate_character(project, recipe_path, workspace, engine_override=None, for
             staging.replace(final)
             if logger:
                 logger.event("recovered", f"Published completed staged character {recipe['id']}", task="character-export")
-            return {"status": "recovered", "output": str(final), "fingerprint": fingerprint, **validated}
+            published = _publish_character(final, publish_dir, project)
+            return {"status": "recovered", "output": str(final), "published": published,
+                    "fingerprint": fingerprint, **validated}
         except (OSError, ValueError):
             pass
     logs = workspace / "logs"
@@ -270,4 +295,6 @@ def migrate_character(project, recipe_path, workspace, engine_override=None, for
     staging.replace(final)
     if logger:
         logger.event("task-done", f"Character {recipe['id']} exported and validated", task="character-export")
-    return {"status": "converted", "output": str(final), "fingerprint": fingerprint, **validated}
+    published = _publish_character(final, publish_dir, project)
+    return {"status": "converted", "output": str(final), "published": published,
+            "fingerprint": fingerprint, **validated}
