@@ -16,7 +16,7 @@ SAFE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$")
 
 
 def _asset_path(value, label):
-    if not isinstance(value, str) or not value.startswith("/") or "\" in value or ".." in value.split("/"):
+    if not isinstance(value, str) or not value.startswith("/") or "\\" in value or ".." in value.split("/"):
         raise ValueError(f"{label} must be an Unreal package path")
     value = value.rstrip("/")
     if len(value.split("/")) < 3:
