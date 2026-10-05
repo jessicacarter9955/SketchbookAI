@@ -6,14 +6,18 @@ import { Character } from '../ts/characters/Character';
 import { Car } from '../ts/vehicles/Car';
 import { loadDdsPlayer } from './DdsAssets';
 import { DdsCharacter } from './DdsCharacter';
+import { loadUe2ThreeCharacter } from './Ue2ThreeAssets';
 
 export class ActorLayer {
     constructor(world) { this.world = world; this.actors = []; this.spawn = new THREE.Vector3(0, 2, -5); }
-    async initialize(profile) {
+    async initialize(profile, options = {}) {
         [this.person, this.car] = await Promise.all(['boxman', 'car'].map(name => new GLTFLoader().loadAsync(`build/assets/${name}.glb`)));
         this.person.scene.animations = this.person.animations;
-        this.playerModel = profile === 'dds' ? await loadDdsPlayer() : this.person;
+        if (profile === 'dds') this.playerModel = await loadDdsPlayer();
+        else if (profile === 'ue2three') this.playerModel = await loadUe2ThreeCharacter(options.characterBase || 'build/local-scenes/ue2three/current/');
+        else this.playerModel = this.person;
         this.playerProfile = profile;
+        this.playerOptions = options;
         this.world.actorLayer = this;
     }
     preview(type) { return clone(type === 'vehicle' ? this.car.scene : this.person.scene); }
@@ -24,6 +28,7 @@ export class ActorLayer {
         player.setPosition(...this.spawn.toArray());
         player.userData.playerProfile = this.playerProfile;
         if(this.playerProfile==='dds') player.setOrientation(new THREE.Vector3(0,0,-1),true);
+        if(this.playerProfile==='ue2three') player.userData.ue2three = this.playerModel.manifest;
         player.position.copy(this.spawn);
         this.world.add(player); player.takeControl(); this.world.editorPlayer = player;
         return player;
