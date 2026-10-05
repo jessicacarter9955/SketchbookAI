@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 SCHEMA = 1
-TOOL_VERSION = "0.1.0"
+TOOL_VERSION = "0.2.0-dev"
 
 
 def utc():
