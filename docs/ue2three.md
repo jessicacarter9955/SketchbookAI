@@ -1,6 +1,6 @@
 # ue2three: offline migration toolkit
 
-## Current release: 0.1, inspection foundation
+## Current release: 0.2-dev, inspection + generic character migration
 
 This is stage 1 of the reusable toolkit. It scans editable Unreal projects,
 detects their engine association/installed version, inventories maps and plugins,
