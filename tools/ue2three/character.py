@@ -212,7 +212,9 @@ def migrate_character(project, recipe_path, workspace, engine_override=None, for
     staging = workspace / "staging" / ("character-" + recipe["id"])
     recipe_runtime = {k: v for k, v in recipe.items() if k != "recipe_path"}
     recipe_runtime.update(fingerprint=fingerprint, source_project=str(project), source_files=sources)
-    if staging.is_dir() and (staging / "recipe.json").is_file():
+    if force and staging.exists():
+        shutil.rmtree(staging)
+    elif staging.is_dir() and (staging / "recipe.json").is_file():
         try:
             previous = read_json(staging / "recipe.json")
         except (OSError, ValueError):
