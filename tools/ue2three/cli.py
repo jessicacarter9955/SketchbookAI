@@ -28,6 +28,7 @@ def parser():
             cmd.add_argument("--reason", required=True)
         if name == "dashboard":
             cmd.add_argument("--port", type=int, default=8766)
+            cmd.add_argument("--open", action="store_true", help="Open the local Migration Manager in the default browser")
 
     character = commands.add_parser("migrate-character", help="Export one recipe-defined Unreal skeletal character to validated GLB")
     character.add_argument("project", type=Path, help="Editable Unreal .uproject")
@@ -54,7 +55,17 @@ def execute(args):
     latest = Path.cwd() / ".local" / "ue2three" / "last-workspace.json"
     directory = args.workspace.resolve() if args.workspace else default_workspace(project) if project else None
     if directory is None and latest.is_file():
-        directory = Path(read_json(latest)["workspace"]).resolve()
+        try:
+            directory = Path(read_json(latest)["workspace"]).resolve()
+        except (OSError, ValueError, KeyError):
+            directory = None
+
+    if args.command == "dashboard":
+        from dashboard import serve
+        if directory is None:
+            directory = Path.cwd() / ".local" / "ue2three"
+        return serve(directory, args.port, args.open)
+
     if directory is None:
         raise ValueError("Provide --workspace from the initial scan (or a project path for scan/plan)")
 
@@ -85,10 +96,6 @@ def execute(args):
     directory = prepare_workspace(directory, project)
     if args.command in {"scan", "plan"}:
         atomic_json(latest, {"workspace": str(directory)})
-    if args.command == "dashboard":
-        from dashboard import serve
-        return serve(directory, args.port)
-
     logger = Logger(directory)
     with workspace_lock(directory):
         if (directory / "state.json").exists():
