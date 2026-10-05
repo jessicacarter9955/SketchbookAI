@@ -208,8 +208,8 @@ def _publish_character(final, publish_dir, project):
     source_root = Path(project).resolve().parent
     if destination == source_root or source_root in destination.parents:
         raise ValueError("Published runtime assets must not be written inside the Unreal source project")
-    if destination == final or final in destination.parents:
-        raise ValueError("Publish directory must be separate from the migration output")
+    if destination == final or final in destination.parents or destination in final.parents:
+        raise ValueError("Publish directory and migration output must be separate, non-nested directories")
     temp = destination.with_name(destination.name + ".tmp")
     if temp.exists():
         shutil.rmtree(temp)
