@@ -82,7 +82,9 @@ def serve(directory, port):
             notes = [line.split(" ", 1)[1].strip() for line in log.splitlines() if line.startswith("MESSAGE ")]
             events = notes[:]
             for line in log.splitlines():
-                if " MAP-PROGRESS " not in line and " MAP-EXPORT-DONE " not in line and " MAP-EXPORT-FAILED " not in line:
+                if (" MAP-PROGRESS " not in line and " MAP-EXPORT-DONE " not in line and
+                        " MAP-EXPORT-FAILED " not in line and " UI-PROGRESS " not in line and
+                        " UI-EXPORT-SUMMARY " not in line):
                     continue
                 try:
                     encoded = line.split(None, 2)[2]
@@ -102,7 +104,7 @@ def serve(directory, port):
             if code not in (None, 0) and not process:
                 message = "Non sono riuscito a completare la preparazione. Riprova o controlla la configurazione Unreal."
             elif code == 0 and phase == "done":
-                message = "Preparazione completata. Scegli una scena migrata qui sotto."
+                message = notes[-1] if notes else "Preparazione completata. Scegli una scena migrata qui sotto."
             elif code == 0 and phase == "no-character":
                 message = "Analisi completata. Non ho trovato automaticamente un personaggio e animazioni compatibili per creare una scena giocabile."
             preview_lines = [line.split("=", 1)[1] for line in log.splitlines() if line.startswith("PREVIEW_URL=")]

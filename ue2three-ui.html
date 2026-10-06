@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ue2three · UI Unreal migrata</title>
+  <style>
+    :root{color-scheme:dark;font:15px system-ui,sans-serif;background:#101923;color:#ecf3f9}
+    *{box-sizing:border-box}body{margin:0;overflow:hidden}#view{position:fixed;inset:0}
+    #screen{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+    #status{position:fixed;z-index:5;left:18px;bottom:16px;padding:10px 13px;border-radius:8px;background:#101923dd;color:#d3e1ea;max-width:min(86vw,900px)}
+    #status.error{color:#ffb5a8}#status .minor{display:block;color:#9fb3c2;font-size:12px;margin-top:3px}
+    .umg-node{position:relative;min-width:0;min-height:0}.umg-canvas{position:absolute;inset:0;overflow:hidden}
+    .umg-vbox{display:flex;flex-direction:column}.umg-hbox{display:flex;flex-direction:row}.umg-overlay{position:relative;display:grid}
+    .umg-overlay>*{grid-area:1/1}.umg-button{pointer-events:auto;cursor:pointer}.umg-image{background-position:center;background-repeat:no-repeat;background-size:cover}
+    .umg-screen{position:fixed;width:1920px;height:1080px;pointer-events:none}.umg-custom{display:contents}
+    .umg-unsupported{outline:1px dashed #ffbf5b88;background:#ffbf5b14;color:#ffd27b}
+    button.umg-node{font:inherit;color:inherit}#title{position:fixed;z-index:4;top:15px;left:18px;padding:9px 12px;background:#101923dd;border-radius:8px}
+  </style>
+  <script type="importmap">
+    {"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}
+  </script>
+</head>
+<body>
+  <div id="view"></div><div id="screen" aria-label="Interfaccia Unreal tradotta"></div>
+  <div id="title">Schermata Unreal migrata</div>
+  <div id="status" role="status">Caricamento della schermata…</div>
+  <script type="module" src="/tools/ue2three/ue2three-ui-viewer.js"></script>
+</body>
+</html>

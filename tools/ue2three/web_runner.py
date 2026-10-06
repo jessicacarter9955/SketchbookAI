@@ -48,6 +48,36 @@ def auto_recipe(registry, bundled_recipe, destination):
     return destination
 
 
+def reusable_workspace(root, preferred, project):
+    """Reuse a prior verified scan for this exact project when the default job is elsewhere."""
+    project_key = str(project.resolve()).casefold()
+    candidates = [preferred]
+    if root.is_dir():
+        candidates.extend(root.rglob("state.json"))
+    matches = []
+    seen = set()
+    for candidate in candidates:
+        directory = candidate.parent if candidate.name == "state.json" else candidate
+        key = str(directory.resolve()).casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        try:
+            state = json.loads((directory / "state.json").read_text(encoding="utf-8"))
+            source = str(Path(state["config"]["project"]).resolve()).casefold()
+            if source != project_key or state.get("source_verification_status") != "verified":
+                continue
+            has_map_runs = (directory / "maps" / "runs").is_dir()
+            matches.append((directory == preferred, has_map_runs, (directory / "state.json").stat().st_mtime, directory))
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+    if not matches:
+        return preferred
+    # Prefer the canonical job, then a verified workspace with level-export cache, then recency.
+    matches.sort(key=lambda item: (item[0], item[1], item[2]), reverse=True)
+    return matches[0][3]
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser()
@@ -60,8 +90,13 @@ def main():
     project, repo, root = args.project.resolve(strict=True), args.repo.resolve(strict=True), args.workspace_root.resolve()
     key = hashlib.sha256(str(project).casefold().encode("utf-8")).hexdigest()[:10]
     label = "".join(c if c.isalnum() or c in "-_" else "-" for c in project.stem).strip("-")[:48] or "unreal-project"
-    workspace = root / "jobs" / f"{label}-{key}"
-    migration_workspace = root / "jobs" / f"{label}-{key}-character"
+    preferred_workspace = root / "jobs" / f"{label}-{key}"
+    workspace = reusable_workspace(root, preferred_workspace, project)
+    migration_workspace = workspace.parent / f"{workspace.name}-character"
+    if not migration_workspace.is_dir():
+        cached_character_jobs = list(root.rglob(f"{label}-{key}-character")) if root.is_dir() else []
+        if cached_character_jobs:
+            migration_workspace = max(cached_character_jobs, key=lambda item: item.stat().st_mtime)
     cli = repo / "tools" / "ue2three" / "ue2three.py"
     registry_file = workspace / "artifacts" / "engine_metadata.json"
     project_output = repo / "build" / "local-scenes" / "ue2three" / "projects" / f"{label}-{key}"
@@ -112,6 +147,10 @@ def main():
         except (OSError, ValueError):
             pass
 
+    phase("maps", "Sto traducendo le schermate originali collegate alla mappa iniziale...")
+    ui_command = ["migrate-ui", str(project), "--workspace", str(workspace), "--publish-dir", str(project_output)]
+    ui_command_ok = run_cli(ui_command, "Unreal interface migration")
+
     url = "http://127.0.0.1:8401/editor.html?scene=ue2three-character&play=1"
     try:
         urllib.request.urlopen("http://127.0.0.1:8401/", timeout=1).close()
@@ -141,9 +180,23 @@ def main():
             "build/local-scenes/ue2three/projects/" + project_output.name + "/maps/" + item["filename"], safe="/")
         scene_url += "&title=" + quote(item["package"].rsplit("/", 1)[-1])
         scenes.append((item["package"].rsplit("/", 1)[-1], scene_url))
+    ui_manifest = project_output / "ui-manifest.json"
+    # The first UMG batch overlays the source menu layout on its own migrated level.
+    # Keep the map and widget manifest separate so later screen exports can reuse them.
+    if ui_command_ok and ui_manifest.is_file():
+        manifest = json.loads(ui_manifest.read_text(encoding="utf-8"))
+        root_map = manifest.get("root_map")
+        map_entry = next((item for item in map_report.get("maps", [])
+                          if item.get("package") == root_map and item.get("status") in {"exported", "reused"}), None)
+        if map_entry:
+            model_path = "build/local-scenes/ue2three/projects/" + project_output.name + "/maps/" + map_entry["filename"]
+            manifest_path = "build/local-scenes/ue2three/projects/" + project_output.name + "/ui-manifest.json"
+            ui_url = "http://127.0.0.1:8401/ue2three-ui.html?model=" + quote(model_path, safe="/")
+            ui_url += "&manifest=" + quote(manifest_path, safe="/")
+            scenes.insert(0, ("DDS Menu (mappa originale)", ui_url))
     character_url = "http://127.0.0.1:8401/editor.html?scene=ue2three-character&play=1"
     if recipe is not None:
-        scenes.append(("Sketchbook · personaggio giocabile", character_url))
+        scenes.append(("Sketchbook - personaggio giocabile", character_url))
     for name, scene_url in scenes:
         print("SCENE\t" + name + "\t" + scene_url, flush=True)
     visual_maps = [item for item in map_report.get("maps", [])
@@ -152,16 +205,21 @@ def main():
                          if item["package"].endswith("/LV_Fixers_MainMenu")), None)
     if default_name is None and visual_maps:
         default_name = visual_maps[0]["package"].rsplit("/", 1)[-1]
-    default = next((url for name, url in scenes if name == default_name), scenes[0][1] if scenes else "")
+    default = (scenes[0][1] if ui_command_ok and ui_manifest.is_file() else
+               next((url for name, url in scenes if name == default_name), scenes[0][1] if scenes else ""))
     if default:
         print("PREVIEW_URL=" + default, flush=True)
     failed_maps = map_report.get("counts", {}).get("failed", 0)
+    ready_maps = map_report.get("counts", {}).get("exported", 0) + map_report.get("counts", {}).get("reused", 0)
     if not maps_command_ok and not map_report.get("maps"):
         phase("done", "Analisi completata; non è stato possibile esportare mappe. Vedi il report locale.")
+    elif not ui_command_ok:
+        phase("done", "Mappe pronte; la conversione delle schermate originali non è riuscita. Vedi il report locale.")
     elif failed_maps:
-        phase("done", f"Mappa pronta con {failed_maps} livelli non esportati. Il personaggio resta giocabile.")
+        ui_note = "Menu originale pronto." if ui_command_ok else "La schermata menu non è stata esportata."
+        phase("done", f"Prima tranche pronta: {ready_maps} mappe leggibili, {failed_maps} livelli non esportati. {ui_note} Logiche Blueprint ancora da tradurre.")
     else:
-        phase("done", f"Porting asset completato: {len(map_report.get('maps', []))} mappe. Le scene sono pronte.")
+        phase("done", f"Prima tranche pronta: {ready_maps} mappe e schermata menu originale. Logiche Blueprint ancora da tradurre.")
     return 0
 
 

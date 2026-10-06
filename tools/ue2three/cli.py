@@ -44,6 +44,11 @@ def parser():
     maps.add_argument("--publish-dir", type=Path, required=True, help="Local output directory, outside the source project")
     maps.add_argument("--engine", help="Optional matching Unreal Engine installation root")
     maps.add_argument("--force", action="store_true", help="Re-export maps even when a valid cached GLB exists")
+    ui = commands.add_parser("migrate-ui", help="Translate a map-referenced Unreal widget layout into a Three.js preview")
+    ui.add_argument("project", type=Path, help="Editable Unreal .uproject")
+    ui.add_argument("--workspace", type=Path, required=True, help="Verified ue2three scan and Asset Registry workspace")
+    ui.add_argument("--publish-dir", type=Path, required=True, help="Local output directory, outside the source project")
+    ui.add_argument("--force", action="store_true", help="Re-read source Widget Blueprints instead of reusing cached JSON")
     return result
 
 
@@ -102,6 +107,17 @@ def execute(args):
         print(f"Unreal maps exported: {report['counts']['exported']}; reused: {report['counts']['reused']}; failed: {report['counts']['failed']}")
         print(f"Map report: {Path(args.publish_dir) / 'migration-report.json'}")
         return 0 if report["counts"]["exported"] + report["counts"]["reused"] else 1
+
+    if args.command == "migrate-ui":
+        from umg_migration import migrate_ui
+        if not directory.is_dir():
+            raise ValueError("UI migration requires a completed scan workspace")
+        logger = Logger(directory)
+        with workspace_lock(directory):
+            manifest = migrate_ui(project, directory, args.publish_dir, logger, force=args.force)
+        print(f"Source Widget Blueprints: {len(manifest['widget_blueprints'])}; root: {manifest['root_widget']}")
+        print(f"UI manifest: {Path(args.publish_dir) / 'ui-manifest.json'}")
+        return 0
 
     if (directory / "state.json").exists():
         state = load_state(directory)

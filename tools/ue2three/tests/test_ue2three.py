@@ -203,7 +203,15 @@ class PipelineTests(unittest.TestCase):
         script = Path(__file__).resolve().parents[1] / "ue2three.py"
         process = subprocess.Popen([sys.executable, str(script), "dashboard", "--workspace", str(self.directory), "--port", "0"],
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        self.addCleanup(lambda: process.poll() is None and process.kill())
+        def stop_dashboard():
+            if process.poll() is None:
+                process.terminate()
+            try:
+                process.communicate(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.communicate(timeout=5)
+        self.addCleanup(stop_dashboard)
         line = process.stdout.readline()
         url = re.search(r"http://127\.0\.0\.1:\d+", line).group()
         def request(path, data=None):
