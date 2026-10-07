@@ -113,3 +113,10 @@ test('procedural city scenes accept validated generator state', async () => {
     assert.deepEqual(validateScene(city), city);
     assert.throws(() => validateScene({ ...city, generator: { ...DEFAULT_URBAN, blocksX: 1 } }));
 });
+
+
+test('urban drive scene keeps mannequin player profile through catalog load', () => {
+    const storage={getItem:()=>null,setItem:()=>{}};
+    const urban=loadCatalog(storage).find(s=>s.id==='urban-procedural');
+    assert.equal(urban.world,'procedural-city'); assert.equal(urban.playerProfile,'mannequin');
+});
