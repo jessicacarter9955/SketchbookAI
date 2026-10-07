@@ -14,7 +14,7 @@
   "main": "build/sketchbook.min.js",
   "types": "build/types/sketchbook.d.ts",
   "scripts": {
-    "test": "node --test tests/editor.test.mjs tests/surfaces.test.mjs tests/island.test.mjs tests/urban.test.mjs tests/fab.test.mjs tests/dds-game.test.mjs",
+    "test": "node --test tests/editor.test.mjs tests/surfaces.test.mjs tests/island.test.mjs tests/urban.test.mjs tests/geojson.test.mjs tests/fab.test.mjs tests/dds-game.test.mjs",
     "editor": "webpack-dev-server --config webpack.dev.js --host 127.0.0.1 --port 8401 --open /editor.html",
     "dev": "webpack-dev-server --config webpack.dev.js",
     "build": "webpack --config webpack.prod.js",
