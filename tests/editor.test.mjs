@@ -105,3 +105,11 @@ test('local credentials load only on loopback and do not override manual input',
     client.token = 'manual'; await client.loadLocalToken({hostname:'localhost'});
     assert.equal(client.token, 'manual');
 });
+
+
+test('procedural city scenes accept validated generator state', async () => {
+    const { DEFAULT_URBAN } = await import('../src/editor/urban-data.mjs');
+    const city = { version: 1, world: 'procedural-city', objects: [], generator: { ...DEFAULT_URBAN } };
+    assert.deepEqual(validateScene(city), city);
+    assert.throws(() => validateScene({ ...city, generator: { ...DEFAULT_URBAN, blocksX: 1 } }));
+});
