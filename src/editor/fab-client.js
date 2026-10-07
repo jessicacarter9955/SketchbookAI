@@ -23,7 +23,7 @@
     }
     supportedFile(file){
       const name=String(file?.name||'').toLowerCase();
-      if(!/\.(glb|gltf|zip)$/.test(name)) throw new Error('Per Sketchbook scarica da Fab un file GLB, glTF o ZIP compatibile.');
+      if(!/\.(glb|zip)$/.test(name)) throw new Error('Per Sketchbook scarica da Fab un file GLB o ZIP compatibile.');
       return true;
     }
   }
