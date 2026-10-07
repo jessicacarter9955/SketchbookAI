@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { DEFAULT_URBAN, validateUrban, generateUrbanPlan, urbanGroundHeight } from './urban-data.mjs';
 
 function roadForgeTexture(path,{color=false,repeat=[8,8]}={}){
@@ -44,6 +45,23 @@ function treeInstances(items){
   });
   trunks.instanceMatrix.needsUpdate=crowns.instanceMatrix.needsUpdate=true; trunks.castShadow=crowns.castShadow=true; crowns.receiveShadow=true;
   group.add(trunks,crowns); return group;
+}
+
+async function polyHavenGltfURL(assetId){
+  const response=await fetch(`https://api.polyhaven.com/files/${encodeURIComponent(assetId)}`);
+  if(!response.ok) throw new Error(`Poly Haven ${assetId}: HTTP ${response.status}`);
+  const tree=await response.json(),candidates=[];
+  const walk=(value,path='')=>{
+    if(typeof value==='string' && /^https?:\/\//i.test(value) && /\.(gltf|glb)(\?|$)/i.test(value)) candidates.push({url:value,path});
+    else if(value && typeof value==='object') for(const [key,item] of Object.entries(value)) walk(item,`${path}/${key}`);
+  };
+  walk(tree);
+  candidates.sort((a,b)=>{
+    const score=c=>(/\/1k\//i.test(c.path)?0:/\/2k\//i.test(c.path)?1:2)+(/gltf/i.test(c.path)?0:1);
+    return score(a)-score(b);
+  });
+  if(!candidates.length) throw new Error(`Nessun glTF disponibile per ${assetId}`);
+  return candidates[0].url;
 }
 
 export class UrbanRuntime {
@@ -170,6 +188,45 @@ export class UrbanRuntime {
 
     this.clearGenerated();this.root.add(group);bodies.forEach(b=>this.world.physicsWorld.addBody(b));this.bodies=bodies;
     this.plan=plan;this.config=config;this.manifest={spawns:plan.spawns};this.applySky(config.sky);this.ready=true;
+    this.loadPhotorealArchitecture(group,plan,config).catch(error=>console.warn('Photoreal asset kit unavailable',error));
+  }
+  async loadPhotorealArchitecture(group,plan,config){
+    const loader=new GLTFLoader();
+    const kits=[
+      {id:'modular_urban_apartments_facade',kind:'residential'},
+      {id:'modular_factory_facade',kind:'industrial'}
+    ];
+    const loaded=[];
+    for(const kit of kits){
+      try{
+        const url=await polyHavenGltfURL(kit.id),gltf=await loader.loadAsync(url);
+        const root=gltf.scene;
+        root.updateMatrixWorld(true);
+        const bounds=new THREE.Box3().setFromObject(root),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
+        loaded.push({...kit,root,size,center});
+      }catch(error){ console.warn(`Poly Haven asset failed: ${kit.id}`,error); }
+    }
+    if(!loaded.length)return;
+    const candidates=plan.buildings
+      .filter(b=>!b.isTower && b.floors>=4 && b.floors<=10)
+      .sort((a,b)=>Math.hypot(a.x,a.z)-Math.hypot(b.x,b.z))
+      .slice(0,Math.min(10,plan.buildings.length));
+    candidates.forEach((b,index)=>{
+      const kit=loaded[index%loaded.length],asset=kit.root.clone(true);
+      asset.name=`CC0 ${kit.id}`;
+      const sx=Math.max(.001,(b.w*.98)/Math.max(.01,kit.size.x));
+      const sy=Math.max(.001,(b.height*.94)/Math.max(.01,kit.size.y));
+      const sz=Math.max(.001,Math.min(1.5,(b.d*.35)/Math.max(.01,kit.size.z)));
+      asset.scale.set(sx,sy,sz);
+      asset.updateMatrixWorld(true);
+      const scaled=new THREE.Box3().setFromObject(asset),scaledCenter=scaled.getCenter(new THREE.Vector3());
+      const ground=urbanGroundHeight(b.x,b.z,config);
+      asset.position.set(b.x-scaledCenter.x,ground+.2-scaled.min.y,b.z+b.d*.48-scaledCenter.z);
+      asset.traverse(node=>{if(node.isMesh){node.castShadow=true;node.receiveShadow=true;}});
+      asset.userData={source:'Poly Haven CC0',assetId:kit.id,photorealArchitecture:true};
+      group.add(asset);
+    });
+    group.userData.photorealAssets=loaded.map(k=>k.id);
   }
   applySky(preset){
     const settings={day:{elevation:47,azimuth:145,haze:2.2,fog:0xaec2cb,sun:0xffefd6,intensity:.72},sunset:{elevation:8,azimuth:245,haze:5,fog:0xb98d85,sun:0xffaa63,intensity:.45},haze:{elevation:30,azimuth:160,haze:14,fog:0x9ea9ad,sun:0xd0d4d5,intensity:.28}}[preset];
