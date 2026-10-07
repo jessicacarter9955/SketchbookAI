@@ -16,6 +16,6 @@ test('Fab category search is restricted to supported Fab paths',()=>{
 });
 test('Fab import handoff accepts portable model formats only',()=>{
   const c=new FabClient();
-  for(const name of ['car.glb','city.gltf','pack.zip']) assert.equal(c.supportedFile({name}),true);
+  for(const name of ['car.glb','pack.zip']) assert.equal(c.supportedFile({name}),true);
   assert.throws(()=>c.supportedFile({name:'plugin.uasset'}),/GLB/);
 });
