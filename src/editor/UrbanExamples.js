@@ -48,7 +48,7 @@ function building(kit,x,z,bays,floors,industrial=false,angle=0){
  return g;
 }
 try{
- const [apartments,factory,trees]=await Promise.all([loader.loadAsync('assets/urban-kits/modular_urban_apartments_facade/scene.gltf'),loader.loadAsync('assets/urban-kits/modular_factory_facade/scene.gltf'),loader.loadAsync('assets/urban-kits/tree_small_02/scene.gltf')]);
+ const [apartments,factory,trees]=await Promise.all([loader.loadAsync('assets/urban-kits/modular_urban_apartments_facade/scene.gltf'),loader.loadAsync('assets/urban-kits/modular_factory_facade/scene.gltf').catch(()=>loader.loadAsync('assets/urban-kits/modular_urban_apartments_facade/scene.gltf')),loader.loadAsync('assets/urban-kits/tree_small_02/scene.gltf')]);
  if(variant==='industrial'){
   building(factory.scene,-27,-7,7,4,true);building(factory.scene,0,-7,7,5,true);building(factory.scene,27,-7,7,3,true);building(factory.scene,-27,-28,7,4,true);building(factory.scene,0,-28,7,4,true);building(factory.scene,27,-28,7,5,true);
  }else if(variant==='courtyard'){
@@ -67,7 +67,7 @@ try{
  const positions=variant==='courtyard'?[[-11,-3],[11,-3],[-11,-17],[11,-17],[-10,-24],[10,-24],[-40,2],[40,2]]:[[-35,3],[-14,3],[9,3],[32,3],[-40,23],[-18,23],[8,23],[34,23]];
  for(const [i,[x,z]]of positions.entries()){const tree=template.clone(true),s=7/size.y;tree.scale.setScalar(s);tree.position.set(x-center.x*s,.2-bounds.min.y*s,z-center.z*s);tree.rotation.y=i*.73;tree.traverse(n=>{if(n.isMesh){n.castShadow=n.receiveShadow=true;for(const mat of [].concat(n.material)){mat.side=THREE.DoubleSide;mat.alphaTest=.45;mat.transparent=false;}}});scene.add(tree);box(2,.18,2,x,.06,z,greenMat);}
  for(const x of [-12,12]){box(2.2,.15,.6,x,.65,variant==='courtyard'?-10:4,paveMat);for(const dx of [-.8,.8])box(.08,.6,.45,x+dx,.3,variant==='courtyard'?-10:4,darkMat);}
- scene.userData.assetReport={variant,modules,buildings,trees:positions.length,localKits:3};window.__urbanExample={ready:true,report:scene.userData.assetReport};document.querySelector('#status').textContent=`${buildings} edifici · ${modules} moduli reali · ${positions.length} alberi importati`;
+ scene.userData.assetReport={variant,modules,buildings,trees:positions.length,localKits:2};window.__urbanExample={ready:true,report:scene.userData.assetReport};document.querySelector('#status').textContent=`${buildings} edifici · ${modules} moduli reali · ${positions.length} alberi importati`;
 }catch(error){window.__urbanExample={ready:false,error:error.message};document.querySelector('#status').textContent=error.message;console.error(error);}
 function render(){renderer.render(scene,camera);}controls.addEventListener('change',render);render();
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
