@@ -20,6 +20,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Download verified CC0 architecture kits
+        run: python tools/fetch-urban-kits.py
       - name: Unit tests
         run: npm test
       - name: Production build
@@ -43,6 +45,12 @@ jobs:
             "http://127.0.0.1:8401/editor.html?scene=urban-photoreal" artifacts/urban-overview.png
           npx --yes playwright@1.55.0 screenshot --browser chromium --viewport-size "1440,900" --wait-for-timeout 15000 \
             "http://127.0.0.1:8401/editor.html?scene=urban-photoreal&play=1" artifacts/urban-street.png
+      - name: Capture three independent asset experiments
+        run: |
+          for variant in residential industrial courtyard; do
+            npx --yes playwright@1.55.0 screenshot --browser chromium --viewport-size "1440,900" --wait-for-timeout 20000 \
+              "http://127.0.0.1:8401/urban-examples.html?variant=$variant" "artifacts/urban-$variant.png"
+          done
       - name: Save editor log
         if: always()
         run: cp /tmp/sketchbook-editor.log artifacts/editor-server.log || true
