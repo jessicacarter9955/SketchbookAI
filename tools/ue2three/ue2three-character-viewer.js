@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 
 const params = new URLSearchParams(location.search);
 const base = params.get('base') || 'build/local-scenes/ue2three/current/';
@@ -70,12 +71,34 @@ async function equipWeapon(name) {
   const hand = character.scene.getObjectByName(definition.bone);
   if (!hand) throw new Error(`Socket esportato mancante: ${definition.bone}`);
   const asset = await loader.loadAsync(safeBase(base) + definition.file);
-  weaponRoot = asset.scene;
-  const transform = definition.transform || {};
-  weaponRoot.position.fromArray(transform.position || [0, 0, 0]);
-  weaponRoot.rotation.set(...(transform.rotation || [0, 0, 0]), 'XYZ');
-  weaponRoot.scale.fromArray(transform.scale || [1, 1, 1]);
+  const sourcePose = character.animations.find(clip => clip.name === `${name}_aim`) ||
+    character.animations.find(clip => clip.name === `${name}_ready`);
+  if (!sourcePose) throw new Error(`Posa sorgente di impugnatura mancante per ${name}`);
+
+  // Calibrate the attachment in the weapon's original aim pose. The inverse hand
+  // rotation keeps the exported weapon basis aligned while the source clip moves
+  // the hand, matching the grip compensation already used by the DDS character rig.
+  const reference = cloneSkeleton(character.scene);
+  const referenceMixer = new THREE.AnimationMixer(reference);
+  referenceMixer.clipAction(sourcePose).play();
+  referenceMixer.update(0);
+  reference.updateMatrixWorld(true);
+  const referenceHand = reference.getObjectByName(definition.bone);
+  if (!referenceHand) throw new Error(`Bone di calibrazione mancante: ${definition.bone}`);
+  const handRotation = referenceHand.getWorldQuaternion(new THREE.Quaternion());
+  weaponRoot = new THREE.Group();
+  weaponRoot.name = `DDS ${name} calibrated grip`;
+  weaponRoot.quaternion.copy(handRotation.invert());
   hand.add(weaponRoot);
+
+  const weapon = asset.scene;
+  const transform = definition.transform || {};
+  weapon.position.fromArray(transform.position || [0, 0, 0]);
+  weapon.rotation.set(...(transform.rotation || [0, 0, 0]), 'XYZ');
+  weapon.scale.fromArray(transform.scale || [1, 1, 1]);
+  weaponRoot.add(weapon);
+  referenceMixer.stopAllAction();
+  referenceMixer.uncacheRoot(reference);
 }
 
 async function openCharacter() {
