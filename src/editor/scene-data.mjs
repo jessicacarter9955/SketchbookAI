@@ -1,5 +1,6 @@
 import { validateSurfaceEdits } from './surface-data.mjs';
 import { WORLD_IDS, validateIsland } from './island-data.mjs';
+import { validateUrban } from './urban-data.mjs';
 export const PREFABS = ['box', 'building', 'road', 'tree', 'lamp', 'car', 'vehicle', 'pedestrian'];
 export const SCENE_KEY = 'sketchbook.scene.v1';
 export function validateScene(value) {
@@ -23,8 +24,8 @@ export function validateScene(value) {
     if (value.world !== undefined && !WORLD_IDS.includes(value.world)) throw new Error('Mappa scena non riconosciuta.');
     const mapEdits = value.mapEdits === undefined ? [] : validateSurfaceEdits(value.mapEdits);
     if (mapEdits.length && value.world !== 'liberty-city') throw new Error('Le modifiche alla mappa richiedono Liberty City.');
-    if(value.generator !== undefined && value.world !== 'procedural-island') throw new Error('Generatore disponibile solo nelle scene Isola.');
-    const generator=value.generator === undefined ? undefined : validateIsland(value.generator);
+    if(value.generator !== undefined && !['procedural-island','procedural-city'].includes(value.world)) throw new Error('Generatore disponibile solo nelle scene procedurali.');
+    const generator=value.generator === undefined ? undefined : value.world === 'procedural-city' ? validateUrban(value.generator) : validateIsland(value.generator);
     return { version: 1, ...(value.world ? { world: value.world } : {}), objects, ...(mapEdits.length ? {mapEdits} : {}), ...(generator ? {generator} : {}) };
 }
 export class History {
