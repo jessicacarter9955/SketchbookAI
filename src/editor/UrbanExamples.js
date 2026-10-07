@@ -17,7 +17,7 @@ const pmrem=new THREE.PMREMGenerator(renderer);scene.environment=pmrem.fromScene
 const loader=new GLTFLoader();
 let modules=0,buildings=0;const architecture=new THREE.Group();scene.add(architecture);
 function box(w,h,d,x,y,z,mat){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;scene.add(m);return m;}
-const roadMat=new THREE.MeshStandardMaterial({color:0x383c40,roughness:.93}),paveMat=new THREE.MeshStandardMaterial({color:0xa5a194,roughness:.92}),curbMat=new THREE.MeshStandardMaterial({color:0xd3cdbd,roughness:.8}),greenMat=new THREE.MeshStandardMaterial({color:0x4a673c,roughness:1}),darkMat=new THREE.MeshStandardMaterial({color:0x303b40,metalness:.6,roughness:.5}),paintMat=new THREE.MeshStandardMaterial({color:0xe1dfcb,roughness:.8});
+const roadMat=new THREE.MeshStandardMaterial({color:0x383c40,roughness:.93}),paveMat=new THREE.MeshStandardMaterial({color:0xa5a194,roughness:.92}),curbMat=new THREE.MeshStandardMaterial({color:0xd3cdbd,roughness:.8}),greenMat=new THREE.MeshStandardMaterial({color:0x4a673c,roughness:1}),darkMat=new THREE.MeshStandardMaterial({color:0x303b40,metalness:.6,roughness:.5}),paintMat=new THREE.MeshStandardMaterial({color:0xe1dfcb,roughness:.8}),glassMat=new THREE.MeshPhysicalMaterial({color:0x8da5ad,roughness:.12,metalness:.08,transmission:.15,clearcoat:.65}),awningMat=new THREE.MeshStandardMaterial({color:0x273943,roughness:.72});
 box(180,.3,180,0,-.25,0,paveMat);box(110,.12,12,0,-.04,12,roadMat);
 for(const z of [4.4,19.6]){box(110,.16,3.1,0,.08,z,paveMat);box(110,.27,.22,0,.135,z+(z<12?1.55:-1.55),curbMat);}
 for(let x=-48;x<52;x+=7)box(3,.015,.12,x,.028,12,paintMat);
@@ -27,6 +27,10 @@ roadMat.map=texture('assets/roadforge/T_RF_Asphalt_BC.png',[30,4]);roadMat.map.c
 paveMat.map=texture('assets/roadforge/T_RF_Concrete_BC.png',[24,8]);paveMat.map.colorSpace=THREE.SRGBColorSpace;paveMat.roughnessMap=texture('assets/roadforge/T_RF_Concrete_R.png',[24,8]);paveMat.color.set(0xb7b3a5);
 function lamp(x,z){box(.12,5,.12,x,2.6,z,darkMat);box(1.1,.12,.16,x+.5,5.05,z,darkMat);box(.6,.1,.32,x+.8,5,z,paintMat);}
 for(let x=-42;x<=42;x+=14)lamp(x,4.6);
+function storefront(x,z,w=5.2){box(w,2.75,.16,x,1.58,z,glassMat);box(w+.45,.22,1.15,x,3.02,z+.48,awningMat);box(.12,2.75,.24,x-w/2,1.58,z-.02,darkMat);box(.12,2.75,.24,x+w/2,1.58,z-.02,darkMat);}
+for(const x of [-38,-25,-12,1,14,27,40])storefront(x,-.1,5.4);
+for(let x=-45;x<=45;x+=5.5){box(.16,.82,.16,x,.49,3.25,darkMat);box(.34,.08,.34,x,.92,3.25,darkMat);}
+for(const x of [-31,-3,25]){box(2.8,.16,.72,x,.55,3.05,paveMat);for(const dx of [-1.05,1.05])box(.09,.55,.52,x+dx,.28,3.05,darkMat);}
 function module(kit,name,parent,x,y,z=0){const original=kit.getObjectByName(name);if(!original)throw Error('Missing module '+name);const m=original.clone(true);m.position.set(x,y,z);m.traverse(n=>{if(n.isMesh){n.castShadow=n.receiveShadow=true;for(const mat of [].concat(n.material)){mat.side=THREE.DoubleSide;if(mat.map)mat.map.anisotropy=8;}}});parent.add(m);modules++;return m;}
 function building(kit,x,z,bays,floors,industrial=false,angle=0){
  const g=new THREE.Group();g.position.set(x,.2,z);g.rotation.y=angle;architecture.add(g);const width=bays*3,depth=12;
