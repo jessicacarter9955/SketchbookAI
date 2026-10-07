@@ -33,18 +33,33 @@ function facadeTexture(style='office',seed=0){
 }
 
 function treeInstances(items){
-  const group=new THREE.Group(); if(!items.length)return group;
-  const trunkGeo=new THREE.CylinderGeometry(.16,.24,2.4,7), crownGeo=new THREE.IcosahedronGeometry(1.35,1);
-  const trunkMat=new THREE.MeshStandardMaterial({color:0x6c4d34,roughness:1}), crownMat=new THREE.MeshStandardMaterial({color:0x3f6b43,roughness:.95});
-  const trunks=new THREE.InstancedMesh(trunkGeo,trunkMat,items.length), crowns=new THREE.InstancedMesh(crownGeo,crownMat,items.length);
+  const group=new THREE.Group(); group.name='Procedural vegetation fallback'; if(!items.length)return group;
+  const trunkGeo=new THREE.CylinderGeometry(.13,.24,2.8,8), crownGeo=new THREE.SphereGeometry(1,10,7);
+  const trunkMat=new THREE.MeshStandardMaterial({color:0x644833,roughness:1});
+  const crownMatA=new THREE.MeshStandardMaterial({color:0x375f3b,roughness:.98});
+  const crownMatB=new THREE.MeshStandardMaterial({color:0x52794d,roughness:.98});
+  const trunks=new THREE.InstancedMesh(trunkGeo,trunkMat,items.length);
+  const crownsA=new THREE.InstancedMesh(crownGeo,crownMatA,items.length);
+  const crownsB=new THREE.InstancedMesh(crownGeo,crownMatB,items.length);
   const matrix=new THREE.Matrix4(),q=new THREE.Quaternion(),scale=new THREE.Vector3();
   items.forEach((t,i)=>{
-    const y=t.y||0,s=t.scale||1;
-    matrix.compose(new THREE.Vector3(t.x,y+1.2*s,t.z),q,scale.set(s,s,s)); trunks.setMatrixAt(i,matrix);
-    matrix.compose(new THREE.Vector3(t.x,y+3.25*s,t.z),q,scale.set(s*1.15,s*1.35,s*1.15)); crowns.setMatrixAt(i,matrix);
+    const y=t.y||0,s=t.scale||1,phase=((Math.abs(t.x*13.7+t.z*7.9)%11)/11)-.5;
+    q.setFromAxisAngle(new THREE.Vector3(0,1,0),phase*1.8);
+    matrix.compose(new THREE.Vector3(t.x,y+1.4*s,t.z),q,scale.set(s*.92,s,s*.92)); trunks.setMatrixAt(i,matrix);
+    matrix.compose(new THREE.Vector3(t.x-.28*s,y+3.25*s,t.z+.08*s),q,scale.set(s*1.22,s*1.45,s*1.08)); crownsA.setMatrixAt(i,matrix);
+    matrix.compose(new THREE.Vector3(t.x+.42*s,y+3.72*s,t.z-.18*s),q,scale.set(s*.94,s*1.08,s*.88)); crownsB.setMatrixAt(i,matrix);
   });
-  trunks.instanceMatrix.needsUpdate=crowns.instanceMatrix.needsUpdate=true; trunks.castShadow=crowns.castShadow=true; crowns.receiveShadow=true;
-  group.add(trunks,crowns); return group;
+  for(const mesh of [trunks,crownsA,crownsB]){mesh.instanceMatrix.needsUpdate=true;mesh.castShadow=true;mesh.receiveShadow=true;}
+  group.add(trunks,crownsA,crownsB); return group;
+}
+
+async function loadUrbanKit(loader,assetId){
+  try{return await loader.loadAsync(`assets/urban-kits/${assetId}/scene.gltf`);}
+  catch(localError){
+    const remote=await polyHavenGltfURL(assetId);
+    try{return await loader.loadAsync(remote);}
+    catch(remoteError){remoteError.cause=localError;throw remoteError;}
+  }
 }
 
 async function polyHavenGltfURL(assetId){
@@ -88,11 +103,18 @@ export class UrbanRuntime {
     const matRoad=new THREE.MeshStandardMaterial({map:asphaltMap,roughnessMap:asphaltRough,roughness:.96,metalness:0,color:0xd8d8d8});
     const matSidewalk=new THREE.MeshStandardMaterial({map:concreteMap,roughnessMap:concreteRough,roughness:.95,color:0xc7c7c0});
     const matCurb=new THREE.MeshStandardMaterial({map:concreteMap,roughnessMap:concreteRough,roughness:.92,color:0xe2e0d6});
-    const matGrass=new THREE.MeshStandardMaterial({color:0x527247,roughness:1});
+    const grassCanvas=document.createElement('canvas'); grassCanvas.width=grassCanvas.height=256;
+    const gc=grassCanvas.getContext('2d'); gc.fillStyle='#526f45';gc.fillRect(0,0,256,256);
+    for(let i=0;i<5200;i++){const v=58+(i*37+config.seed*13)%46;gc.fillStyle=`rgba(${v-18},${v+24},${v-26},.12)`;gc.fillRect((i*71)%256,(i*43)%256,1,1);}
+    const grassTex=new THREE.CanvasTexture(grassCanvas);grassTex.wrapS=grassTex.wrapT=THREE.RepeatWrapping;grassTex.repeat.set(12,12);grassTex.colorSpace=THREE.SRGBColorSpace;
+    const matGrass=new THREE.MeshStandardMaterial({map:grassTex,color:0xa8b99b,roughness:1});
     const matPlaza=new THREE.MeshStandardMaterial({color:0x99958a,roughness:.98});
     const matLane=new THREE.MeshStandardMaterial({color:0xe8e6da,roughness:.86});
     const matYellow=new THREE.MeshStandardMaterial({color:0xd9b84e,roughness:.86});
     const matLamp=new THREE.MeshStandardMaterial({color:0x31383c,roughness:.58,metalness:.42});
+    const matRoadPatch=new THREE.MeshStandardMaterial({color:0x323435,roughness:1,transparent:true,opacity:.72});
+    const matDrain=new THREE.MeshStandardMaterial({color:0x23282a,roughness:.72,metalness:.48});
+    const matAwning=new THREE.MeshStandardMaterial({color:0x3d5962,roughness:.55,metalness:.12});
     const box=(size,pos,mat,collision=false)=>{
       const mesh=new THREE.Mesh(new THREE.BoxGeometry(...size),mat);mesh.position.set(...pos);mesh.receiveShadow=true;mesh.castShadow=true;group.add(mesh);
       if(collision){const body=new CANNON.Body({mass:0,shape:new CANNON.Box(new CANNON.Vec3(...size.map(v=>v/2))),position:new CANNON.Vec3(...pos)});bodies.push(body);}
@@ -137,7 +159,27 @@ export class UrbanRuntime {
         const offset=1.15;
         for(const side of [-1,1]) box(r.axis==='x'?[r.length,.026,.12]:[.12,.026,r.length],r.axis==='x'?[0,.122,r.z+side*offset]:[r.x+side*offset,.122,0],matYellow,false);
       }
+      // Subtle resurfacing patches and storm drains remove the "perfect CG road" look.
+      const patchCount=Math.max(1,Math.floor(r.length/85));
+      for(let i=0;i<patchCount;i++){
+        const along=-r.length*.38+(i+1)*(r.length*.76/(patchCount+1));
+        const side=((i+config.seed)%2?1:-1)*Math.min(2.2,r.width*.23);
+        const p=r.axis==='x'?[along,.113,r.z+side]:[r.x+side,.113,along];
+        box(r.axis==='x'?[6.5,.018,2.1]:[2.1,.018,6.5],p,matRoadPatch,false);
+      }
+      const drainStep=34,drainCount=Math.floor(r.length/drainStep);
+      for(let i=0;i<drainCount;i++){
+        const along=-r.length/2+(i+.5)*drainStep,side=(i%2?1:-1)*(r.width/2-.5);
+        const p=r.axis==='x'?[along,.145,r.z+side]:[r.x+side,.145,along];
+        box(r.axis==='x'?[.7,.035,.24]:[.24,.035,.7],p,matDrain,false);
+      }
     }
+    // Recessed utility covers at a subset of intersections.
+    const manholeGeo=new THREE.CylinderGeometry(.48,.48,.035,18);
+    const manholeMat=new THREE.MeshStandardMaterial({color:0x272c2d,roughness:.74,metalness:.52});
+    plan.crosswalks.filter((c,i)=>c.axis==='x'&&i%6===0).forEach(c=>{
+      const mesh=new THREE.Mesh(manholeGeo,manholeMat);mesh.position.set(c.x+config.roadWidth*.18,.145,c.z-config.roadWidth*.16);mesh.receiveShadow=true;group.add(mesh);
+    });
     for(const m of plan.medians){
       const size=m.axis==='x'?[m.length,.14,m.width]:[m.width,.14,m.length];
       box(size,[m.x,.12,m.z],matGrass,false);
@@ -168,6 +210,20 @@ export class UrbanRuntime {
         box([Math.max(1.2,b.w*.24),1.1,Math.max(1.2,b.d*.24)],[b.x,baseY+b.height+1.05,b.z],roofMat,false);
         if(b.isTower)box([.08,4,.08],[b.x,baseY+b.height+3,b.z],matLamp,false);
       }
+      // Entrances, canopies and rooftop mechanical details create believable street/roof silhouettes.
+      const detailSeed=Math.abs(Math.sin(b.x*.173+b.z*.119+config.seed*.01));
+      if(detailSeed>.28){
+        const doorW=Math.min(3.2,Math.max(1.6,b.w*.22));
+        box([doorW,2.7,.12],[b.x,baseY+1.52,b.z+b.d/2+.07],lobbyMat,false);
+        box([doorW+1.1,.14,1.25],[b.x,baseY+2.95,b.z+b.d/2+.58],matAwning,false);
+      }
+      const ventCount=b.isTower?4:2;
+      for(let vi=0;vi<ventCount;vi++){
+        const angle=vi*Math.PI*2/ventCount+detailSeed;
+        const vx=b.x+Math.cos(angle)*b.w*.22,vz=b.z+Math.sin(angle)*b.d*.22;
+        const vent=new THREE.Mesh(new THREE.CylinderGeometry(.24,.32,.75,10),matLamp);
+        vent.position.set(vx,baseY+b.height+.76,vz);vent.castShadow=true;group.add(vent);
+      }
       // Inspired by the MIT Unreal Procedural-Cities HouseBuilder: lower apartment blocks
       // may receive balconies and roof service volumes to break up flat facades.
       if(!b.isTower && b.floors<10 && (b.style==='brick'||b.style==='stone')){
@@ -188,7 +244,11 @@ export class UrbanRuntime {
 
     this.clearGenerated();this.root.add(group);bodies.forEach(b=>this.world.physicsWorld.addBody(b));this.bodies=bodies;
     this.plan=plan;this.config=config;this.manifest={spawns:plan.spawns};this.applySky(config.sky);this.ready=true;
-    this.loadPhotorealArchitecture(group,plan,config).catch(error=>console.warn('Photoreal asset kit unavailable',error));
+    Promise.allSettled([
+      this.loadPhotorealArchitecture(group,plan,config),
+      this.loadPhotorealVegetation(group,treeItems,config)
+    ]).then(results=>results.forEach(r=>{if(r.status==='rejected')console.warn('Urban photoreal layer unavailable',r.reason);}));
+
   }
   async loadPhotorealArchitecture(group,plan,config){
     const loader=new GLTFLoader();
@@ -199,7 +259,7 @@ export class UrbanRuntime {
     const loaded=[];
     for(const kit of kits){
       try{
-        const url=await polyHavenGltfURL(kit.id),gltf=await loader.loadAsync(url);
+        const gltf=await loadUrbanKit(loader,kit.id);
         const root=gltf.scene;
         root.updateMatrixWorld(true);
         const bounds=new THREE.Box3().setFromObject(root),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
@@ -210,23 +270,51 @@ export class UrbanRuntime {
     const candidates=plan.buildings
       .filter(b=>!b.isTower && b.floors>=4 && b.floors<=10)
       .sort((a,b)=>Math.hypot(a.x,a.z)-Math.hypot(b.x,b.z))
-      .slice(0,Math.min(10,plan.buildings.length));
-    candidates.forEach((b,index)=>{
-      const kit=loaded[index%loaded.length],asset=kit.root.clone(true);
-      asset.name=`CC0 ${kit.id}`;
-      const sx=Math.max(.001,(b.w*.98)/Math.max(.01,kit.size.x));
-      const sy=Math.max(.001,(b.height*.94)/Math.max(.01,kit.size.y));
-      const sz=Math.max(.001,Math.min(1.5,(b.d*.35)/Math.max(.01,kit.size.z)));
-      asset.scale.set(sx,sy,sz);
+      .slice(0,Math.min(8,plan.buildings.length));
+    const placeFacade=(b,kit,side)=>{
+      const wallLength=(side==='front'||side==='back')?b.w:b.d;
+      const asset=kit.root.clone(true);asset.name=`CC0 ${kit.id} ${side}`;
+      asset.scale.set(Math.max(.001,(wallLength*.96)/Math.max(.01,kit.size.x)),Math.max(.001,(b.height*.94)/Math.max(.01,kit.size.y)),Math.max(.001,.55/Math.max(.01,kit.size.z)));
       asset.updateMatrixWorld(true);
-      const scaled=new THREE.Box3().setFromObject(asset),scaledCenter=scaled.getCenter(new THREE.Vector3());
-      const ground=urbanGroundHeight(b.x,b.z,config);
-      asset.position.set(b.x-scaledCenter.x,ground+.2-scaled.min.y,b.z+b.d*.48-scaledCenter.z);
-      asset.traverse(node=>{if(node.isMesh){node.castShadow=true;node.receiveShadow=true;}});
-      asset.userData={source:'Poly Haven CC0',assetId:kit.id,photorealArchitecture:true};
-      group.add(asset);
+      let scaled=new THREE.Box3().setFromObject(asset),center=scaled.getCenter(new THREE.Vector3());
+      asset.position.x-=center.x;asset.position.y-=scaled.min.y;asset.position.z-=center.z;
+      const wrapper=new THREE.Group();wrapper.add(asset);
+      const ground=urbanGroundHeight(b.x,b.z,config);wrapper.position.set(b.x,ground+.2,b.z);
+      if(side==='front')wrapper.position.z+=b.d/2+.04;
+      if(side==='back'){wrapper.position.z-=b.d/2+.04;wrapper.rotation.y=Math.PI;}
+      if(side==='right'){wrapper.position.x+=b.w/2+.04;wrapper.rotation.y=Math.PI/2;}
+      if(side==='left'){wrapper.position.x-=b.w/2+.04;wrapper.rotation.y=-Math.PI/2;}
+      wrapper.traverse(node=>{if(node.isMesh){node.castShadow=true;node.receiveShadow=true;}});
+      wrapper.userData={source:'Poly Haven CC0',assetId:kit.id,photorealArchitecture:true,side};
+      group.add(wrapper);
+    };
+    candidates.forEach((b,index)=>{
+      const kit=loaded[index%loaded.length];
+      placeFacade(b,kit,'front');
+      placeFacade(b,kit,index%2?'right':'left');
     });
     group.userData.photorealAssets=loaded.map(k=>k.id);
+  }
+  async loadPhotorealVegetation(group,items,config){
+    const loader=new GLTFLoader(),gltf=await loadUrbanKit(loader,'tree_small_02'),source=gltf.scene;
+    source.updateMatrixWorld(true);
+    const bounds=new THREE.Box3().setFromObject(source),size=bounds.getSize(new THREE.Vector3());
+    if(size.y<.01)throw new Error('CC0 tree asset has invalid bounds');
+    const candidates=[...items].sort((a,b)=>Math.hypot(a.x,a.z)-Math.hypot(b.x,b.z)).slice(0,Math.min(90,items.length));
+    const layer=new THREE.Group();layer.name='CC0 photoreal vegetation';
+    for(const [index,t] of candidates.entries()){
+      const asset=source.clone(true),targetHeight=(t.kind==='street'?5.4:t.kind==='median'?4.8:6.2)*(t.scale||1);
+      const scalar=targetHeight/size.y;asset.scale.setScalar(scalar);asset.updateMatrixWorld(true);
+      let box3=new THREE.Box3().setFromObject(asset),center=box3.getCenter(new THREE.Vector3());
+      asset.position.x-=center.x;asset.position.y-=box3.min.y;asset.position.z-=center.z;
+      const wrapper=new THREE.Group();wrapper.add(asset);wrapper.position.set(t.x,t.y||urbanGroundHeight(t.x,t.z,config),t.z);
+      wrapper.rotation.y=((index*2.399963229728653)+(config.seed%17)*.17)%(Math.PI*2);
+      wrapper.traverse(node=>{if(node.isMesh){node.castShadow=index<45;node.receiveShadow=true;}});
+      layer.add(wrapper);
+    }
+    group.add(layer);
+    const fallback=group.getObjectByName('Procedural vegetation fallback');if(fallback)fallback.visible=false;
+    group.userData.photorealVegetation='tree_small_02 · Poly Haven CC0';
   }
   applySky(preset){
     const settings={day:{elevation:47,azimuth:145,haze:2.2,fog:0xaec2cb,sun:0xffefd6,intensity:.72},sunset:{elevation:8,azimuth:245,haze:5,fog:0xb98d85,sun:0xffaa63,intensity:.45},haze:{elevation:30,azimuth:160,haze:14,fog:0x9ea9ad,sun:0xd0d4d5,intensity:.28}}[preset];
