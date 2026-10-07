@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { createStreetProps } from './UrbanProps.js';
+import { buildUrbanStreets } from './UrbanStreets.js';
 import { createVegetation } from './UrbanVegetation.js';
 import { photographicLighting, loadSurface, metricUV } from './UrbanLighting.js';
 import { prepareFacadeKit, buildModularBuilding, instanceArchitecture } from './UrbanArchitecture.js';
@@ -145,61 +147,7 @@ export class UrbanRuntime {
         box([s,.18,s],[x,.09,z],matSidewalk,false);
       }
     }
-    for(const r of plan.roads){
-      const size=r.axis==='x'?[r.length,.10,r.width]:[r.width,.10,r.length]; box(size,[r.x,.05,r.z],matRoad,false);
-      // RoadForge UE5 defaults: 15 cm curb height / 18 cm curb width.
-      const curbOffset=r.width/2+.09;
-      for(const side of [-1,1]){
-        const curbPos=r.axis==='x'?[r.x,.15,r.z+side*curbOffset]:[r.x+side*curbOffset,.15,r.z];
-        box(r.axis==='x'?[r.length,.15,.18]:[.18,.15,r.length],curbPos,matCurb,false);
-      }
-      const edge=r.width/2-.34;
-      const count=Math.floor(r.length/7);
-      for(const side of [-1,1]){
-        const pos=r.axis==='x'?[0,.115,r.z+side*edge]:[r.x+side*edge,.115,0];
-        box(r.axis==='x'?[r.length,.025,.14]:[.14,.025,r.length],pos,matLane,false);
-      }
-      for(let i=0;i<count;i+=2){
-        const along=-r.length/2+i*7+3.5,pos=r.axis==='x'?[along,.12,r.z]:[r.x,.12,along];
-        if(!r.boulevard)box(r.axis==='x'?[3,.025,.13]:[.13,.025,3],pos,matLane,false);
-      }
-      if(r.boulevard){
-        const offset=1.15;
-        for(const side of [-1,1]) box(r.axis==='x'?[r.length,.026,.12]:[.12,.026,r.length],r.axis==='x'?[0,.122,r.z+side*offset]:[r.x+side*offset,.122,0],matYellow,false);
-      }
-      // Subtle resurfacing patches and storm drains remove the "perfect CG road" look.
-      const patchCount=Math.max(1,Math.floor(r.length/85));
-      for(let i=0;i<patchCount;i++){
-        const along=-r.length*.38+(i+1)*(r.length*.76/(patchCount+1));
-        const side=((i+config.seed)%2?1:-1)*Math.min(2.2,r.width*.23);
-        const p=r.axis==='x'?[along,.113,r.z+side]:[r.x+side,.113,along];
-        box(r.axis==='x'?[6.5,.018,2.1]:[2.1,.018,6.5],p,matRoadPatch,false);
-      }
-      const drainStep=34,drainCount=Math.floor(r.length/drainStep);
-      for(let i=0;i<drainCount;i++){
-        const along=-r.length/2+(i+.5)*drainStep,side=(i%2?1:-1)*(r.width/2-.5);
-        const p=r.axis==='x'?[along,.145,r.z+side]:[r.x+side,.145,along];
-        box(r.axis==='x'?[.7,.035,.24]:[.24,.035,.7],p,matDrain,false);
-      }
-    }
-    // Recessed utility covers at a subset of intersections.
-    const manholeGeo=new THREE.CylinderGeometry(.48,.48,.035,18);
-    const manholeMat=new THREE.MeshStandardMaterial({color:0x272c2d,roughness:.74,metalness:.52});
-    plan.crosswalks.filter((c,i)=>c.axis==='x'&&i%6===0).forEach(c=>{
-      const mesh=new THREE.Mesh(manholeGeo,manholeMat);mesh.position.set(c.x+config.roadWidth*.18,.145,c.z-config.roadWidth*.16);mesh.receiveShadow=true;group.add(mesh);
-    });
-    for(const m of plan.medians){
-      const size=m.axis==='x'?[m.length,.14,m.width]:[m.width,.14,m.length];
-      box(size,[m.x,.12,m.z],matGrass,false);
-    }
-    for(const c of plan.crosswalks){
-      const stripes=6;
-      for(let i=0;i<stripes;i++){
-        const off=(i-(stripes-1)/2)*.72;
-        const pos=c.axis==='x'?[c.x+off,.135,c.z]:[c.x,.135,c.z+off];
-        box(c.axis==='x'?[.38,.025,config.roadWidth*.52]:[config.roadWidth*.52,.025,.38],pos,matLane,false);
-      }
-    }
+    buildUrbanStreets(plan,config,box,{road:matRoad,curb:matCurb,paint:matLane,grass:matGrass,iron:matDrain});
 
     const facadeMats={};
     for(const style of ['glass','office','brick','stone']){
@@ -246,10 +194,12 @@ export class UrbanRuntime {
       group.children.slice(visualStart).forEach(node=>{node.userData.urbanBuildingVisual=true;});
     }
     for(const l of plan.lamps){
+      const first=group.children.length;
       const y=urbanGroundHeight(l.x,l.z,config);box([.13,4.7,.13],[l.x,y+2.35,l.z],matLamp,false);
       box([1.2,.12,.12],[l.x+.52,y+4.62,l.z],matLamp,false);box([.42,.13,.28],[l.x+1.05,y+4.55,l.z],new THREE.MeshStandardMaterial({color:0xffefb5,emissive:0xffcf70,emissiveIntensity:.22}),false);
+      group.children.slice(first).forEach(node=>{node.userData.primitiveLamp=true;});
     }
-    const treeItems=plan.trees.map(t=>({...t,y:urbanGroundHeight(t.x,t.z,config)}));group.add(treeInstances(treeItems));
+    const treeItems=plan.trees.filter(t=>t.kind!=='median'||!(plan.roads.some(r=>r.axis==='x'&&Math.abs(t.z-r.z)<config.roadWidth/2+6)&&plan.roads.some(r=>r.axis==='z'&&Math.abs(t.x-r.x)<config.roadWidth/2+6))).map(t=>({...t,y:urbanGroundHeight(t.x,t.z,config)}));group.add(treeInstances(treeItems));
     group.userData.materialSource='RoadForge UE5 CC0 asphalt/concrete';
 
     this.clearGenerated();this.root.add(group);bodies.forEach(b=>this.world.physicsWorld.addBody(b));this.bodies=bodies;
@@ -259,10 +209,11 @@ export class UrbanRuntime {
       this.loadPhotorealArchitecture(group,plan,config),
       this.loadPhotorealVegetation(group,treeItems,config),
       this.loadPhotorealSurfaces(group,matRoad,matSidewalk,matGrass),
-      photographicLighting(this.world,config.sky)
-    ]).then(([architecture,vegetation,,lighting])=>{
+      photographicLighting(this.world,config.sky),
+      this.loadStreetProps(group,plan,config)
+    ]).then(([architecture,vegetation,,lighting,props])=>{
       if(group.parent!==this.root)return this.visualState;
-      this.visualState={status:'ready',architecture,vegetation,lighting,assembledBuildings:plan.buildings.length,error:null};
+      this.visualState={status:'ready',architecture,vegetation,lighting,props,assembledBuildings:plan.buildings.length,error:null};
       group.userData.photorealReady=true;
       return this.visualState;
     }).catch(error=>{
@@ -274,17 +225,24 @@ export class UrbanRuntime {
     });
 
   }
+  async loadStreetProps(group,plan,config){
+    const {layer,assets,instances}=await createStreetProps(plan,config);
+    if(group.parent!==this.root)return null;
+    group.add(layer);
+    group.children.filter(node=>node.userData.primitiveLamp).forEach(node=>node.removeFromParent());
+    return {assets,instances};
+  }
   async loadPhotorealSurfaces(group,road,pavement,grass){
     const materials=await Promise.all([loadSurface('asphalt_02',3,0xbababa),loadSurface('concrete_pavement',3,0xd6d1c6),loadSurface('leafy_grass',2,0x91a27b)]);
     if(group.parent!==this.root)return;
     group.traverse(node=>{if(node.isMesh){const index=[road,pavement,grass].indexOf(node.material);if(index>=0){node.material=materials[index];metricUV(node);}}});
   }
   async loadPhotorealArchitecture(group,plan,config){
-    const gltf=await loadUrbanKit(new GLTFLoader(),'modular_urban_apartments_facade');
+    const [gltf,factory]=await Promise.all(['modular_urban_apartments_facade','modular_factory_facade'].map(id=>loadUrbanKit(new GLTFLoader(),id)));
     if(group.parent!==this.root)return [];
-    const kit=prepareFacadeKit(gltf.scene),assembly=new THREE.Group();
+    const kit=prepareFacadeKit(gltf.scene),brick=prepareFacadeKit(factory.scene),assembly=new THREE.Group();
     for(const [index,b] of plan.buildings.entries()){
-      assembly.add(buildModularBuilding(kit,{...b,ground:urbanGroundHeight(b.x,b.z,config)},index));
+      assembly.add(buildModularBuilding(index%5===2?brick:kit,{...b,ground:urbanGroundHeight(b.x,b.z,config)},index,index%5===2));
     }
     group.add(instanceArchitecture(assembly));
     // Collision bodies stay in the physics world. Do not depth-write invisible boxes
@@ -292,7 +250,7 @@ export class UrbanRuntime {
     const placeholders=[];
     group.traverse(node=>{if(node.userData?.urbanBuildingVisual)placeholders.push(node);});
     placeholders.forEach(node=>node.removeFromParent());
-    group.userData.photorealAssets=['modular_urban_apartments_facade'];
+    group.userData.photorealAssets=['modular_urban_apartments_facade','modular_factory_facade'];
     group.userData.assembledBuildings=plan.buildings.length;
     return group.userData.photorealAssets;
   }
@@ -312,6 +270,7 @@ export class UrbanRuntime {
   groundAt(x,z){return urbanGroundHeight(x,z,this.config||DEFAULT_URBAN);}
   update(){
     this.world.urbanLighting?.update();
+    this.root.getObjectByName('CC0 photoreal vegetation')?.children.forEach(lod=>lod.update(this.world.camera));
     const player=this.world.editorPlayer,p=player?.controlledObject?.position||player?.position;if(p)this.world.actorLayer?.update(p);
     const status=document.querySelector('[data-city-status]');if(status)status.textContent=`Procedural City · ${this.plan?.buildings.length||0} edifici · ${this.plan?.trees.length||0} alberi · ${Math.round(player?.controlledObject?.collision.velocity.length()*3.6||0)} km/h`;
   }

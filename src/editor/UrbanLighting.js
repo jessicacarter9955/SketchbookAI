@@ -1,4 +1,9 @@
 import * as THREE from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { SSAOPass } from 'three/examples/jsm/postprocessing/SSAOPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
+import { GammaCorrectionShader } from 'three/examples/jsm/shaders/GammaCorrectionShader.js';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 
 export async function photographicLighting(world,preset='day') {
@@ -18,6 +23,14 @@ export async function photographicLighting(world,preset='day') {
     sun.shadow.camera.updateProjectionMatrix();sun.shadow.bias=-.00008;sun.shadow.normalBias=.025;
     const fill=new THREE.HemisphereLight(0xd1e2ee,0x655c47,.15);
     scene.add(sun,sun.target,fill);pmrem.dispose();
+    const composer=new EffectComposer(renderer);
+    const ao=new SSAOPass(scene,world.camera,innerWidth,innerHeight);
+    ao.kernelRadius=.7;ao.minDistance=.002;ao.maxDistance=.018;
+    ao.beautyRenderTarget.samples=4;
+    composer.addPass(ao);
+    const fxaa=new ShaderPass(FXAAShader);composer.addPass(fxaa);composer.addPass(new ShaderPass(GammaCorrectionShader));
+    const resize=()=>{const ratio=renderer.getPixelRatio();composer.setSize(innerWidth,innerHeight);fxaa.uniforms.resolution.value.set(1/(innerWidth*ratio),1/(innerHeight*ratio));};
+    resize();addEventListener('resize',resize);world.composer.dispose();world.composer=composer;
     world.urbanLighting={sun,hdr,environment,fill,update(){
       const p=world.camera.position;
       sun.target.position.set(Math.round(p.x/8)*8,0,Math.round(p.z/8)*8);

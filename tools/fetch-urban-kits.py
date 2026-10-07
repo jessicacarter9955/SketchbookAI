@@ -6,7 +6,7 @@ import pathlib
 import subprocess
 
 ROOT = pathlib.Path(__file__).resolve().parents[1] / 'assets' / 'urban-kits'
-ASSETS = ['modular_urban_apartments_facade', 'modular_factory_facade', 'tree_small_02']
+ASSETS = ['modular_urban_apartments_facade', 'modular_factory_facade', 'tree_small_02', 'street_lamp_01', 'painted_wooden_bench', 'metal_trash_can']
 
 def fetch(url, target, expected_md5=None):
     target.parent.mkdir(parents=True, exist_ok=True)

@@ -9,7 +9,7 @@ export function createDetails(scene, architecture) {
   if(!sharedMaterials) sharedMaterials=makeMaterials();
   const {stone,iron,zinc,timber,soil,roomMats,shades}=sharedMaterials;
   function makeMaterials(){
-  const stone=new THREE.MeshStandardMaterial({color:0xb7b1a2,roughness:.86});
+  const stone=new THREE.MeshStandardMaterial({color:0x858074,roughness:.86});
   const iron=new THREE.MeshStandardMaterial({color:0x252e2c,roughness:.52,metalness:.72});
   const zinc=new THREE.MeshStandardMaterial({color:0x777d78,roughness:.43,metalness:.75});
   const timber=new THREE.MeshStandardMaterial({color:0x675040,roughness:.84});
