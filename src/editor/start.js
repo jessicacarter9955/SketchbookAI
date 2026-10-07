@@ -17,7 +17,7 @@ function sceneControls(editor) {
     editor.root.querySelector('.editor-library').prepend(manager);
     editor.root.querySelector('.editor-brand small').textContent = current.name;
     const dialog = document.createElement('dialog'); dialog.className = 'asset-picker scene-dialog';
-    dialog.innerHTML = '<form><h2>Nuova scena</h2><label>Nome <input name="name" required maxlength="80" placeholder="Il mio quartiere"></label><label>Mappa <select name="world"><option value="liberty-city">Liberty City</option><option value="sketchbook">Sketchbook originale</option><option value="procedural-island">Isola procedurale</option></select></label><p>Gli oggetti e gli abitanti di ogni scena vengono salvati separatamente.</p><button type="submit">Crea scena</button> <button type="button" data-cancel>Annulla</button><p role="status"></p></form>';
+    dialog.innerHTML = '<form><h2>Nuova scena</h2><label>Nome <input name="name" required maxlength="80" placeholder="Il mio quartiere"></label><label>Mappa <select name="world"><option value="liberty-city">Liberty City</option><option value="sketchbook">Sketchbook originale</option><option value="procedural-island">Isola procedurale</option><option value="procedural-city">Città procedurale</option></select></label><p>Gli oggetti e gli abitanti di ogni scena vengono salvati separatamente.</p><button type="submit">Crea scena</button> <button type="button" data-cancel>Annulla</button><p role="status"></p></form>';
     document.body.append(dialog);
     let source = null;
     const openDialog = state => {
@@ -101,6 +101,10 @@ try {
         world.levelRuntime = new IslandRuntime(world);
         await world.initialize(undefined, false); loading.style.display = 'flex';
         await world.levelRuntime.initialize();
+    } else if(current.world === 'procedural-city') {
+        world.levelRuntime = new UrbanRuntime(world);
+        await world.initialize(undefined, false); loading.style.display = 'flex';
+        await world.levelRuntime.initialize();
     } else await world.initialize('build/assets/world.glb');
     const actors = new ActorLayer(world); await actors.initialize(current.playerProfile);
     if (world.levelRuntime) {
@@ -140,6 +144,14 @@ try {
             bounds:[-15,-6,-60,15,-2,-30],seed:42,density:30,height:0.5
         }]}); sceneEditor.commit();
     }
+    if (!hadSaved && current.world === 'procedural-city') {
+        const objects=[];
+        const add=(prefab,name,x,z,rotation=0)=>objects.push({id:crypto.randomUUID(),prefab,name,position:[x,(world.levelRuntime.groundAt(x,z)??0)+.04,z],rotation:[0,rotation,0],scale:[1,1,1],collider:false});
+        add('vehicle','Auto urbana',0,-8,0);
+        add('vehicle','Auto parcheggiata',12,6,Math.PI/2);
+        for(const [i,p] of [[-12,-12],[12,-12],[-12,12],[12,12]].entries()) add('pedestrian',`Pedone urbano ${i+1}`,...p);
+        sceneEditor.restore({version:1,world:current.world,objects,generator:{...sceneEditor.generator}}); sceneEditor.commit();
+    }
     if (!hadSaved && current.world === 'procedural-island') {
         const objects=[];
         const add=(prefab,name,x,z,rotation=0)=>objects.push({id:crypto.randomUUID(),prefab,name,position:[x,world.levelRuntime.groundAt(x,z,50)+.04,z],rotation:[0,rotation,0],scale:[1,1,1],collider:prefab==='lamp'});
@@ -157,6 +169,7 @@ try {
         select.dispatchEvent(new Event('change')); sceneEditor.surfaceTool.cancel();
     }
     sceneEditor.islandTool?.focus();
+    sceneEditor.urbanTool?.focus();
     if (query.get('play') === '1') sceneEditor.setActive(false);
     document.title = `${current.name} · Sketchbook`;
 } catch (error) {
