@@ -88,7 +88,10 @@ export function generateUrbanPlan(raw=DEFAULT_URBAN){
       const x=cx-inner/2+lotW/2+bx*(lotW+gap),z=cz-inner/2+lotD/2+bz*(lotD+gap);
       const styleRoll=hash(ix*19+bx,iz*23+bz,c.seed+201);
       const style=isTower?(styleRoll>.48?'glass':'office'):(styleRoll<.26?'brick':styleRoll<.58?'stone':styleRoll<.82?'office':'glass');
-      buildings.push({x,z,w,d,floors,height:floors*3,tint:styleRoll,style,isTower});
+      const massRoll=hash(ix*37+bx,iz*41+bz,c.seed+911);
+      const massing=isTower?(massRoll<.34?'stepped':massRoll<.67?'crown':'slab'):(massRoll<.22?'courtyard':massRoll<.5?'setback':massRoll<.76?'corner':'slab');
+      const rotation=(hash(ix*43+bx,iz*47+bz,c.seed+919)>.86?Math.PI/2:0);
+      buildings.push({x,z,w,d,floors,height:floors*3,tint:styleRoll,style,isTower,massing,rotation});
     }
 
     // Street trees on the four sidewalk edges. Skip some to leave entrances.
