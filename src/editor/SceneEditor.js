@@ -46,7 +46,7 @@ export class SceneEditor {
         this.root = document.createElement('div'); this.root.id = 'scene-editor';
         this.root.innerHTML = `<div class="editor-toolbar"><div class="editor-brand">SKETCHBOOK <small>WORLD EDITOR · PROTOTIPO URBANO</small></div>
             <button data-action="undo" title="Ctrl+Z">↶ Annulla</button><button data-action="redo" title="Ctrl+Y">↷ Ripeti</button><button data-action="export">Esporta scena</button><button data-action="import">Importa scena</button><button class="primary" data-action="play">▶ Prova</button></div>
-            <aside class="editor-panel editor-library"><h2>LIBRERIA</h2><button class="wide primary" data-action="search">Cerca su Sketchfab</button><button class="wide" data-action="glb">Importa GLB / ZIP</button><p>Modelli salvati nel browser. Esporta la scena per portarli con te.</p>
+            <aside class="editor-panel editor-library"><h2>LIBRERIA</h2><button class="wide primary" data-action="search">Cerca su Sketchfab</button><button class="wide" data-action="fab">Fab · asset gratuiti</button><button class="wide" data-action="glb">Importa GLB / ZIP</button><p>Modelli salvati nel browser. Esporta la scena per portarli con te.</p>
             <h2>PROTOTIPAZIONE RAPIDA</h2><div class="editor-grid">${Object.entries(labels).map(([key, label]) => `<button data-prefab="${key}">${label}</button>`).join('')}</div>
             <h2>SCENA <span data-count>0</span> / 500</h2><div class="editor-objects"></div><p>Gli oggetti aggiunti si possono spostare e scalare. ${this.worldId==='liberty-city'?'Per il terreno originale usa «Superfici della città»; gli edifici originali non sono ancora separabili.':this.worldId==='procedural-island'?'Usa il generatore per modificare terreno, ponte e cielo.':this.worldId==='procedural-city'?'Usa il generatore città per strade, isolati ed edifici.':''}</p></aside>
             <aside class="editor-panel editor-inspector"><h2>PROPRIETÀ</h2><p data-empty>Seleziona un oggetto nella mappa o nell’elenco.</p><div data-properties hidden>
@@ -69,6 +69,7 @@ export class SceneEditor {
                 undo: () => this.restore(this.history.undo()), redo: () => this.restore(this.history.redo()),
                 export: () => this.exportScene(), import: () => $('[data-file=scene]').click(), glb: () => $('[data-file=glb]').click(),
                 search: () => globalThis.picker.openModelPicker('', (url, metadata) => this.importURL(url, metadata)),
+                fab: () => globalThis.fabPicker.open('', async (file, metadata) => this.importBytes(await file.arrayBuffer(), metadata)),
                 play: () => this.setActive(!this.active), focus: () => this.focus(), place: () => { this.placing = true; this.message('Fai clic su una superficie per posizionare l’oggetto. Esc annulla.'); },
                 ground: () => { const o = this.objects.get(this.selected); if (o) { this.ground(o); this.capture(); } },
                 duplicate: () => this.duplicate(), delete: () => this.remove()
