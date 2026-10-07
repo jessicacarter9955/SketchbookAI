@@ -203,7 +203,7 @@ export class UrbanRuntime {
     for(const b of plan.buildings){
       const baseY=urbanGroundHeight(b.x,b.z,config),mat=facadeMats[b.style]||facadeMats.office;
       const building=box([b.w,b.height,b.d],[b.x,baseY+b.height/2+.18,b.z],mat,true);
-      building.userData.urbanBuilding=true;building.userData.floors=b.floors;building.userData.style=b.style;
+      building.userData.urbanBuilding=true;building.userData.floors=b.floors;building.userData.style=b.style;building.userData.planBuilding=b;
       box([b.w*1.02,.65,b.d*1.02],[b.x,baseY+.51,b.z],lobbyMat,false);
       box([b.w*.76,.38,b.d*.76],[b.x,baseY+b.height+.38,b.z],roofMat,false);
       if(b.floors>12){
@@ -270,7 +270,7 @@ export class UrbanRuntime {
     const candidates=plan.buildings
       .filter(b=>!b.isTower && b.floors>=4 && b.floors<=10)
       .sort((a,b)=>Math.hypot(a.x,a.z)-Math.hypot(b.x,b.z))
-      .slice(0,Math.min(8,plan.buildings.length));
+      .slice(0,Math.min(24,plan.buildings.length));
     const placeFacade=(b,kit,side)=>{
       const wallLength=(side==='front'||side==='back')?b.w:b.d;
       const asset=kit.root.clone(true);asset.name=`CC0 ${kit.id} ${side}`;
@@ -290,8 +290,9 @@ export class UrbanRuntime {
     };
     candidates.forEach((b,index)=>{
       const kit=loaded[index%loaded.length];
-      placeFacade(b,kit,'front');
-      placeFacade(b,kit,index%2?'right':'left');
+      placeFacade(b,kit,'front'); placeFacade(b,kit,'back'); placeFacade(b,kit,'right'); placeFacade(b,kit,'left');
+      // Keep the primitive as collision/occlusion mass only; imported PBR geometry is the visible facade.
+      group.traverse(node=>{if(node.userData?.urbanBuilding&&node.userData.planBuilding===b){node.material.colorWrite=false;node.castShadow=false;}});
     });
     group.userData.photorealAssets=loaded.map(k=>k.id);
   }
