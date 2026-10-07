@@ -123,7 +123,7 @@ export function generateUrbanPlan(raw=DEFAULT_URBAN){
     }
   }
 
-  spawns.push({id:'urban-center',name:'Centro',position:[0,1.1,c.roadWidth*.28]});
+  spawns.push({id:'urban-center',name:'Centro',position:[c.roadWidth*.28,1.1,-c.blockSize*.22]});
   spawns.push({id:'urban-west',name:'Ingresso ovest',position:[x0+c.blockSize*.5,1.1,0]});
   spawns.push({id:'urban-east',name:'Ingresso est',position:[-x0-c.blockSize*.5,1.1,0]});
   return {config:c,bounds:{minX:x0-c.roadWidth/2,maxX:-x0+c.roadWidth/2,minZ:z0-c.roadWidth/2,maxZ:-z0+c.roadWidth/2},roads,buildings,lamps,trees,parks,crosswalks,medians,spawns};
