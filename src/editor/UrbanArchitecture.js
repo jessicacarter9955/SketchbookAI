@@ -29,6 +29,7 @@ export function buildModularBuilding(kit, building, seed = 0, industrial = false
   group.name = `PBR building ${seed}`;
   group.position.set(x, (building.ground || 0) + .18, z);
   group.scale.set(w / width, 1, d / depth);
+  group.rotation.y = building.rotation || 0;
   group.userData.photorealArchitecture = true;
   const details = createDetails(group, group);
   const addModule = (name, parent, px, py) => {
@@ -39,22 +40,60 @@ export function buildModularBuilding(kit, building, seed = 0, industrial = false
     module.traverse(node => { if (node.isMesh) { node.castShadow = !/glass/.test(node.material.name); node.receiveShadow = true; } });
     parent.add(module);
   };
-  const sides = [[width/2,depth/2,0,baysX],[-width/2,-depth/2,Math.PI,baysX],[width/2,-depth/2,Math.PI/2,baysZ],[-width/2,depth/2,-Math.PI/2,baysZ]];
-  for (const [sx,sz,angle,bays] of sides) {
-    const face = new THREE.Group(); face.position.set(sx,0,sz); face.rotation.y = angle; group.add(face);
-    for (let floor=0;floor<floors;floor++) for (let bay=0;bay<bays;bay++) {
-      const door = floor===0 && bay===Math.floor(bays/2);
-      addModule(door?'wall_door_centered_large_01':'wall_window_centered_large_01',face,-bay*3,floor*3);
-      addModule(door?'door_centered_large_01':'window_centered_large_01',face,-bay*3,floor*3);
-      details.facade(face,bay,floor,floors,seed,door,industrial);
-      if (floor===floors-1) addModule(industrial?'cornice02_standard_standard_01':'cornice_standard_standard_01',face,-bay*3,(floor+1)*3);
+  // Unreal Procedural-Cities-inspired tiered massing. Each setback is made
+  // from the imported 3m facade modules; no placeholder box covers windows.
+  // The section transforms survive instanceArchitecture's world-matrix bake.
+  const massing = building.massing || 'slab';
+  let boundaries = [0, floors], scales = [1];
+  if (massing === 'stepped' && floors >= 9) {
+    boundaries = [0, Math.max(3, Math.floor(floors * .6)), Math.max(5, Math.floor(floors * .84)), floors];
+    scales = [1, .82, .64];
+  } else if ((massing === 'setback' || massing === 'courtyard') && floors >= 5) {
+    boundaries = [0, floors - Math.max(2, Math.floor(floors * .27)), floors];
+    scales = [1, massing === 'courtyard' ? .7 : .8];
+  } else if (massing === 'crown' && floors >= 7) {
+    boundaries = [0, floors - 2, floors];
+    scales = [1, .9];
+  }
+  const roofMat = roofMaterial;
+  for (let tier = 0; tier < scales.length; tier++) {
+    const start = boundaries[tier], end = boundaries[tier + 1];
+    const tierFloors = end - start;
+    const section = new THREE.Group();
+    section.name = `Imported facade tier ${tier}`;
+    section.position.y = start * 3;
+    section.scale.set(scales[tier], 1, scales[tier]);
+    group.add(section);
+    const sides = [[width/2,depth/2,0,baysX],[-width/2,-depth/2,Math.PI,baysX],[width/2,-depth/2,Math.PI/2,baysZ],[-width/2,depth/2,-Math.PI/2,baysZ]];
+    for (const [sx,sz,angle,bays] of sides) {
+      const face = new THREE.Group();
+      face.position.set(sx,0,sz); face.rotation.y = angle; section.add(face);
+      for (let floor = 0; floor < tierFloors; floor++) for (let bay = 0; bay < bays; bay++) {
+        const door = start === 0 && floor === 0 && bay === Math.floor(bays / 2);
+        addModule(door?'wall_door_centered_large_01':'wall_window_centered_large_01',face,-bay*3,floor*3);
+        addModule(door?'door_centered_large_01':'window_centered_large_01',face,-bay*3,floor*3);
+        details.facade(face,bay,floor,tierFloors,seed,door,industrial);
+        if (floor === tierFloors - 1)
+          addModule(industrial?'cornice02_standard_standard_01':'cornice_standard_standard_01',face,-bay*3,(floor+1)*3);
+      }
+    }
+    details.box(section,width-.15,.15,depth-.15,0,tierFloors*3-.1,0,roofMat);
+    if (tier > 0) {
+      // The exposed ledge is a real roof terrace at the previous tier's height.
+      details.box(group,width*scales[tier-1],.14,depth*scales[tier-1],0,start*3-.13,0,roofMat);
     }
   }
-  // A recessed roof and a solid base close the shell without covering the openings.
-  const roofMat = roofMaterial;
-  details.box(group,width-.15,.15,depth-.15,0,floors*3-.1,0,roofMat);
   details.box(group,width,.2,depth,0,-.1,0);
-  details.buildingTrim(group,width,depth,floors*3,seed);
+  // Keep roof details on the final (smallest) section.
+  const top = new THREE.Group();
+  top.position.y = (boundaries[boundaries.length-2] || 0) * 3;
+  top.scale.set(scales[scales.length-1],1,scales[scales.length-1]);
+  group.add(top);
+  details.buildingTrim(top,width,depth,(floors-boundaries[boundaries.length-2])*3,seed);
+  if (massing === 'crown') {
+    const cap = new THREE.Group(); cap.position.y = floors*3; cap.scale.set(.7,1,.7); group.add(cap);
+    details.box(cap,width,.65,depth,0,.33,0,roofMat);
+  }
   return group;
 }
 

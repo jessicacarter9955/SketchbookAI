@@ -29,3 +29,13 @@ test('low-rise districts respect the requested floor limit even downtown',()=>{
     assert.ok(plan.buildings.every(b=>b.height===b.floors*3));
   }
 });
+
+test('building massing is deterministic, typed and bounded',()=>{
+  const allowed=new Set(['stepped','crown','slab','courtyard','setback','corner']);
+  const plan=generateUrbanPlan({...DEFAULT_URBAN,blocksX:10,blocksZ:10,seed:42});
+  assert.ok(plan.buildings.length>30);
+  assert.ok(plan.buildings.every(b=>allowed.has(b.massing)));
+  assert.ok(plan.buildings.every(b=>b.rotation===0||b.rotation===Math.PI/2));
+  assert.ok(new Set(plan.buildings.map(b=>b.massing)).size>=4);
+  assert.deepEqual(plan.buildings,generateUrbanPlan({...DEFAULT_URBAN,blocksX:10,blocksZ:10,seed:42}).buildings);
+});
