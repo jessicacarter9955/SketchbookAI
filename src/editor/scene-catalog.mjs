@@ -9,7 +9,7 @@ export const BUILTIN_SCENES = [
     { id: 'staunton-lab', name: 'Staunton · laboratorio', world: 'liberty-city', spawn: 'spawn_staunton_island' },
     { id: 'island-bridge', name: 'Isola · ponte e costa', world: 'procedural-island', spawn:'island-west' },
     { id: 'island-sunset', name: 'Isola · tramonto', world: 'procedural-island', spawn:'island-west' },
-    { id: 'urban-procedural', name: 'Procedural City · drive test', world: 'procedural-city', spawn:'urban-center' }
+    { id: 'urban-procedural', name: 'Procedural City · drive test', world: 'procedural-city', spawn:'urban-center', playerProfile:'mannequin' }
 ];
 export function loadCatalog(storage) {
     let custom = [];
@@ -20,7 +20,7 @@ export function loadCatalog(storage) {
         if (!s || typeof s.id !== 'string' || !/^[a-zA-Z0-9-]+$/.test(s.id) || ids.has(s.id) || !WORLD_IDS.includes(s.world)) return false;
         ids.add(s.id); return true;
     }).map(s => ({ id: s.id, name: String(s.name).slice(0, 80), world: s.world,
-        ...(s.playerProfile === 'dds' ? {playerProfile:'dds'} : {}),
+        ...(['dds','mannequin'].includes(s.playerProfile) ? {playerProfile:s.playerProfile} : {}),
         ...(typeof s.parentId === 'string' ? {parentId:s.parentId} : {}), ...(typeof s.spawn === 'string' ? {spawn:s.spawn.slice(0,80)} : {}) }))];
 }
 export function createScene(storage, name, world, id, options = {}) {
@@ -28,7 +28,7 @@ export function createScene(storage, name, world, id, options = {}) {
     const list = loadCatalog(storage);
     if (list.some(s => s.id === id)) throw new Error('ID scena già presente.');
     const scene = { id, name: name.trim().slice(0, 80), world,
-        ...(options.playerProfile === 'dds' ? {playerProfile:'dds'} : {}),
+        ...(['dds','mannequin'].includes(options.playerProfile) ? {playerProfile:options.playerProfile} : {}),
         ...(options.parentId ? {parentId:options.parentId} : {}), ...(options.spawn ? {spawn:options.spawn} : {}) };
     storage.setItem(CATALOG_KEY, JSON.stringify([...list.filter(s => !BUILTIN_SCENES.some(b => b.id === s.id)), scene]));
     return scene;
