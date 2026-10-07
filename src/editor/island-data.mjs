@@ -1,4 +1,4 @@
-export const WORLD_IDS = ['sketchbook', 'liberty-city', 'procedural-island'];
+export const WORLD_IDS = ['sketchbook', 'liberty-city', 'procedural-island', 'procedural-city'];
 export const DEFAULT_ISLAND = {seed:42,radius:70,gap:65,sky:'day'};
 export function validateIsland(value=DEFAULT_ISLAND) {
     if(!value || !Number.isInteger(value.seed) || value.seed<0 || value.seed>2147483647 ||
