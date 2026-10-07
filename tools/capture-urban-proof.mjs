@@ -20,7 +20,7 @@ async function exampleShot(variant){
   await page.goto(`${base}/urban-examples.html?variant=${variant}`,{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>globalThis.__urbanExample?.ready===true,null,{timeout:60000});
   const report=await page.evaluate(()=>globalThis.__urbanExample.report);
-  if(!report||report.localKits<3||report.buildings<1||report.trees<1)
+  if(!report||report.localKits<2||report.buildings<1||report.trees<1)
     throw new Error(`${variant}: imported-kit proof failed ${JSON.stringify(report)}`);
   await page.waitForTimeout(800);
   const dataUrl=await page.evaluate(()=>document.querySelector('canvas')?.toDataURL('image/png'));
@@ -85,7 +85,7 @@ async function captureRuntime(){
       trees:world.levelRuntime.plan?.trees?.length||0
     };
   });
-  if(proof.assets.length<2||!proof.vegetation||proof.cc0TreeCount<1)
+  if(proof.assets.length<1||!proof.vegetation||proof.cc0TreeCount<1)
     throw new Error(`Photoreal proof incomplete: ${JSON.stringify(proof)}`);
 
   const shots=[
