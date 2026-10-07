@@ -39,7 +39,7 @@ jobs:
       - name: Capture procedural city
         run: |
           mkdir -p artifacts
-          npx --yes playwright@1.55.0 screenshot --browser chromium --viewport-size "1440,900" --wait-for-timeout 6000             "http://127.0.0.1:8401/editor.html?scene=urban-procedural" artifacts/urban-editor.png
+          npx --yes playwright@1.55.0 screenshot --browser chromium --viewport-size "1440,900" --wait-for-timeout 15000             "http://127.0.0.1:8401/editor.html?scene=urban-procedural" artifacts/urban-editor.png
       - name: Save editor log
         if: always()
         run: cp /tmp/sketchbook-editor.log artifacts/editor-server.log || true
