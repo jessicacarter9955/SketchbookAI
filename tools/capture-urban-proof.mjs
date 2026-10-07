@@ -57,7 +57,7 @@ async function captureRuntime(){
     await page.waitForFunction(()=>{
       const state=globalThis.world?.levelRuntime?.visualState;
       return state?.status==='ready'||state?.status==='error';
-    },null,{timeout:60000});
+    },null,{polling:500,timeout:60000});
   }catch(error){
     const debug=await collectDebug();
     await fs.writeFile(`${out}/urban-runtime-FAILED.json`,JSON.stringify({debug,consoleErrors,error:String(error)},null,2));
