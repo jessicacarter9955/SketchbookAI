@@ -26,8 +26,10 @@ jobs:
         run: npm test
       - name: Production build
         run: npm run build
-      - name: Install Chromium
-        run: npx --yes playwright@1.55.0 install --with-deps chromium
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
       - name: Start editor
         run: |
           npx webpack serve --config webpack.dev.js --host 127.0.0.1 --port 8401 > /tmp/sketchbook-editor.log 2>&1 &
@@ -38,19 +40,8 @@ jobs:
           done
           cat /tmp/sketchbook-editor.log
           exit 1
-      - name: Capture photoreal city milestones
-        run: |
-          mkdir -p artifacts
-          npx --yes playwright@1.55.0 screenshot --browser chromium --viewport-size "1440,900" --wait-for-timeout 15000 \
-            "http://127.0.0.1:8401/editor.html?scene=urban-photoreal" artifacts/urban-overview.png
-          npx --yes playwright@1.55.0 screenshot --browser chromium --viewport-size "1440,900" --wait-for-timeout 15000 \
-            "http://127.0.0.1:8401/editor.html?scene=urban-photoreal&play=1" artifacts/urban-street.png
-      - name: Capture three independent asset experiments
-        run: |
-          for variant in residential industrial courtyard; do
-            npx --yes playwright@1.55.0 screenshot --browser chromium --viewport-size "1440,900" --wait-for-timeout 20000 \
-              "http://127.0.0.1:8401/urban-examples.html?variant=$variant" "artifacts/urban-$variant.png"
-          done
+      - name: Capture verified photoreal environment
+        run: node tools/capture-urban-proof.mjs
       - name: Save editor log
         if: always()
         run: cp /tmp/sketchbook-editor.log artifacts/editor-server.log || true
