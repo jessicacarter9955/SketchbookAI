@@ -19,7 +19,7 @@ export class SceneEditor {
     constructor(world, { storageKey = SCENE_KEY, worldId = 'sketchbook' } = {}) {
         this.storageKey = storageKey;
         this.worldId = worldId;
-        this.world = world; this.active = false; this.busy = false; this.items = []; this.objects = new Map(); this.templates = new Map(); this.assets = new Map();
+        this.world = world; this.active = false; this.busy = false; this.items = []; this.objects = new Map(); this.templates = new Map(); this.assets = new Map(); this.logs = [];
         this.mapEdits = [];
         this.generator = worldId === 'procedural-island' ? copy(world.levelRuntime.config || DEFAULT_ISLAND) : worldId === 'procedural-city' ? copy(world.levelRuntime.config || DEFAULT_URBAN) : undefined;
         this.store = new AssetStore(); this.loader = new GLTFLoader(); this.history = new History(this.scene());
@@ -36,7 +36,23 @@ export class SceneEditor {
         world.renderer.domElement.tabIndex = 0;
     }
     scene() { return { version: 1, world: this.worldId, objects: copy(this.items), ...(this.mapEdits.length ? {mapEdits:copy(this.mapEdits)} : {}), ...(this.generator ? {generator:copy(this.generator)} : {}) }; }
-    message(text) { this.root.querySelector('[data-status]').textContent = text; }
+    log(level, text) {
+        const line = `[${new Date().toLocaleTimeString()}] ${String(level).toUpperCase()} · ${String(text)}`;
+        this.logs.push(line); if (this.logs.length > 200) this.logs.splice(0, this.logs.length - 200);
+        const output = this.root?.querySelector('[data-log-output]'); if (output) { output.textContent = this.logs.join('\n'); output.scrollTop = output.scrollHeight; }
+    }
+    message(text) { this.root.querySelector('[data-status]').textContent = text; this.log('info', text); }
+    diagnostics() {
+        const info=this.world.renderer.info, render=info.render || {}, memory=info.memory || {};
+        const bodyCount=this.world.physicsWorld?.bodies?.length ?? 0, vehicleCount=this.world.vehicles?.length ?? 0;
+        this.log('diag', `objects=${this.items.length} bodies=${bodyCount} vehicles=${vehicleCount} drawCalls=${render.calls||0} triangles=${render.triangles||0} geometries=${memory.geometries||0} textures=${memory.textures||0}`);
+    }
+    downloadLog() {
+        this.diagnostics();
+        const blob=new Blob([this.logs.join('\n')],{type:'text/plain'}), url=URL.createObjectURL(blob), a=document.createElement('a');
+        a.href=url; a.download='sketchbook-diagnostics.txt'; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000);
+        this.message('Log diagnostico esportato.');
+    }
     async run(action) {
         if (this.busy) return; this.busy = true;
         try { await action(); } catch (error) { this.message(error.message || 'Operazione non riuscita.'); console.error(error); }
@@ -48,6 +64,7 @@ export class SceneEditor {
             <button data-action="undo" title="Ctrl+Z">↶ Annulla</button><button data-action="redo" title="Ctrl+Y">↷ Ripeti</button><button data-action="export">Esporta scena</button><button data-action="import">Importa scena</button><button class="primary" data-action="play">▶ Prova</button></div>
             <aside class="editor-panel editor-library"><h2>LIBRERIA</h2><button class="wide primary" data-action="search">Cerca su Sketchfab</button><button class="wide" data-action="fab">Fab · asset gratuiti</button><button class="wide" data-action="glb">Importa GLB / ZIP</button><p>Modelli salvati nel browser. Esporta la scena per portarli con te.</p>
             <h2>PROTOTIPAZIONE RAPIDA</h2><div class="editor-grid">${Object.entries(labels).map(([key, label]) => `<button data-prefab="${key}">${label}</button>`).join('')}</div>
+            <details class="editor-diagnostics"><summary>LOG / DIAGNOSTICA</summary><div class="editor-grid"><button data-action="diag-refresh">Metriche</button><button data-action="diag-download">Esporta log</button></div><button class="wide" data-action="diag-clear">Pulisci log</button><pre data-log-output aria-live="polite"></pre></details>
             <h2>SCENA <span data-count>0</span> / 500</h2><div class="editor-objects"></div><p>Gli oggetti aggiunti si possono spostare e scalare. ${this.worldId==='liberty-city'?'Per il terreno originale usa «Superfici della città»; gli edifici originali non sono ancora separabili.':this.worldId==='procedural-island'?'Usa il generatore per modificare terreno, ponte e cielo.':this.worldId==='procedural-city'?'Usa il generatore città per strade, isolati ed edifici.':''}</p></aside>
             <aside class="editor-panel editor-inspector"><h2>PROPRIETÀ</h2><p data-empty>Seleziona un oggetto nella mappa o nell’elenco.</p><div data-properties hidden>
             <label>Nome<input name="object-name" maxlength="120"></label><div class="editor-grid"><button data-mode="translate">Sposta · W</button><button data-mode="rotate">Ruota · E</button><button data-mode="scale">Scala · R</button><button data-action="focus">Inquadra · F</button></div>
@@ -56,7 +73,10 @@ export class SceneEditor {
             <h2>GRIGLIA</h2><label>Scatto spostamento<select name="snap"><option value="0">Libero</option><option value="0.5">0,5 metri</option><option value="1" selected>1 metro</option><option value="5">5 metri</option></select></label><p>Rotazione: 15° con scatto attivo.<br>Usa «Auto guidabile» e «Abitante» per oggetti animati in modalità Prova. I modelli Sketchfab restano scenografia.</p></aside>
             <div class="editor-help">Trascina: orbita · Tasto destro: panoramica · Rotella: zoom · Clic: seleziona</div><div class="editor-footer" role="status" aria-live="polite" data-status>Editor pronto. Aggiungi un oggetto dalla libreria.</div>
             <input type="file" data-file="glb" accept=".glb,.zip" hidden><input type="file" data-file="scene" accept=".json" hidden>`;
-        document.body.appendChild(this.root); this.snap = 1; this.gizmo.setTranslationSnap(1); this.gizmo.setRotationSnap(Math.PI / 12);
+        document.body.appendChild(this.root); this.log('info','Editor inizializzato.');
+        window.addEventListener('error', e => this.log('error', e.message || 'Errore JavaScript'));
+        window.addEventListener('unhandledrejection', e => this.log('error', e.reason?.message || e.reason || 'Promise rifiutata'));
+        this.snap = 1; this.gizmo.setTranslationSnap(1); this.gizmo.setRotationSnap(Math.PI / 12);
     }
     bind() {
         const $ = selector => this.root.querySelector(selector);
@@ -72,7 +92,8 @@ export class SceneEditor {
                 fab: () => globalThis.fabPicker.open('', async (file, metadata) => this.importBytes(await file.arrayBuffer(), metadata)),
                 play: () => this.setActive(!this.active), focus: () => this.focus(), place: () => { this.placing = true; this.message('Fai clic su una superficie per posizionare l’oggetto. Esc annulla.'); },
                 ground: () => { const o = this.objects.get(this.selected); if (o) { this.ground(o); this.capture(); } },
-                duplicate: () => this.duplicate(), delete: () => this.remove()
+                duplicate: () => this.duplicate(), delete: () => this.remove(),
+                'diag-refresh': () => this.diagnostics(), 'diag-download': () => this.downloadLog(), 'diag-clear': () => { this.logs=[]; const o=this.root.querySelector('[data-log-output]'); if(o)o.textContent=''; }
             };
             if (actions[button.dataset.action]) this.run(actions[button.dataset.action]);
         });
