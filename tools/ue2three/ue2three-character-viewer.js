@@ -59,7 +59,33 @@ function startClip(name) {
   action.reset().setLoop(THREE.LoopRepeat, Infinity).fadeIn(0.18).play();
   activeAction?.fadeOut(0.18);
   activeAction = action;
+  mixer.update(0.18);
+  fitCharacter();
   status.textContent = `Asset sorgente in riproduzione: ${name}.`;
+}
+
+function fitCharacter() {
+  if (!character?.scene) return;
+  character.scene.updateMatrixWorld(true);
+  const bounds = new THREE.Box3().setFromObject(character.scene);
+  if (bounds.isEmpty()) return;
+  const center = bounds.getCenter(new THREE.Vector3());
+  const size = bounds.getSize(new THREE.Vector3());
+  const vertical = THREE.MathUtils.degToRad(camera.fov);
+  const horizontal = 2 * Math.atan(Math.tan(vertical / 2) * camera.aspect);
+  const distance = Math.max(
+    size.y / (2 * Math.tan(vertical / 2)),
+    size.x / (2 * Math.tan(horizontal / 2)),
+    size.z / (2 * Math.tan(horizontal / 2)),
+    1
+  ) * 1.55;
+  const direction = new THREE.Vector3(0.45, 0.2, 1).normalize();
+  controls.target.copy(center);
+  camera.position.copy(center).addScaledVector(direction, distance);
+  camera.near = Math.max(0.01, distance / 1000);
+  camera.far = Math.max(100, distance * 20);
+  camera.updateProjectionMatrix();
+  controls.update();
 }
 
 async function equipWeapon(name) {
@@ -97,6 +123,7 @@ async function equipWeapon(name) {
   weapon.rotation.set(...(transform.rotation || [0, 0, 0]), 'XYZ');
   weapon.scale.fromArray(transform.scale || [1, 1, 1]);
   weaponRoot.add(weapon);
+  fitCharacter();
   referenceMixer.stopAllAction();
   referenceMixer.uncacheRoot(reference);
 }
@@ -110,15 +137,7 @@ async function openCharacter() {
   character = model;
   scene.add(model.scene);
   model.scene.updateMatrixWorld(true);
-  const bounds = new THREE.Box3().setFromObject(model.scene);
-  const center = bounds.getCenter(new THREE.Vector3());
-  const size = bounds.getSize(new THREE.Vector3());
-  controls.target.copy(center);
-  camera.position.copy(center).add(new THREE.Vector3(size.y * 1.1, size.y * 0.55, size.y * 1.45));
-  camera.near = 0.01;
-  camera.far = Math.max(100, size.y * 20);
-  camera.updateProjectionMatrix();
-  controls.update();
+  fitCharacter();
 
   const names = Object.keys(manifest.clips || {}).sort();
   for (const name of names) {
@@ -172,4 +191,5 @@ addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
+  fitCharacter();
 });

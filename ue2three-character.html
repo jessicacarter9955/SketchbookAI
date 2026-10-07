@@ -7,11 +7,12 @@
   <style>
     :root{color-scheme:dark;font:15px system-ui,sans-serif;background:#101923;color:#ecf3f9}
     *{box-sizing:border-box}body{margin:0;overflow:hidden}#view{position:fixed;inset:0}
-    header{position:fixed;z-index:2;left:18px;top:16px;width:min(540px,calc(100vw - 36px));padding:14px 16px;border:1px solid #364b5e;border-radius:10px;background:#101923eF;backdrop-filter:blur(8px)}
+    header{position:fixed;z-index:2;left:18px;top:16px;width:min(390px,calc(100vw - 36px));padding:14px 16px;border:1px solid #364b5e;border-radius:10px;background:#101923eF;backdrop-filter:blur(8px)}
     h1{font-size:17px;margin:0 0 5px}p{font-size:13px;line-height:1.4;color:#bacbd8;margin:0 0 12px}
     .controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}label{font-size:12px;color:#c5d4df}select,button{font:inherit;color:#ecf3f9;background:#1b2b39;border:1px solid #496176;border-radius:6px;padding:7px 9px}select{max-width:190px}button{cursor:pointer}button[aria-pressed="true"]{background:#12556a;border-color:#55cae9}
     #status{position:fixed;z-index:2;left:18px;bottom:16px;padding:10px 13px;border-radius:8px;background:#101923eF;color:#c5d4df;max-width:min(88vw,850px);line-height:1.45}#status.error{color:#ffb5a8}
     #source{display:block;font-size:11px;color:#9aafbf;margin-top:5px}
+    @media(max-width:850px){header{left:auto;right:18px;width:min(330px,calc(100vw - 36px));padding:12px}h1{font-size:15px}.controls{gap:6px}select,button{padding:6px 7px}}
   </style>
   <script type="importmap">
     {"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}
