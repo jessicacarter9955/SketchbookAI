@@ -145,6 +145,10 @@ try {
         }]}); sceneEditor.commit();
     }
     if (!hadSaved && current.world === 'procedural-city') {
+        if(current.id==='urban-photoreal'||current.id==='urban-photoreal-sunset') {
+            const preset={...sceneEditor.generator,seed:1847,blocksX:6,blocksZ:6,blockSize:48,roadWidth:14,sidewalkWidth:3,minFloors:4,maxFloors:26,buildingDensity:.9,terrain:'flat',sky:current.id==='urban-photoreal-sunset'?'sunset':'day'};
+            sceneEditor.restore({version:1,world:current.world,objects:[],generator:preset});
+        }
         const objects=[];
         const add=(prefab,name,x,z,rotation=0)=>objects.push({id:crypto.randomUUID(),prefab,name,position:[x,(world.levelRuntime.groundAt(x,z)??0)+.04,z],rotation:[0,rotation,0],scale:[1,1,1],collider:false});
         add('vehicle','Auto urbana',sceneEditor.generator.roadWidth*.28,-sceneEditor.generator.blockSize*.22,0);
