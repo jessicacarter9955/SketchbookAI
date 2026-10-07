@@ -27,7 +27,18 @@ roadMat.map=texture('assets/roadforge/T_RF_Asphalt_BC.png',[30,4]);roadMat.map.c
 paveMat.map=texture('assets/roadforge/T_RF_Concrete_BC.png',[24,8]);paveMat.map.colorSpace=THREE.SRGBColorSpace;paveMat.roughnessMap=texture('assets/roadforge/T_RF_Concrete_R.png',[24,8]);paveMat.color.set(0xb7b3a5);
 function lamp(x,z){box(.12,5,.12,x,2.6,z,darkMat);box(1.1,.12,.16,x+.5,5.05,z,darkMat);box(.6,.1,.32,x+.8,5,z,paintMat);}
 for(let x=-42;x<=42;x+=14)lamp(x,4.6);
-function storefront(x,z,w=5.2){box(w,2.75,.16,x,1.58,z,glassMat);box(w+.45,.22,1.15,x,3.02,z+.48,awningMat);box(.12,2.75,.24,x-w/2,1.58,z-.02,darkMat);box(.12,2.75,.24,x+w/2,1.58,z-.02,darkMat);}
+// Dark shop interiors behind physically translucent glazing; the previous
+// opaque glass slab appeared as a featureless white billboard in CI captures.
+const shopInteriorMat=new THREE.MeshStandardMaterial({color:0x283234,roughness:.87});
+const shopGlassMat=new THREE.MeshPhysicalMaterial({color:0x879b9d,roughness:.12,metalness:.05,transparent:true,opacity:.48,depthWrite:false,clearcoat:.55});
+function storefront(x,z,w=5.2){
+ box(w,2.72,.08,x,1.58,z-.27,shopInteriorMat);
+ box(w,2.7,.035,x,1.58,z+.07,shopGlassMat);
+ box(w+.45,.22,1.15,x,3.02,z+.48,awningMat);
+ for(const dx of [-w/2,0,w/2])box(.09,2.75,.17,x+dx,1.58,z+.12,darkMat);
+ box(w,.11,.15,x,2.91,z+.12,darkMat);
+ box(w,.1,.15,x,.26,z+.12,darkMat);
+}
 for(const x of [-38,-25,-12,1,14,27,40])storefront(x,-.1,5.4);
 for(let x=-45;x<=45;x+=5.5){box(.16,.82,.16,x,.49,3.25,darkMat);box(.34,.08,.34,x,.92,3.25,darkMat);}
 for(const x of [-31,-3,25]){box(2.8,.16,.72,x,.55,3.05,paveMat);for(const dx of [-1.05,1.05])box(.09,.55,.52,x+dx,.28,3.05,darkMat);}
