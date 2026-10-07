@@ -147,7 +147,7 @@ try {
     if (!hadSaved && current.world === 'procedural-city') {
         const objects=[];
         const add=(prefab,name,x,z,rotation=0)=>objects.push({id:crypto.randomUUID(),prefab,name,position:[x,(world.levelRuntime.groundAt(x,z)??0)+.04,z],rotation:[0,rotation,0],scale:[1,1,1],collider:false});
-        add('vehicle','Auto urbana',0,-8,0);
+        add('vehicle','Auto urbana',sceneEditor.generator.roadWidth*.28,-sceneEditor.generator.blockSize*.22,0);
         add('vehicle','Auto parcheggiata',12,6,Math.PI/2);
         for(const [i,p] of [[-12,-12],[12,-12],[-12,12],[12,12]].entries()) add('pedestrian',`Pedone urbano ${i+1}`,...p);
         sceneEditor.restore({version:1,world:current.world,objects,generator:{...sceneEditor.generator}}); sceneEditor.commit();
