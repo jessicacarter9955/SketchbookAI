@@ -12,7 +12,23 @@ export class ActorLayer {
     async initialize(profile) {
         [this.person, this.car] = await Promise.all(['boxman', 'car'].map(name => new GLTFLoader().loadAsync(`build/assets/${name}.glb`)));
         this.person.scene.animations = this.person.animations;
-        this.playerModel = profile === 'dds' ? await loadDdsPlayer() : this.person;
+        if(profile === 'dds') this.playerModel = await loadDdsPlayer();
+        else if(profile === 'mannequin') {
+            const scene = clone(this.person.scene);
+            scene.animations = this.person.animations;
+            scene.traverse(object => {
+                if (!object.isMesh) return;
+                const source = Array.isArray(object.material) ? object.material : [object.material];
+                const materials = source.map(material => {
+                    const next = material?.clone?.() || new THREE.MeshStandardMaterial();
+                    next.color?.set(0xbfc6c9); next.roughness = 0.48; next.metalness = 0.12;
+                    return next;
+                });
+                object.material = Array.isArray(object.material) ? materials : materials[0];
+                object.castShadow = true; object.receiveShadow = true;
+            });
+            this.playerModel = { ...this.person, scene };
+        } else this.playerModel = this.person;
         this.playerProfile = profile;
         this.world.actorLayer = this;
     }
