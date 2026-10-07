@@ -8,22 +8,23 @@ const variants={residential:['01 · Strada residenziale','Kit appartamenti: muri
 const [title,description]=variants[variant]||variants.residential;
 document.querySelector('#title').textContent=title;document.querySelector('#description').textContent=description;
 const scene=new THREE.Scene();scene.background=new THREE.Color('#b6cfdf');scene.fog=new THREE.Fog('#b6cfdf',100,230);
-const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(1);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;document.body.appendChild(renderer.domElement);
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(1);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.82;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;document.body.appendChild(renderer.domElement);
 const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,350);camera.position.set(variant==='courtyard'?23:19,variant==='courtyard'?12:7,variant==='courtyard'?36:43);
 const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,5,-9);controls.update();
-scene.add(new THREE.HemisphereLight(0xd4edff,0x766653,.95));const sun=new THREE.DirectionalLight(0xffe6c6,2.4);sun.position.set(-25,45,28);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-65;sun.shadow.camera.right=65;sun.shadow.camera.top=65;sun.shadow.camera.bottom=-65;sun.shadow.camera.far=140;sun.shadow.bias=-.0003;sun.shadow.normalBias=.025;scene.add(sun);
+scene.add(new THREE.HemisphereLight(0xd4edff,0x766653,.4));const sun=new THREE.DirectionalLight(0xffe6c6,1.8);sun.position.set(-35,26,28);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-65;sun.shadow.camera.right=65;sun.shadow.camera.top=65;sun.shadow.camera.bottom=-65;sun.shadow.camera.far=140;sun.shadow.bias=-.0003;sun.shadow.normalBias=.025;scene.add(sun);
 const sky=new Sky();sky.scale.setScalar(300);sky.material.uniforms.sunPosition.value.copy(sun.position).normalize();sky.material.uniforms.turbidity.value=3;sky.material.uniforms.rayleigh.value=1.4;scene.add(sky);
 const pmrem=new THREE.PMREMGenerator(renderer);scene.environment=pmrem.fromScene(sky,.04).texture;
 const loader=new GLTFLoader();
-// Legacy Sketchfab trees use the removed spec/gloss extension. Restore diffuse
-// textures explicitly instead of silently rendering their leaf cards white.
-loader.register(parser=>({name:'KHR_materials_pbrSpecularGlossiness',getMaterialType(){return THREE.MeshStandardMaterial;},extendMaterialParams(index,params){const ext=parser.json.materials[index].extensions?.KHR_materials_pbrSpecularGlossiness;if(!ext)return Promise.resolve();params.metalness=0;params.roughness=.9;const color=ext.diffuseFactor||[1,1,1,1];params.color=new THREE.Color().setRGB(color[0],color[1],color[2]);params.opacity=color[3];return ext.diffuseTexture?parser.assignTexture(params,'map',ext.diffuseTexture,THREE.SRGBColorSpace):Promise.resolve();}}));let modules=0,buildings=0;const architecture=new THREE.Group();scene.add(architecture);
+let modules=0,buildings=0;const architecture=new THREE.Group();scene.add(architecture);
 function box(w,h,d,x,y,z,mat){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);m.castShadow=m.receiveShadow=true;scene.add(m);return m;}
 const roadMat=new THREE.MeshStandardMaterial({color:0x383c40,roughness:.93}),paveMat=new THREE.MeshStandardMaterial({color:0xa5a194,roughness:.92}),curbMat=new THREE.MeshStandardMaterial({color:0xd3cdbd,roughness:.8}),greenMat=new THREE.MeshStandardMaterial({color:0x4a673c,roughness:1}),darkMat=new THREE.MeshStandardMaterial({color:0x303b40,metalness:.6,roughness:.5}),paintMat=new THREE.MeshStandardMaterial({color:0xe1dfcb,roughness:.8});
 box(180,.3,180,0,-.25,0,paveMat);box(110,.12,12,0,-.04,12,roadMat);
 for(const z of [4.4,19.6]){box(110,.16,3.1,0,.08,z,paveMat);box(110,.27,.22,0,.135,z+(z<12?1.55:-1.55),curbMat);}
 for(let x=-48;x<52;x+=7)box(3,.015,.12,x,.028,12,paintMat);
 for(let i=0;i<7;i++)box(.48,.02,7.8,-10+i*.85,.04,12,paintMat);
+function texture(path,repeat){const t=new THREE.TextureLoader().load(path,render);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(...repeat);t.anisotropy=8;return t;}
+roadMat.map=texture('assets/roadforge/T_RF_Asphalt_BC.png',[30,4]);roadMat.map.colorSpace=THREE.SRGBColorSpace;roadMat.roughnessMap=texture('assets/roadforge/T_RF_Asphalt_R.png',[30,4]);roadMat.color.set(0xffffff);
+paveMat.map=texture('assets/roadforge/T_RF_Concrete_BC.png',[24,8]);paveMat.map.colorSpace=THREE.SRGBColorSpace;paveMat.roughnessMap=texture('assets/roadforge/T_RF_Concrete_R.png',[24,8]);paveMat.color.set(0xb7b3a5);
 function lamp(x,z){box(.12,5,.12,x,2.6,z,darkMat);box(1.1,.12,.16,x+.5,5.05,z,darkMat);box(.6,.1,.32,x+.8,5,z,paintMat);}
 for(let x=-42;x<=42;x+=14)lamp(x,4.6);
 function module(kit,name,parent,x,y,z=0){const original=kit.getObjectByName(name);if(!original)throw Error('Missing module '+name);const m=original.clone(true);m.position.set(x,y,z);m.traverse(n=>{if(n.isMesh){n.castShadow=n.receiveShadow=true;for(const mat of [].concat(n.material)){mat.side=THREE.DoubleSide;if(mat.map)mat.map.anisotropy=8;}}});parent.add(m);modules++;return m;}
@@ -43,7 +44,7 @@ function building(kit,x,z,bays,floors,industrial=false,angle=0){
  return g;
 }
 try{
- const [apartments,factory,trees]=await Promise.all([loader.loadAsync('assets/urban-kits/modular_urban_apartments_facade/scene.gltf'),loader.loadAsync('assets/urban-kits/modular_factory_facade/scene.gltf'),loader.loadAsync('tests/trees.glb')]);
+ const [apartments,factory,trees]=await Promise.all([loader.loadAsync('assets/urban-kits/modular_urban_apartments_facade/scene.gltf'),loader.loadAsync('assets/urban-kits/modular_factory_facade/scene.gltf'),loader.loadAsync('assets/urban-kits/tree_small_02/scene.gltf')]);
  if(variant==='industrial'){
   building(factory.scene,-27,-7,7,4,true);building(factory.scene,0,-7,7,5,true);building(factory.scene,27,-7,7,3,true);building(factory.scene,-27,-28,7,4,true);building(factory.scene,0,-28,7,4,true);building(factory.scene,27,-28,7,5,true);
  }else if(variant==='courtyard'){
@@ -57,12 +58,12 @@ try{
  architecture.traverse(n=>{if(n.isMesh){const material=n.material;if(Array.isArray(material))throw Error('Unexpected multi-material module');const geo=n.geometry.index?n.geometry.toNonIndexed():n.geometry.clone();geo.applyMatrix4(n.matrixWorld);for(const key of Object.keys(geo.attributes))if(!['position','normal','uv'].includes(key))geo.deleteAttribute(key);if(!batches.has(material))batches.set(material,[]);batches.get(material).push(geo);}});
  scene.remove(architecture);for(const [material,geometries]of batches){const merged=mergeGeometries(geometries,false);if(!merged)throw Error('Cannot batch facade geometry');const m=new THREE.Mesh(merged,material);m.castShadow=m.receiveShadow=true;scene.add(m);geometries.forEach(g=>g.dispose());}
  // Clone whole imported trees with their hierarchy and embedded photographic leaf textures.
- trees.scene.updateMatrixWorld(true);const source=trees.scene.getObjectByName('tree1');
+ trees.scene.updateMatrixWorld(true);const source=trees.scene;
  const template=new THREE.Group();source.traverse(n=>{if(n.isMesh){const m=n.clone();m.applyMatrix4(n.matrixWorld);template.add(m);}});template.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(template),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
  const positions=variant==='courtyard'?[[-11,-3],[11,-3],[-11,-17],[11,-17],[-10,-24],[10,-24],[-40,2],[40,2]]:[[-35,3],[-14,3],[9,3],[32,3],[-40,23],[-18,23],[8,23],[34,23]];
  for(const [i,[x,z]]of positions.entries()){const tree=template.clone(true),s=7/size.y;tree.scale.setScalar(s);tree.position.set(x-center.x*s,.2-bounds.min.y*s,z-center.z*s);tree.rotation.y=i*.73;tree.traverse(n=>{if(n.isMesh){n.castShadow=n.receiveShadow=true;for(const mat of [].concat(n.material)){mat.side=THREE.DoubleSide;mat.alphaTest=.45;mat.transparent=false;}}});scene.add(tree);box(2,.18,2,x,.06,z,greenMat);}
  for(const x of [-12,12]){box(2.2,.15,.6,x,.65,variant==='courtyard'?-10:4,paveMat);for(const dx of [-.8,.8])box(.08,.6,.45,x+dx,.3,variant==='courtyard'?-10:4,darkMat);}
- scene.userData.assetReport={variant,modules,buildings,trees:positions.length,localKits:2};window.__urbanExample={ready:true,report:scene.userData.assetReport};document.querySelector('#status').textContent=`${buildings} edifici · ${modules} moduli reali · ${positions.length} alberi importati`;
+ scene.userData.assetReport={variant,modules,buildings,trees:positions.length,localKits:3};window.__urbanExample={ready:true,report:scene.userData.assetReport};document.querySelector('#status').textContent=`${buildings} edifici · ${modules} moduli reali · ${positions.length} alberi importati`;
 }catch(error){window.__urbanExample={ready:false,error:error.message};document.querySelector('#status').textContent=error.message;console.error(error);}
 function render(){renderer.render(scene,camera);}controls.addEventListener('change',render);render();
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});

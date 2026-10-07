@@ -6,7 +6,7 @@ import pathlib
 import subprocess
 
 ROOT = pathlib.Path(__file__).resolve().parents[1] / 'assets' / 'urban-kits'
-ASSETS = ['modular_urban_apartments_facade', 'modular_factory_facade']
+ASSETS = ['modular_urban_apartments_facade', 'modular_factory_facade', 'tree_small_02']
 
 def fetch(url, target, expected_md5=None):
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -29,3 +29,8 @@ if __name__ == '__main__':
         with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
             list(pool.map(lambda item: fetch(*item), files))
         print(asset, 'verified', len(files), 'files', flush=True)
+
+    roads = {'T_RF_Asphalt_BC.png': '7f5e79a1c117253842fb49498f0fc294', 'T_RF_Asphalt_R.png': 'd65dd29fa4eeaa0897c8bdbafd072132', 'T_RF_Concrete_BC.png': 'a7660b87229730e8f88910b5784d3a26', 'T_RF_Concrete_R.png': '5f53082e47dbea2e5143f5c8a02a36cf'}
+    for name, checksum in roads.items():
+        fetch("https://raw.githubusercontent.com/YuuhenR/roadforge-osm-ue5-procedural-city/main/Plugins/RoadForge/Art/CC0_Textures/" + name, ROOT.parent / "roadforge" / name, checksum)
+    print("RoadForge textures verified", flush=True)
