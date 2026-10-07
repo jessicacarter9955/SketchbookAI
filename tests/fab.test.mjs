@@ -8,6 +8,12 @@ test('Fab search builder keeps free filter and encodes text',()=>{
   const u=new URL(c.searchURL('vehicle & city',{free:true}));
   assert.equal(u.origin,'https://www.fab.com'); assert.equal(u.searchParams.get('q'),'vehicle & city'); assert.equal(u.searchParams.get('is_free'),'1');
 });
+test('prompt discovery infers useful asset category without changing text',()=>{
+  const c=new FabClient();
+  assert.deepEqual(c.suggestSearch('  modern sports car  '),{query:'modern sports car',category:'vehicles',free:true});
+  assert.equal(c.suggestSearch('urban road network').category,'environments');
+  assert.equal(c.suggestSearch('industrial facade').category,'buildings');
+});
 test('Fab category search is restricted to supported Fab paths',()=>{
   const c=new FabClient(), u=new URL(c.searchURL('car',{category:'vehicles',free:true}));
   assert.match(u.pathname,/vehicles-transportation/); assert.equal(u.searchParams.get('is_free'),'1');
