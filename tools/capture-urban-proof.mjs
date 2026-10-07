@@ -15,18 +15,25 @@ async function writeDataUrl(path,dataUrl){
   return bytes.length;
 }
 
-async function exampleShot(variant){
+async function captureEnvironment(){
   const page=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
-  await page.goto(`${base}/urban-examples.html?variant=${variant}`,{waitUntil:'domcontentloaded'});
-  await page.waitForFunction(()=>globalThis.__urbanExample?.ready===true,null,{timeout:60000});
+  await page.goto(`${base}/urban-examples.html?variant=residential`,{waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>globalThis.__urbanExample?.ready===true&&typeof globalThis.__urbanExampleCapture==='function',null,{timeout:90000});
   const report=await page.evaluate(()=>globalThis.__urbanExample.report);
-  if(!report||report.localKits<2||report.buildings<1||report.trees<1)
-    throw new Error(`${variant}: imported-kit proof failed ${JSON.stringify(report)}`);
-  await page.waitForTimeout(800);
-  const dataUrl=await page.evaluate(()=>document.querySelector('canvas')?.toDataURL('image/png'));
-  const bytes=await writeDataUrl(`${out}/urban-example-${variant}.png`,dataUrl);
-  await fs.writeFile(`${out}/urban-example-${variant}.json`,JSON.stringify({...report,pngBytes:bytes},null,2));
-  console.log('example',variant,{...report,pngBytes:bytes});
+  if(!report||report.localKits<2||report.buildings<10||report.trees<8)
+    throw new Error(`residential proof failed ${JSON.stringify(report)}`);
+
+  const shots=[
+    ['urban-environment-overview',[56,22,52],[0,6,-14]],
+    ['urban-environment-street',[7,4.8,34],[0,3,-10]],
+    ['urban-environment-vegetation',[-34,6.8,18],[-16,4,-8]]
+  ];
+  for(const [name,camera,target] of shots){
+    const dataUrl=await page.evaluate(({camera,target})=>globalThis.__urbanExampleCapture(camera,target),{camera,target});
+    const bytes=await writeDataUrl(`${out}/${name}.png`,dataUrl);
+    console.log(name,{pngBytes:bytes});
+  }
+  await fs.writeFile(`${out}/urban-environment-proof.json`,JSON.stringify(report,null,2));
   await page.close();
 }
 
@@ -113,7 +120,7 @@ let runtimeError=null;
 try{
   // Always produce the environment-only evidence first. These pages use the downloaded,
   // checksum-verified CC0 kits directly and never show the Sketchbook player.
-  for(const variant of ['residential','industrial','courtyard'])await exampleShot(variant);
+  await captureEnvironment();
   try{await captureRuntime();}catch(error){runtimeError=error;console.error(error);}
 }finally{
   await browser.close();
