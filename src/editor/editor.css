@@ -45,3 +45,9 @@ body.editor-page { margin:0; overflow:hidden; font-family:system-ui,sans-serif; 
 .dds-crosshair { position:fixed; z-index:120; left:50%; top:50%; transform:translate(-50%,-50%); color:white; text-shadow:0 1px 3px black; font:30px monospace; pointer-events:none; }.dds-crosshair.hit { color:#f69163; }
 .dds-inventory { max-width:520px; }.dds-inventory [data-items] { display:grid; gap:10px; margin-bottom:20px; }
 @media(max-width:900px) { .city-hud { top:130px; }.dds-hud { top:180px; right:10px; width:190px; padding:10px; font-size:12px; }.dds-hud small { display:none; } }
+
+.editor-diagnostics { margin-top:14px; }
+.editor-diagnostics pre { max-height:150px; overflow:auto; white-space:pre-wrap; word-break:break-word; padding:8px; border:1px solid #405361; border-radius:6px; background:#0b151d; color:#bfd2dc; font:11px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace; }
+.fab-shortcuts { display:flex; gap:8px; flex-wrap:wrap; margin:12px 0; }
+.fab-drop { display:block; margin-top:14px; padding:12px; border:1px dashed #526878; border-radius:8px; }
+.fab-drop input { display:block; margin-top:8px; width:100%; }
