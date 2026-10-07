@@ -193,9 +193,11 @@ def main():
             manifest_path = "build/local-scenes/ue2three/projects/" + project_output.name + "/ui-manifest.json"
             ui_url = "http://127.0.0.1:8401/ue2three-ui.html?model=" + quote(model_path, safe="/")
             ui_url += "&manifest=" + quote(manifest_path, safe="/")
-            scenes.insert(0, ("DDS Menu (mappa originale)", ui_url))
+            scenes.insert(1 if recipe is not None else 0, ("DDS Menu (mappa originale)", ui_url))
     character_url = "http://127.0.0.1:8401/editor.html?scene=ue2three-character&play=1"
     if recipe is not None:
+        character_preview_url = "http://127.0.0.1:8401/ue2three-character.html?base=build/local-scenes/ue2three/current/"
+        scenes.insert(0, ("Personaggio DDS · animazioni e armi originali", character_preview_url))
         scenes.append(("Sketchbook - personaggio giocabile", character_url))
     for name, scene_url in scenes:
         print("SCENE\t" + name + "\t" + scene_url, flush=True)
@@ -205,7 +207,8 @@ def main():
                          if item["package"].endswith("/LV_Fixers_MainMenu")), None)
     if default_name is None and visual_maps:
         default_name = visual_maps[0]["package"].rsplit("/", 1)[-1]
-    default = (scenes[0][1] if ui_command_ok and ui_manifest.is_file() else
+    default = (scenes[0][1] if recipe is not None else
+               scenes[0][1] if ui_command_ok and ui_manifest.is_file() else
                next((url for name, url in scenes if name == default_name), scenes[0][1] if scenes else ""))
     if default:
         print("PREVIEW_URL=" + default, flush=True)
