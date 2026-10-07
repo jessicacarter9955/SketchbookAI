@@ -80,8 +80,17 @@ function fitCharacter() {
     1
   ) * 1.55;
   const direction = new THREE.Vector3(0.45, 0.2, 1).normalize();
-  controls.target.copy(center);
   camera.position.copy(center).addScaledVector(direction, distance);
+  camera.lookAt(center);
+  camera.updateMatrixWorld();
+  const screenRight = camera.getWorldDirection(new THREE.Vector3())
+    .cross(new THREE.Vector3(0, 1, 0)).normalize();
+  // The compact controls panel sits at the upper right. Shift the framing away
+  // from it so the head and held weapon remain visible while inspecting sockets.
+  const panelSide = innerWidth <= 850 ? 1 : -1;
+  const framedCenter = center.clone().addScaledVector(screenRight, size.x * 0.3 * panelSide);
+  controls.target.copy(framedCenter);
+  camera.position.add(framedCenter.clone().sub(center));
   camera.near = Math.max(0.01, distance / 1000);
   camera.far = Math.max(100, distance * 20);
   camera.updateProjectionMatrix();
