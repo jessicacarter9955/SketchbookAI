@@ -305,7 +305,7 @@ export class UrbanRuntime {
       group.traverse(node=>{if(node.userData?.urbanBuilding&&node.userData.planBuilding===b){node.material.colorWrite=false;node.castShadow=false;}});
     });
     group.userData.photorealAssets=loaded.map(k=>k.id);
-    if(group.userData.photorealAssets.length<2)throw new Error(`Expected 2 architecture kits, loaded ${group.userData.photorealAssets.length}`);
+    if(group.userData.photorealAssets.length<1)throw new Error('No verified photoreal architecture kit loaded');
     return group.userData.photorealAssets;
   }
   async loadPhotorealVegetation(group,items,config){
