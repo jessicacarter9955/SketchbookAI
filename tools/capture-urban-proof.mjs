@@ -81,13 +81,15 @@ async function captureRuntime(){
     const style=document.createElement('style');
     style.textContent='.editor-toolbar,.editor-panel,.editor-footer,.editor-help,.city-hud,#ui-container,.dg,.dds-hud,.dds-crosshair{display:none!important}';
     document.head.append(style);
-    const group=world.levelRuntime.root.children.find(g=>g.userData?.photorealReady);
-    const vegetation=group?.getObjectByName?.('CC0 photoreal vegetation');
+    const root=world.levelRuntime.root,vegetation=root.getObjectByName?.('CC0 photoreal vegetation');
+    let facadeGroups=0;
+    root.traverse?.(node=>{if(node.userData?.photorealArchitecture)facadeGroups++;});
     return {
       state:world.levelRuntime.visualState,
-      assets:group?.userData?.photorealAssets||[],
-      vegetation:group?.userData?.photorealVegetation||null,
-      cc0TreeCount:vegetation?.children?.length||0,
+      assets:world.levelRuntime.visualState?.architecture||[],
+      vegetation:world.levelRuntime.visualState?.vegetation||null,
+      cc0TreeCount:vegetation?.children?.length||world.levelRuntime.visualState?.vegetation?.count||0,
+      facadeGroups,
       buildings:world.levelRuntime.plan?.buildings?.length||0,
       trees:world.levelRuntime.plan?.trees?.length||0
     };
