@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createDetails } from './UrbanDetails.js';
 
+const roofMaterial=new THREE.MeshStandardMaterial({color:0x4b4c46,roughness:.95});
 // The source files are catalogues of separate 3 m modules, not whole buildings.
 // Preserve their local geometry and assemble openings, corners and all four sides.
 export function prepareFacadeKit(root) {
@@ -50,7 +51,7 @@ export function buildModularBuilding(kit, building, seed = 0, industrial = false
     }
   }
   // A recessed roof and a solid base close the shell without covering the openings.
-  const roofMat = new THREE.MeshStandardMaterial({color:0x4b4c46,roughness:.95});
+  const roofMat = roofMaterial;
   details.box(group,width-.15,.15,depth-.15,0,floors*3-.1,0,roofMat);
   details.box(group,width,.2,depth,0,-.1,0);
   details.buildingTrim(group,width,depth,floors*3,seed);
@@ -73,7 +74,7 @@ export function instanceArchitecture(source) {
   for (const batch of batches.values()) {
     const mesh = new THREE.InstancedMesh(batch.geometry,batch.material,batch.matrices.length);
     batch.matrices.forEach((matrix,i)=>mesh.setMatrixAt(i,matrix));
-    mesh.instanceMatrix.needsUpdate = true;
+    mesh.instanceMatrix.needsUpdate = true; mesh.userData.sharedUrbanAsset=true;
     mesh.castShadow = batch.shadow; mesh.receiveShadow = true;
     mesh.computeBoundingSphere(); result.add(mesh);
   }

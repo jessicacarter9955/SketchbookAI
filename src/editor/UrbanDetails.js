@@ -1,19 +1,28 @@
 import * as THREE from 'three';
 
+const unitBox = new THREE.BoxGeometry(1,1,1);
+const unitCylinder = new THREE.CylinderGeometry(1,1,1,12);
+let sharedMaterials;
+const labelMaterials=new Map();
 // Physical dimensions are in metres. These details are actual scene geometry.
 export function createDetails(scene, architecture) {
+  if(!sharedMaterials) sharedMaterials=makeMaterials();
+  const {stone,iron,zinc,timber,soil,roomMats,shades}=sharedMaterials;
+  function makeMaterials(){
   const stone=new THREE.MeshStandardMaterial({color:0xb7b1a2,roughness:.86});
   const iron=new THREE.MeshStandardMaterial({color:0x252e2c,roughness:.52,metalness:.72});
   const zinc=new THREE.MeshStandardMaterial({color:0x777d78,roughness:.43,metalness:.75});
   const timber=new THREE.MeshStandardMaterial({color:0x675040,roughness:.84});
   const soil=new THREE.MeshStandardMaterial({color:0x2d2921,roughness:1});
   const roomMats=[0x34362f,0x8f8170,0x635f56,0xb2a791,0x3c4649].map(color=>new THREE.MeshStandardMaterial({color,roughness:.95}));
+  const shades=[0x344942,0x754c3e,0x324357].map(color=>new THREE.MeshStandardMaterial({color,roughness:.9}));
+  return {stone,iron,zinc,timber,soil,roomMats,shades};}
   function mesh(geometry,material,parent,position){const m=new THREE.Mesh(geometry,material);m.position.set(...position);m.castShadow=m.receiveShadow=true;parent.add(m);return m;}
-  function box(parent,w,h,d,x,y,z,material=stone){return mesh(new THREE.BoxGeometry(w,h,d),material,parent,[x,y,z]);}
-  function cylinder(parent,r,h,x,y,z,material=iron){return mesh(new THREE.CylinderGeometry(r,r,h,12),material,parent,[x,y,z]);}
+  function box(parent,w,h,d,x,y,z,material=stone){const m=mesh(unitBox,material,parent,[x,y,z]);m.scale.set(w,h,d);return m;}
+  function cylinder(parent,r,h,x,y,z,material=iron){const m=mesh(unitCylinder,material,parent,[x,y,z]);m.scale.set(r,h,r);return m;}
   function label(parent,text,x,y,z,w=.5,h=.25,bg='#273431',fg='#ded3ae'){
     const c=document.createElement('canvas');c.width=512;c.height=160;const ctx=c.getContext('2d');ctx.fillStyle=bg;ctx.fillRect(0,0,512,160);ctx.fillStyle=fg;ctx.font='500 62px serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,256,84,470);const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
-    const m=mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshStandardMaterial({map:tex,roughness:.8}),parent,[x,y,z]);return m;
+    const key=text+bg+fg;if(!labelMaterials.has(key))labelMaterials.set(key,new THREE.MeshStandardMaterial({map:tex,roughness:.8}));else tex.dispose();const m=mesh(new THREE.PlaneGeometry(w,h),labelMaterials.get(key),parent,[x,y,z]);return m;
   }
   function facade(face,bay,floor,floors,seed,door,industrial){
     const x=-bay*3-1.5,y=floor*3;
@@ -38,7 +47,7 @@ export function createDetails(scene, architecture) {
       box(face,2.4,.11,.7,x,-.035,.25,stone);
       label(face,String(18+seed*2+bay),x+1.03,1.8,.045,.24,.15);
       if(seed%2===0){
-        const shade=new THREE.MeshStandardMaterial({color:[0x344942,0x754c3e,0x324357][seed%3],roughness:.9});
+        const shade=shades[seed%3];
         const canopy=box(face,2.6,.08,1.4,x,2.85,.65,shade);canopy.rotation.x=.12;
         box(face,2.6,.28,.06,x,2.67,1.32,shade);label(face,seed%3?'MAISON':'CAFÉ',x,2.67,1.36,1.7,.18);
       }

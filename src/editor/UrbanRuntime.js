@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { createVegetation } from './UrbanVegetation.js';
+import { photographicLighting, loadSurface, metricUV } from './UrbanLighting.js';
 import { prepareFacadeKit, buildModularBuilding, instanceArchitecture } from './UrbanArchitecture.js';
 import { DEFAULT_URBAN, validateUrban, generateUrbanPlan, urbanGroundHeight } from './urban-data.mjs';
 
@@ -54,7 +56,12 @@ function treeInstances(items){
   group.add(trunks,crownsA,crownsB); return group;
 }
 
-async function loadUrbanKit(loader,assetId){
+const kitPromises=new Map();
+function loadUrbanKit(loader,assetId){
+  if(!kitPromises.has(assetId))kitPromises.set(assetId,fetchUrbanKit(loader,assetId).catch(error=>{kitPromises.delete(assetId);throw error;}));
+  return kitPromises.get(assetId);
+}
+async function fetchUrbanKit(loader,assetId){
   try{return await loader.loadAsync(`assets/urban-kits/${assetId}/scene.gltf`);}
   catch(localError){
     const remote=await polyHavenGltfURL(assetId);
@@ -91,7 +98,7 @@ export class UrbanRuntime {
   initialize(){this.generate(DEFAULT_URBAN);}
   clearGenerated(){
     this.bodies.forEach(body=>this.world.physicsWorld.removeBody(body)); this.bodies=[];
-    this.root.traverse(node=>{node.geometry?.dispose();for(const m of [].concat(node.material||[])){for(const v of Object.values(m||{}))if(v?.isTexture)v.dispose?.();m?.dispose?.();}});
+    this.root.traverse(node=>{if(node.userData.sharedUrbanAsset)return;node.geometry?.dispose();for(const m of [].concat(node.material||[])){for(const v of Object.values(m||{}))if(v?.isTexture)v.dispose?.();m?.dispose?.();}});
     this.root.clear();
   }
   generate(raw){
@@ -250,18 +257,27 @@ export class UrbanRuntime {
     this.visualState={status:'loading',architecture:[],vegetation:null,error:null};
     this.visualPromise=Promise.all([
       this.loadPhotorealArchitecture(group,plan,config),
-      this.loadPhotorealVegetation(group,treeItems,config)
-    ]).then(([architecture,vegetation])=>{
-      this.visualState={status:'ready',architecture,vegetation,error:null};
+      this.loadPhotorealVegetation(group,treeItems,config),
+      this.loadPhotorealSurfaces(group,matRoad,matSidewalk,matGrass),
+      photographicLighting(this.world,config.sky)
+    ]).then(([architecture,vegetation,,lighting])=>{
+      if(group.parent!==this.root)return this.visualState;
+      this.visualState={status:'ready',architecture,vegetation,lighting,assembledBuildings:plan.buildings.length,error:null};
       group.userData.photorealReady=true;
       return this.visualState;
     }).catch(error=>{
+      if(group.parent!==this.root)return this.visualState;
       this.visualState={status:'error',architecture:group.userData.photorealAssets||[],vegetation:group.userData.photorealVegetation||null,error:String(error?.message||error)};
       group.userData.photorealError=this.visualState.error;
       console.error('Urban photoreal layer failed',error);
-      throw error;
+      return this.visualState;
     });
 
+  }
+  async loadPhotorealSurfaces(group,road,pavement,grass){
+    const materials=await Promise.all([loadSurface('asphalt_02',3,0xbababa),loadSurface('concrete_pavement',3,0xd6d1c6),loadSurface('leafy_grass',2,0x91a27b)]);
+    if(group.parent!==this.root)return;
+    group.traverse(node=>{if(node.isMesh){const index=[road,pavement,grass].indexOf(node.material);if(index>=0){node.material=materials[index];metricUV(node);}}});
   }
   async loadPhotorealArchitecture(group,plan,config){
     const gltf=await loadUrbanKit(new GLTFLoader(),'modular_urban_apartments_facade');
@@ -281,26 +297,12 @@ export class UrbanRuntime {
     return group.userData.photorealAssets;
   }
   async loadPhotorealVegetation(group,items,config){
-    const loader=new GLTFLoader(),gltf=await loadUrbanKit(loader,'tree_small_02'),source=gltf.scene;
-    source.updateMatrixWorld(true);
-    const bounds=new THREE.Box3().setFromObject(source),size=bounds.getSize(new THREE.Vector3());
-    if(size.y<.01)throw new Error('CC0 tree asset has invalid bounds');
-    const candidates=[...items].sort((a,b)=>Math.hypot(a.x,a.z)-Math.hypot(b.x,b.z)).slice(0,Math.min(90,items.length));
-    const layer=new THREE.Group();layer.name='CC0 photoreal vegetation';
-    for(const [index,t] of candidates.entries()){
-      const asset=source.clone(true),targetHeight=(t.kind==='street'?5.4:t.kind==='median'?4.8:6.2)*(t.scale||1);
-      const scalar=targetHeight/size.y;asset.scale.setScalar(scalar);asset.updateMatrixWorld(true);
-      let box3=new THREE.Box3().setFromObject(asset),center=box3.getCenter(new THREE.Vector3());
-      asset.position.x-=center.x;asset.position.y-=box3.min.y;asset.position.z-=center.z;
-      const wrapper=new THREE.Group();wrapper.add(asset);wrapper.position.set(t.x,t.y||urbanGroundHeight(t.x,t.z,config),t.z);
-      wrapper.rotation.y=((index*2.399963229728653)+(config.seed%17)*.17)%(Math.PI*2);
-      wrapper.traverse(node=>{if(node.isMesh){node.castShadow=index<45;node.receiveShadow=true;}});
-      layer.add(wrapper);
-    }
+    const layer=await createVegetation(items,config.seed);
+    if(group.parent!==this.root)return null;
     group.add(layer);
-    const fallback=group.getObjectByName('Procedural vegetation fallback');if(fallback)fallback.visible=false;
+    const fallback=group.getObjectByName('Procedural vegetation fallback');if(fallback)fallback.removeFromParent();
     group.userData.photorealVegetation='tree_small_02 · Poly Haven CC0';
-    return {assetId:'tree_small_02',count:layer.children.length};
+    return {assetId:'tree_small_02',count:layer.children.length,lods:2};
   }
   applySky(preset){
     const settings={day:{elevation:47,azimuth:145,haze:2.2,fog:0xaec2cb,sun:0xffefd6,intensity:.72},sunset:{elevation:8,azimuth:245,haze:5,fog:0xb98d85,sun:0xffaa63,intensity:.45},haze:{elevation:30,azimuth:160,haze:14,fog:0x9ea9ad,sun:0xd0d4d5,intensity:.28}}[preset];
@@ -309,6 +311,7 @@ export class UrbanRuntime {
   async ensure(){this.ready=true;} refreshPhysics(){}
   groundAt(x,z){return urbanGroundHeight(x,z,this.config||DEFAULT_URBAN);}
   update(){
+    this.world.urbanLighting?.update();
     const player=this.world.editorPlayer,p=player?.controlledObject?.position||player?.position;if(p)this.world.actorLayer?.update(p);
     const status=document.querySelector('[data-city-status]');if(status)status.textContent=`Procedural City · ${this.plan?.buildings.length||0} edifici · ${this.plan?.trees.length||0} alberi · ${Math.round(player?.controlledObject?.collision.velocity.length()*3.6||0)} km/h`;
   }

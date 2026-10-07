@@ -21,3 +21,11 @@ test('rolling terrain changes elevation while flat stays zero',()=>{
   assert.equal(urbanGroundHeight(20,30,{...DEFAULT_URBAN,terrain:'flat'}),0);
   assert.notEqual(urbanGroundHeight(20,30,{...DEFAULT_URBAN,terrain:'rolling'}),0);
 });
+
+test('low-rise districts respect the requested floor limit even downtown',()=>{
+  for(const seed of [42,1847,1,700]){
+    const plan=generateUrbanPlan({...DEFAULT_URBAN,seed,minFloors:3,maxFloors:7});
+    assert.ok(plan.buildings.every(b=>b.floors>=3&&b.floors<=7&&!b.isTower));
+    assert.ok(plan.buildings.every(b=>b.height===b.floors*3));
+  }
+});

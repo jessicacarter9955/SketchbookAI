@@ -79,16 +79,16 @@ export function generateUrbanPlan(raw=DEFAULT_URBAN){
       const chance=hash(ix*7+bx,iz*7+bz,c.seed+31); if(chance>c.buildingDensity) continue;
       const downtown=Math.max(0,1-centerDist);
       const towerBoost=downtown*downtown;
-      const maxFloors=Math.min(50,Math.round(c.maxFloors+towerBoost*18));
+      const maxFloors=Math.min(50,c.maxFloors);
       const baseFloors=Math.round(c.minFloors+hash(ix*13+bx,iz*17+bz,c.seed+67)*(maxFloors-c.minFloors));
-      const isTower=hash(ix*29+bx,iz*31+bz,c.seed+701)<(.12+.35*towerBoost);
-      const floors=isTower?Math.max(baseFloors,Math.round(14+towerBoost*24+hash(ix+bx,iz+bz,c.seed+703)*10)):baseFloors;
+      const isTower=c.maxFloors>=14 && hash(ix*29+bx,iz*31+bz,c.seed+701)<(.12+.35*towerBoost);
+      const floors=Math.min(c.maxFloors,isTower?Math.max(baseFloors,Math.round(14+towerBoost*24+hash(ix+bx,iz+bz,c.seed+703)*10)):baseFloors);
       const w=lotW*(isTower?.58:.72+hash(ix+bx,iz+bz,c.seed+101)*.22);
       const d=lotD*(isTower?.58:.72+hash(ix+bz,iz+bx,c.seed+131)*.22);
       const x=cx-inner/2+lotW/2+bx*(lotW+gap),z=cz-inner/2+lotD/2+bz*(lotD+gap);
       const styleRoll=hash(ix*19+bx,iz*23+bz,c.seed+201);
       const style=isTower?(styleRoll>.48?'glass':'office'):(styleRoll<.26?'brick':styleRoll<.58?'stone':styleRoll<.82?'office':'glass');
-      buildings.push({x,z,w,d,floors,height:floors*3.15,tint:styleRoll,style,isTower});
+      buildings.push({x,z,w,d,floors,height:floors*3,tint:styleRoll,style,isTower});
     }
 
     // Street trees on the four sidewalk edges. Skip some to leave entrances.

@@ -7,6 +7,7 @@ import { CameraOperator } from '../core/CameraOperator';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass';
+import { GammaCorrectionShader } from 'three/examples/jsm/shaders/GammaCorrectionShader';
 import { FXAAShader  } from 'three/examples/jsm/shaders/FXAAShader';
 
 import { Detector } from '../../lib/utils/Detector';
@@ -127,6 +128,8 @@ export class World
 		this.composer = new EffectComposer( this.renderer );
 		this.composer.addPass( renderPass );
 		this.composer.addPass( fxaaPass );
+		// Render targets contain linear colour; FXAA alone does not encode the display.
+		this.composer.addPass( new ShaderPass( GammaCorrectionShader ) );
 
 		// Physics
 		this.physicsWorld = new CANNON.World();

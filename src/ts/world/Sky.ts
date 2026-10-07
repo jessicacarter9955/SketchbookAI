@@ -34,6 +34,14 @@ export class Sky extends THREE.Object3D implements IUpdatable
 	private skyMaterial: THREE.ShaderMaterial;
 
 	private world: World;
+	private photographic: boolean = false;
+
+	public setPhotographic(enabled: boolean): void {
+		this.photographic = enabled;
+		this.skyMesh.visible = !enabled;
+		this.hemiLight.visible = !enabled;
+		this.csm.lights.forEach(light => { light.visible = !enabled; });
+	}
 
 	constructor(world: World)
 	{
@@ -100,6 +108,7 @@ export class Sky extends THREE.Object3D implements IUpdatable
 
 	public update(timeScale: number): void
 	{
+		if (this.photographic) return;
 		this.position.copy(this.world.camera.position);
 		this.refreshSunPosition();
 

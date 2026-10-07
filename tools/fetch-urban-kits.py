@@ -6,7 +6,7 @@ import pathlib
 import subprocess
 
 ROOT = pathlib.Path(__file__).resolve().parents[1] / 'assets' / 'urban-kits'
-ASSETS = ['modular_urban_apartments_facade', 'tree_small_02']
+ASSETS = ['modular_urban_apartments_facade', 'modular_factory_facade', 'tree_small_02']
 
 def fetch(url, target, expected_md5=None):
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -34,3 +34,16 @@ if __name__ == '__main__':
     for name, checksum in roads.items():
         fetch("https://raw.githubusercontent.com/YuuhenR/roadforge-osm-ue5-procedural-city/main/Plugins/RoadForge/Art/CC0_Textures/" + name, ROOT.parent / "roadforge" / name, checksum)
     print("RoadForge textures verified", flush=True)
+
+    for asset in ['asphalt_02', 'concrete_pavement', 'leafy_grass', 'kloofendal_48d_partly_cloudy_puresky']:
+        data=json.loads(subprocess.check_output(['curl','-fLs','--retry','2','--max-time','60','https://api.polyhaven.com/files/'+asset]))
+        if 'puresky' in asset:
+            item=data['hdri']['2k']['hdr']
+            fetch(item['url'],ROOT/'lighting'/'sky.hdr',item['md5'])
+        else:
+            for key,channel in [('Diffuse','diff'),('nor_gl','nor_gl'),('Rough','rough')]:
+                item=data[key]['1k']['jpg']
+                fetch(item['url'],ROOT/asset/(channel+'.jpg'),item['md5'])
+        print(asset,'verified',flush=True)
+
+    subprocess.run(['node', str(ROOT.parents[1]/'tools'/'prepare-urban-lods.mjs')],check=True,cwd=ROOT.parents[1])
