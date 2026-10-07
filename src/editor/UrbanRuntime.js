@@ -99,6 +99,12 @@ export class UrbanRuntime {
     }
     for(const r of plan.roads){
       const size=r.axis==='x'?[r.length,.10,r.width]:[r.width,.10,r.length]; box(size,[r.x,.05,r.z],matRoad,false);
+      // RoadForge UE5 defaults: 15 cm curb height / 18 cm curb width.
+      const curbOffset=r.width/2+.09;
+      for(const side of [-1,1]){
+        const curbPos=r.axis==='x'?[r.x,.15,r.z+side*curbOffset]:[r.x+side*curbOffset,.15,r.z];
+        box(r.axis==='x'?[r.length,.15,.18]:[.18,.15,r.length],curbPos,matCurb,false);
+      }
       const edge=r.width/2-.34;
       const count=Math.floor(r.length/7);
       for(const side of [-1,1]){
@@ -143,6 +149,16 @@ export class UrbanRuntime {
       if(b.floors>12){
         box([Math.max(1.2,b.w*.24),1.1,Math.max(1.2,b.d*.24)],[b.x,baseY+b.height+1.05,b.z],roofMat,false);
         if(b.isTower)box([.08,4,.08],[b.x,baseY+b.height+3,b.z],matLamp,false);
+      }
+      // Inspired by the MIT Unreal Procedural-Cities HouseBuilder: lower apartment blocks
+      // may receive balconies and roof service volumes to break up flat facades.
+      if(!b.isTower && b.floors<10 && (b.style==='brick'||b.style==='stone')){
+        const balconyMat=new THREE.MeshStandardMaterial({map:concreteMap,roughnessMap:concreteRough,color:0xc9c6bc,roughness:.9});
+        for(let floor=2;floor<b.floors;floor+=2){
+          const y=baseY+floor*3.15+.35;
+          box([Math.max(2,b.w*.42),.16,1.05],[b.x,y,b.z+b.d/2+.48],balconyMat,false);
+          box([Math.max(1.8,b.w*.38),.85,.08],[b.x,y+.5,b.z+b.d/2+.98],matLamp,false);
+        }
       }
     }
     for(const l of plan.lamps){
