@@ -36,10 +36,13 @@ jobs:
           done
           cat /tmp/sketchbook-editor.log
           exit 1
-      - name: Capture procedural city
+      - name: Capture photoreal city milestones
         run: |
           mkdir -p artifacts
-          npx --yes playwright@1.55.0 screenshot --browser chromium --viewport-size "1440,900" --wait-for-timeout 15000             "http://127.0.0.1:8401/editor.html?scene=urban-photoreal" artifacts/urban-editor.png
+          npx --yes playwright@1.55.0 screenshot --browser chromium --viewport-size "1440,900" --wait-for-timeout 15000 \
+            "http://127.0.0.1:8401/editor.html?scene=urban-photoreal" artifacts/urban-overview.png
+          npx --yes playwright@1.55.0 screenshot --browser chromium --viewport-size "1440,900" --wait-for-timeout 15000 \
+            "http://127.0.0.1:8401/editor.html?scene=urban-photoreal&play=1" artifacts/urban-street.png
       - name: Save editor log
         if: always()
         run: cp /tmp/sketchbook-editor.log artifacts/editor-server.log || true
