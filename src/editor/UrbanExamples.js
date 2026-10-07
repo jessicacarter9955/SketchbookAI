@@ -69,5 +69,10 @@ try{
  for(const x of [-12,12]){box(2.2,.15,.6,x,.65,variant==='courtyard'?-10:4,paveMat);for(const dx of [-.8,.8])box(.08,.6,.45,x+dx,.3,variant==='courtyard'?-10:4,darkMat);}
  scene.userData.assetReport={variant,modules,buildings,trees:positions.length,localKits:2};window.__urbanExample={ready:true,report:scene.userData.assetReport};document.querySelector('#status').textContent=`${buildings} edifici · ${modules} moduli reali · ${positions.length} alberi importati`;
 }catch(error){window.__urbanExample={ready:false,error:error.message};document.querySelector('#status').textContent=error.message;console.error(error);}
-function render(){renderer.render(scene,camera);}controls.addEventListener('change',render);render();
+function render(){renderer.render(scene,camera);}
+window.__urbanExampleCapture=(position,target)=>{
+  camera.position.set(...position);controls.target.set(...target);controls.update();render();
+  return renderer.domElement.toDataURL('image/png');
+};
+controls.addEventListener('change',render);render();
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
