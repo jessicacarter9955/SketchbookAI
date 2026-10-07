@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { prepareFacadeKit, buildModularBuilding, instanceArchitecture } from './UrbanArchitecture.js';
 import { DEFAULT_URBAN, validateUrban, generateUrbanPlan, urbanGroundHeight } from './urban-data.mjs';
 
 function roadForgeTexture(path,{color=false,repeat=[8,8]}={}){
@@ -201,6 +202,7 @@ export class UrbanRuntime {
     const roofMat=new THREE.MeshStandardMaterial({map:concreteMap,roughnessMap:concreteRough,color:0x6e7476,roughness:.88,metalness:.08});
     const lobbyMat=new THREE.MeshPhysicalMaterial({color:0x26343a,roughness:.2,metalness:.2,clearcoat:.35,clearcoatRoughness:.18});
     for(const b of plan.buildings){
+      const visualStart=group.children.length;
       const baseY=urbanGroundHeight(b.x,b.z,config),mat=facadeMats[b.style]||facadeMats.office;
       const building=box([b.w,b.height,b.d],[b.x,baseY+b.height/2+.18,b.z],mat,true);
       building.userData.urbanBuilding=true;building.userData.floors=b.floors;building.userData.style=b.style;building.userData.planBuilding=b;
@@ -234,6 +236,7 @@ export class UrbanRuntime {
           box([Math.max(1.8,b.w*.38),.85,.08],[b.x,y+.5,b.z+b.d/2+.98],matLamp,false);
         }
       }
+      group.children.slice(visualStart).forEach(node=>{node.userData.urbanBuildingVisual=true;});
     }
     for(const l of plan.lamps){
       const y=urbanGroundHeight(l.x,l.z,config);box([.13,4.7,.13],[l.x,y+2.35,l.z],matLamp,false);
@@ -261,52 +264,20 @@ export class UrbanRuntime {
 
   }
   async loadPhotorealArchitecture(group,plan,config){
-    const loader=new GLTFLoader();
-    // Keep runtime deterministic/offline-friendly: these kits are checksum-downloaded by CI.
-    // Add further facade packs only after they are part of fetch-urban-kits.py as well.
-    const kits=[
-      {id:'modular_urban_apartments_facade',kind:'residential'}
-    ];
-    const loaded=[];
-    for(const kit of kits){
-      try{
-        const gltf=await loadUrbanKit(loader,kit.id);
-        const root=gltf.scene;
-        root.updateMatrixWorld(true);
-        const bounds=new THREE.Box3().setFromObject(root),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
-        loaded.push({...kit,root,size,center});
-      }catch(error){ console.warn(`Poly Haven asset failed: ${kit.id}`,error); }
+    const gltf=await loadUrbanKit(new GLTFLoader(),'modular_urban_apartments_facade');
+    if(group.parent!==this.root)return [];
+    const kit=prepareFacadeKit(gltf.scene),assembly=new THREE.Group();
+    for(const [index,b] of plan.buildings.entries()){
+      assembly.add(buildModularBuilding(kit,{...b,ground:urbanGroundHeight(b.x,b.z,config)},index));
     }
-    if(!loaded.length)return;
-    const candidates=plan.buildings
-      .filter(b=>!b.isTower && b.floors>=4 && b.floors<=10)
-      .sort((a,b)=>Math.hypot(a.x,a.z)-Math.hypot(b.x,b.z))
-      .slice(0,Math.min(8,plan.buildings.length));
-    const placeFacade=(b,kit,side)=>{
-      const wallLength=(side==='front'||side==='back')?b.w:b.d;
-      const asset=kit.root.clone(true);asset.name=`CC0 ${kit.id} ${side}`;
-      asset.scale.set(Math.max(.001,(wallLength*.96)/Math.max(.01,kit.size.x)),Math.max(.001,(b.height*.94)/Math.max(.01,kit.size.y)),Math.max(.001,.55/Math.max(.01,kit.size.z)));
-      asset.updateMatrixWorld(true);
-      let scaled=new THREE.Box3().setFromObject(asset),center=scaled.getCenter(new THREE.Vector3());
-      asset.position.x-=center.x;asset.position.y-=scaled.min.y;asset.position.z-=center.z;
-      const wrapper=new THREE.Group();wrapper.add(asset);
-      const ground=urbanGroundHeight(b.x,b.z,config);wrapper.position.set(b.x,ground+.2,b.z);
-      if(side==='front')wrapper.position.z+=b.d/2+.04;
-      if(side==='back'){wrapper.position.z-=b.d/2+.04;wrapper.rotation.y=Math.PI;}
-      if(side==='right'){wrapper.position.x+=b.w/2+.04;wrapper.rotation.y=Math.PI/2;}
-      if(side==='left'){wrapper.position.x-=b.w/2+.04;wrapper.rotation.y=-Math.PI/2;}
-      wrapper.traverse(node=>{if(node.isMesh){node.castShadow=true;node.receiveShadow=true;}});
-      wrapper.userData={source:'Poly Haven CC0',assetId:kit.id,photorealArchitecture:true,side};
-      group.add(wrapper);
-    };
-    candidates.forEach((b,index)=>{
-      const kit=loaded[index%loaded.length];
-      placeFacade(b,kit,'front'); placeFacade(b,kit,index%2?'right':'left');
-      // Keep the primitive as collision/occlusion mass only; imported PBR geometry is the visible facade.
-      group.traverse(node=>{if(node.userData?.urbanBuilding&&node.userData.planBuilding===b){node.material.colorWrite=false;node.castShadow=false;}});
-    });
-    group.userData.photorealAssets=loaded.map(k=>k.id);
-    if(group.userData.photorealAssets.length<1)throw new Error('No verified photoreal architecture kit loaded');
+    group.add(instanceArchitecture(assembly));
+    // Collision bodies stay in the physics world. Do not depth-write invisible boxes
+    // over the imported windows or leave the other two sides as primitive facades.
+    const placeholders=[];
+    group.traverse(node=>{if(node.userData?.urbanBuildingVisual)placeholders.push(node);});
+    placeholders.forEach(node=>node.removeFromParent());
+    group.userData.photorealAssets=['modular_urban_apartments_facade'];
+    group.userData.assembledBuildings=plan.buildings.length;
     return group.userData.photorealAssets;
   }
   async loadPhotorealVegetation(group,items,config){
