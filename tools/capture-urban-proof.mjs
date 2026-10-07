@@ -11,11 +11,29 @@ async function runtimeShot(name,camera,target){
   const errors=[];
   page.on('console',msg=>{if(msg.type()==='error')errors.push(msg.text());});
   await page.goto(`${base}/editor.html?scene=urban-photoreal`,{waitUntil:'domcontentloaded'});
-  await page.waitForFunction(()=>{
-    const root=globalThis.world?.levelRuntime?.root;
-    if(!root)return false;
-    return root.children.some(group=>Array.isArray(group.userData?.photorealAssets)&&group.userData.photorealAssets.length>=1&&group.userData?.photorealVegetation);
-  },null,{timeout:45000});
+  try{
+    await page.waitForFunction(()=>{
+      const state=globalThis.world?.levelRuntime?.visualState;
+      return state?.status==='ready'||state?.status==='error';
+    },null,{timeout:90000});
+  }catch(waitError){
+    const debug=await page.evaluate(()=>({
+      visualState:globalThis.world?.levelRuntime?.visualState||null,
+      runtimeReady:globalThis.world?.levelRuntime?.ready||false,
+      loadingText:document.querySelector('#loading-screen')?.textContent||'',
+      title:document.title,
+      resources:performance.getEntriesByType('resource').filter(r=>/urban-kits|roadforge|gltf|png/i.test(r.name)).map(r=>({name:r.name,duration:r.duration,transferSize:r.transferSize}))
+    }));
+    await page.screenshot({path:`${out}/${name}-FAILED.png`,fullPage:false});
+    await fs.writeFile(`${out}/${name}-FAILED.json`,JSON.stringify({debug,consoleErrors:errors,error:String(waitError)},null,2));
+    throw new Error(`${name}: photoreal readiness timeout ${JSON.stringify(debug.visualState)}`);
+  }
+  const state=await page.evaluate(()=>globalThis.world?.levelRuntime?.visualState||null);
+  if(state?.status==='error'){
+    await page.screenshot({path:`${out}/${name}-FAILED.png`,fullPage:false});
+    await fs.writeFile(`${out}/${name}-FAILED.json`,JSON.stringify({state,consoleErrors:errors},null,2));
+    throw new Error(`${name}: photoreal runtime error ${state.error}`);
+  }
   const proof=await page.evaluate(({camera,target})=>{
     const world=globalThis.world,editor=globalThis.sceneEditor;
     editor?.setActive?.(true);
@@ -38,7 +56,7 @@ async function runtimeShot(name,camera,target){
       trees:world.levelRuntime.plan?.trees?.length||0
     };
   },{camera,target});
-  if(proof.assets.length<1||!proof.vegetation||proof.cc0TreeCount<1)throw new Error(`${name}: photoreal layer missing ${JSON.stringify(proof)}`);
+  if(proof.assets.length<2||!proof.vegetation||proof.cc0TreeCount<1)throw new Error(`${name}: photoreal layer missing ${JSON.stringify(proof)}`);
   await page.waitForTimeout(1200);
   await page.screenshot({path:`${out}/${name}.png`,fullPage:false});
   await fs.writeFile(`${out}/${name}.json`,JSON.stringify({proof,consoleErrors:errors},null,2));
@@ -51,7 +69,7 @@ async function exampleShot(variant){
   await page.goto(`${base}/urban-examples.html?variant=${variant}`,{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>globalThis.__urbanExample?.ready===true,null,{timeout:45000});
   const report=await page.evaluate(()=>globalThis.__urbanExample.report);
-  if(!report||report.localKits<2||report.buildings<1||report.trees<1)throw new Error(`${variant}: imported-kit proof failed ${JSON.stringify(report)}`);
+  if(!report||report.localKits<3||report.buildings<1||report.trees<1)throw new Error(`${variant}: imported-kit proof failed ${JSON.stringify(report)}`);
   await page.screenshot({path:`${out}/urban-example-${variant}.png`,fullPage:false});
   await fs.writeFile(`${out}/urban-example-${variant}.json`,JSON.stringify(report,null,2));
   console.log('example',variant,report);
