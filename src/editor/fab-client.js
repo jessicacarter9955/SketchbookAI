@@ -7,7 +7,13 @@
     environments:'3d-model/environments',
     props:'3d-model/objects-decor'
   };
+  const HINTS={vehicles:/\\b(car|vehicle|truck|bus|motorcycle|bike|van|suv|auto|veicolo|macchina|moto)\\b/i,buildings:/\\b(building|house|apartment|office|tower|facade|architecture|edificio|casa|palazzo)\\b/i,environments:/\\b(city|urban|road|street|landscape|environment|terrain|strada|paesaggio|terreno)\\b/i,props:/\\b(prop|furniture|bench|lamp|sign|object|oggetto|panchina|lampione)\\b/i};
   class FabClient {
+    suggestSearch(prompt,{free=true}={}){
+      const query=String(prompt||'').trim().replace(/\\s+/g,' ');
+      let category='all'; for(const key of ['vehicles','buildings','environments','props']) if(HINTS[key].test(query)){category=key;break;}
+      return {query,category,free};
+    }
     searchURL(query,{free=true,category='all'}={}){
       const term=String(query||'').trim();
       const path=CATEGORY[category] ? `https://www.fab.com/category/${CATEGORY[category]}` : SEARCH;
