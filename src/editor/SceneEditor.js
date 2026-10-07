@@ -12,6 +12,7 @@ import { IslandTool } from './IslandTool';
 import { DEFAULT_ISLAND } from './island-data.mjs';
 import { UrbanTool } from './UrbanTool';
 import { DEFAULT_URBAN } from './urban-data.mjs';
+import { geoJSONToPrefabs } from './geojson-import.mjs';
 
 const labels = { box: 'Blocco', building: 'Edificio', road: 'Strada', tree: 'Albero', lamp: 'Lampione', car: 'Auto statica', vehicle: 'Auto guidabile', pedestrian: 'Abitante' };
 const copy = value => JSON.parse(JSON.stringify(value));
@@ -62,7 +63,7 @@ export class SceneEditor {
         this.root = document.createElement('div'); this.root.id = 'scene-editor';
         this.root.innerHTML = `<div class="editor-toolbar"><div class="editor-brand">SKETCHBOOK <small>WORLD EDITOR · PROTOTIPO URBANO</small></div>
             <button data-action="undo" title="Ctrl+Z">↶ Annulla</button><button data-action="redo" title="Ctrl+Y">↷ Ripeti</button><button data-action="export">Esporta scena</button><button data-action="import">Importa scena</button><button class="primary" data-action="play">▶ Prova</button></div>
-            <aside class="editor-panel editor-library"><h2>LIBRERIA</h2><button class="wide primary" data-action="search">Cerca su Sketchfab</button><button class="wide" data-action="fab">Fab · asset gratuiti</button><button class="wide" data-action="glb">Importa GLB / ZIP</button><p>Modelli salvati nel browser. Esporta la scena per portarli con te.</p>
+            <aside class="editor-panel editor-library"><h2>LIBRERIA</h2><button class="wide primary" data-action="search">Cerca su Sketchfab</button><button class="wide" data-action="fab">Fab · asset gratuiti</button><button class="wide" data-action="geojson">Importa OSM / GeoJSON</button><button class="wide" data-action="glb">Importa GLB / ZIP</button><p>Modelli salvati nel browser. Esporta la scena per portarli con te.</p>
             <h2>PROTOTIPAZIONE RAPIDA</h2><div class="editor-grid">${Object.entries(labels).map(([key, label]) => `<button data-prefab="${key}">${label}</button>`).join('')}</div>
             <details class="editor-diagnostics"><summary>LOG / DIAGNOSTICA</summary><div class="editor-grid"><button data-action="diag-refresh">Metriche</button><button data-action="diag-download">Esporta log</button></div><button class="wide" data-action="diag-clear">Pulisci log</button><pre data-log-output aria-live="polite"></pre></details>
             <h2>SCENA <span data-count>0</span> / 500</h2><div class="editor-objects"></div><p>Gli oggetti aggiunti si possono spostare e scalare. ${this.worldId==='liberty-city'?'Per il terreno originale usa «Superfici della città»; gli edifici originali non sono ancora separabili.':this.worldId==='procedural-island'?'Usa il generatore per modificare terreno, ponte e cielo.':this.worldId==='procedural-city'?'Usa il generatore città per strade, isolati ed edifici.':''}</p></aside>
@@ -72,7 +73,7 @@ export class SceneEditor {
             <label><input name="collider" type="checkbox"> Collisione box statica</label><div class="editor-grid"><button data-action="place">Posiziona al clic</button><button data-action="ground">Appoggia a terra</button><button data-action="duplicate">Duplica</button><button data-action="delete">Elimina</button></div><p data-credit></p></div>
             <h2>GRIGLIA</h2><label>Scatto spostamento<select name="snap"><option value="0">Libero</option><option value="0.5">0,5 metri</option><option value="1" selected>1 metro</option><option value="5">5 metri</option></select></label><p>Rotazione: 15° con scatto attivo.<br>Usa «Auto guidabile» e «Abitante» per oggetti animati in modalità Prova. I modelli Sketchfab restano scenografia.</p></aside>
             <div class="editor-help">Trascina: orbita · Tasto destro: panoramica · Rotella: zoom · Clic: seleziona</div><div class="editor-footer" role="status" aria-live="polite" data-status>Editor pronto. Aggiungi un oggetto dalla libreria.</div>
-            <input type="file" data-file="glb" accept=".glb,.zip" hidden><input type="file" data-file="scene" accept=".json" hidden>`;
+            <input type="file" data-file="glb" accept=".glb,.zip" hidden><input type="file" data-file="geojson" accept=".geojson,.json,application/geo+json" hidden><input type="file" data-file="scene" accept=".json" hidden>`;
         document.body.appendChild(this.root); this.log('info','Editor inizializzato.');
         window.addEventListener('error', e => this.log('error', e.message || 'Errore JavaScript'));
         window.addEventListener('unhandledrejection', e => this.log('error', e.reason?.message || e.reason || 'Promise rifiutata'));
@@ -90,6 +91,7 @@ export class SceneEditor {
                 export: () => this.exportScene(), import: () => $('[data-file=scene]').click(), glb: () => $('[data-file=glb]').click(),
                 search: () => globalThis.picker.openModelPicker('', (url, metadata) => this.importURL(url, metadata)),
                 fab: () => globalThis.fabPicker.open('', async (file, metadata) => this.importBytes(await file.arrayBuffer(), metadata)),
+                geojson: () => $('[data-file=geojson]').click(),
                 play: () => this.setActive(!this.active), focus: () => this.focus(), place: () => { this.placing = true; this.message('Fai clic su una superficie per posizionare l’oggetto. Esc annulla.'); },
                 ground: () => { const o = this.objects.get(this.selected); if (o) { this.ground(o); this.capture(); } },
                 duplicate: () => this.duplicate(), delete: () => this.remove(),
@@ -98,6 +100,7 @@ export class SceneEditor {
             if (actions[button.dataset.action]) this.run(actions[button.dataset.action]);
         });
         $('[data-file=glb]').onchange = e => { const file = e.target.files[0]; e.target.value = ''; if (file) this.run(async () => { if (file.size > MAX_BYTES) throw new Error('Massimo 50 MB per modello.'); await this.importBytes(await file.arrayBuffer(), { name: file.name }); }); };
+        $('[data-file=geojson]').onchange = e => { const file=e.target.files[0]; e.target.value=''; if(file) this.run(async()=>{ if(file.size>10*1024*1024) throw new Error('GeoJSON superiore a 10 MB.'); await this.importGeoJSON(JSON.parse(await file.text())); }); };
         $('[data-file=scene]').onchange = e => { const file = e.target.files[0]; e.target.value = ''; if (file) this.run(async () => { if (file.size > 75 * 1024 * 1024) throw new Error('Pacchetto scena troppo grande (massimo 75 MB).'); await this.importPackage(JSON.parse(await file.text())); }); };
         $('[name=snap]').onchange = e => { this.snap = Number(e.target.value); this.gizmo.setTranslationSnap(this.snap || null); this.gizmo.setRotationSnap(this.snap ? Math.PI / 12 : null); };
         $('[name=object-name]').onchange = e => { const item = this.item(); if (item) { item.name = e.target.value; this.commit(); } };
@@ -245,6 +248,19 @@ export class SceneEditor {
         if(this.worldId==='procedural-city') {this.world.levelRuntime.generate(scene.generator || DEFAULT_URBAN);this.generator=copy(this.world.levelRuntime.config);this.urbanTool?.refresh();}
         this.select(null); [...this.objects.keys()].forEach(id => this.destroyObject(id)); this.items = copy(scene.objects); this.items.forEach(item => this.create(item));
         this.mapEdits=copy(scene.mapEdits || []); this.world.levelRuntime?.surfaces?.setEdits(this.mapEdits); this.surfaceTool?.refreshList(); this.list(); this.save();
+    }
+    async importGeoJSON(data) {
+        if(this.worldId!=='procedural-city') throw new Error('Apri una scena Città procedurale prima di importare dati OSM / GeoJSON.');
+        const converted=geoJSONToPrefabs(data,{maxObjects:Math.max(0,500-this.items.length)});
+        if(!converted.objects.length) throw new Error('Nessun oggetto importabile.');
+        for(const raw of converted.objects) {
+            if(this.items.length>=500) break;
+            const item={id:crypto.randomUUID(),...raw};
+            this.items.push(item); this.create(item);
+        }
+        this.commit(); this.select(null);
+        this.message(`OSM/GeoJSON importato: ${converted.objects.length} segmenti/edifici${converted.truncated?' (limite scena raggiunto)':''}.`);
+        this.log('map', 'Coordinate geografiche convertite in metri locali e centrate sulla selezione.');
     }
     async prepareAsset(asset) {
         checkGLB(asset.bytes);
