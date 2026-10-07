@@ -2,6 +2,13 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { DEFAULT_URBAN, validateUrban, generateUrbanPlan, urbanGroundHeight } from './urban-data.mjs';
 
+function roadForgeTexture(path,{color=false,repeat=[8,8]}={}){
+  const tex=new THREE.TextureLoader().load(path);
+  tex.wrapS=tex.wrapT=THREE.RepeatWrapping; tex.repeat.set(...repeat);
+  tex.anisotropy=8; if(color) tex.colorSpace=THREE.SRGBColorSpace;
+  return tex;
+}
+
 function facadeTexture(style='office',seed=0){
   const canvas=document.createElement('canvas'); canvas.width=256; canvas.height=256; const c=canvas.getContext('2d');
   const palettes={
@@ -44,6 +51,7 @@ export class UrbanRuntime {
     this.world=world; this.ready=false; this.config=null; this.bodies=[];
     this.root=new THREE.Group(); this.root.name='Città procedurale'; world.graphicsWorld.add(this.root);
     world.camera.far=1800; world.camera.updateProjectionMatrix(); world.renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+    world.renderer.toneMapping=THREE.ACESFilmicToneMapping; world.renderer.toneMappingExposure=1.08; world.renderer.outputColorSpace=THREE.SRGBColorSpace;
     world.respawnPosition=new CANNON.Vec3(0,3,0); world.isOutOfBounds=p=>p.y<-25||Math.abs(p.x)>2500||Math.abs(p.z)>2500;
   }
   initialize(){this.generate(DEFAULT_URBAN);}
@@ -55,9 +63,13 @@ export class UrbanRuntime {
   generate(raw){
     const config=validateUrban(raw); if(JSON.stringify(config)===JSON.stringify(this.config))return;
     const plan=generateUrbanPlan(config),group=new THREE.Group(),bodies=[];
-    const matRoad=new THREE.MeshStandardMaterial({color:0x20262b,roughness:.82,metalness:.02});
-    const matSidewalk=new THREE.MeshStandardMaterial({color:0x8b8b86,roughness:.92});
-    const matCurb=new THREE.MeshStandardMaterial({color:0xb8b8b0,roughness:.9});
+    const asphaltMap=roadForgeTexture('assets/roadforge/T_RF_Asphalt_BC.png',{color:true,repeat:[12,12]});
+    const asphaltRough=roadForgeTexture('assets/roadforge/T_RF_Asphalt_R.png',{repeat:[12,12]});
+    const concreteMap=roadForgeTexture('assets/roadforge/T_RF_Concrete_BC.png',{color:true,repeat:[9,9]});
+    const concreteRough=roadForgeTexture('assets/roadforge/T_RF_Concrete_R.png',{repeat:[9,9]});
+    const matRoad=new THREE.MeshStandardMaterial({map:asphaltMap,roughnessMap:asphaltRough,roughness:.96,metalness:0,color:0xd8d8d8});
+    const matSidewalk=new THREE.MeshStandardMaterial({map:concreteMap,roughnessMap:concreteRough,roughness:.95,color:0xc7c7c0});
+    const matCurb=new THREE.MeshStandardMaterial({map:concreteMap,roughnessMap:concreteRough,roughness:.92,color:0xe2e0d6});
     const matGrass=new THREE.MeshStandardMaterial({color:0x527247,roughness:1});
     const matPlaza=new THREE.MeshStandardMaterial({color:0x99958a,roughness:.98});
     const matLane=new THREE.MeshStandardMaterial({color:0xe8e6da,roughness:.86});
@@ -118,10 +130,10 @@ export class UrbanRuntime {
     const facadeMats={};
     for(const style of ['glass','office','brick','stone']){
       const tex=facadeTexture(style,config.seed+(style.charCodeAt(0)||0));
-      facadeMats[style]=new THREE.MeshStandardMaterial({map:tex,color:0xffffff,roughness:style==='glass'?.22:style==='office'?.58:.82,metalness:style==='glass'?.32:.03});
+      facadeMats[style]=style==='glass' ? new THREE.MeshPhysicalMaterial({map:tex,color:0xd9eff4,roughness:.16,metalness:.18,clearcoat:.55,clearcoatRoughness:.12,reflectivity:.7}) : new THREE.MeshStandardMaterial({map:tex,color:0xffffff,roughness:style==='office'?.52:.8,metalness:.03});
     }
-    const roofMat=new THREE.MeshStandardMaterial({color:0x353a3e,roughness:.8,metalness:.12});
-    const lobbyMat=new THREE.MeshStandardMaterial({color:0x1f2c31,roughness:.3,metalness:.22});
+    const roofMat=new THREE.MeshStandardMaterial({map:concreteMap,roughnessMap:concreteRough,color:0x6e7476,roughness:.88,metalness:.08});
+    const lobbyMat=new THREE.MeshPhysicalMaterial({color:0x26343a,roughness:.2,metalness:.2,clearcoat:.35,clearcoatRoughness:.18});
     for(const b of plan.buildings){
       const baseY=urbanGroundHeight(b.x,b.z,config),mat=facadeMats[b.style]||facadeMats.office;
       const building=box([b.w,b.height,b.d],[b.x,baseY+b.height/2+.18,b.z],mat,true);
@@ -138,6 +150,7 @@ export class UrbanRuntime {
       box([1.2,.12,.12],[l.x+.52,y+4.62,l.z],matLamp,false);box([.42,.13,.28],[l.x+1.05,y+4.55,l.z],new THREE.MeshStandardMaterial({color:0xffefb5,emissive:0xffcf70,emissiveIntensity:.22}),false);
     }
     const treeItems=plan.trees.map(t=>({...t,y:urbanGroundHeight(t.x,t.z,config)}));group.add(treeInstances(treeItems));
+    group.userData.materialSource='RoadForge UE5 CC0 asphalt/concrete';
 
     this.clearGenerated();this.root.add(group);bodies.forEach(b=>this.world.physicsWorld.addBody(b));this.bodies=bodies;
     this.plan=plan;this.config=config;this.manifest={spawns:plan.spawns};this.applySky(config.sky);this.ready=true;
