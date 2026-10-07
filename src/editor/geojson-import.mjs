@@ -21,8 +21,9 @@ function projector(features) {
 }
 
 const highwayWidth = props => {
-  const lanes=Math.max(1,Math.min(8,Number(props?.lanes)||0));
-  if(lanes) return Math.max(5.5,lanes*3.2);
+  const requestedLanes=Number(props?.lanes);
+  if(props?.lanes!=null && Number.isFinite(requestedLanes) && requestedLanes>=1)
+    return Math.max(5.5,Math.min(8,requestedLanes)*3.2);
   const kind=String(props?.highway||props?.road||'').toLowerCase();
   return /motorway|trunk/.test(kind)?13:/primary|secondary/.test(kind)?10:/residential|tertiary/.test(kind)?7:6;
 };

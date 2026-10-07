@@ -14,3 +14,18 @@ test('OSM-like GeoJSON becomes editable Sketchbook roads and buildings',()=>{
 test('GeoJSON importer rejects unrelated geometry',()=>{
  assert.throws(()=>geoJSONToPrefabs({type:'FeatureCollection',features:[{type:'Feature',properties:{},geometry:{type:'Point',coordinates:[9,45]}}]}),/Nessuna/);
 });
+
+test('OSM road width uses highway class unless explicit lane count is supplied',()=>{
+ const line={type:'LineString',coordinates:[[9,45],[9.001,45]]};
+ const data={type:'FeatureCollection',features:[
+   {type:'Feature',properties:{highway:'residential'},geometry:line},
+   {type:'Feature',properties:{highway:'primary'},geometry:line},
+   {type:'Feature',properties:{highway:'motorway'},geometry:line},
+   {type:'Feature',properties:{highway:'residential',lanes:'4'},geometry:line}
+ ]};
+ const roads=geoJSONToPrefabs(data).objects;
+ assert.equal(roads.length,4);
+ assert.ok(roads[0].scale[0]<roads[1].scale[0]);
+ assert.ok(roads[1].scale[0]<roads[2].scale[0]);
+ assert.ok(roads[3].scale[0]>roads[0].scale[0]);
+});
