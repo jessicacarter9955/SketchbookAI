@@ -262,9 +262,10 @@ export class UrbanRuntime {
   }
   async loadPhotorealArchitecture(group,plan,config){
     const loader=new GLTFLoader();
+    // Keep runtime deterministic/offline-friendly: these kits are checksum-downloaded by CI.
+    // Add further facade packs only after they are part of fetch-urban-kits.py as well.
     const kits=[
-      {id:'modular_urban_apartments_facade',kind:'residential'},
-      {id:'modular_factory_facade',kind:'industrial'}
+      {id:'modular_urban_apartments_facade',kind:'residential'}
     ];
     const loaded=[];
     for(const kit of kits){
