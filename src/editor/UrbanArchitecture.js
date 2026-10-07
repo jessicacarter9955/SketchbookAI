@@ -2,6 +2,20 @@ import * as THREE from 'three';
 import { createDetails } from './UrbanDetails.js';
 
 const roofMaterial=new THREE.MeshStandardMaterial({color:0x4b4c46,roughness:.95});
+// Restrict facade variation to a small shared material palette so repeated
+// modules remain GPU-instanced instead of creating per-building draw calls.
+const facadeTints=[0xffffff,0xd8e1e3,0xe2d3bd,0xc1c6bd,0xcab6a8,0xd0c9c1];
+const tintedMaterialCache=new Map();
+function facadeMaterial(material,variant) {
+  if (!material?.color || /glass|window|metal|iron|frame/i.test(material.name||'')) return material;
+  const key=material.uuid+':'+variant;
+  if (!tintedMaterialCache.has(key)) {
+    const tinted=material.clone();
+    tinted.color.multiply(new THREE.Color(facadeTints[variant]));
+    tintedMaterialCache.set(key,tinted);
+  }
+  return tintedMaterialCache.get(key);
+}
 // The source files are catalogues of separate 3 m modules, not whole buildings.
 // Preserve their local geometry and assemble openings, corners and all four sides.
 export function prepareFacadeKit(root) {
@@ -32,12 +46,13 @@ export function buildModularBuilding(kit, building, seed = 0, industrial = false
   group.rotation.y = building.rotation || 0;
   group.userData.photorealArchitecture = true;
   const details = createDetails(group, group);
+  const facadeVariant = (Math.abs(seed * 7 + Math.round(x * 3) + Math.round(z * 5))) % facadeTints.length;
   const addModule = (name, parent, px, py) => {
     const original = kit.getObjectByName(name);
     if (!original) throw new Error(`Missing facade module: ${name}`);
     const module = original.clone(true);
     module.position.set(px, py, 0);
-    module.traverse(node => { if (node.isMesh) { node.castShadow = !/glass/.test(node.material.name); node.receiveShadow = true; } });
+    module.traverse(node => { if (node.isMesh) { node.material=facadeMaterial(node.material,facadeVariant); node.castShadow = !/glass/.test(node.material.name); node.receiveShadow = true; } });
     parent.add(module);
   };
   // Unreal Procedural-Cities-inspired tiered massing. Each setback is made
@@ -51,6 +66,9 @@ export function buildModularBuilding(kit, building, seed = 0, industrial = false
   } else if ((massing === 'setback' || massing === 'courtyard') && floors >= 5) {
     boundaries = [0, floors - Math.max(2, Math.floor(floors * .27)), floors];
     scales = [1, massing === 'courtyard' ? .7 : .8];
+  } else if (massing === 'corner' && floors >= 5) {
+    boundaries = [0, floors - 2, floors];
+    scales = [1, .86];
   } else if (massing === 'crown' && floors >= 7) {
     boundaries = [0, floors - 2, floors];
     scales = [1, .9];
@@ -62,6 +80,7 @@ export function buildModularBuilding(kit, building, seed = 0, industrial = false
     const section = new THREE.Group();
     section.name = `Imported facade tier ${tier}`;
     section.position.y = start * 3;
+    if (massing === 'corner' && tier > 0) section.position.x = width * .065;
     section.scale.set(scales[tier], 1, scales[tier]);
     group.add(section);
     const sides = [[width/2,depth/2,0,baysX],[-width/2,-depth/2,Math.PI,baysX],[width/2,-depth/2,Math.PI/2,baysZ],[-width/2,depth/2,-Math.PI/2,baysZ]];
