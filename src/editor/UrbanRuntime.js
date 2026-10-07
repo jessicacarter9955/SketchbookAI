@@ -81,7 +81,7 @@ async function polyHavenGltfURL(assetId){
 
 export class UrbanRuntime {
   constructor(world){
-    this.world=world; this.ready=false; this.config=null; this.bodies=[];
+    this.world=world; this.ready=false; this.config=null; this.bodies=[]; this.visualState={status:'idle',architecture:[],vegetation:null,error:null};
     this.root=new THREE.Group(); this.root.name='Città procedurale'; world.graphicsWorld.add(this.root);
     world.camera.far=1800; world.camera.updateProjectionMatrix(); world.renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
     world.renderer.toneMapping=THREE.ACESFilmicToneMapping; world.renderer.toneMappingExposure=1.08; world.renderer.outputColorSpace=THREE.SRGBColorSpace;
@@ -244,10 +244,20 @@ export class UrbanRuntime {
 
     this.clearGenerated();this.root.add(group);bodies.forEach(b=>this.world.physicsWorld.addBody(b));this.bodies=bodies;
     this.plan=plan;this.config=config;this.manifest={spawns:plan.spawns};this.applySky(config.sky);this.ready=true;
-    Promise.allSettled([
+    this.visualState={status:'loading',architecture:[],vegetation:null,error:null};
+    this.visualPromise=Promise.all([
       this.loadPhotorealArchitecture(group,plan,config),
       this.loadPhotorealVegetation(group,treeItems,config)
-    ]).then(results=>results.forEach(r=>{if(r.status==='rejected')console.warn('Urban photoreal layer unavailable',r.reason);}));
+    ]).then(([architecture,vegetation])=>{
+      this.visualState={status:'ready',architecture,vegetation,error:null};
+      group.userData.photorealReady=true;
+      return this.visualState;
+    }).catch(error=>{
+      this.visualState={status:'error',architecture:group.userData.photorealAssets||[],vegetation:group.userData.photorealVegetation||null,error:String(error?.message||error)};
+      group.userData.photorealError=this.visualState.error;
+      console.error('Urban photoreal layer failed',error);
+      throw error;
+    });
 
   }
   async loadPhotorealArchitecture(group,plan,config){
@@ -295,6 +305,8 @@ export class UrbanRuntime {
       group.traverse(node=>{if(node.userData?.urbanBuilding&&node.userData.planBuilding===b){node.material.colorWrite=false;node.castShadow=false;}});
     });
     group.userData.photorealAssets=loaded.map(k=>k.id);
+    if(group.userData.photorealAssets.length<2)throw new Error(`Expected 2 architecture kits, loaded ${group.userData.photorealAssets.length}`);
+    return group.userData.photorealAssets;
   }
   async loadPhotorealVegetation(group,items,config){
     const loader=new GLTFLoader(),gltf=await loadUrbanKit(loader,'tree_small_02'),source=gltf.scene;
@@ -316,6 +328,7 @@ export class UrbanRuntime {
     group.add(layer);
     const fallback=group.getObjectByName('Procedural vegetation fallback');if(fallback)fallback.visible=false;
     group.userData.photorealVegetation='tree_small_02 · Poly Haven CC0';
+    return {assetId:'tree_small_02',count:layer.children.length};
   }
   applySky(preset){
     const settings={day:{elevation:47,azimuth:145,haze:2.2,fog:0xaec2cb,sun:0xffefd6,intensity:.72},sunset:{elevation:8,azimuth:245,haze:5,fog:0xb98d85,sun:0xffaa63,intensity:.45},haze:{elevation:30,azimuth:160,haze:14,fog:0x9ea9ad,sun:0xd0d4d5,intensity:.28}}[preset];
