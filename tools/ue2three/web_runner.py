@@ -134,6 +134,14 @@ def main():
         if not run_cli(migrate, "Character preparation"):
             return 2
 
+    control_context = project.parent / "Content" / "Fixers" / "Core" / "Input" / "Actions" / "IMC_Fixers.uasset"
+    mover_blueprint = project.parent / "Content" / "Fixers" / "Core" / "Blueprints" / "Characters" / "CBP_Fixers_Mover.uasset"
+    if recipe is not None and control_context.is_file() and mover_blueprint.is_file():
+        phase("character", "Leggo i comandi originali del personaggio e i relativi eventi Blueprint...")
+        controls_command = ["migrate-controls", str(project), "--workspace", str(workspace), "--publish-dir", str(project_output)]
+        if not run_cli(controls_command, "Original character controls"):
+            print("NOTICE: Original character controls could not be extracted; continuing with map migration.", flush=True)
+
     phase("maps", "Esporto le mappe Unreal e riuso quelle gia convertite...")
     map_export = ["migrate-maps", str(project), "--workspace", str(workspace), "--publish-dir", str(project_output)]
     if args.engine:

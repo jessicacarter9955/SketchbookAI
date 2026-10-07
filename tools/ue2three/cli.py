@@ -49,6 +49,11 @@ def parser():
     ui.add_argument("--workspace", type=Path, required=True, help="Verified ue2three scan and Asset Registry workspace")
     ui.add_argument("--publish-dir", type=Path, required=True, help="Local output directory, outside the source project")
     ui.add_argument("--force", action="store_true", help="Re-read source Widget Blueprints instead of reusing cached JSON")
+    controls = commands.add_parser("migrate-controls", help="Extract original Enhanced Input mappings and Blueprint event entries")
+    controls.add_argument("project", type=Path, help="Editable Unreal .uproject")
+    controls.add_argument("--workspace", type=Path, required=True, help="Verified ue2three scan workspace")
+    controls.add_argument("--publish-dir", type=Path, required=True, help="Local output directory, outside the source project")
+    controls.add_argument("--force", action="store_true", help="Re-read source assets instead of reusing cached JSON")
     return result
 
 
@@ -117,6 +122,18 @@ def execute(args):
             manifest = migrate_ui(project, directory, args.publish_dir, logger, force=args.force)
         print(f"Source Widget Blueprints: {len(manifest['widget_blueprints'])}; root: {manifest['root_widget']}")
         print(f"UI manifest: {Path(args.publish_dir) / 'ui-manifest.json'}")
+        return 0
+
+    if args.command == "migrate-controls":
+        from controls_migration import migrate_controls
+        if not directory.is_dir():
+            raise ValueError("Control extraction requires a completed scan workspace")
+        logger = Logger(directory)
+        with workspace_lock(directory):
+            report = migrate_controls(project, directory, args.publish_dir, logger, force=args.force)
+        print(f"Source controls: {len(report['default_key_mappings'])} key mappings; "
+              f"{len(report['blueprint_input_events'])} Blueprint events")
+        print(f"Control manifest: {Path(args.publish_dir) / 'character-controls.json'}")
         return 0
 
     if (directory / "state.json").exists():
