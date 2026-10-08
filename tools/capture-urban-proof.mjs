@@ -147,7 +147,7 @@ async function captureFreeRoam(){
   if(!initial.playing||initial.vehicles<2||!initial.skyline?.distantSkyline||initial.skyline.buildingCount<100)
     throw new Error(`Free-roam setup incomplete: ${JSON.stringify(initial)}`);
 
-  await page.locator('#canvas').focus();
+  await page.evaluate(()=>{ globalThis.world?.renderer?.domElement?.focus?.(); });
   await page.keyboard.press('f');
   await page.waitForFunction(()=>Boolean(globalThis.world?.editorPlayer?.controlledObject),null,{timeout:12000,polling:100});
   await page.waitForTimeout(700);
