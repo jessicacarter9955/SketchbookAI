@@ -89,6 +89,55 @@ async function polyHavenGltfURL(assetId){
   return candidates[0].url;
 }
 
+
+function createDistantSkyline(plan,config){
+  const group=new THREE.Group();group.name='Distant skyline';
+  const width=plan.bounds.maxX-plan.bounds.minX,depth=plan.bounds.maxZ-plan.bounds.minZ;
+  const radiusX=width/2+95,radiusZ=depth/2+95;
+  const countPerSide=34,total=countPerSide*4;
+  const geometry=new THREE.BoxGeometry(1,1,1);
+  const materials=[
+    new THREE.MeshStandardMaterial({color:0x78858a,roughness:.88,metalness:.05}),
+    new THREE.MeshStandardMaterial({color:0x6e7478,roughness:.9,metalness:.03}),
+    new THREE.MeshStandardMaterial({color:0x59686f,roughness:.76,metalness:.12})
+  ];
+  const meshes=materials.map(mat=>new THREE.InstancedMesh(geometry,mat,total));
+  const matrices=meshes.map(()=>new THREE.Matrix4()),q=new THREE.Quaternion(),scale=new THREE.Vector3(),pos=new THREE.Vector3();
+  const seeded=i=>{
+    const x=Math.sin((i+1)*12.9898+config.seed*.017)*43758.5453;
+    return x-Math.floor(x);
+  };
+  let indexes=[0,0,0];
+  for(let side=0;side<4;side++)for(let i=0;i<countPerSide;i++){
+    const r=seeded(side*101+i),r2=seeded(side*211+i+9),r3=seeded(side*307+i+21);
+    const h=16+r*48,w=9+r2*13,d=9+r3*14;
+    const along=(i/(countPerSide-1)-.5)*(side<2?depth+220:width+220);
+    const offset=35+r2*95;
+    if(side===0)pos.set(-radiusX-offset,h/2-1,along);
+    else if(side===1)pos.set(radiusX+offset,h/2-1,along);
+    else if(side===2)pos.set(along,h/2-1,-radiusZ-offset);
+    else pos.set(along,h/2-1,radiusZ+offset);
+    q.setFromAxisAngle(new THREE.Vector3(0,1,0),(r3-.5)*.12);
+    matrices[side%3].compose(pos,q,scale.set(w,h,d));
+    meshes[side%3].setMatrixAt(indexes[side%3]++,matrices[side%3]);
+  }
+  for(let m=0;m<meshes.length;m++){
+    meshes[m].count=indexes[m];meshes[m].instanceMatrix.needsUpdate=true;meshes[m].castShadow=false;meshes[m].receiveShadow=false;
+    group.add(meshes[m]);
+  }
+  const beltGeo=new THREE.SphereGeometry(1,7,5),beltMat=new THREE.MeshStandardMaterial({color:0x405844,roughness:1});
+  const beltCount=96,belt=new THREE.InstancedMesh(beltGeo,beltMat,beltCount),matrix=new THREE.Matrix4();
+  for(let i=0;i<beltCount;i++){
+    const angle=i/beltCount*Math.PI*2,r= Math.max(width,depth)*.58+58+seeded(i+800)*42;
+    const h=3.5+seeded(i+1200)*3.5;
+    matrix.compose(new THREE.Vector3(Math.cos(angle)*r,h*.75,Math.sin(angle)*r),q,scale.set(h*1.1,h,h*1.1));
+    belt.setMatrixAt(i,matrix);
+  }
+  belt.instanceMatrix.needsUpdate=true;belt.castShadow=false;group.add(belt);
+  group.userData={distantSkyline:true,buildingCount:indexes.reduce((a,b)=>a+b,0),treeCanopies:beltCount};
+  return group;
+}
+
 export class UrbanRuntime {
   constructor(world){
     this.world=world; world.sky.setPhotographic(true); this.ready=false; this.config=null; this.bodies=[]; this.visualState={status:'idle',architecture:[],vegetation:null,error:null};
@@ -133,6 +182,8 @@ export class UrbanRuntime {
     };
     const width=plan.bounds.maxX-plan.bounds.minX,depth=plan.bounds.maxZ-plan.bounds.minZ;
     box([width+30,.5,depth+30],[0,-.3,0],new THREE.MeshStandardMaterial({color:0x66765a,roughness:1}),true);
+    const horizonGround=new THREE.Mesh(new THREE.BoxGeometry(width+760,.35,depth+760),matGrass);horizonGround.position.y=-.58;horizonGround.receiveShadow=true;group.add(horizonGround);
+    group.add(createDistantSkyline(plan,config));
 
     // Parks/lawns first, then sidewalks and roads so curbs read clearly.
     for(const p of plan.parks){
@@ -216,7 +267,8 @@ export class UrbanRuntime {
       if(group.parent!==this.root)return this.visualState;
       group.visible=true;
       captureStreetReflections(this.world,group);
-      this.visualState={status:'ready',architecture,vegetation,lighting,props,assembledBuildings:plan.buildings.length,error:null};
+      const skyline=group.getObjectByName('Distant skyline')?.userData||{};
+      this.visualState={status:'ready',architecture,vegetation,lighting,props,assembledBuildings:plan.buildings.length,skyline,error:null};
       group.userData.photorealReady=true;
       return this.visualState;
     }).catch(error=>{
