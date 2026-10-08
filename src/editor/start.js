@@ -53,20 +53,40 @@ function sceneControls(editor) {
         catch (error) { dialog.querySelector('[role=status]').textContent = error.message; }
     };
     const hud = document.createElement('div'); hud.className = 'city-hud';
-    hud.innerHTML = '<strong data-city-status></strong><button data-board>In auto</button><button data-reset>Riparti</button>';
+    hud.innerHTML = '<strong data-city-status></strong><span class="vehicle-prompt" data-vehicle-prompt></span><button data-board>Entra in auto · F</button><button data-reset>Riparti</button>';
     hud.querySelector('[data-city-status]').textContent = current.name;
+    const nearestVehicle = (maxDistance = 8) => {
+        const player = world.editorPlayer; if (!player || player.controlledObject) return null;
+        const cars = world.vehicles.filter(car => car.seats?.some(seat => seat && !seat.occupiedBy));
+        cars.sort((a,b)=>a.position.distanceTo(player.position)-b.position.distanceTo(player.position));
+        return cars[0] && cars[0].position.distanceTo(player.position) <= maxDistance ? cars[0] : null;
+    };
+    const pulseVehicleKey = () => {
+        const player = world.editorPlayer; if (!player) return;
+        const event = new KeyboardEvent('keydown', {code:'KeyF',key:'f'});
+        player.handleKeyboardEvent(event,'KeyF',true);
+        requestAnimationFrame(()=>player.handleKeyboardEvent(new KeyboardEvent('keyup',{code:'KeyF',key:'f'}),'KeyF',false));
+    };
+    const updateVehiclePrompt = () => {
+        const player=world.editorPlayer, prompt=hud.querySelector('[data-vehicle-prompt]'), button=hud.querySelector('[data-board]');
+        if (!player || editor.active) { prompt.textContent=''; button.textContent='Entra in auto · F'; return; }
+        if (player.controlledObject) { prompt.textContent='F · Esci dal veicolo'; button.textContent='Esci dall’auto · F'; return; }
+        const car=nearestVehicle(8);
+        if (car) {
+            const distance=car.position.distanceTo(player.position);
+            prompt.textContent=`F · Entra nel veicolo · ${distance.toFixed(1)} m`;
+            button.textContent='Entra in auto · F';
+            button.disabled=false;
+        } else {
+            prompt.textContent='Avvicinati a un’auto per guidare';
+            button.textContent='Auto troppo lontana';
+            button.disabled=true;
+        }
+    };
+    setInterval(updateVehiclePrompt,200);
     hud.querySelector('[data-board]').onclick = () => {
         if (editor.active) editor.setActive(false);
-        const player = world.editorPlayer;
-        if (player.controlledObject) { world.renderer.domElement.focus(); return; }
-        const cars = world.vehicles.filter(car => car.seats?.[0] && !car.seats[0].occupiedBy);
-        cars.sort((a, b) => a.position.distanceTo(player.position) - b.position.distanceTo(player.position));
-        if (!cars.length) { editor.message('Aggiungi un’Auto guidabile nell’editor, poi premi Prova.'); return; }
-        player.teleportToVehicle(cars[0], cars[0].seats[0]); player.takeControl();
-        const rear = new THREE.Vector3(0, 0, -1).applyQuaternion(cars[0].quaternion);
-        world.cameraOperator.theta = Math.atan2(rear.x, rear.z) * 180 / Math.PI; world.cameraOperator.phi = 15;
-        world.renderer.domElement.focus();
-        editor.message('Sei al volante. WASD guida · Spazio frena · F esce · F2 apre l’editor.');
+        requestAnimationFrame(()=>{ updateVehiclePrompt(); if (world.editorPlayer?.controlledObject || nearestVehicle(8)) pulseVehicleKey(); world.renderer.domElement.focus(); });
     };
     hud.querySelector('[data-reset]').onclick = () => { world.actorLayer.resetPlayer(); if (!editor.active) { world.actorLayer.start(editor.items); world.renderer.domElement.focus(); } };
     if (world.levelRuntime) {
@@ -180,6 +200,7 @@ try {
     sceneEditor.islandTool?.focus();
     sceneEditor.urbanTool?.focus();
     if (query.get('play') === '1') sceneEditor.setActive(false);
+    if(current.world==='procedural-city' && query.get('play')==='1') sceneEditor.message('Free roam urbano · WASD muovi/guida · Shift corri · F entra/esci dall’auto · F2 editor.');
     document.title = `${current.name} · Sketchbook`;
 } catch (error) {
     loading.style.display = 'flex'; loading.textContent = `Impossibile avviare la scena: ${error.message}`; console.error(error);
