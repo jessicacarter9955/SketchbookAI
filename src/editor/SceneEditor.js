@@ -146,7 +146,10 @@ export class SceneEditor {
         this.surfaceTool?.cancel();
         this.world.inputManager.releaseInput();
         if (active && !this.active) this.world.actorLayer?.stop();
-        if (!active && this.active) this.world.actorLayer?.start(this.items);
+        if (!active && this.active) {
+            this.world.actorLayer?.start(this.items);
+            this.world.editorPlayer?.takeControl?.();
+        }
         this.active = active; document.exitPointerLock?.(); this.orbit.enabled = active; this.gizmo.enabled = active;
         for (const item of this.items) if (['vehicle', 'pedestrian'].includes(item.prefab)) this.objects.get(item.id).visible = active;
         this.world.inputManager.inputReceivers.forEach(receiver => Object.values(receiver.actions || {}).forEach(action => { action.isPressed = false; action.justPressed = false; action.justReleased = false; }));
