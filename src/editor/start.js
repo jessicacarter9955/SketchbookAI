@@ -69,7 +69,7 @@ function sceneControls(editor) {
             return true;
         }
         const car=nearestVehicle(8);if(!car)return false;
-        const seat=car.seats?.find(seat=>seat?.type===0&&!seat.occupiedBy)||car.seats?.find(seat=>seat&&!seat.occupiedBy);
+        const seat=car.seats?.find(seat=>seat?.type==='driver'&&!seat.occupiedBy)||car.seats?.find(seat=>seat&&!seat.occupiedBy);
         if(!seat)return false;
         player.teleportToVehicle(car,seat);player.takeControl();
         const rear=new THREE.Vector3(0,0,-1).applyQuaternion(car.quaternion);
