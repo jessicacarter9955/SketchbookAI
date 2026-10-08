@@ -5,6 +5,10 @@ on:
     branches: [ "urban-procedural-vehicles" ]
   workflow_dispatch:
 
+concurrency:
+  group: urban-visual-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -40,8 +44,23 @@ jobs:
           done
           cat /tmp/sketchbook-editor.log
           exit 1
+      - name: Inspect individual assets and materials
+        run: node tools/capture-urban-assets.mjs
+      - name: Upload individual asset screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: urban-asset-inspection
+          path: artifacts/assets
       - name: Capture verified photoreal environment
         run: node tools/capture-urban-proof.mjs
+      - name: Package playable city with current compiled bundle
+        run: python tools/package-urban-preview.py
+      - name: Upload playable city
+        uses: actions/upload-artifact@v4
+        with:
+          name: urban-playable
+          path: artifacts/urban-playable
       - name: Save editor log
         if: always()
         run: cp /tmp/sketchbook-editor.log artifacts/editor-server.log || true
@@ -50,4 +69,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: urban-visual-verification
-          path: artifacts
+          path: |
+            artifacts/*.png
+            artifacts/*.json
+            artifacts/*.log

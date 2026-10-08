@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 const base=process.env.URBAN_URL||'http://127.0.0.1:8401';
 const out=process.env.URBAN_ARTIFACTS||'artifacts';
 await fs.mkdir(out,{recursive:true});
-const browser=await chromium.launch({headless:true});
+const browser=await chromium.launch({headless:true,...(process.env.URBAN_CHROME_PATH?{executablePath:process.env.URBAN_CHROME_PATH,args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--single-process','--no-zygote']}:{})});
 
 async function writeDataUrl(path,dataUrl){
   const match=/^data:image\/png;base64,(.+)$/.exec(dataUrl||'');
@@ -18,7 +18,7 @@ async function writeDataUrl(path,dataUrl){
 async function captureEnvironment(){
   const page=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
   await page.goto(`${base}/urban-examples.html?variant=residential`,{waitUntil:'domcontentloaded'});
-  await page.waitForFunction(()=>globalThis.__urbanExample?.ready===true&&typeof globalThis.__urbanExampleCapture==='function',null,{timeout:90000});
+  await page.waitForFunction(()=>globalThis.__urbanExample?.ready===true&&typeof globalThis.__urbanExampleCapture==='function',null,{timeout:90000,polling:500});
   const report=await page.evaluate(()=>globalThis.__urbanExample.report);
   if(!report||report.localKits<2||report.buildings<10||report.trees<8)
     throw new Error(`residential proof failed ${JSON.stringify(report)}`);
@@ -41,6 +41,8 @@ async function captureRuntime(){
   const page=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
   const consoleErrors=[];
   page.on('console',msg=>{if(msg.type()==='error')consoleErrors.push(msg.text());});
+  // Freeze animation for repeatable captures; render the same production composer explicitly.
+  await page.addInitScript(()=>{window.requestAnimationFrame=()=>0;});
   await page.goto(`${base}/editor.html?scene=urban-photoreal`,{waitUntil:'domcontentloaded'});
 
   const collectDebug=()=>page.evaluate(()=>({
@@ -56,8 +58,8 @@ async function captureRuntime(){
   try{
     await page.waitForFunction(()=>{
       const state=globalThis.world?.levelRuntime?.visualState;
-      return state?.status==='ready'||state?.status==='error';
-    },null,{polling:500,timeout:60000});
+      return state?.status==='error'||(state?.status==='ready'&&globalThis.sceneEditor&&globalThis.world.levelRuntime.config.maxFloors===7);
+    },null,{timeout:120000,polling:500});
   }catch(error){
     const debug=await collectDebug();
     await fs.writeFile(`${out}/urban-runtime-FAILED.json`,JSON.stringify({debug,consoleErrors,error:String(error)},null,2));
@@ -75,6 +77,8 @@ async function captureRuntime(){
     const world=globalThis.world,editor=globalThis.sceneEditor;
     editor?.setActive?.(true);
     if(editor?.orbit)editor.orbit.enabled=false;
+    world.render=()=>{};
+    editor.items.filter(i=>['vehicle','pedestrian'].includes(i.prefab)).forEach(i=>{editor.objects.get(i.id).visible=false;});
     if(world.editorPlayer)world.editorPlayer.visible=false;
     world.actorLayer?.actors?.forEach(actor=>actor.visible=false);
     world.vehicles?.forEach(vehicle=>vehicle.visible=false);
@@ -94,20 +98,21 @@ async function captureRuntime(){
       trees:world.levelRuntime.plan?.trees?.length||0
     };
   });
-  if(proof.assets.length<1||!proof.vegetation||proof.cc0TreeCount<1)
+  if(proof.assets.length<2||!proof.vegetation||proof.cc0TreeCount<8||proof.state.assembledBuildings!==proof.buildings||proof.state.props?.instances<10)
     throw new Error(`Photoreal proof incomplete: ${JSON.stringify(proof)}`);
 
   const shots=[
-    ['urban-proof-overview',[88,58,92],[0,12,-8]],
-    ['urban-proof-street',[9,6.2,46],[0,5,-18]],
-    ['urban-proof-vegetation',[-34,7.5,24],[-18,5,-6]]
+    ['urban-proof-overview',[58,31,-38],[7,7,6]],
+    ['urban-proof-street',[9,1.85,-18],[23,4,13]],
+    ['urban-proof-vegetation',[15,2.4,33],[12,2.2,18]]
   ];
   for(const [name,camera,target] of shots){
     const dataUrl=await page.evaluate(({camera,target})=>{
       const world=globalThis.world;
       world.camera.fov=48;world.camera.updateProjectionMatrix();
       world.camera.position.set(...camera);world.camera.lookAt(...target);world.camera.updateMatrixWorld(true);
-      world.renderer.render(world.graphicsWorld,world.camera);
+      world.levelRuntime.update();
+      world.composer.render();
       return world.renderer.domElement.toDataURL('image/png');
     },{camera,target});
     const bytes=await writeDataUrl(`${out}/${name}.png`,dataUrl);
