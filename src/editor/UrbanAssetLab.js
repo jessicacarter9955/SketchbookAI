@@ -2,23 +2,33 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { prepareFacadeKit,buildModularBuilding } from './UrbanArchitecture.js';
+import { prepareFacadeKit,buildModularBuilding,instanceArchitecture } from './UrbanArchitecture.js';
+import { loadTowerMaterials,buildContemporaryBuilding } from './UrbanTowers.js';
+import { createLawns } from './UrbanLawns.js';
 import { createVegetation } from './UrbanVegetation.js';
 import { loadSurface } from './UrbanLighting.js';
-const key=new URLSearchParams(location.search).get('asset')||'brick';
-const titles={brick:'Mattoni · infissi e profondità',residential:'Appartamenti · facciata e arretramenti',tree:'Vegetazione · tronco, rami e foglie',bench:'Panchina · legno verniciato e usura',lamp:'Lampione · metallo e vetro',materials:'Asfalto · pavimentazione · terreno'};
+const query=new URLSearchParams(location.search),key=query.get('asset')||'glass';
+const titles={glass:'Torre in vetro · angoli curvi e montanti',stone:'Torre in pietra · arretramenti e coronamento',terraces:'Residenziale · terrazze e giardini',lawn:'Prato · superficie e fili d’erba',brick:'Mattoni · infissi e profondità',residential:'Appartamenti · facciata e arretramenti',tree:'Vegetazione · tronco, rami e foglie',bench:'Panchina · legno verniciato e usura',lamp:'Lampione · metallo e vetro',materials:'Asfalto · pavimentazione · terreno'};
 document.querySelector('#title').textContent=titles[key]||key;
 const scene=new THREE.Scene();scene.background=new THREE.Color(0xc5cccb);
 const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1;renderer.useLegacyLights=false;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;document.body.appendChild(renderer.domElement);
-const camera=new THREE.PerspectiveCamera(39,innerWidth/innerHeight,.02,250),controls=new OrbitControls(camera,renderer.domElement);
+const camera=new THREE.PerspectiveCamera(39,innerWidth/innerHeight,.02,1500),controls=new OrbitControls(camera,renderer.domElement);
 const sun=new THREE.DirectionalLight(0xfff0dd,3.2);sun.position.set(-8,14,12);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-15,right:15,top:20,bottom:-10,near:.2,far:70});sun.shadow.camera.updateProjectionMatrix();sun.shadow.bias=-.0001;sun.shadow.normalBias=.015;scene.add(sun,sun.target,new THREE.HemisphereLight(0xd1e2ee,0x655c47,.15));
-const floor=new THREE.Mesh(new THREE.PlaneGeometry(120,120),new THREE.MeshStandardMaterial({color:0xb8bcb9,roughness:1}));floor.rotation.x=-Math.PI/2;floor.position.y=-.035;floor.receiveShadow=true;scene.add(floor);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(1500,1500),new THREE.MeshStandardMaterial({color:0xb8bcb9,roughness:1}));floor.rotation.x=-Math.PI/2;floor.position.y=-.035;floor.receiveShadow=true;scene.add(floor);
 let ready=false;
 function render(){if(!ready)return;scene.traverse(n=>{if(n.isLOD)n.update(camera);});renderer.render(scene,camera);}
 try{
- const hdr=await new RGBELoader().loadAsync('assets/urban-kits/lighting/sky.hdr');hdr.mapping=THREE.EquirectangularReflectionMapping;const pmrem=new THREE.PMREMGenerator(renderer);scene.environment=pmrem.fromEquirectangular(hdr).texture;pmrem.dispose();
- let object,assetId,scale=1;
- if(key==='materials'){
+ const contemporary=['glass','stone','terraces'].includes(key);
+ const hdr=await new RGBELoader().loadAsync(`assets/urban-kits/lighting/${contemporary?'city':'sky'}.hdr`);hdr.mapping=THREE.EquirectangularReflectionMapping;const pmrem=new THREE.PMREMGenerator(renderer);scene.environment=pmrem.fromEquirectangular(hdr).texture;pmrem.dispose();
+ let object,assetId,source='Poly Haven CC0';
+ if(contemporary){
+  const mats=await loadTowerMaterials();
+  const dimensions={glass:{w:24,d:21,floors:32},stone:{w:27,d:23,floors:30},terraces:{w:25,d:19,floors:18}};
+  object=instanceArchitecture(buildContemporaryBuilding(dimensions[key],17,mats,key));
+  assetId=`urban-${key}-v1`;source='Custom building geometry; Poly Haven CC0 PBR materials and HDRI';
+ }else if(key==='lawn'){
+  object=await createLawns([{x:0,z:0,w:4,d:3,y:.08}]);assetId='grass_ground + curved blade geometry';source='Poly Haven CC0 ground; custom grass geometry';
+ }else if(key==='materials'){
   const mats=await Promise.all([loadSurface('asphalt_02',1.25),loadSurface('concrete_pavement',1.25),loadSurface('leafy_grass',1.25)]);
   object=new THREE.Group();mats.forEach((mat,i)=>{const sphere=new THREE.Mesh(new THREE.SphereGeometry(1,80,48),mat);sphere.position.set((i-1)*2.65,1.16,0);sphere.castShadow=sphere.receiveShadow=true;object.add(sphere);const slab=new THREE.Mesh(new THREE.BoxGeometry(2.3,.1,2.3),mat);slab.position.set((i-1)*2.65,.04,0);slab.receiveShadow=true;object.add(slab);});assetId='asphalt_02 / concrete_pavement / leafy_grass';
  }else if(key==='tree'){
@@ -41,12 +51,14 @@ try{
  scene.add(object);object.updateMatrixWorld(true);
  const bounds=new THREE.Box3().setFromObject(object),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
  object.position.x-=center.x;object.position.z-=center.z;object.position.y-=bounds.min.y;
- const target=new THREE.Vector3(0,size.y*.46,0),extent=Math.max(size.y,size.x/camera.aspect)*1.9;
- const direction=new THREE.Vector3(key==='brick'?.55:key==='tree'?.1:.68,key==='materials'?.72:.3,1).normalize();
+ let target=new THREE.Vector3(0,size.y*.46,0),extent=Math.max(size.y,size.x/camera.aspect)*(contemporary?1.6:1.9);
+ let direction=new THREE.Vector3(key==='brick'?.55:key==='tree'?.1:contemporary?.82:.68,key==='materials'?.72:key==='lawn'?.8:contemporary?.12:.3,1).normalize();
+ if(key==='lawn')extent=5;
+ if(contemporary&&query.get('view')==='detail'){target.set(size.x*.11,9,size.z*.20);extent=27;direction.set(.62,.09,1).normalize();}
  camera.position.copy(target).addScaledVector(direction,extent+size.z*.5);controls.target.copy(target);controls.update();
- sun.position.set(-extent*.6,extent*.9,extent*.7);sun.target.position.copy(target);sun.shadow.camera.far=extent*4+20;sun.shadow.camera.updateProjectionMatrix();
+ sun.position.set(-size.y*.8-8,size.y*1.4+14,size.y*.7+12);sun.target.position.copy(target);Object.assign(sun.shadow.camera,{left:-size.y,right:size.y,top:size.y,bottom:-size.y,far:size.y*5+70});sun.shadow.camera.updateProjectionMatrix();
  ready=true;render();
- const report={key,assetId,bounds:size.toArray(),source:'Poly Haven CC0',renderedAt:new Date().toISOString()};
+ const report={key,assetId,bounds:size.toArray(),source,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles,view:query.get('view')||'whole',renderedAt:new Date().toISOString()};
  globalThis.__urbanAsset={ready:true,report,capture(){render();return renderer.domElement.toDataURL('image/png');}};
  document.querySelector('#status').textContent='Asset caricato · PBR';
 }catch(error){globalThis.__urbanAsset={ready:false,error:error.message};document.querySelector('#status').textContent=error.message;console.error(error);}

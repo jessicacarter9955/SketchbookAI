@@ -14,3 +14,9 @@ RoadForge textures under assets/roadforge come from the upstream CC0 texture fol
 OpenStreetMap-derived datasets must retain the attribution required by the ODbL.
 
 SketchbookAI JavaScript is an independent adaptation of these ideas unless a source file carries a more specific notice. Any future substantial source-code port must retain the relevant upstream MIT copyright and license notice beside that port.
+
+## Contemporary architecture and lawn inspection
+
+`UrbanTowers.js` models three original building types: a curtain-wall tower with faceted curved corners, a stone setback tower and a terraced residential building. These are custom procedural meshes, not scanned or downloaded skyscrapers. `UrbanLawns.js` adds curved blade geometry with distance-based levels of detail.
+
+Additional CC0 Poly Haven inputs fetched at 2K: `concrete_tile_facade`, `white_sandstone_blocks_02`, `grass_ground`; the asset studio uses the `modern_buildings_2` HDRI. The production skyline uses its own local reflection capture. Screenshots from `urban-assets.html` are actual WebGL renders. The models are a realism improvement in progress, not a claim of achieved photorealism.

@@ -35,14 +35,15 @@ if __name__ == '__main__':
         fetch("https://raw.githubusercontent.com/YuuhenR/roadforge-osm-ue5-procedural-city/main/Plugins/RoadForge/Art/CC0_Textures/" + name, ROOT.parent / "roadforge" / name, checksum)
     print("RoadForge textures verified", flush=True)
 
-    for asset in ['asphalt_02', 'concrete_pavement', 'leafy_grass', 'kloofendal_48d_partly_cloudy_puresky']:
+    new_surfaces = ['concrete_tile_facade', 'white_sandstone_blocks_02', 'grass_ground']
+    for asset in ['asphalt_02', 'concrete_pavement', 'leafy_grass', 'kloofendal_48d_partly_cloudy_puresky', 'modern_buildings_2'] + new_surfaces:
         data=json.loads(subprocess.check_output(['curl','-fLs','--retry','2','--max-time','60','https://api.polyhaven.com/files/'+asset]))
-        if 'puresky' in asset:
+        if 'hdri' in data:
             item=data['hdri']['2k']['hdr']
-            fetch(item['url'],ROOT/'lighting'/'sky.hdr',item['md5'])
+            fetch(item['url'],ROOT/'lighting'/('city.hdr' if asset == 'modern_buildings_2' else 'sky.hdr'),item['md5'])
         else:
             for key,channel in [('Diffuse','diff'),('nor_gl','nor_gl'),('Rough','rough')]:
-                item=data[key]['1k']['jpg']
+                item=data[key]['2k' if asset in new_surfaces else '1k']['jpg']
                 fetch(item['url'],ROOT/asset/(channel+'.jpg'),item['md5'])
         print(asset,'verified',flush=True)
 
