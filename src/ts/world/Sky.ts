@@ -36,6 +36,10 @@ export class Sky extends THREE.Object3D implements IUpdatable
 	private world: World;
 	private photographic: boolean = false;
 
+	public setupMaterial(material: THREE.Material): void {
+		if (!this.photographic) this.csm.setupMaterial(material);
+	}
+
 	public setPhotographic(enabled: boolean): void {
 		this.photographic = enabled;
 		this.skyMesh.visible = !enabled;

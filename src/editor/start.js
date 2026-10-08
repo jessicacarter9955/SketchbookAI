@@ -167,6 +167,11 @@ try {
     }
     sceneControls(sceneEditor);
     if(current.playerProfile==='dds') new DdsGame(world,{key:`${storageKey}.dds-game`});
+    if(current.world==='procedural-city'){
+        report('Caricamento di facciate, vegetazione e materiali…');
+        const visual=await world.levelRuntime.visualPromise;
+        if(visual?.status==='error')throw new Error(visual.error);
+    }
     loading.style.display = 'none';
     if(current.id === 'portland-grass' && sceneEditor.mapEdits.length) {
         const select=sceneEditor.surfaceTool.$('[data-layers]'); select.value=sceneEditor.mapEdits[0].id;

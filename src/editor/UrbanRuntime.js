@@ -4,7 +4,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { createStreetProps } from './UrbanProps.js';
 import { buildUrbanStreets } from './UrbanStreets.js';
 import { createVegetation } from './UrbanVegetation.js';
-import { photographicLighting, loadSurface, metricUV } from './UrbanLighting.js';
+import { photographicLighting, loadSurface, metricUV, captureStreetReflections } from './UrbanLighting.js';
 import { prepareFacadeKit, buildModularBuilding, instanceArchitecture } from './UrbanArchitecture.js';
 import { DEFAULT_URBAN, validateUrban, generateUrbanPlan, urbanGroundHeight } from './urban-data.mjs';
 
@@ -91,7 +91,7 @@ async function polyHavenGltfURL(assetId){
 
 export class UrbanRuntime {
   constructor(world){
-    this.world=world; this.ready=false; this.config=null; this.bodies=[]; this.visualState={status:'idle',architecture:[],vegetation:null,error:null};
+    this.world=world; world.sky.setPhotographic(true); this.ready=false; this.config=null; this.bodies=[]; this.visualState={status:'idle',architecture:[],vegetation:null,error:null};
     this.root=new THREE.Group(); this.root.name='Città procedurale'; world.graphicsWorld.add(this.root);
     world.camera.far=1800; world.camera.updateProjectionMatrix(); world.renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
     world.renderer.toneMapping=THREE.ACESFilmicToneMapping; world.renderer.toneMappingExposure=1.08; world.renderer.outputColorSpace=THREE.SRGBColorSpace;
@@ -106,6 +106,7 @@ export class UrbanRuntime {
   generate(raw){
     const config=validateUrban(raw); if(JSON.stringify(config)===JSON.stringify(this.config))return;
     const plan=generateUrbanPlan(config),group=new THREE.Group(),bodies=[];
+    group.visible=false;
     const asphaltMap=roadForgeTexture('assets/roadforge/T_RF_Asphalt_BC.png',{color:true,repeat:[12,12]});
     const asphaltRough=roadForgeTexture('assets/roadforge/T_RF_Asphalt_R.png',{repeat:[12,12]});
     const concreteMap=roadForgeTexture('assets/roadforge/T_RF_Concrete_BC.png',{color:true,repeat:[9,9]});
@@ -213,6 +214,8 @@ export class UrbanRuntime {
       this.loadStreetProps(group,plan,config)
     ]).then(([architecture,vegetation,,lighting,props])=>{
       if(group.parent!==this.root)return this.visualState;
+      group.visible=true;
+      captureStreetReflections(this.world,group);
       this.visualState={status:'ready',architecture,vegetation,lighting,props,assembledBuildings:plan.buildings.length,error:null};
       group.userData.photorealReady=true;
       return this.visualState;
@@ -257,6 +260,15 @@ export class UrbanRuntime {
   async loadPhotorealVegetation(group,items,config){
     const layer=await createVegetation(items,config.seed);
     if(group.parent!==this.root)return null;
+    const soil=new THREE.MeshStandardMaterial({color:0x302e23,roughness:1});
+    const iron=new THREE.MeshStandardMaterial({color:0x343c38,metalness:.7,roughness:.65});
+    for(const t of items.filter(t=>t.kind==='street')){
+      const bed=new THREE.Mesh(new THREE.BoxGeometry(1.45,.025,1.45),soil);bed.position.set(t.x,t.y+.195,t.z);bed.receiveShadow=true;group.add(bed);
+      for(const side of [-1,1])for(const axis of ['x','z']){
+        const edge=new THREE.Mesh(new THREE.BoxGeometry(axis==='x'?1.57:.07,.025,axis==='x'?.07:1.5),iron);
+        edge.position.set(t.x+(axis==='z'?side*.75:0),t.y+.21,t.z+(axis==='x'?side*.75:0));edge.receiveShadow=true;group.add(edge);
+      }
+    }
     group.add(layer);
     const fallback=group.getObjectByName('Procedural vegetation fallback');if(fallback)fallback.removeFromParent();
     group.userData.photorealVegetation='tree_small_02 · Poly Haven CC0';

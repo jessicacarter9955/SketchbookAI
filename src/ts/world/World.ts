@@ -378,7 +378,7 @@ export class World
 				if (child.type === 'Mesh')
 				{
 					Utils.setupMeshProperties(child);
-					this.sky.csm.setupMaterial(child.material);
+					this.sky.setupMaterial(child.material);
 
 					if (child.material.name === 'ocean')
 					{

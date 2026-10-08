@@ -65,3 +65,25 @@ export function metricUV(mesh) {
   }
   uv.needsUpdate=true;
 }
+
+export function captureStreetReflections(world,root) {
+  const scene=world.graphicsWorld,renderer=world.renderer,glass=new Set(),hidden=[];
+  root.traverse(node=>{
+    if(node.isMesh&&/glass/.test(node.material?.name||'')){
+      glass.add(node.material);hidden.push([node,node.visible]);node.visible=false;
+    }
+  });
+  const trees=root.getObjectByName('CC0 photoreal vegetation');
+  if(trees){hidden.push([trees,trees.visible]);trees.visible=false;}
+  const target=new THREE.WebGLCubeRenderTarget(256,{type:THREE.HalfFloatType});
+  const camera=new THREE.CubeCamera(.3,300,target);camera.position.set(0,5,0);
+  const tone=renderer.toneMapping,shadows=renderer.shadowMap.enabled;
+  try{
+    renderer.toneMapping=THREE.NoToneMapping;renderer.shadowMap.enabled=false;
+    scene.updateMatrixWorld(true);camera.update(renderer,scene);
+    const pmrem=new THREE.PMREMGenerator(renderer),reflection=pmrem.fromCubemap(target.texture);
+    world.urbanReflection?.dispose();world.urbanReflection=reflection;
+    for(const mat of glass){mat.envMap=reflection.texture;mat.envMapIntensity=1;mat.opacity=.78;mat.metalness=.9;mat.roughness=.11;mat.needsUpdate=true;}
+    pmrem.dispose();
+  }finally{target.dispose();renderer.toneMapping=tone;renderer.shadowMap.enabled=shadows;hidden.forEach(([node,visible])=>{node.visible=visible;});}
+}

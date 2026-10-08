@@ -14,6 +14,7 @@ export class UrbanTool {
       '<label>Densità edifici<input data-building-density type="range" min=".15" max="1" step=".05"></label>'+
       '<label>Terreno<select data-terrain><option value="flat">Piatto</option><option value="rolling">Ondulato</option></select></label>'+
       '<label>Cielo<select data-sky><option value="day">Giorno</option><option value="sunset">Tramonto</option><option value="haze">Foschia</option></select></label>'+
+      '<a class="wide" href="urban-assets.html">Ispeziona asset e materiali</a>'+
       '<button class="wide primary" data-generate>Rigenera città</button><button class="wide" data-focus>Inquadra città</button>'+
       '<p>Road grid, edifici, marciapiedi e collisioni vengono ricostruiti dal seed. Veicoli e oggetti della scena restano indipendenti.</p>';
     editor.root.querySelector('.editor-inspector').prepend(this.root);

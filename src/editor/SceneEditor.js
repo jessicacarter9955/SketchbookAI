@@ -197,7 +197,7 @@ export class SceneEditor {
     create(item) {
         const object = new THREE.Group(); object.userData.editorId = item.id;
         object.add(item.assetId ? clone(this.templates.get(item.assetId)) : this.prefab(item.prefab));
-        object.traverse(node => { if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; for (const material of [].concat(node.material)) this.world.sky.csm.setupMaterial(material); } });
+        object.traverse(node => { if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; for (const material of [].concat(node.material)) this.world.sky.setupMaterial(material); } });
         object.userData.bounds = new THREE.Box3().setFromObject(object);
         object.position.fromArray(item.position); object.rotation.set(...item.rotation); object.scale.fromArray(item.scale);
         this.group.add(object); this.objects.set(item.id, object); this.syncCollider(object, item); return object;
