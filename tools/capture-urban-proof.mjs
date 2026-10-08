@@ -123,12 +123,63 @@ async function captureRuntime(){
   await page.close();
 }
 
+
+async function captureFreeRoam(){
+  const page=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
+  const consoleErrors=[];
+  page.on('console',msg=>{if(msg.type()==='error')consoleErrors.push(msg.text());});
+  await page.goto(`${base}/editor.html?scene=urban-photoreal&play=1`,{waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>{
+    const world=globalThis.world,state=world?.levelRuntime?.visualState;
+    return state?.status==='ready'&&globalThis.sceneEditor?.active===false&&world?.editorPlayer&&world?.vehicles?.length>=2;
+  },null,{timeout:120000,polling:500});
+  const initial=await page.evaluate(()=>{
+    const world=globalThis.world,player=world.editorPlayer,skyline=world.levelRuntime.root.getObjectByName('Distant skyline');
+    const distances=world.vehicles.map(v=>v.position.distanceTo(player.position)).sort((a,b)=>a-b);
+    return {
+      vehicles:world.vehicles.length,
+      nearestVehicle:distances[0],
+      playing:globalThis.sceneEditor.active===false,
+      prompt:document.querySelector('[data-vehicle-prompt]')?.textContent||'',
+      skyline:skyline?.userData||null
+    };
+  });
+  if(!initial.playing||initial.vehicles<2||!initial.skyline?.distantSkyline||initial.skyline.buildingCount<100)
+    throw new Error(`Free-roam setup incomplete: ${JSON.stringify(initial)}`);
+
+  await page.locator('#canvas').focus();
+  await page.keyboard.press('f');
+  await page.waitForFunction(()=>Boolean(globalThis.world?.editorPlayer?.controlledObject),null,{timeout:12000,polling:100});
+  await page.waitForTimeout(700);
+  const driving=await page.evaluate(()=>{
+    const world=globalThis.world,player=world.editorPlayer;
+    return {
+      controlled:Boolean(player.controlledObject),
+      vehicleCount:world.vehicles.length,
+      prompt:document.querySelector('[data-vehicle-prompt]')?.textContent||'',
+      speedKmh:Math.round((player.controlledObject?.collision?.velocity?.length?.()||0)*3.6)
+    };
+  });
+  await page.screenshot({path:`${out}/urban-free-roam-driving.png`,fullPage:false});
+
+  await page.keyboard.press('f');
+  await page.waitForFunction(()=>!globalThis.world?.editorPlayer?.controlledObject,null,{timeout:12000,polling:100});
+  const exited=await page.evaluate(()=>({
+    controlled:Boolean(globalThis.world?.editorPlayer?.controlledObject),
+    prompt:document.querySelector('[data-vehicle-prompt]')?.textContent||''
+  }));
+  await fs.writeFile(`${out}/urban-free-roam.json`,JSON.stringify({initial,driving,exited,consoleErrors},null,2));
+  console.log('free roam proof',{initial,driving,exited});
+  await page.close();
+}
+
 let runtimeError=null;
 try{
   // Always produce the environment-only evidence first. These pages use the downloaded,
   // checksum-verified CC0 kits directly and never show the Sketchbook player.
   await captureEnvironment();
   try{await captureRuntime();}catch(error){runtimeError=error;console.error(error);}
+  if(!runtimeError)try{await captureFreeRoam();}catch(error){runtimeError=error;console.error(error);}
 }finally{
   await browser.close();
 }
