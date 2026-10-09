@@ -64,3 +64,12 @@ body.editor-page { margin:0; overflow:hidden; font-family:system-ui,sans-serif; 
 .urban-dialogue-hint{position:fixed;left:50%;bottom:18%;transform:translateX(-50%);z-index:325;background:#101c2be8;color:white;padding:11px 20px;border:1px solid #87aac5;border-radius:8px;font:600 16px system-ui;pointer-events:none}
 body:not(.playing) .urban-dialogue-hint{display:none}
 @media(max-width:760px){.urban-rpg-dialogue{left:2%;right:2%;bottom:2%;grid-template-columns:1fr;gap:12px;padding:18px;max-height:60vh;overflow-y:auto}.urban-rpg-line{font-size:17px}.urban-rpg-choice{font-size:14px;padding:8px 12px}}
+
+/* Unified Sketchfab/Fab model library, including small Android screens. */
+.asset-source-hint{margin:9px 0;color:#c9dce7;font-size:13px}
+.asset-fab-tools[hidden],.asset-sketchfab-filters[hidden],.asset-sketchfab-access[hidden],.asset-results[hidden]{display:none!important}
+.asset-fab-tools{margin:13px 0 20px;padding:14px;border:1px solid #526878;border-radius:9px;background:#1b2e3b}
+.asset-fab-tools>p{line-height:1.5}
+.asset-fab-tools [data-fab-open]{background:#325f7b;min-height:40px}
+.asset-unified-search select{min-width:130px}
+@media(max-width:650px){.asset-unified-search{display:grid;grid-template-columns:1fr auto}.asset-unified-search select{grid-column:1/-1;min-height:44px}.asset-unified-search input{width:100%;min-height:44px}.asset-unified-search button{min-height:44px}.asset-fab-tools input[type=file]{width:100%}}
