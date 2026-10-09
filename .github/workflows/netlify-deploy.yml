@@ -2,8 +2,8 @@ name: Deploy to Netlify
 
 on:
   push:
-    branches:
-      - '**'  # Triggers on push to any branch
+    branches-ignore:
+      - 'experiment/**'  # Rig experiments must not consume deploy runners
 
 jobs:
   deploy:
