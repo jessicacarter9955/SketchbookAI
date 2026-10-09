@@ -1,3 +1,4 @@
+import {installAndroidPlaytestControls} from './android-playtest-controls.js';
 import { UrbanDialogue } from './UrbanDialogue.js';
 import { loadCatalog, createScene } from './scene-catalog.mjs';
 import { sceneStorageKey, loadRevisions, saveRevision, forkScene } from './scene-revisions.mjs';
@@ -201,6 +202,7 @@ try {
         sceneEditor.restore({version:1,world:current.world,objects,generator:{...sceneEditor.generator,sky:current.id==='island-sunset'?'sunset':'day'}});sceneEditor.commit();
     }
     sceneControls(sceneEditor);
+    installAndroidPlaytestControls(world,sceneEditor);
     if(current.world==='procedural-city')globalThis.urbanDialogue=world.urbanDialogue=new UrbanDialogue(world,sceneEditor);
     if(current.playerProfile==='dds') new DdsGame(world,{key:`${storageKey}.dds-game`});
     if(current.world==='procedural-city'){
