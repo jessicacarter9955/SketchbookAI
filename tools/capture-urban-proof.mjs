@@ -1,5 +1,6 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs/promises';
+import {URBAN_CAPTURE_VIEWS,validateUrbanCaptureViews} from './urban-camera-presets.mjs';
 
 const base=process.env.URBAN_URL||'http://127.0.0.1:8401';
 const out=process.env.URBAN_ARTIFACTS||'artifacts';
@@ -222,43 +223,61 @@ async function captureFreeRoam(){
   const closeupPngBytes=await writeDataUrl(`${out}/urban-vehicle-closeup.png`,vehicleCloseup);
   console.log('urban-vehicle-closeup',{pngBytes:closeupPngBytes});
 
-  // Dedicated evidence of the actual NPC population, not the player car.
-  // The camera is aimed at AI characters and AI cars by their live transforms.
-  const populationFrame=await page.evaluate(()=>{
+  // Take all requested viewpoints with ONE loaded WebGL scene, from known
+  // street/sidewalk positions. Do not teleport the camera into a facade.
+  validateUrbanCaptureViews();
+  const frames=await page.evaluate((views)=>{
     const world=globalThis.world,pop=world.actorLayer?.urbanPopulation;
     if(!pop||pop.cars.length<4||pop.pedestrians.length<6)
-      throw new Error('Urban population missing: '+JSON.stringify({cars:pop?.cars.length,pedestrians:pop?.pedestrians.length}));
-    const camera=world.camera,prior={p:camera.position.clone(),q:camera.quaternion.clone(),fov:camera.fov};
-    const ped=pop.pedestrians[0],car=pop.cars.reduce((best,c)=>!best||c.object.position.distanceTo(ped.object.position)<best.object.position.distanceTo(ped.object.position)?c:best,null);
-    const focus=ped.object.position.clone().lerp(car.object.position,.5);
+      throw new Error('Missing genuine population: '+JSON.stringify({cars:pop?.cars.length,pedestrians:pop?.pedestrians.length}));
+    const scenario=pop.prepareCaptureScenario();
+    // Repeatable AI warmup without loading the city, switching tabs or waiting
+    // for wall-clock time. Physics-driven player vehicle is unaffected.
+    for(let step=0;step<45;step++)pop.update(1/60);
+    const camera=world.camera,restore={
+      position:camera.position.clone(),rotation:camera.quaternion.clone(),fov:camera.fov
+    };
+    const ped=pop.pedestrians[0],car=pop.cars.reduce((best,c)=>
+      !best||c.object.position.distanceToSquared(ped.object.position)<best.object.position.distanceToSquared(ped.object.position)?c:best,null);
+    const segment=pop.net.roads[car.seg];
+    // Stand over the roadway, not above surrounding buildings.
+    const dx=segment.b.x-segment.a.x,dz=segment.b.z-segment.a.z;
+    const length=Math.hypot(dx,dz)||1,along={x:dx/length,z:dz/length},side={x:-dz/length,z:dx/length};
+    const midpoint=car.object.position.clone().lerp(ped.object.position,.5);
+    const results=[];
     try{
-      camera.fov=50;camera.updateProjectionMatrix();
-      camera.position.set(focus.x+15,focus.y+10,focus.z+19);
-      camera.lookAt(focus.x,focus.y+1,focus.z);camera.updateMatrixWorld(true);
-      world.composer.render();
-      return {png:world.renderer.domElement.toDataURL('image/png'),counts:{cars:pop.cars.length,pedestrians:pop.pedestrians.length},pedestrian:ped.object.position.toArray(),vehicle:car.object.position.toArray()};
+      for(const view of views){
+        const subject=view.kind==='car'?car.object.position:
+          view.kind==='pedestrian'?ped.object.position:
+          view.kind==='anchor'?midpoint:midpoint;
+        // The camera origin is anchored on a DRIVABLE lane. Its lateral
+        // variation is bounded to a lane so no camera starts inside a building.
+        const longitudinal=view.offset[2],height=view.offset[1],lateral=Math.min(2,Math.abs(view.offset[0])*.14);
+        camera.position.set(car.object.position.x+along.x*longitudinal+side.x*lateral,
+          Math.max(car.object.position.y,subject.y)+height,
+          car.object.position.z+along.z*longitudinal+side.z*lateral);
+        camera.fov=view.fov;camera.updateProjectionMatrix();
+        camera.lookAt(subject.x,subject.y+(view.kind==='pedestrian'?1:1.2),subject.z);
+        camera.updateMatrixWorld(true);
+        world.composer.render();
+        results.push({name:view.name,png:world.renderer.domElement.toDataURL('image/png'),
+          camera:camera.position.toArray(),target:subject.toArray()});
+      }
     }finally{
-      camera.position.copy(prior.p);camera.quaternion.copy(prior.q);camera.fov=prior.fov;camera.updateProjectionMatrix();camera.updateMatrixWorld(true);
+      camera.position.copy(restore.position);camera.quaternion.copy(restore.rotation);
+      camera.fov=restore.fov;camera.updateProjectionMatrix();camera.updateMatrixWorld(true);
     }
-  });
-  await fs.writeFile(`${out}/urban-population-proof.json`,JSON.stringify({counts:populationFrame.counts,pedestrian:populationFrame.pedestrian,vehicle:populationFrame.vehicle},null,2));
-  await writeDataUrl(`${out}/urban-population-traffic.png`,populationFrame.png);
-  console.log('urban-population-traffic',populationFrame.counts);
-
-  const pedestrianFrame=await page.evaluate(()=>{
-    const world=globalThis.world,pop=world.actorLayer.urbanPopulation;
-    const ped=pop.pedestrians[0],camera=world.camera,prior={p:camera.position.clone(),q:camera.quaternion.clone(),fov:camera.fov};
-    const pos=ped.object.position;
-    try{
-      camera.fov=48;camera.updateProjectionMatrix();
-      camera.position.set(pos.x+6,pos.y+3.2,pos.z+9);camera.lookAt(pos.x,pos.y+1.2,pos.z);
-      camera.updateMatrixWorld(true);world.composer.render();
-      return world.renderer.domElement.toDataURL('image/png');
-    }finally{
-      camera.position.copy(prior.p);camera.quaternion.copy(prior.q);camera.fov=prior.fov;camera.updateProjectionMatrix();camera.updateMatrixWorld(true);
-    }
-  });
-  await writeDataUrl(`${out}/urban-population-pedestrian.png`,pedestrianFrame);
+    return {scenario,counts:{cars:pop.cars.length,pedestrians:pop.pedestrians.length},
+      pedestrian:ped.object.position.toArray(),vehicle:car.object.position.toArray(),views:results};
+  },URBAN_CAPTURE_VIEWS);
+  for(const frame of frames.views){
+    const bytes=await writeDataUrl(`${out}/${frame.name}.png`,frame.png);
+    console.log('NPC capture',frame.name,{pngBytes:bytes,camera:frame.camera});
+  }
+  await fs.writeFile(`${out}/urban-population-proof.json`,
+    JSON.stringify({scenario:frames.scenario,counts:frames.counts,
+      pedestrian:frames.pedestrian,vehicle:frames.vehicle,
+      views:frames.views.map(({name,camera,target})=>({name,camera,target}))},null,2));
 
   await page.keyboard.press('f');
   await checkVehicleControl(false,'exit');
