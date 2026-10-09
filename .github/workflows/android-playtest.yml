@@ -59,8 +59,8 @@ jobs:
         run: |
           cat > capacitor.config.json <<'EOF'
           {
-            "appId": "ai.sketchbook.rpgplaytest",
-            "appName": "Sketchbook AI Playtest",
+            "appId": "ai.sketchbook.rpgplaytestv2",
+            "appName": "Sketchbook AI RPG v2",
             "webDir": "www",
             "server": {"androidScheme": "https"}
           }
@@ -72,6 +72,17 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon --stacktrace
+      - name: Verify APK signature, target SDK and installable package
+        run: |
+          set -euo pipefail
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          test -s "$APK"
+          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          BUILD_TOOLS=$(find "$SDK/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs --min-sdk-version 23 "$APK"
+          "$BUILD_TOOLS/aapt" dump badging "$APK" | head -n 12
+          unzip -t "$APK" | tail -n 1
+          echo "SHA256 $(sha256sum "$APK")"
       - name: Upload installable APK
         if: success()
         uses: actions/upload-artifact@v4
