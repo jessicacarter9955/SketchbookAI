@@ -275,8 +275,14 @@ let runtimeError=null;
 try{
   // Always produce the environment-only evidence first. These pages use the downloaded,
   // checksum-verified CC0 kits directly and never show the Sketchbook player.
-  await captureEnvironment();
-  try{await captureRuntime();}catch(error){runtimeError=error;console.error(error);}
+  const mode=process.env.URBAN_CAPTURE_MODE||'full';
+  if(!['full','population'].includes(mode))throw new Error('Unknown urban capture mode: '+mode);
+  // Population-only captures still load the production photoreal scene in
+  // captureFreeRoam(), but do not regenerate unrelated environment proofs.
+  if(mode==='full'){
+    await captureEnvironment();
+    try{await captureRuntime();}catch(error){runtimeError=error;console.error(error);}
+  }
   if(!runtimeError)try{await captureFreeRoam();}catch(error){runtimeError=error;console.error(error);}
 }finally{
   await browser.close();
