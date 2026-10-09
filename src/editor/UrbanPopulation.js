@@ -73,6 +73,7 @@ export class UrbanPopulation {
   }
   updateConversations(dt){
     for(const group of this.conversations){
+      if(group.members.some(member=>member.dialoguePaused))continue;
       group.elapsed+=dt;
       const speaker=Math.floor(group.elapsed/2.8)%2;
       const p=group.members[speaker],q=group.members[1-speaker];
@@ -106,7 +107,7 @@ export class UrbanPopulation {
       this.placeCar(a);
     }
     for(const a of this.pedestrians){
-      if(a.state==='chatting')continue;
+      if(a.state==='chatting'||a.dialoguePaused)continue;
       if(a.index>=a.path.length)this.nextDestination(a);
       const t=a.path[a.index];if(!t)continue;
       const dx=t.x-a.x,dz=t.z-a.z,d=Math.hypot(dx,dz);
