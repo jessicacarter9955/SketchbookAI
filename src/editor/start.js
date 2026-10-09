@@ -1,3 +1,4 @@
+import { UrbanDialogue } from './UrbanDialogue.js';
 import { loadCatalog, createScene } from './scene-catalog.mjs';
 import { sceneStorageKey, loadRevisions, saveRevision, forkScene } from './scene-revisions.mjs';
 
@@ -200,6 +201,7 @@ try {
         sceneEditor.restore({version:1,world:current.world,objects,generator:{...sceneEditor.generator,sky:current.id==='island-sunset'?'sunset':'day'}});sceneEditor.commit();
     }
     sceneControls(sceneEditor);
+    if(current.world==='procedural-city')globalThis.urbanDialogue=world.urbanDialogue=new UrbanDialogue(world,sceneEditor);
     if(current.playerProfile==='dds') new DdsGame(world,{key:`${storageKey}.dds-game`});
     if(current.world==='procedural-city'){
         report('Caricamento di facciate, vegetazione e materiali…');
@@ -214,7 +216,7 @@ try {
     sceneEditor.islandTool?.focus();
     sceneEditor.urbanTool?.focus();
     if (query.get('play') === '1') sceneEditor.setActive(false);
-    if(current.world==='procedural-city' && query.get('play')==='1') sceneEditor.message('Free roam urbano · WASD muovi/guida · Shift corri · F entra/esci dall’auto · F2 editor.');
+    if(current.world==='procedural-city' && query.get('play')==='1') sceneEditor.message('Free roam · WASD muovi · E parla con un abitante · 1-4 scegli risposta · F entra in auto · F2 editor.');
     document.title = `${current.name} · Sketchbook`;
 } catch (error) {
     loading.style.display = 'flex'; loading.textContent = `Impossibile avviare la scena: ${error.message}`; console.error(error);
