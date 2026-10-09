@@ -192,7 +192,35 @@ async function captureFreeRoam(){
       speedKmh:Math.round((player.controlledObject?.collision?.velocity?.length?.()||0)*3.6)
     };
   });
-  await page.screenshot({path:`${out}/urban-free-roam-driving.png`,fullPage:false});
+  // Playwright page.screenshot can stall waiting for a composited frame with
+  // software WebGL in CI. Capture the actual game WebGL canvas directly, as
+  // already done by captureRuntime(), and keep the output as a plain PNG.
+  const drivingFrame=await page.evaluate(()=>{
+    const world=globalThis.world;
+    world.composer.render();
+    return world.renderer.domElement.toDataURL('image/png');
+  });
+  const drivingPngBytes=await writeDataUrl(`${out}/urban-free-roam-driving.png`,drivingFrame);
+  console.log('urban-free-roam-driving',{pngBytes:drivingPngBytes});
+
+  // An additional dedicated close-up makes the tested vehicle easy to inspect.
+  const vehicleCloseup=await page.evaluate(()=>{
+    const world=globalThis.world,car=world.editorPlayer?.controlledObject;
+    if(!car)throw new Error('Cannot photograph vehicle: character has no controlled car');
+    const camera=world.camera,position=camera.position.clone(),quaternion=camera.quaternion.clone();
+    const carPosition=car.getWorldPosition(new camera.position.constructor());
+    try{
+      camera.position.set(carPosition.x+7,carPosition.y+3.5,carPosition.z+9);
+      camera.lookAt(carPosition.x,carPosition.y+1,carPosition.z);
+      camera.updateMatrixWorld(true);
+      world.composer.render();
+      return world.renderer.domElement.toDataURL('image/png');
+    }finally{
+      camera.position.copy(position);camera.quaternion.copy(quaternion);camera.updateMatrixWorld(true);
+    }
+  });
+  const closeupPngBytes=await writeDataUrl(`${out}/urban-vehicle-closeup.png`,vehicleCloseup);
+  console.log('urban-vehicle-closeup',{pngBytes:closeupPngBytes});
 
   await page.keyboard.press('f');
   await checkVehicleControl(false,'exit');
