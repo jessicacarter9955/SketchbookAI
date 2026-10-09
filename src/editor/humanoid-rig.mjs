@@ -1,6 +1,6 @@
 // Read the real imported GLTF hierarchy: Three.js cannot infer joints from
 // one merged static mesh. This diagnostic deliberately reports that case.
-const ARM_PATTERN=/(?:right|r)[_. -]?(?:upperarm|upper_arm|arm)|(?:upperarm|upper_arm|arm)[_. -]?(?:right|r)/i;
+const ARM_PATTERN=/(?:^|[_ .-])(?:arm[_ .-]?upper[_ .-]?r|right[_ .-]?(?:upperarm|upper_arm|arm)|(?:upperarm|upper_arm|arm)[_. -]?(?:right|r))(?:$|[_ .-])/i;
 const HEAD_PATTERN=/(?:^|[_ .-])(head|neck)(?:$|[_ .-])/i;
 export function inspectHumanoidRig(root){
   const nodes=[],bones=[],skinned=[];
