@@ -222,6 +222,44 @@ async function captureFreeRoam(){
   const closeupPngBytes=await writeDataUrl(`${out}/urban-vehicle-closeup.png`,vehicleCloseup);
   console.log('urban-vehicle-closeup',{pngBytes:closeupPngBytes});
 
+  // Dedicated evidence of the actual NPC population, not the player car.
+  // The camera is aimed at AI characters and AI cars by their live transforms.
+  const populationFrame=await page.evaluate(()=>{
+    const world=globalThis.world,pop=world.actorLayer?.urbanPopulation;
+    if(!pop||pop.cars.length<4||pop.pedestrians.length<6)
+      throw new Error('Urban population missing: '+JSON.stringify({cars:pop?.cars.length,pedestrians:pop?.pedestrians.length}));
+    const camera=world.camera,prior={p:camera.position.clone(),q:camera.quaternion.clone(),fov:camera.fov};
+    const ped=pop.pedestrians[0],car=pop.cars.reduce((best,c)=>!best||c.object.position.distanceTo(ped.object.position)<best.object.position.distanceTo(ped.object.position)?c:best,null);
+    const focus=ped.object.position.clone().lerp(car.object.position,.5);
+    try{
+      camera.fov=50;camera.updateProjectionMatrix();
+      camera.position.set(focus.x+15,focus.y+10,focus.z+19);
+      camera.lookAt(focus.x,focus.y+1,focus.z);camera.updateMatrixWorld(true);
+      world.composer.render();
+      return {png:world.renderer.domElement.toDataURL('image/png'),counts:{cars:pop.cars.length,pedestrians:pop.pedestrians.length},pedestrian:ped.object.position.toArray(),vehicle:car.object.position.toArray()};
+    }finally{
+      camera.position.copy(prior.p);camera.quaternion.copy(prior.q);camera.fov=prior.fov;camera.updateProjectionMatrix();camera.updateMatrixWorld(true);
+    }
+  });
+  await fs.writeFile(`${out}/urban-population-proof.json`,JSON.stringify({counts:populationFrame.counts,pedestrian:populationFrame.pedestrian,vehicle:populationFrame.vehicle},null,2));
+  await writeDataUrl(`${out}/urban-population-traffic.png`,populationFrame.png);
+  console.log('urban-population-traffic',populationFrame.counts);
+
+  const pedestrianFrame=await page.evaluate(()=>{
+    const world=globalThis.world,pop=world.actorLayer.urbanPopulation;
+    const ped=pop.pedestrians[0],camera=world.camera,prior={p:camera.position.clone(),q:camera.quaternion.clone(),fov:camera.fov};
+    const pos=ped.object.position;
+    try{
+      camera.fov=48;camera.updateProjectionMatrix();
+      camera.position.set(pos.x+6,pos.y+3.2,pos.z+9);camera.lookAt(pos.x,pos.y+1.2,pos.z);
+      camera.updateMatrixWorld(true);world.composer.render();
+      return world.renderer.domElement.toDataURL('image/png');
+    }finally{
+      camera.position.copy(prior.p);camera.quaternion.copy(prior.q);camera.fov=prior.fov;camera.updateProjectionMatrix();camera.updateMatrixWorld(true);
+    }
+  });
+  await writeDataUrl(`${out}/urban-population-pedestrian.png`,pedestrianFrame);
+
   await page.keyboard.press('f');
   await checkVehicleControl(false,'exit');
   const exited=await page.evaluate(()=>({
