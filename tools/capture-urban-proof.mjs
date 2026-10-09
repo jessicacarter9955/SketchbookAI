@@ -152,30 +152,36 @@ async function captureFreeRoam(){
   if(!initial.playing||initial.vehicles<2||!initial.skyline?.distantSkyline||initial.skyline.buildingCount<100)
     throw new Error(`Free-roam setup incomplete: ${JSON.stringify(initial)}`);
 
+  const vehicleState=()=>page.evaluate(()=>({
+    controlled:Boolean(globalThis.world?.editorPlayer?.controlledObject),
+    occupyingSeat:globalThis.world?.editorPlayer?.occupyingSeat?.type||null,
+    prompt:document.querySelector('[data-vehicle-prompt]')?.textContent||'',
+    focusedElement:document.activeElement?.tagName||null
+  }));
+  // Read actual state before waiting: under software WebGL, Playwright's
+  // waitForFunction polling can time out even after the requested transition.
+  async function checkVehicleControl(expected,phase){
+    let state=await vehicleState();
+    if(state.controlled!==expected){
+      let pollingError=null;
+      try{
+        await page.waitForFunction(expected=>Boolean(globalThis.world?.editorPlayer?.controlledObject)===expected,
+          expected,{timeout:30000,polling:250});
+      }catch(error){pollingError=error;}
+      state=await vehicleState();
+      if(state.controlled!==expected){
+        const debug={phase,expected,initial,state,consoleErrors,pollingError:String(pollingError||'none')};
+        await fs.writeFile(`${out}/urban-free-roam-FAILED.json`,JSON.stringify(debug,null,2));
+        throw new Error(`Urban vehicle ${phase} failed: ${JSON.stringify(debug)}`);
+      }
+    }
+    console.log(`urban vehicle ${phase}`,state);
+    return state;
+  }
+
   await page.evaluate(()=>{ globalThis.world?.renderer?.domElement?.focus?.(); });
   await page.keyboard.press('f');
-  try {
-    // Heavy headless WebGL rendering can delay keyboard handling and polling on CI.
-    await page.waitForFunction(()=>Boolean(globalThis.world?.editorPlayer?.controlledObject),null,{timeout:45000,polling:200});
-  } catch (error) {
-    const after=await page.evaluate(()=>{
-      const world=globalThis.world,player=world?.editorPlayer;
-      const nearest=world?.vehicles?.slice().sort((a,b)=>a.position.distanceTo(player.position)-b.position.distanceTo(player.position))[0];
-      return {
-        editorActive:globalThis.sceneEditor?.active,
-        controlled:Boolean(player?.controlledObject),
-        occupyingSeat:player?.occupyingSeat?.type||null,
-        playerPosition:player?.position.toArray()||null,
-        nearestVehicle:nearest?.position.distanceTo(player.position)??null,
-        nearestVehicleSeats:nearest?.seats?.map(seat=>({type:seat.type,occupied:Boolean(seat.occupiedBy)}))||[],
-        prompt:document.querySelector('[data-vehicle-prompt]')?.textContent||'',
-        focusedElement:document.activeElement?.tagName||null,
-        loadingText:document.querySelector('#loading-screen')?.textContent||''
-      };
-    });
-    await fs.writeFile(`${out}/urban-free-roam-FAILED.json`,JSON.stringify({initial,after,consoleErrors,error:String(error)},null,2));
-    throw new Error(`Urban boarding did not activate after F: ${JSON.stringify(after)}`);
-  }
+  await checkVehicleControl(true,'boarding');
   await page.waitForTimeout(700);
   const driving=await page.evaluate(()=>{
     const world=globalThis.world,player=world.editorPlayer;
@@ -189,7 +195,7 @@ async function captureFreeRoam(){
   await page.screenshot({path:`${out}/urban-free-roam-driving.png`,fullPage:false});
 
   await page.keyboard.press('f');
-  await page.waitForFunction(()=>!globalThis.world?.editorPlayer?.controlledObject,null,{timeout:12000,polling:100});
+  await checkVehicleControl(false,'exit');
   const exited=await page.evaluate(()=>({
     controlled:Boolean(globalThis.world?.editorPlayer?.controlledObject),
     prompt:document.querySelector('[data-vehicle-prompt]')?.textContent||''
