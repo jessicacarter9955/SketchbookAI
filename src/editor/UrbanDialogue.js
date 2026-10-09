@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {findHumanoidJoint,inspectHumanoidRig} from './humanoid-rig.mjs';
 
 const STORY={
   intro:{speaker:'Abitante del quartiere',text:'Ehi, non ti ho mai visto qui. Cerchi qualcuno o stai dando un’occhiata alla città?',choices:[
@@ -61,7 +62,7 @@ export class UrbanDialogue {
   }
   open(npc){
     if(!npc)return false;
-    this.npc=npc;this.active=true;this.previous={position:this.world.camera.position.clone(),quaternion:this.world.camera.quaternion.clone(),fov:this.world.camera.fov};
+    this.npc=npc;this.rigReport=inspectHumanoidRig(npc.object);this.active=true;this.previous={position:this.world.camera.position.clone(),quaternion:this.world.camera.quaternion.clone(),fov:this.world.camera.fov};
     npc.dialoguePaused=true;
     this.world.editorPlayer?.resetVelocity?.();
     this.root.hidden=false;this.hint.hidden=true;
@@ -109,7 +110,7 @@ export class UrbanDialogue {
     // Animated gesture of the REAL glTF model. Use named arm joints if available,
     // otherwise a small arm-like pointer pivot anchored to the model.
     if(!this.gesture){
-      let arm=null;obj.traverse(o=>{if(!arm&&/upper.?arm.?r|right.?arm|arm_r|armright/i.test(o.name))arm=o;});
+      const arm=findHumanoidJoint(obj,'rightArm');
       this.gesture=arm||null;
       if(arm)this.armRest=arm.rotation.z;
     }
@@ -121,6 +122,7 @@ export class UrbanDialogue {
     // small procedural gesturing arm, so the dialogue still visibly animates.
     if(!this.fallbackArm){
       const pivot=new THREE.Group();pivot.name='Dialogue gesture joint';
+      // Emergency stand-in on unrigged boxman: NOT inferred from geometry.
       pivot.position.set(.28,1.15,0);
       const mesh=new THREE.Mesh(new THREE.BoxGeometry(.16,.48,.18),new THREE.MeshStandardMaterial({color:0xe7e9ea,roughness:.85}));
       mesh.position.y=-.23;pivot.add(mesh);obj.add(pivot);this.fallbackArm=pivot;
