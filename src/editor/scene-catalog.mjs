@@ -11,6 +11,7 @@ export const BUILTIN_SCENES = [
     { id: 'island-sunset', name: 'Isola · tramonto', world: 'procedural-island', spawn:'island-west' },
     { id: 'urban-procedural', name: 'Procedural City · drive test', world: 'procedural-city', spawn:'urban-center', playerProfile:'mannequin' },
     { id: 'urban-photoreal', name: 'Urban Photoreal · boulevard', world: 'procedural-city', spawn:'urban-center', playerProfile:'mannequin' },
+    { id: 'urban-rpg-dialogue', name: 'RPG · Dialogo con un NPC', world: 'procedural-city', spawn:'urban-center', playerProfile:'mannequin' },
     { id: 'urban-photoreal-sunset', name: 'Urban Photoreal · sunset', world: 'procedural-city', spawn:'urban-center', playerProfile:'mannequin' }
 ];
 export function loadCatalog(storage) {
