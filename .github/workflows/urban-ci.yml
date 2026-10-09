@@ -58,6 +58,9 @@ jobs:
               capture=false; tests=false
             fi
           fi
+          if [[ "$capture_script" == "tools/capture-dialogue-proof.mjs" ]]; then
+            mode=population; assets=false; package=false
+          fi
           {
             echo "CAPTURE_MODE=$mode"
             echo "CAPTURE_SCRIPT=$capture_script"
