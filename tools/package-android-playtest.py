@@ -16,6 +16,14 @@ for directory in ('src/editor','build/assets','assets/roadforge','assets/urban-k
     target=out/directory
     shutil.copytree(source,target,dirs_exist_ok=True,
         ignore=shutil.ignore_patterns('*.part','*.tgz','*.zip','__pycache__','*.map','*.ts'))
+# The vegetation runtime uses scene-lod0.gltf + lod0.bin and
+# scene-lod1.gltf + lod1.bin. The original high-detail source (90.7 MiB)
+# is NOT loaded by Android. Keeping it needlessly doubles install size.
+heavy_source=out/'assets/urban-kits/tree_small_02/tree_small_02.bin'
+if heavy_source.exists():
+    heavy_source.unlink()
+    print('Omitted unused original tree source (90.7 MiB); LODs retained.')
+
 bundle=root/'build/sketchbook.min.js'
 if not bundle.is_file():raise RuntimeError('Production game bundle missing')
 (out/'build').mkdir(exist_ok=True)
