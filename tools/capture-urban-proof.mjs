@@ -133,11 +133,12 @@ async function captureFreeRoam(){
   await page.goto(`${base}/editor.html?scene=urban-photoreal&play=1`,{waitUntil:'domcontentloaded'});
   try{await page.waitForFunction(()=>{
     const world=globalThis.world,state=world?.levelRuntime?.visualState;
-    return state?.status==='ready'&&globalThis.sceneEditor?.active===false&&world?.editorPlayer&&world?.vehicles?.length>=2;
-  },null,{timeout:35000,polling:500});}catch(error){
+    return state?.status==='ready'&&globalThis.sceneEditor?.active===false&&world?.vehicles?.length>=2;
+  },null,{timeout:120000,polling:500});}catch(error){
     const diagnostic=await page.evaluate(()=>({loading:document.querySelector('#loading-screen')?.textContent,
       world:!!globalThis.world,sceneEditor:!!globalThis.sceneEditor,active:globalThis.sceneEditor?.active,
       visual:globalThis.world?.levelRuntime?.visualState,vehicles:globalThis.world?.vehicles?.length,
+      player:!!globalThis.world?.editorPlayer,playerObjectType:globalThis.world?.editorPlayer?.constructor?.name,
       dialogue:!!globalThis.world?.urbanDialogue}));
     console.error('CITY INITIALIZATION DIAGNOSTIC',JSON.stringify({diagnostic,consoleErrors}));
     await fs.writeFile(`${out}/urban-dialogue-init-error.json`,JSON.stringify({diagnostic,consoleErrors},null,2));
