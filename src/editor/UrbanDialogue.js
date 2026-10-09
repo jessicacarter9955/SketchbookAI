@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {findHumanoidJoint,inspectHumanoidRig} from './humanoid-rig.mjs';
+import {createProceduralHumanoid} from './ProceduralHumanoid.js';
 
 const STORY={
   intro:{speaker:'Abitante del quartiere',text:'Ehi, non ti ho mai visto qui. Cerchi qualcuno o stai dando un’occhiata alla città?',choices:[
@@ -62,7 +63,14 @@ export class UrbanDialogue {
   }
   open(npc){
     if(!npc)return false;
-    this.npc=npc;this.rigReport=inspectHumanoidRig(npc.object);this.active=true;this.previous={position:this.world.camera.position.clone(),quaternion:this.world.camera.quaternion.clone(),fov:this.world.camera.fov};
+    this.npc=npc;this.rigReport=inspectHumanoidRig(npc.object);this.active=true;
+    if(new URLSearchParams(location.search).has('rigDemo')){
+      this.proceduralRig=createProceduralHumanoid();
+      this.proceduralRig.object.position.copy(npc.object.position);
+      this.proceduralRig.object.rotation.copy(npc.object.rotation);
+      this.world.graphicsWorld.add(this.proceduralRig.object);
+      npc.object.visible=false;
+    }this.previous={position:this.world.camera.position.clone(),quaternion:this.world.camera.quaternion.clone(),fov:this.world.camera.fov};
     npc.dialoguePaused=true;
     this.world.editorPlayer?.resetVelocity?.();
     this.root.hidden=false;this.hint.hidden=true;
@@ -101,9 +109,14 @@ export class UrbanDialogue {
     cam.position.lerp(desired,.24);cam.fov=49;cam.updateProjectionMatrix();
     cam.lookAt(target);cam.updateMatrixWorld(true);
     npc.object.rotation.y=Math.atan2(a.x-b.x,a.z-b.z);
+    if(this.proceduralRig){
+      this.proceduralRig.object.position.copy(npc.object.position);
+      this.proceduralRig.object.rotation.copy(npc.object.rotation);
+      this.proceduralRig.pose(this.tick,this.node==='goodbye'?'idle':'talk');
+    }
     const toward=b.clone().sub(a).setY(0);
     if(toward.lengthSq()>.01)player.setOrientation?.(toward,true);
-    this.poseNPC();
+    if(!this.proceduralRig)this.poseNPC();
   }
   poseNPC(){
     const obj=this.npc?.object;if(!obj)return;
@@ -139,6 +152,7 @@ export class UrbanDialogue {
     if(!this.active)return;
     this.active=false;this.root.hidden=true;
     if(this.npc)this.npc.dialoguePaused=false;
+    if(this.proceduralRig){this.npc.object.visible=true;this.proceduralRig.dispose();this.proceduralRig=null;}
     if(this.gesture)this.gesture.rotation.z=this.armRest;
     this.fallbackArm?.removeFromParent();this.fallbackArm=null;this.gesture=null;
     this.world.camera.fov=this.previous.fov;this.world.camera.updateProjectionMatrix();
