@@ -25,3 +25,12 @@ test('traffic slows down before a vehicle ahead',()=>{
   assert.ok(safeFollowingSpeed(8,9)<safeFollowingSpeed(20,9));
   assert.equal(safeFollowingSpeed(100,9),9);
 });
+
+import {URBAN_CAPTURE_VIEWS,validateUrbanCaptureViews} from '../tools/urban-camera-presets.mjs';
+test('dense-population visual proof includes a conversation camera and unique screenshots',()=>{
+  assert.equal(validateUrbanCaptureViews(),true);
+  assert.ok(URBAN_CAPTURE_VIEWS.some(v=>v.kind==='dialogue'));
+  assert.ok(URBAN_CAPTURE_VIEWS.some(v=>v.kind==='car'));
+  assert.ok(URBAN_CAPTURE_VIEWS.some(v=>v.kind==='pedestrian'));
+  assert.ok(URBAN_CAPTURE_VIEWS.length>=6);
+});
