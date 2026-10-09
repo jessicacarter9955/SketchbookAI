@@ -350,7 +350,24 @@ async function captureFreeRoam(){
     console.log('RPG dialogue screenshot',{name,bytes,node:shot.node});
     return {node:shot.node,selected:shot.selected,line:shot.line,choices:shot.choices};
   }
+  const rigDiagnostics=await page.evaluate(()=>{
+    const world=globalThis.world,d=world.urbanDialogue;
+    const playerBones=[];
+    world.editorPlayer?.modelContainer?.traverse?.(o=>{if(o.isBone)playerBones.push(o.name||'(unnamed)');});
+    const population=world.actorLayer.urbanPopulation;
+    const animatedArm=d.gesture;
+    const initialRotation=animatedArm?.rotation.z??d.fallbackArm?.rotation.z??null;
+    d.tick+=1.1;d.frameCamera();
+    const nextRotation=animatedArm?.rotation.z??d.fallbackArm?.rotation.z??null;
+    if(initialRotation===null||nextRotation===null||Math.abs(nextRotation-initialRotation)<.015)
+      throw new Error('NPC gesture did not animate: '+JSON.stringify({initialRotation,nextRotation,rig:d.rigReport}));
+    return {npc:d.rigReport,player:{boneCount:playerBones.length,bones:playerBones},gesture:{mode:animatedArm?'real-bone':'procedural-fallback',initialRotation,nextRotation},population:population?.stats};
+  });
+  await fs.writeFile(`${out}/urban-humanoid-rig-inspection.json`,JSON.stringify(rigDiagnostics,null,2));
+  console.log('3D character skeleton and arm animation',JSON.stringify({npcBones:rigDiagnostics.npc.boneCount,playerBones:rigDiagnostics.player.boneCount,gesture:rigDiagnostics.gesture}));
   const opening=await captureDialogue('urban-rpg-dialogue-options');
+  await page.evaluate(()=>{const d=globalThis.world.urbanDialogue;d.tick+=1.4;d.frameCamera();});
+  await captureDialogue('urban-rpg-gesture-raised');
   await page.keyboard.press('2');
   const response=await page.evaluate(()=>{
     const d=globalThis.world.urbanDialogue;
