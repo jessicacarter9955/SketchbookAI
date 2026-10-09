@@ -91,6 +91,50 @@ def _dependency_packages(root, registry):
     return found
 
 
+
+def _map_export_packages(root, registry):
+    """Keep only map actors and their visual dependency graph in the export mirror."""
+    by_package = {item.get("package"): item for item in registry.get("assets", [])}
+    root_item = by_package.get(root, {})
+    included = {root}
+    visual = {"StaticMesh", "SkeletalMesh", "Texture2D", "Material", "MaterialInstanceConstant",
+              "MaterialFunction", "MaterialFunctionInstance", "MaterialParameterCollection",
+              "LandscapeLayerInfoObject", "LandscapeGrassType", "PhysicalMaterial"}
+    pending_visual = []
+    direct = [item for item in root_item.get("dependencies", [])
+              if not item.startswith(("/Engine/", "/Script/"))]
+    for package in direct:
+        item = by_package.get(package, {})
+        kind = item.get("class")
+        if kind in visual:
+            included.add(package)
+            pending_visual.append(package)
+        elif kind == "BlueprintGeneratedClass":
+            # Level instances need their source actor class; follow only rendered assets from it.
+            included.add(package)
+            pending_visual.append(package)
+    while pending_visual:
+        package = pending_visual.pop()
+        item = by_package.get(package, {})
+        for dependency in item.get("dependencies", []):
+            if dependency.startswith(("/Engine/", "/Script/")) or dependency in included:
+                continue
+            child = by_package.get(dependency, {})
+            if child.get("class") in visual:
+                included.add(dependency)
+                pending_visual.append(dependency)
+    return included
+
+
+def _select_map_packages(packages, map_package=None):
+    packages = sorted(set(packages))
+    if not map_package:
+        return packages
+    if map_package not in packages:
+        raise MapMigrationError(f"Requested map is not present in the verified inventory: {map_package}")
+    return [map_package]
+
+
 def _map_record(package, inventory, registry, source_files, engine, implementation_hash, snapshot_hash, excluded_packages=()):
     package_items = []
     for dependency in sorted(_dependency_packages(package, registry)):
@@ -109,7 +153,7 @@ def _map_record(package, inventory, registry, source_files, engine, implementati
 
 
 def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, force=False,
-                 timeout=3600, popen=subprocess.Popen):
+                 timeout=3600, popen=subprocess.Popen, map_package=None):
     project = Path(project).resolve(strict=True)
     workspace, publish_dir = Path(workspace).resolve(strict=True), Path(publish_dir).resolve()
     state = load_state(workspace)
@@ -136,7 +180,7 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
     if engine.get("status") != "detected" or not engine.get("executable"):
         raise EngineError("ENGINE_MISSING", "The matching Unreal Editor installation was not detected.")
 
-    packages = sorted(set(inventory.get("maps", [])))
+    packages = _select_map_packages(inventory.get("maps", []), map_package)
     if not packages:
         raise MapMigrationError("The project inventory contains no Unreal levels")
     publish_dir.mkdir(parents=True, exist_ok=True)
@@ -169,6 +213,7 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
             animation_packages.add(item.get("package"))
     animation_packages.discard(None)
     map_exclusions = excluded_packages | animation_packages
+    included_packages = set().union(*(_map_export_packages(package, registry) for package in packages))
     implementation_hash = file_hash(Path(__file__).with_name("unreal_world_export.py"))
     source_files = {item["path"]: item for item in inventory.get("files", [])}
     records = [_map_record(package, inventory, registry, source_files, engine, implementation_hash,
@@ -198,7 +243,8 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
         exclusion_key = digest(sorted(map_exclusions))[:12] if map_exclusions else "clean"
         scratch, _plugin_mounts = prepare_project(workspace, engine_snapshot,
                                                   scratch_name="map-export-" + exclusion_key,
-                                                  mirror_assets=True, excluded_packages=map_exclusions)
+                                                  mirror_assets=True, excluded_packages=map_exclusions,
+                                                  limit_shader_workers=True, included_packages=included_packages)
         script = Path(__file__).with_name("unreal_world_export.py").resolve()
         flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
         logger.event("map-export-start", f"Exporting {len(pending)} Unreal levels with glTF Exporter",
@@ -216,12 +262,14 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
             environment = os.environ.copy()
             environment["UE2THREE_MAP_JOB_FILE"] = str(job_path)
             command = [engine["executable"], str(scratch), "-run=pythonscript", f"-script={script}",
-                       "-unattended", "-nosplash", "-nullrhi", "-nosound", "-NoSourceControl",
+                       "-unattended", "-nosplash", "-AllowCommandletRendering",
+                       "-nosound", "-NoSourceControl",
                        "-NoEpicPortal", "-NoAnalytics", "-stdout", "-FullStdOutLogOutput",
                        f"-abslog={run_dir / 'unreal.log'}"]
             display_name = record["package"].rsplit("/", 1)[-1]
             logger.event("map-progress", f"Esporto livello {map_index}/{len(pending)}: {display_name}",
                          task="map_export", log=str(run_dir / "unreal.log"))
+            failure = None
             started = time.monotonic()
             with (run_dir / "stdout.log").open("wb") as stdout, (run_dir / "stderr.log").open("wb") as stderr:
                 process = popen(command, cwd=scratch.parent, env=environment, stdin=subprocess.DEVNULL,
@@ -231,12 +279,13 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
                 try:
                     while process.poll() is None:
                         if time.monotonic() - started > timeout:
-                            raise EngineError("MAP_EXPORT_TIMEOUT", f"Unreal exceeded {timeout}s; logs retained at {run_dir}")
+                            failure = f"[MAP_EXPORT_TIMEOUT] Unreal exceeded {timeout}s; logs retained at {run_dir}"
+                            break
                         try:
                             progress = read_json(progress_path)
                             if progress != previous:
                                 current_name = str(progress.get("package", "una mappa Unreal")).rsplit("/", 1)[-1]
-                                logger.event("map-progress", f"Esporto {map_index}/{len(pending)}: {current_name}",
+                                logger.event("map-progress", f"{progress.get('message', 'Esporto livello')}: {current_name}",
                                              task="map_export", completed=progress.get("completed"),
                                              total=progress.get("total"), status=progress.get("status"))
                                 previous = progress
@@ -251,6 +300,11 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
                         except subprocess.TimeoutExpired:
                             process.kill()
                             process.wait()
+            if failure:
+                results.append({**record, "status": "failed", "error": failure,
+                                "log": str(run_dir / "unreal.log")})
+                logger.event("map-export-failed", failure, task="map_export")
+                continue
             if not result_path.is_file():
                 results.append({**record, "status": "failed", "error": _unreal_failure_detail(
                                 run_dir / "unreal.log", process.returncode),

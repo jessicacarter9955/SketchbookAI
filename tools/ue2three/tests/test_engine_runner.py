@@ -6,10 +6,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from engine_runner import prepare_project
-from map_migration import glb_summary
+from map_migration import MapMigrationError, _select_map_packages, glb_summary
 
 
 class ExportMirrorTests(unittest.TestCase):
+    def test_selective_map_export_keeps_verified_package_identity(self):
+        packages = ["/Game/Map/B", "/Game/Map/A", "/Game/Map/A"]
+        self.assertEqual(_select_map_packages(packages), ["/Game/Map/A", "/Game/Map/B"])
+        self.assertEqual(_select_map_packages(packages, "/Game/Map/B"), ["/Game/Map/B"])
+        with self.assertRaises(MapMigrationError):
+            _select_map_packages(packages, "/Game/Map/Other")
+
     def test_glb_summary_reports_renderable_geometry(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "scene.glb"

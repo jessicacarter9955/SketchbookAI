@@ -30,9 +30,21 @@ for name, value in (("export_uniform_scale", 0.01), ("export_vertex_skin_weights
                     ("export_static_meshes", True), ("export_cameras", True),
                     ("export_lights", True)):
     if hasattr(options, name):
-        setattr(options, name, value)
+        options.set_editor_property(name, value)
 if hasattr(unreal, "GLTFMaterialBakeMode") and hasattr(options, "bake_material_inputs"):
-    options.bake_material_inputs = unreal.GLTFMaterialBakeMode.DISABLED
+    options.set_editor_property("bake_material_inputs", unreal.GLTFMaterialBakeMode.USE_MESH_DATA)
+if hasattr(unreal, "GLTFTextureImageFormat") and hasattr(options, "texture_image_format"):
+    options.set_editor_property("texture_image_format", unreal.GLTFTextureImageFormat.PNG)
+if hasattr(unreal, "GLTFMaterialBakeSize") and hasattr(options, "default_material_bake_size"):
+    # Keep the migration cache portable and avoid multi-megabyte renders for
+    # every dynamic instance in large maps. 512px retains readable PBR detail.
+    options.set_editor_property("default_material_bake_size", unreal.GLTFMaterialBakeSize(512, 512, False))
+for name, value in (("export_texture_transforms", True), ("adjust_normalmaps", True)):
+    if hasattr(options, name):
+        options.set_editor_property(name, value)
+unreal.log("UE2THREE_GLTF_OPTIONS bake_material_inputs=" + str(options.get_editor_property("bake_material_inputs")) +
+           " texture_image_format=" + str(options.get_editor_property("texture_image_format")) +
+           " default_material_bake_size=" + str(options.get_editor_property("default_material_bake_size")))
 
 level_editor = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
 editor = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem)
@@ -43,11 +55,19 @@ for index, item in enumerate(job["maps"], 1):
     row = {"package": package, "filename": filename, "fingerprint": item["fingerprint"], "status": "failed"}
     try:
         unreal.log(f"UE2THREE_MAP_START {index}/{len(job['maps'])} {package}")
+        if job.get("progress"):
+            atomic(job["progress"], {"completed": index - 1, "total": len(job["maps"]),
+                                      "package": package, "status": "loading",
+                                      "message": "Carico la mappa e preparo gli shader dei materiali"})
         if not level_editor.load_level(package):
             raise RuntimeError("Unreal could not open this level package")
         world = editor.get_editor_world()
         if world is None:
             raise RuntimeError("Unreal returned no editor world after loading the level")
+        if job.get("progress"):
+            atomic(job["progress"], {"completed": index - 1, "total": len(job["maps"]),
+                                      "package": package, "status": "baking",
+                                      "message": "Converto materiali, texture e geometria della mappa"})
         messages = unreal.GLTFExporter.export_to_gltf(world, str(target), options, set())
         errors = getattr(messages, "errors", []) if messages is not None else ["Exporter returned no result"]
         warnings = getattr(messages, "warnings", []) if messages is not None else []

@@ -12,6 +12,7 @@ from core import atomic_json, digest, file_hash, prepare_workspace, read_json
 
 RECIPE_SCHEMA = 1
 MANIFEST_SCHEMA = 1
+CHARACTER_EXPORTER_VERSION = "4-material-bake-sockets"
 PACKAGE_EXTENSIONS = (".uasset", ".uexp", ".ubulk", ".uptnl")
 SAFE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$")
 
@@ -68,6 +69,14 @@ def load_character_recipe(path):
                 raise ValueError(f"attachment {name}.transform.scale must be positive")
             normalized_transform[key] = [float(component) for component in value]
         normalized_attachments[name] = {"asset": asset, "bone": bone, "transform": normalized_transform}
+    data_tables = data.get("data_tables", {})
+    if not isinstance(data_tables, dict):
+        raise ValueError("data_tables must map portable names to Unreal DataTable package paths")
+    normalized_tables = {}
+    for name, package in data_tables.items():
+        if not isinstance(name, str) or not SAFE_NAME.fullmatch(name):
+            raise ValueError(f"Unsafe data table name: {name!r}")
+        normalized_tables[name] = _asset_path(package, f"data table {name}")
     runtime = data.get("runtime", {})
     if not isinstance(runtime, dict):
         raise ValueError("runtime must be an object")
@@ -108,6 +117,7 @@ def load_character_recipe(path):
         "mesh": mesh,
         "clips": dict(sorted(normalized_clips.items())),
         "attachment_assets": dict(sorted(normalized_attachments.items())),
+        "data_tables": dict(sorted(normalized_tables.items())),
         "runtime": {"root_motion": root_motion, "root_bone": root_bone,
                     "required_bones": required_bones, "attachments": attachments,
                     "animation_aliases": dict(sorted(aliases.items()))},
@@ -151,7 +161,8 @@ def package_files(project, package):
 def character_fingerprint(project, recipe):
     project = Path(project).resolve()
     assets = [recipe["mesh"], *recipe["clips"].values(),
-              *(item["asset"] for item in recipe.get("attachment_assets", {}).values())]
+              *(item["asset"] for item in recipe.get("attachment_assets", {}).values()),
+              *recipe.get("data_tables", {}).values()]
     records = []
     for package in sorted(set(assets)):
         files = package_files(project, package)
@@ -159,7 +170,8 @@ def character_fingerprint(project, recipe):
             {"path": p.resolve().relative_to(project.parent).as_posix(), "sha256": file_hash(p)} for p in files
         ]})
     normalized = {k: v for k, v in recipe.items() if k != "recipe_path"}
-    return digest({"recipe": normalized, "sources": records}), records
+    return digest({"recipe": normalized, "sources": records,
+                   "character_exporter_version": CHARACTER_EXPORTER_VERSION}), records
 
 
 def _portable_file(value, label):
@@ -208,7 +220,31 @@ def validate_character_output(directory, expected_fingerprint=None):
         filename = _portable_file(metadata.get("file"), f"attachment {name}")
         if not isinstance(metadata.get("bone"), str) or not metadata["bone"]:
             raise ValueError(f"Attachment {name} has no attachment bone/socket")
+        if "socket_transform" in metadata:
+            socket = metadata["socket_transform"]
+            for key, length in (("position", 3), ("quaternion", 4), ("scale", 3)):
+                values = socket.get(key) if isinstance(socket, dict) else None
+                if (not isinstance(values, list) or len(values) != length or any(
+                        not isinstance(value, (int, float)) or isinstance(value, bool) or
+                        not math.isfinite(value) for value in values)):
+                    raise ValueError(f"Invalid socket {key} for attachment {name}")
+            if (any(value <= 0 for value in socket["scale"]) or
+                    abs(math.sqrt(sum(value * value for value in socket["quaternion"])) - 1) > 0.001):
+                raise ValueError(f"Invalid socket transform for attachment {name}")
         checked["attachment_assets"][name] = validate_glb(directory / filename)
+    checked["data_tables"] = {}
+    for name, metadata in data.get("data_tables", {}).items():
+        if not isinstance(name, str) or not SAFE_NAME.fullmatch(name) or not isinstance(metadata, dict):
+            raise ValueError("Invalid data table entry in character manifest")
+        filename = metadata.get("file")
+        if (not isinstance(filename, str) or Path(filename).name != filename or
+                Path(filename).suffix.lower() != ".json" or
+                not SAFE_NAME.fullmatch(Path(filename).stem)):
+            raise ValueError(f"Unsafe data table filename for {name}")
+        value = read_json(directory / filename)
+        if not isinstance(value, (dict, list)):
+            raise ValueError(f"Invalid data table JSON for {name}")
+        checked["data_tables"][name] = {"file": filename, "rows": len(value)}
     return {"manifest": data, "validated": checked}
 
 
@@ -324,7 +360,8 @@ def migrate_character(project, recipe_path, workspace, engine_override=None, for
     env.update({"UE2THREE_CHARACTER_RECIPE": str(staging / "recipe.json"),
                 "UE2THREE_CHARACTER_OUT": str(staging)})
     args = [engine["executable"], str(scratch_project), "-run=pythonscript", f"-script={script}",
-            "-unattended", "-nosplash", "-nullrhi", "-nosound", "-NoSourceControl", "-stdout",
+            "-unattended", "-nosplash", "-AllowCommandletRendering", "-nosound",
+            "-NoSourceControl", "-stdout",
             "-FullStdOutLogOutput"]
     if logger:
         logger.event("task-start", f"Exporting character {recipe['id']} through Unreal", task="character-export")

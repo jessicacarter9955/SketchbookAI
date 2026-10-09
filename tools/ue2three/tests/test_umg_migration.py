@@ -2,14 +2,36 @@ import sys
 import json
 import tempfile
 import unittest
+from unittest.mock import patch
+from types import SimpleNamespace
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from umg_migration import _value, _widgets_for_map
+from umg_migration import _value, _widgets_for_map, _asset_document
 from web_runner import reusable_workspace
 
 
 class WidgetMigrationTests(unittest.TestCase):
+    def test_parser_uses_copy_and_caches_without_exposing_source_to_writer(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "Source.uasset"
+            source.write_bytes(b"original")
+            source.with_suffix(".uexp").write_bytes(b"payload")
+            def parse(command, **kwargs):
+                copied = Path(command[2])
+                self.assertNotEqual(copied, source)
+                self.assertEqual(copied.read_bytes(), b"original")
+                self.assertEqual(copied.with_suffix(".uexp").read_bytes(), b"payload")
+                copied.write_bytes(b"parser changed its own input")
+                Path(command[3]).write_text(json.dumps({"Exports": [{"ObjectName": "Source"}]}))
+                return SimpleNamespace(returncode=0, stdout="", stderr="")
+            with patch("umg_migration.subprocess.run", side_effect=parse) as runner:
+                _asset_document("/Game/Source", source, root / "parser.exe", root / "cache", "VER_UE5_7")
+                _asset_document("/Game/Source", source, root / "parser.exe", root / "cache", "VER_UE5_7")
+                self.assertEqual(runner.call_count, 1)
+            self.assertEqual(source.read_bytes(), b"original")
+
     def test_discovers_widget_blueprints_through_map_dependency_closure(self):
         registry = {"assets": [
             {"package": "/Game/Maps/Main", "class": "World", "dependencies": ["/Game/UI/Menu", "/Engine/Transient"]},

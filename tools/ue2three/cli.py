@@ -44,6 +44,8 @@ def parser():
     maps.add_argument("--publish-dir", type=Path, required=True, help="Local output directory, outside the source project")
     maps.add_argument("--engine", help="Optional matching Unreal Engine installation root")
     maps.add_argument("--force", action="store_true", help="Re-export maps even when a valid cached GLB exists")
+    maps.add_argument("--timeout", type=int, default=3600, help="Maximum seconds per map export (shader compilation included)")
+    maps.add_argument("--map-package", help="Export only this inventoried Unreal level package, e.g. /Game/Fixers/Maps/LV_Fixers_RaidMapTest")
     ui = commands.add_parser("migrate-ui", help="Translate a map-referenced Unreal widget layout into a Three.js preview")
     ui.add_argument("project", type=Path, help="Editable Unreal .uproject")
     ui.add_argument("--workspace", type=Path, required=True, help="Verified ue2three scan and Asset Registry workspace")
@@ -108,7 +110,7 @@ def execute(args):
         logger = Logger(directory)
         with workspace_lock(directory):
             report = migrate_maps(project, directory, args.publish_dir, logger,
-                                  engine_override=args.engine, force=args.force)
+                                  engine_override=args.engine, force=args.force, map_package=args.map_package, timeout=args.timeout)
         print(f"Unreal maps exported: {report['counts']['exported']}; reused: {report['counts']['reused']}; failed: {report['counts']['failed']}")
         print(f"Map report: {Path(args.publish_dir) / 'migration-report.json'}")
         return 0 if report["counts"]["exported"] + report["counts"]["reused"] else 1

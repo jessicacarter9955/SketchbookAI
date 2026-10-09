@@ -3,6 +3,8 @@ import hashlib
 import json
 import os
 import subprocess
+import shutil
+import tempfile
 import urllib.request
 from pathlib import Path
 
@@ -127,8 +129,21 @@ def _asset_document(package_name, asset_file, tool, cache_dir, engine_version, f
         except (OSError, ValueError):
             cache_file.unlink(missing_ok=True)
     temporary = cache_file.with_suffix(".json.tmp")
-    completed = subprocess.run([str(tool), "tojson", str(asset_file), str(temporary), str(engine_version)],
-                               capture_output=True, text=True, timeout=300, check=False)
+    # UAssetAPI opens input packages with exclusive sharing. A running Unreal
+    # export may hold the original (or its hardlink) open. Parse an isolated copy
+    # so simultaneous inspection neither locks nor writes the source package.
+    with tempfile.TemporaryDirectory(prefix="parse-", dir=cache_dir) as scratch:
+        copied = Path(scratch) / Path(asset_file).name
+        shutil.copyfile(asset_file, copied)
+        if file_hash(copied) != source_hash:
+            raise UMGMigrationError(f"Source changed while preparing parser input: {package_name}")
+        for suffix in (".uexp", ".ubulk", ".uptnl"):
+            companion = Path(asset_file).with_suffix(suffix)
+            if companion.is_file():
+                shutil.copyfile(companion, copied.with_suffix(suffix))
+        completed = subprocess.run([str(Path(tool).resolve()), "tojson", str(copied.resolve()),
+                                    str(temporary.resolve()), str(engine_version)],
+                                   capture_output=True, text=True, timeout=300, check=False)
     if completed.returncode != 0 or not temporary.is_file():
         detail = (completed.stderr or completed.stdout or f"UAssetGUI exited {completed.returncode}").strip()
         raise UMGMigrationError(f"Could not read {package_name}: {detail[:600]}")

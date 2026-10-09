@@ -1,12 +1,22 @@
 import { loadCatalog, createScene } from './scene-catalog.mjs';
 import { sceneStorageKey, loadRevisions, saveRevision, forkScene } from './scene-revisions.mjs';
+import { Ue2ThreeMapRuntime } from './Ue2ThreeMapRuntime';
+import { Ue2ThreeGameplay } from './Ue2ThreeGameplay';
 
 const loading = document.getElementById('loading-screen');
 const query = new URLSearchParams(location.search);
 const catalog = loadCatalog(localStorage);
 const current = catalog.find(s => s.id === query.get('scene')) || catalog[0];
-const storageKey = sceneStorageKey(current.id);
-const report = message => { loading.textContent = message; };
+const unrealMapPath = query.get('map');
+const playerProfile = unrealMapPath ? 'ue2three' : current.playerProfile;
+const storageKey = sceneStorageKey(unrealMapPath || current.id);
+loading.innerHTML = '<section class="scene-loading"><h1>Preparazione della scena</h1><progress aria-label="Avanzamento caricamento"></progress><ol aria-live="polite"></ol></section>';
+const report = message => {
+    const entry = document.createElement('li'); entry.textContent = message;
+    loading.querySelector('ol').append(entry);
+    entry.scrollIntoView({block:'nearest'});
+};
+report('Avvio del rendering...');
 
 function sceneControls(editor) {
     const manager = document.createElement('section'); manager.className = 'scene-manager';
@@ -15,7 +25,10 @@ function sceneControls(editor) {
     catalog.forEach(scene => { const option = document.createElement('option'); option.value = scene.id; option.textContent = scene.name; option.selected = scene.id === current.id; select.append(option); });
     select.onchange = () => { editor.save(); location.href = `editor.html?scene=${encodeURIComponent(select.value)}`; };
     editor.root.querySelector('.editor-library').prepend(manager);
-    editor.root.querySelector('.editor-brand small').textContent = current.name;
+    editor.root.querySelector('.editor-brand').firstChild.textContent = unrealMapPath ? 'UE2THREE ' : 'SKETCHBOOK ';
+    editor.root.querySelector('.editor-brand small').textContent = unrealMapPath
+        ? `DDS · ${unrealMapPath.split('/').pop().replace(/\.glb$/i, '')}`
+        : current.name;
     const dialog = document.createElement('dialog'); dialog.className = 'asset-picker scene-dialog';
     dialog.innerHTML = '<form><h2>Nuova scena</h2><label>Nome <input name="name" required maxlength="80" placeholder="Il mio quartiere"></label><label>Mappa <select name="world"><option value="liberty-city">Liberty City</option><option value="sketchbook">Sketchbook originale</option><option value="procedural-island">Isola procedurale</option></select></label><p>Gli oggetti e gli abitanti di ogni scena vengono salvati separatamente.</p><button type="submit">Crea scena</button> <button type="button" data-cancel>Annulla</button><p role="status"></p></form>';
     document.body.append(dialog);
@@ -53,9 +66,9 @@ function sceneControls(editor) {
         catch (error) { dialog.querySelector('[role=status]').textContent = error.message; }
     };
     const hud = document.createElement('div'); hud.className = 'city-hud';
-    hud.innerHTML = '<strong data-city-status></strong><button data-board>In auto</button><button data-reset>Riparti</button>';
+    hud.innerHTML = unrealMapPath ? '<strong data-city-status></strong><button data-reset>Riparti</button>' : '<strong data-city-status></strong><button data-board>In auto</button><button data-reset>Riparti</button>';
     hud.querySelector('[data-city-status]').textContent = current.name;
-    hud.querySelector('[data-board]').onclick = () => {
+    hud.querySelector('[data-board]')?.addEventListener('click', () => {
         if (editor.active) editor.setActive(false);
         const player = world.editorPlayer;
         if (player.controlledObject) { world.renderer.domElement.focus(); return; }
@@ -67,7 +80,7 @@ function sceneControls(editor) {
         world.cameraOperator.theta = Math.atan2(rear.x, rear.z) * 180 / Math.PI; world.cameraOperator.phi = 15;
         world.renderer.domElement.focus();
         editor.message('Sei al volante. WASD guida · Spazio frena · F esce · F2 apre l’editor.');
-    };
+    });
     hud.querySelector('[data-reset]').onclick = () => { world.actorLayer.resetPlayer(); if (!editor.active) { world.actorLayer.start(editor.items); world.renderer.domElement.focus(); } };
     if (world.levelRuntime) {
         const district = document.createElement('select'); district.setAttribute('aria-label', current.world==='liberty-city' ? 'Quartiere Liberty City' : 'Punto di partenza');
@@ -93,7 +106,11 @@ function sceneControls(editor) {
 
 try {
     globalThis.world = new World();
-    if (current.world === 'liberty-city') {
+    if (unrealMapPath) {
+        world.levelRuntime = new Ue2ThreeMapRuntime(world, unrealMapPath);
+        await world.initialize(undefined, false); loading.style.display = 'flex';
+        await world.levelRuntime.initialize(report);
+    } else if (current.world === 'liberty-city') {
         world.levelRuntime = new CityRuntime(world);
         await world.initialize(undefined, false); loading.style.display = 'flex';
         await world.levelRuntime.initialize(report);
@@ -102,20 +119,27 @@ try {
         await world.initialize(undefined, false); loading.style.display = 'flex';
         await world.levelRuntime.initialize();
     } else await world.initialize('build/assets/world.glb');
+    report('Carico personaggio, animazioni e armi...');
     const actors = new ActorLayer(world);
-    await actors.initialize(current.playerProfile, {
-        characterBase: query.get('character') || (current.playerProfile === 'ue2three' ? 'build/local-scenes/ue2three/current/' : undefined)
+    await actors.initialize(playerProfile, {
+        characterBase: query.get('character') || (playerProfile === 'ue2three' ? 'build/local-scenes/ue2three/current/' : undefined)
     });
     if (world.levelRuntime) {
-        const spawn = world.levelRuntime.manifest.spawns.find(s => s.id === current.spawn)?.position || [0,0,0];
+        const spawn = world.levelRuntime.manifest.spawns.find(s => s.id === current.spawn)?.position || world.levelRuntime.manifest.spawns[0]?.position || [0,0,0];
         world.levelRuntime.transitioning = true;
         try { await world.levelRuntime.ensure(new THREE.Vector3(...spawn), 350);
             actors.spawn.set(spawn[0], (world.levelRuntime.groundAt(spawn[0], spawn[2], spawn[1]+5) ?? spawn[1]) + 1.2, spawn[2]);
             world.respawnPosition.set(...actors.spawn.toArray()); world.levelRuntime.refreshPhysics(actors.spawn);
         } finally { world.levelRuntime.transitioning = false; world.levelRuntime.lastRefresh = 0; }
     }
+    report('Preparo il punto di partenza e i controlli...');
     actors.resetPlayer();
-    if (world.levelRuntime) { world.cameraOperator.theta = current.playerProfile==='dds'?0:180; world.cameraOperator.phi = 12; }
+    const initialSpawn = world.levelRuntime?.manifest.spawns.find(s => s.id === current.spawn) || world.levelRuntime?.manifest.spawns[0];
+    if (unrealMapPath && initialSpawn?.quaternion) {
+        const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(new THREE.Quaternion(...initialSpawn.quaternion));
+        world.editorPlayer.setOrientation(forward, true);
+    }
+    if (world.levelRuntime) { world.cameraOperator.theta = playerProfile==='dds'?0:180; world.cameraOperator.phi = 12; }
     globalThis.sceneEditor = new SceneEditor(world, { storageKey, worldId: current.world });
     const hadSaved = localStorage.getItem(storageKey) !== null;
     await sceneEditor.run(() => sceneEditor.restoreSaved());
@@ -153,7 +177,8 @@ try {
         sceneEditor.restore({version:1,world:current.world,objects,generator:{...sceneEditor.generator,sky:current.id==='island-sunset'?'sunset':'day'}});sceneEditor.commit();
     }
     sceneControls(sceneEditor);
-    if(current.playerProfile==='dds') new DdsGame(world,{key:`${storageKey}.dds-game`});
+    if(playerProfile==='dds') new DdsGame(world,{key:`${storageKey}.dds-game`});
+    if(playerProfile==='ue2three') globalThis.ue2threeGameplay = new Ue2ThreeGameplay(world);
     loading.style.display = 'none';
     if(current.id === 'portland-grass' && sceneEditor.mapEdits.length) {
         const select=sceneEditor.surfaceTool.$('[data-layers]'); select.value=sceneEditor.mapEdits[0].id;
@@ -161,7 +186,10 @@ try {
     }
     sceneEditor.islandTool?.focus();
     if (query.get('play') === '1') sceneEditor.setActive(false);
-    document.title = `${current.name} · Sketchbook`;
+    if (playerProfile === 'ue2three') world.cameraOperator.setRadius(3.2, true);
+    document.title = unrealMapPath
+        ? `DDS · ${unrealMapPath.split('/').pop().replace(/\.glb$/i, '')} · ue2three`
+        : `${current.name} · Sketchbook`;
 } catch (error) {
-    loading.style.display = 'flex'; loading.textContent = `Impossibile avviare la scena: ${error.message}`; console.error(error);
+    loading.style.display = 'flex'; report(`Impossibile avviare la scena: ${error.message}`); console.error(error);
 }

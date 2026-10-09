@@ -31,7 +31,7 @@ export async function loadUe2ThreeCharacter(baseURL, {fetchImpl=fetch, loader=ne
         asset.position.fromArray(transform.position || [0,0,0]);
         asset.rotation.set(...(transform.rotation || [0,0,0]), 'XYZ');
         asset.scale.fromArray(transform.scale || [1,1,1]);
-        attachmentAssets[name] = {asset, bone: metadata.bone};
+        attachmentAssets[name] = {asset, bone: metadata.bone, transform, socketTransform: metadata.socket_transform};
     }
     scene.animations = expanded;
     scene.userData.ue2three = {

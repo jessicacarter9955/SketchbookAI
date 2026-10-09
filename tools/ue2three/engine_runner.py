@@ -30,16 +30,18 @@ def mount_content(source, destination):
         destination.symlink_to(source, target_is_directory=True)
 
 
-def _link_tree(source, destination, excluded_packages=(), root_mount="/Game"):
+def _link_tree(source, destination, excluded_packages=(), root_mount="/Game", included_packages=None):
     source, destination = Path(source).resolve(), Path(destination)
     excluded = set(excluded_packages)
+    included = None if included_packages is None else set(included_packages)
     for item in source.rglob("*"):
         if not item.is_file():
             continue
         relative = item.relative_to(source)
         package = root_mount.rstrip("/") + "/" + relative.with_suffix("").as_posix()
-        if package in excluded and item.suffix.lower() in {".uasset", ".uexp", ".ubulk", ".uptnl"}:
-            continue
+        if item.suffix.lower() in {".uasset", ".uexp", ".ubulk", ".uptnl"}:
+            if package in excluded or (included is not None and package not in included):
+                continue
         target = destination / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         try:
@@ -51,7 +53,7 @@ def _link_tree(source, destination, excluded_packages=(), root_mount="/Game"):
             raise EngineError("MIRROR_LINK_FAILED", f"Cannot mirror source asset without copying it: {item} ({exc})") from exc
 
 
-def prepare_project(directory, snapshot, scratch_name="inspection-project", mirror_assets=False, excluded_packages=()):
+def prepare_project(directory, snapshot, scratch_name="inspection-project", mirror_assets=False, excluded_packages=(), limit_shader_workers=False, included_packages=None):
     engine = snapshot["engine"]
     if engine.get("status") != "detected" or not engine.get("executable"):
         raise EngineError("ENGINE_MISSING", "Install the matching Unreal editor or provide --engine.")
@@ -67,7 +69,8 @@ def prepare_project(directory, snapshot, scratch_name="inspection-project", mirr
     if (source / "Content").is_dir():
         if mirror_assets:
             marker = scratch / ".ue2three-content-mirror.json"
-            identity = digest({"source": str(source), "excluded_packages": sorted(set(excluded_packages))})
+            identity = digest({"source": str(source), "excluded_packages": sorted(set(excluded_packages)),
+                               "included_packages": sorted(set(included_packages)) if included_packages is not None else None})
             try:
                 existing = read_json(marker)
             except (OSError, ValueError):
@@ -76,7 +79,7 @@ def prepare_project(directory, snapshot, scratch_name="inspection-project", mirr
                 if scratch.exists():
                     shutil.rmtree(scratch)
                 scratch.mkdir(parents=True, exist_ok=True)
-                _link_tree(source / "Content", scratch / "Content", excluded_packages)
+                _link_tree(source / "Content", scratch / "Content", excluded_packages, included_packages=included_packages)
                 atomic_json(marker, {"identity": identity, "excluded_packages": sorted(set(excluded_packages))})
         else:
             mount_content(source / "Content", scratch / "Content")
@@ -96,13 +99,17 @@ def prepare_project(directory, snapshot, scratch_name="inspection-project", mirr
         target.mkdir(parents=True, exist_ok=True)
         atomic_json(target / descriptor.name, {"FileVersion": 3, "Version": 1, "CanContainContent": True, "Modules": []})
         if mirror_assets:
-            _link_tree(content, target / "Content", excluded_packages, "/" + descriptor.stem)
+            _link_tree(content, target / "Content", excluded_packages, "/" + descriptor.stem, included_packages)
         else:
             mount_content(content, target / "Content")
         plugins.append({"Name": descriptor.stem, "Enabled": True})
         mirrors.append(descriptor.stem)
     path = scratch / "Inspect.uproject"
     atomic_json(path, {"FileVersion": 3, "EngineAssociation": ".".join(map(str, version[:2])), "DisableEnginePluginsByDefault": True, "Plugins": plugins})
+    if limit_shader_workers:
+        config = scratch / "Config" / "DefaultEngine.ini"
+        config.parent.mkdir(parents=True, exist_ok=True)
+        config.write_text("[DevOptions.Shaders]\nNumUnusedShaderCompilingThreads=96\nNumUnusedShaderCompilingThreadsDuringGame=96\nPercentageUnusedShaderCompilingThreads=100\nbForceUseSCWMemoryPressureLimits=True\nCookerMemoryUsedInGB=6\nMemoryToLeaveForTheOSInGB=4\nMemoryUsedPerSCWProcessInGB=1\nMinSCWsToSpawnBeforeWarning=1\nMaxShaderJobBatchSize=2\n", encoding="utf-8")
     return path, mirrors
 
 

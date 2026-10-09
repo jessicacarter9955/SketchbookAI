@@ -43,6 +43,23 @@ class CharacterMigrationTests(unittest.TestCase):
         self.assertEqual(package_files(self.project, "/Game/Hero/SK_Hero")[0].name, "SK_Hero.uasset")
         self.assertEqual(recipe["runtime"]["animation_aliases"], {"start_forward": "idle"})
 
+    def test_data_tables_are_validated_and_fingerprinted(self):
+        package = self.root / "Content" / "Hero" / "DT_Weapons.uasset"
+        package.write_bytes(b"weapon table")
+        data = json.loads(self.recipe_path.read_text(encoding="utf-8"))
+        data["data_tables"] = {"weapons": "/Game/Hero/DT_Weapons"}
+        self.recipe_path.write_text(json.dumps(data), encoding="utf-8")
+        recipe = load_character_recipe(self.recipe_path)
+        before, records = character_fingerprint(self.project, recipe)
+        self.assertIn("/Game/Hero/DT_Weapons", {item["package"] for item in records})
+        package.write_bytes(b"updated table")
+        after, _ = character_fingerprint(self.project, recipe)
+        self.assertNotEqual(before, after)
+        data["data_tables"] = {"../unsafe": "/Game/Hero/DT_Weapons"}
+        self.recipe_path.write_text(json.dumps(data), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "Unsafe data table name"):
+            load_character_recipe(self.recipe_path)
+
     def test_recipe_rejects_unsafe_id(self):
         self.recipe_path.write_text(json.dumps({
             "schema_version": 1,
@@ -130,6 +147,19 @@ class CharacterMigrationTests(unittest.TestCase):
         self.assertEqual(result["validated"]["mesh"]["bytes"], 12)
         with self.assertRaises(ValueError):
             validate_character_output(output, "wrong")
+
+    def test_output_validation_checks_data_table_json(self):
+        output = self.root / "table-output"
+        output.mkdir()
+        (output / "table-weapons.json").write_text(json.dumps({"Rifle": {"SocketName": "weapon_r"}}), encoding="utf-8")
+        (output / "manifest.json").write_text(json.dumps({
+            "schema_version": 1, "kind": "character", "mesh": "hero.glb",
+            "clips": {"idle": "idle.glb"}, "data_tables": {"weapons": {"file": "table-weapons.json"}},
+        }), encoding="utf-8")
+        (output / "hero.glb").write_bytes(struct.pack("<4sII", b"glTF", 2, 12))
+        (output / "idle.glb").write_bytes(struct.pack("<4sII", b"glTF", 2, 12))
+        result = validate_character_output(output)
+        self.assertEqual(result["validated"]["data_tables"]["weapons"]["rows"], 1)
 
 
 if __name__ == "__main__":

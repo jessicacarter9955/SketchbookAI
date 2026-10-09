@@ -25,15 +25,6 @@ export class ActorLayer {
         const old = this.world.editorPlayer;
         if (old) { old.stopControllingVehicle(); old.leaveSeat(); old.removeFromParent(); this.world.remove(old); }
         const player = this.playerProfile === 'dds' ? new DdsCharacter(this.playerModel) : new Character(this.playerModel.scene);
-        if (this.playerProfile === 'ue2three') {
-            for (const [name, definition] of Object.entries(this.playerModel.attachmentAssets || {})) {
-                const socket = player.getObjectByName(definition.bone);
-                if (!socket) throw new Error(`ue2three attachment bone is missing: ${definition.bone}`);
-                const asset = clone(definition.asset);
-                asset.name = `ue2three_attachment_${name}`;
-                socket.add(asset);
-            }
-        }
         player.setPosition(...this.spawn.toArray());
         player.userData.playerProfile = this.playerProfile;
         if(this.playerProfile==='dds') player.setOrientation(new THREE.Vector3(0,0,-1),true);

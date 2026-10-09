@@ -74,6 +74,15 @@ test('animation aliases clone source clips without overwriting real clips',()=>{
     assert.throws(()=>expandAnimationAliases(clips,{animation_aliases:{missing:'walk'}}),/missing clip walk/);
 });
 
+test('source socket transforms require finite coordinates and a unit quaternion',()=>{
+    const socket={position:[-.07,-.01,.02],quaternion:[0,0,0,1],scale:[1,1,1]};
+    const definition={file:'rifle.glb',bone:'hand_r',socket:'palm_r_Socket',socket_transform:socket};
+    assert.equal(validateCharacterManifest(manifest({attachment_assets:{rifle:definition}})).attachment_assets.rifle.socket,'palm_r_Socket');
+    for (const invalid of [{...socket,quaternion:[0,0,0,0]}, {...socket,position:[0,NaN,0]}, {...socket,scale:[1,-1,1]}]) {
+        assert.throws(()=>validateCharacterManifest(manifest({attachment_assets:{rifle:{...definition,socket_transform:invalid}}})),/socket/);
+    }
+});
+
 test('invalid remote filenames and aliases are rejected early',()=>{
     assert.throws(()=>validateCharacterManifest(manifest({mesh:'../evil.glb'})),/mesh filename/);
     const bad=manifest();bad.runtime.animation_aliases={go:'../run'};

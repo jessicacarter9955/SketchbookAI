@@ -33,6 +33,17 @@ export function validateCharacterManifest(manifest) {
             typeof metadata.bone !== 'string' || !metadata.bone)
             throw new Error('Invalid ue2three attachment asset entry');
         const transform = metadata.transform || {};
+        if (metadata.socket_transform !== undefined) {
+            const socket = metadata.socket_transform;
+            for (const [key, length] of [['position', 3], ['quaternion', 4], ['scale', 3]]) {
+                if (!socket || !Array.isArray(socket[key]) || socket[key].length !== length ||
+                    socket[key].some(value => typeof value !== 'number' || !Number.isFinite(value)))
+                    throw new Error(`Invalid ue2three attachment ${name} socket ${key}`);
+            }
+            if (socket.scale.some(value => value <= 0) ||
+                Math.abs(Math.hypot(...socket.quaternion) - 1) > 0.001)
+                throw new Error(`Invalid ue2three attachment ${name} socket transform`);
+        }
         for (const key of ['position', 'rotation', 'scale']) {
             if (transform[key] !== undefined && (!Array.isArray(transform[key]) || transform[key].length !== 3 ||
                 transform[key].some(value => typeof value !== 'number' || !Number.isFinite(value))))

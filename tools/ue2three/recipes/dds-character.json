@@ -25,18 +25,72 @@
     "pistol_equip": "/Game/Fixers/Animations/Mover/EquipsUnequips/Mover_Equip_Pistol_1H_Stand",
     "crouch_idle": "/Game/Characters/UEFN_Mannequin/Animations/Idle/M_Neutral_Crouch_Idle_Loop",
     "crouch_walk": "/Game/Characters/UEFN_Mannequin/Animations/Crouch/M_Neutral_Crouch_Loop_F",
-    "heal": "/Game/Fixers/Animations/Mover/Injector/Mover_Injector_Use"
+    "heal": "/Game/Fixers/Animations/Mover/Injector/Mover_Injector_Use",
+    "start_forward": "/Game/Characters/UEFN_Mannequin/Animations/Run/M_Relaxed_Run_Start_F_Rfoot",
+    "start_left": "/Game/Characters/UEFN_Mannequin/Animations/Run/M_Relaxed_Run_Reface_Start_090_L_Rfoot",
+    "start_right": "/Game/Characters/UEFN_Mannequin/Animations/Run/M_Relaxed_Run_Reface_Start_090_R_Rfoot",
+    "start_back_left": "/Game/Characters/UEFN_Mannequin/Animations/Run/M_Relaxed_Run_Reface_Start_180_L_Rfoot",
+    "start_back_right": "/Game/Characters/UEFN_Mannequin/Animations/Run/M_Relaxed_Run_Reface_Start_180_R_Rfoot",
+    "stop": "/Game/Characters/UEFN_Mannequin/Animations/Run/M_Relaxed_Run_Stop_F_Rfoot",
+    "drop_running": "/Game/Characters/UEFN_Mannequin/Animations/Jump/M_Relaxed_Jump_F_Land_Run_Light_Rfoot",
+    "weapon_equip": "/Game/Fixers/Animations/Mover/EquipsUnequips/Mover_Equip_Item_V3",
+    "rifle_move": "/Game/Fixers/Animations/Mover/WeaponPoses/Rifle/Rifle_Stand_Ready_Move",
+    "rifle_sprint": "/Game/Fixers/Animations/Mover/WeaponPoses/Rifle/Rifle_Sprint",
+    "rifle_crouch_ready": "/Game/Fixers/Animations/Mover/WeaponPoses/Rifle/Rifle_Crouch_Ready",
+    "rifle_crouch_aim": "/Game/Fixers/Animations/Mover/WeaponPoses/Rifle/Rifle_Crouch_Aim",
+    "pistol_move": "/Game/Fixers/Animations/Mover/WeaponPoses/Pistol1H/Pistol1H_Stand_Ready_Move",
+    "pistol_sprint": "/Game/Fixers/Animations/Mover/WeaponPoses/Pistol1H/Pistol1H_Stand_Sprint",
+    "pistol_crouch_ready": "/Game/Fixers/Animations/Mover/WeaponPoses/Pistol1H/Pistol1H_Crouch_Ready",
+    "pistol_crouch_aim": "/Game/Fixers/Animations/Mover/WeaponPoses/Pistol1H/Pistol1H_Crouch_Aim",
+    "vault_stand": "/Game/Characters/UEFN_Mannequin/Animations/Traversal/Vault/M_Neutral_Traversal_Vault_1_0_stand_F_Lfoot",
+    "vault_walk": "/Game/Characters/UEFN_Mannequin/Animations/Traversal/Vault/M_Relaxed_Traversal_Vault_1_0_walk_F_Rfoot",
+    "vault_run": "/Game/Characters/UEFN_Mannequin/Animations/Traversal/Vault/M_Relaxed_Traversal_Vault_1_0_run_F_Lfoot",
+    "mantle_stand": "/Game/Characters/UEFN_Mannequin/Animations/Traversal/Mantle/M_Relaxed_Traversal_Mantle_1_0_stand_F_Lfoot",
+    "mantle_walk": "/Game/Characters/UEFN_Mannequin/Animations/Traversal/Mantle/M_Relaxed_Traversal_Mantle_1_0_walk_F_Rfoot",
+    "mantle_run": "/Game/Characters/UEFN_Mannequin/Animations/Traversal/Mantle/M_Relaxed_Traversal_Mantle_1_0_run_F_Lfoot"
   },
   "attachment_assets": {
     "rifle": {
       "asset": "/Game/Fixers/Weapons/GenericWeapons/Rifle/Mesh/SK_Rifle",
-      "bone": "hand_r",
-      "transform": {"position": [0, 0, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1]}
+      "bone": "palm_r_Socket",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
     },
     "pistol": {
       "asset": "/Game/Fixers/Weapons/GenericWeapons/Pistol/Mesh/SK_Pistol",
-      "bone": "hand_r",
-      "transform": {"position": [0, 0, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1]}
+      "bone": "palm_r_Socket",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
     }
   },
   "runtime": {
@@ -53,14 +107,7 @@
       "weapon": "hand_r"
     },
     "animation_aliases": {
-      "start_forward": "run",
-      "start_left": "run",
-      "start_right": "run",
-      "start_back_left": "run",
-      "start_back_right": "run",
-      "stop": "idle",
       "reset": "idle",
-      "drop_running": "drop_idle",
       "drop_running_roll": "drop_idle",
       "driving": "idle",
       "sitting": "idle",
