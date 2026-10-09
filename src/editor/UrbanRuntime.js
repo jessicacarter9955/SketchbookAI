@@ -336,6 +336,7 @@ export class UrbanRuntime {
     this.world.urbanLighting?.update();
     this.root.getObjectByName('CC0 photoreal vegetation')?.children.forEach(lod=>lod.update(this.world.camera));
     const player=this.world.editorPlayer,p=player?.controlledObject?.position||player?.position;if(p)this.world.actorLayer?.update(p);
+    this.world.urbanDialogue?.update(1/60);
     const status=document.querySelector('[data-city-status]');if(status)status.textContent=`Procedural City · ${this.plan?.buildings.length||0} edifici · ${this.plan?.trees.length||0} alberi · ${Math.round(player?.controlledObject?.collision.velocity.length()*3.6||0)} km/h`;
   }
 }
