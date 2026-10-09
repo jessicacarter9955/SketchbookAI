@@ -64,3 +64,11 @@ body.editor-page { margin:0; overflow:hidden; font-family:system-ui,sans-serif; 
 .urban-dialogue-hint{position:fixed;left:50%;bottom:18%;transform:translateX(-50%);z-index:325;background:#101c2be8;color:white;padding:11px 20px;border:1px solid #87aac5;border-radius:8px;font:600 16px system-ui;pointer-events:none}
 body:not(.playing) .urban-dialogue-hint{display:none}
 @media(max-width:760px){.urban-rpg-dialogue{left:2%;right:2%;bottom:2%;grid-template-columns:1fr;gap:12px;padding:18px;max-height:60vh;overflow-y:auto}.urban-rpg-line{font-size:17px}.urban-rpg-choice{font-size:14px;padding:8px 12px}}
+
+/* Capacitor touch playtest: the Sketchbook core already provides a joystick. */
+.android-playtest-controls{position:fixed;right:14px;bottom:88px;z-index:360;display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:60%;pointer-events:auto}
+.android-playtest-controls[hidden]{display:none!important}
+.android-playtest-controls button,.android-scenes-link{background:#18334de8;border:1px solid #78b4dc;color:white;border-radius:12px;padding:12px 16px;min-width:65px;min-height:46px;font:700 15px system-ui;touch-action:none;text-decoration:none;text-align:center}
+.android-playtest-controls button:active{background:#2777b2}
+.android-playtest-controls.in-dialogue{bottom:34vh}
+@media(max-width:790px){.android-playtest-controls{bottom:90px;max-width:66%;right:8px}.android-playtest-controls.in-dialogue{bottom:64vh}.android-playtest-controls button,.android-scenes-link{padding:9px 10px;min-width:55px;font-size:12px}}
