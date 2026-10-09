@@ -135,21 +135,47 @@ async function captureFreeRoam(){
   },null,{timeout:120000,polling:500});
   const initial=await page.evaluate(()=>{
     const world=globalThis.world,player=world.editorPlayer,skyline=world.levelRuntime.root.getObjectByName('Distant skyline');
-    const distances=world.vehicles.map(v=>v.position.distanceTo(player.position)).sort((a,b)=>a-b);
+    const nearest=world.vehicles.slice().sort((a,b)=>a.position.distanceTo(player.position)-b.position.distanceTo(player.position))[0];
     return {
       vehicles:world.vehicles.length,
-      nearestVehicle:distances[0],
+      nearestVehicle:nearest?.position.distanceTo(player.position)??null,
+      nearestVehicleSeats:nearest?.seats?.map(seat=>({type:seat.type,occupied:Boolean(seat.occupiedBy)}))||[],
+      playerPosition:player.position.toArray(),
+      nearestVehiclePosition:nearest?.position.toArray()||null,
       playing:globalThis.sceneEditor.active===false,
       prompt:document.querySelector('[data-vehicle-prompt]')?.textContent||'',
       skyline:skyline?.userData||null
     };
   });
+  console.log('free roam initial',initial);
+  await fs.writeFile(`${out}/urban-free-roam-initial.json`,JSON.stringify(initial,null,2));
   if(!initial.playing||initial.vehicles<2||!initial.skyline?.distantSkyline||initial.skyline.buildingCount<100)
     throw new Error(`Free-roam setup incomplete: ${JSON.stringify(initial)}`);
 
   await page.evaluate(()=>{ globalThis.world?.renderer?.domElement?.focus?.(); });
   await page.keyboard.press('f');
-  await page.waitForFunction(()=>Boolean(globalThis.world?.editorPlayer?.controlledObject),null,{timeout:12000,polling:100});
+  try {
+    // Heavy headless WebGL rendering can delay keyboard handling and polling on CI.
+    await page.waitForFunction(()=>Boolean(globalThis.world?.editorPlayer?.controlledObject),null,{timeout:45000,polling:200});
+  } catch (error) {
+    const after=await page.evaluate(()=>{
+      const world=globalThis.world,player=world?.editorPlayer;
+      const nearest=world?.vehicles?.slice().sort((a,b)=>a.position.distanceTo(player.position)-b.position.distanceTo(player.position))[0];
+      return {
+        editorActive:globalThis.sceneEditor?.active,
+        controlled:Boolean(player?.controlledObject),
+        occupyingSeat:player?.occupyingSeat?.type||null,
+        playerPosition:player?.position.toArray()||null,
+        nearestVehicle:nearest?.position.distanceTo(player.position)??null,
+        nearestVehicleSeats:nearest?.seats?.map(seat=>({type:seat.type,occupied:Boolean(seat.occupiedBy)}))||[],
+        prompt:document.querySelector('[data-vehicle-prompt]')?.textContent||'',
+        focusedElement:document.activeElement?.tagName||null,
+        loadingText:document.querySelector('#loading-screen')?.textContent||''
+      };
+    });
+    await fs.writeFile(`${out}/urban-free-roam-FAILED.json`,JSON.stringify({initial,after,consoleErrors,error:String(error)},null,2));
+    throw new Error(`Urban boarding did not activate after F: ${JSON.stringify(after)}`);
+  }
   await page.waitForTimeout(700);
   const driving=await page.evaluate(()=>{
     const world=globalThis.world,player=world.editorPlayer;
