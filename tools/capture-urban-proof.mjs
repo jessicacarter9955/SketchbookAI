@@ -286,6 +286,83 @@ async function captureFreeRoam(){
     controlled:Boolean(globalThis.world?.editorPlayer?.controlledObject),
     prompt:document.querySelector('[data-vehicle-prompt]')?.textContent||''
   }));
+
+  // Verify REAL in-game player/NPC interaction and its branching answer. The
+  // two screenshots reuse the existing photoreal scene and WebGL renderer.
+  const setup=await page.evaluate(()=>{
+    const world=globalThis.world,system=world.urbanDialogue,pop=world.actorLayer?.urbanPopulation;
+    if(!system||!pop?.pedestrians?.length)throw new Error('RPG dialogue runtime missing');
+    const npc=pop.conversations[0]?.members[0]||pop.pedestrians[0];
+    const other=pop.conversations[0]?.members[1];
+    const point=npc.object.position;
+    const candidate={x:point.x+.3,z:point.z-2.5};
+    const y=world.levelRuntime.groundAt(candidate.x,candidate.z)+1.2;
+    world.editorPlayer.setPosition(candidate.x,y,candidate.z);
+    world.editorPlayer.position.set(candidate.x,y,candidate.z);
+    world.editorPlayer.resetVelocity();
+    return {npcPosition:point.toArray(),playerPosition:world.editorPlayer.position.toArray(),partnerPosition:other?.object.position.toArray()||null};
+  });
+  await page.keyboard.press('e');
+  const first=await page.evaluate(()=>{
+    const d=globalThis.world.urbanDialogue;
+    if(!d.active||d.node!=='intro'||d.choices.length!==4)
+      throw new Error('RPG dialogue E interaction did not start: '+JSON.stringify({active:d.active,node:d.node}));
+    for(let i=0;i<20;i++)d.frameCamera();
+    return {active:d.active,node:d.node,choices:d.choices.length};
+  });
+
+  async function captureDialogue(name){
+    const shot=await page.evaluate(()=>{
+      const world=globalThis.world,d=world.urbanDialogue;
+      d.frameCamera();world.composer.render();
+      const frame=world.renderer.domElement;
+      const canvas=document.createElement('canvas');canvas.width=frame.width;canvas.height=frame.height;
+      const ctx=canvas.getContext('2d');ctx.drawImage(frame,0,0);
+      // UI text is read directly from the active interactive DOM; composing on
+      // canvas avoids unreliable headless Chromium compositor screenshots.
+      const scale=canvas.width/1440,w=canvas.width,h=canvas.height;
+      const r=(x)=>x*scale;
+      const x=r(75),y=h-r(245),bw=w-r(150),bh=r(210);
+      ctx.fillStyle='rgba(10,18,31,.87)';ctx.fillRect(x,y,bw,bh);
+      ctx.strokeStyle='#668ba7';ctx.lineWidth=r(2);ctx.strokeRect(x,y,bw,bh);
+      ctx.fillStyle='#314f67';ctx.fillRect(x+r(20),y-r(22),r(235),r(43));
+      ctx.font=`bold ${r(21)}px sans-serif`;ctx.fillStyle='#fff';
+      ctx.fillText(d.root.querySelector('.urban-rpg-name').textContent,x+r(35),y+r(7));
+      const line=d.root.querySelector('.urban-rpg-line').textContent;
+      ctx.font=`${r(23)}px sans-serif`;
+      const wrap=(text,maxWidth)=>{
+        const words=text.split(' '),lines=[];let line='';
+        for(const word of words){const next=line?line+' '+word:word;if(ctx.measureText(next).width>maxWidth&&line){lines.push(line);line=word;}else line=next;}
+        lines.push(line);return lines;
+      };
+      wrap(line,r(680)).forEach((l,i)=>ctx.fillText(l,x+r(35),y+r(92+i*35)));
+      const choices=[...d.root.querySelectorAll('.urban-rpg-choice')];
+      choices.forEach((el,i)=>{
+        const bx=x+r(765),by=y+r(27+i*42),cw=bw-r(797);
+        ctx.fillStyle=i===d.selected?'rgba(37,95,139,.95)':'rgba(16,29,43,.93)';
+        ctx.fillRect(bx,by,cw,r(35));
+        ctx.strokeStyle=i===d.selected?'#6ed1ff':'#62778b';ctx.lineWidth=r(2);ctx.strokeRect(bx,by,cw,r(35));
+        ctx.font=`${r(17)}px sans-serif`;ctx.fillStyle='#fff';ctx.fillText(el.textContent,bx+r(14),by+r(24));
+      });
+      return {png:canvas.toDataURL('image/png'),node:d.node,selected:d.selected,line,choices:d.choices.map(c=>c[0])};
+    });
+    const bytes=await writeDataUrl(`${out}/${name}.png`,shot.png);
+    console.log('RPG dialogue screenshot',{name,bytes,node:shot.node});
+    return {node:shot.node,selected:shot.selected,line:shot.line,choices:shot.choices};
+  }
+  const opening=await captureDialogue('urban-rpg-dialogue-options');
+  await page.keyboard.press('2');
+  const response=await page.evaluate(()=>{
+    const d=globalThis.world.urbanDialogue;
+    if(d.node!=='traffic'||!d.active)throw new Error('NPC reply did not branch after pressing 2');
+    for(let i=0;i<12;i++)d.frameCamera();
+    return {node:d.node,text:d.root.querySelector('.urban-rpg-line').textContent};
+  });
+  const reply=await captureDialogue('urban-rpg-dialogue-reply');
+  await fs.writeFile(`${out}/urban-rpg-dialogue-proof.json`,JSON.stringify({setup,first,opening,response,reply},null,2));
+  await page.keyboard.press('Escape');
+  if(await page.evaluate(()=>globalThis.world.urbanDialogue.active))throw new Error('Escape failed to close RPG dialogue');
+
   await fs.writeFile(`${out}/urban-free-roam.json`,JSON.stringify({initial,driving,exited,consoleErrors},null,2));
   console.log('free roam proof',{initial,driving,exited});
   await page.close();
