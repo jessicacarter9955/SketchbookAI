@@ -180,7 +180,7 @@ try {
         }]}); sceneEditor.commit();
     }
     if (!hadSaved && current.world === 'procedural-city') {
-        if(current.id==='urban-photoreal'||current.id==='urban-photoreal-sunset') {
+        if(['urban-photoreal','urban-photoreal-sunset','urban-rpg-dialogue'].includes(current.id)) {
             const preset={...sceneEditor.generator,seed:1847,blocksX:4,blocksZ:4,blockSize:42,roadWidth:10,sidewalkWidth:3.5,minFloors:3,maxFloors:7,buildingDensity:.9,terrain:'flat',sky:current.id==='urban-photoreal-sunset'?'sunset':'day'};
             sceneEditor.restore({version:1,world:current.world,objects:[],generator:preset});
         }
@@ -216,6 +216,12 @@ try {
     sceneEditor.islandTool?.focus();
     sceneEditor.urbanTool?.focus();
     if (query.get('play') === '1') sceneEditor.setActive(false);
+    if(current.id==='urban-rpg-dialogue' && query.get('play')==='1' && world.actorLayer?.urbanPopulation){
+      const npc=world.actorLayer.urbanPopulation.conversations[0]?.members[0];
+      if(npc){const x=npc.x+.1,z=npc.z-2.2,y=(world.levelRuntime.groundAt(x,z)??0)+1.2;
+        world.editorPlayer.setPosition(x,y,z);world.editorPlayer.position.set(x,y,z);
+      }
+    }
     if(current.world==='procedural-city' && query.get('play')==='1') sceneEditor.message('Free roam · WASD muovi · E parla con un abitante · 1-4 scegli risposta · F entra in auto · F2 editor.');
     document.title = `${current.name} · Sketchbook`;
 } catch (error) {
