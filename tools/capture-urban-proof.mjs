@@ -228,7 +228,7 @@ async function captureFreeRoam(){
   validateUrbanCaptureViews();
   const frames=await page.evaluate((views)=>{
     const world=globalThis.world,pop=world.actorLayer?.urbanPopulation;
-    if(!pop||pop.cars.length<4||pop.pedestrians.length<6)
+    if(!pop||pop.cars.length<16||pop.pedestrians.length<24||pop.conversations.length<4)
       throw new Error('Missing genuine population: '+JSON.stringify({cars:pop?.cars.length,pedestrians:pop?.pedestrians.length}));
     const scenario=pop.prepareCaptureScenario();
     // Repeatable AI warmup without loading the city, switching tabs or waiting
@@ -237,7 +237,7 @@ async function captureFreeRoam(){
     const camera=world.camera,restore={
       position:camera.position.clone(),rotation:camera.quaternion.clone(),fov:camera.fov
     };
-    const ped=pop.pedestrians[0],car=pop.cars.reduce((best,c)=>
+    const ped=pop.conversations[0]?.members[0]||pop.pedestrians[0],car=pop.cars.reduce((best,c)=>
       !best||c.object.position.distanceToSquared(ped.object.position)<best.object.position.distanceToSquared(ped.object.position)?c:best,null);
     const segment=pop.net.roads[car.seg];
     // Stand over the roadway, not above surrounding buildings.
@@ -248,14 +248,15 @@ async function captureFreeRoam(){
     try{
       for(const view of views){
         const subject=view.kind==='car'?car.object.position:
-          view.kind==='pedestrian'?ped.object.position:
+          view.kind==='pedestrian'||view.kind==='dialogue'?ped.object.position:
           view.kind==='anchor'?midpoint:midpoint;
         // The camera origin is anchored on a DRIVABLE lane. Its lateral
         // variation is bounded to a lane so no camera starts inside a building.
         const longitudinal=view.offset[2],height=view.offset[1],lateral=Math.min(2,Math.abs(view.offset[0])*.14);
-        camera.position.set(car.object.position.x+along.x*longitudinal+side.x*lateral,
-          Math.max(car.object.position.y,subject.y)+height,
-          car.object.position.z+along.z*longitudinal+side.z*lateral);
+        const basePoint=view.kind==='dialogue'?subject:car.object.position;
+        camera.position.set(basePoint.x+along.x*longitudinal+side.x*lateral,
+          Math.max(basePoint.y,subject.y)+height,
+          basePoint.z+along.z*longitudinal+side.z*lateral);
         camera.fov=view.fov;camera.updateProjectionMatrix();
         camera.lookAt(subject.x,subject.y+(view.kind==='pedestrian'?1:1.2),subject.z);
         camera.updateMatrixWorld(true);
@@ -267,7 +268,7 @@ async function captureFreeRoam(){
       camera.position.copy(restore.position);camera.quaternion.copy(restore.rotation);
       camera.fov=restore.fov;camera.updateProjectionMatrix();camera.updateMatrixWorld(true);
     }
-    return {scenario,counts:{cars:pop.cars.length,pedestrians:pop.pedestrians.length},
+    return {scenario,counts:{cars:pop.cars.length,pedestrians:pop.pedestrians.length,conversations:pop.conversations.length},
       pedestrian:ped.object.position.toArray(),vehicle:car.object.position.toArray(),views:results};
   },URBAN_CAPTURE_VIEWS);
   for(const frame of frames.views){
