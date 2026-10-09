@@ -4,6 +4,12 @@ on:
   push:
     branches: [ "urban-procedural-vehicles" ]
   workflow_dispatch:
+    inputs:
+      capture:
+        description: "Capture mode (auto respects changed files; full forces all screenshots)"
+        type: choice
+        default: full
+        options: [full, auto]
 
 concurrency:
   group: urban-visual-${{ github.ref }}
@@ -18,23 +24,89 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Select relevant validation and screenshots
+        shell: bash
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          REQUESTED_CAPTURE: ${{ inputs.capture }}
+        run: |
+          set -euo pipefail
+          mode=population
+          capture=true
+          assets=false
+          package=false
+          tests=true
+          # Full manual runs (or missing push ancestry) are the reliable fallback.
+          if [[ "$REQUESTED_CAPTURE" == full || "${{ github.event_name }}" == workflow_dispatch ]]; then
+            mode=full; assets=true; package=true
+          elif [[ -z "$BEFORE_SHA" || "$BEFORE_SHA" == "0000000000000000000000000000000000000000" ]] || ! git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null; then
+            mode=full; assets=true; package=true
+          else
+            changed=$(git diff --name-only "$BEFORE_SHA" HEAD)
+            echo "Changed files:"
+            printf '%s\n' "$changed"
+            if grep -Eq '^(src/editor/(UrbanRuntime|UrbanStreets|UrbanLighting|UrbanArchitecture|UrbanVegetation|UrbanProps|urban-data)|assets/|tools/(capture-urban-assets|fetch-urban-kits|prepare-urban-lods)|urban-examples.html|urban-assets.html|\.github/workflows/urban-ci\.yml)' <<< "$changed"; then
+              mode=full; assets=true; package=true
+            fi
+            if ! grep -Eq '^(src/|tests/|tools/|assets/|build/|editor.html|urban-|webpack|package(-lock)?\.json|\.github/workflows/urban-ci\.yml)' <<< "$changed"; then
+              capture=false; tests=false
+            fi
+          fi
+          {
+            echo "CAPTURE_MODE=$mode"
+            echo "RUN_CAPTURE=$capture"
+            echo "RUN_ASSET_SCREENSHOTS=$assets"
+            echo "RUN_PACKAGE=$package"
+            echo "RUN_TESTS=$tests"
+          } >> "$GITHUB_ENV"
+          echo "Screenshot selection: $mode; asset renders: $assets; playable: $package; tests: $tests; capture: $capture"
+
       - uses: actions/setup-node@v4
+        if: env.RUN_TESTS == 'true' || env.RUN_CAPTURE == 'true'
         with:
           node-version: "20"
           cache: npm
       - name: Install dependencies
+        if: env.RUN_TESTS == 'true' || env.RUN_CAPTURE == 'true'
         run: npm ci
-      - name: Download verified CC0 architecture kits
+      - name: Restore verified CC0 assets
+        if: env.RUN_CAPTURE == 'true'
+        id: cc0-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            assets/urban-kits
+            assets/roadforge
+          key: ubuntu-urban-cc0-v3-${{ hashFiles('tools/fetch-urban-kits.py', 'tools/prepare-urban-lods.mjs') }}
+      - name: Download verified CC0 architecture kits on cache miss
+        if: env.RUN_CAPTURE == 'true' && steps.cc0-cache.outputs.cache-hit != 'true'
         run: python tools/fetch-urban-kits.py
       - name: Unit tests
+        if: env.RUN_TESTS == 'true'
         run: npm test
       - name: Production build
+        if: env.RUN_CAPTURE == 'true'
         run: npm run build
+      - name: Restore Chromium browser
+        if: env.RUN_CAPTURE == 'true'
+        id: browser-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ubuntu-chromium-playwright-1.55.0-v1
       - name: Install Playwright and Chromium
+        if: env.RUN_CAPTURE == 'true'
         run: |
           npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
+          if [ "${{ steps.browser-cache.outputs.cache-hit }}" != "true" ]; then
+            npx playwright install --with-deps chromium
+          else
+            npx playwright install chromium
+          fi
       - name: Start editor
+        if: env.RUN_CAPTURE == 'true'
         run: |
           npx webpack serve --config webpack.dev.js --host 127.0.0.1 --port 8401 > /tmp/sketchbook-editor.log 2>&1 &
           echo $! > /tmp/sketchbook-editor.pid
@@ -45,27 +117,34 @@ jobs:
           cat /tmp/sketchbook-editor.log
           exit 1
       - name: Inspect individual assets and materials
+        if: env.RUN_ASSET_SCREENSHOTS == 'true'
         run: node tools/capture-urban-assets.mjs
       - name: Upload individual asset screenshots
-        if: always()
+        if: always() && env.RUN_ASSET_SCREENSHOTS == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: urban-asset-inspection
           path: artifacts/assets
-      - name: Capture verified photoreal environment
+          if-no-files-found: warn
+      - name: Capture all relevant urban screenshots
+        if: env.RUN_CAPTURE == 'true'
+        env:
+          URBAN_CAPTURE_MODE: ${{ env.CAPTURE_MODE }}
         run: node tools/capture-urban-proof.mjs
       - name: Package playable city with current compiled bundle
+        if: env.RUN_PACKAGE == 'true'
         run: python tools/package-urban-preview.py
       - name: Upload playable city
+        if: env.RUN_PACKAGE == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: urban-playable
           path: artifacts/urban-playable
       - name: Save editor log
-        if: always()
+        if: always() && env.RUN_CAPTURE == 'true'
         run: cp /tmp/sketchbook-editor.log artifacts/editor-server.log || true
       - name: Upload visual verification
-        if: always()
+        if: always() && env.RUN_CAPTURE == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: urban-visual-verification
@@ -73,3 +152,4 @@ jobs:
             artifacts/*.png
             artifacts/*.json
             artifacts/*.log
+          if-no-files-found: warn
