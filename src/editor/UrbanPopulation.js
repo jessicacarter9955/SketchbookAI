@@ -69,5 +69,29 @@ export class UrbanPopulation {
       a.object.rotation.y=Math.atan2(dx,dz);this.placePed(a);
     }
   }
+
+  // Deterministic visual QA scene: positions come from the actual lane and
+  // sidewalk graphs. No fake props; the same AI agents remain simulated.
+  prepareCaptureScenario(){
+    const nodes=this.net.pedestrians.nodes;
+    const anchor=nodes.reduce((best,n)=>!best||n.x*n.x+n.z*n.z<best.x*best.x+best.z*best.z?n:best,null);
+    const nearRoad=this.net.roads.map((r,i)=>({i,d:Math.hypot((r.a.x+r.b.x)/2-anchor.x,(r.a.z+r.b.z)/2-anchor.z)})).sort((a,b)=>a.d-b.d);
+    const selected=[];
+    for(const candidate of nearRoad){
+      const segment=this.net.roads[candidate.i];
+      const center={x:(segment.a.x+segment.b.x)/2,z:(segment.a.z+segment.b.z)/2};
+      if(selected.every(item=>Math.hypot(item.center.x-center.x,item.center.z-center.z)>8))selected.push({i:candidate.i,center});
+      if(selected.length>=this.cars.length)break;
+    }
+    this.cars.forEach((car,i)=>{car.seg=selected[i%selected.length].i;car.t=.5;car.speed=0;this.placeCar(car);});
+    const ordered=nodes.slice().sort((a,b)=>Math.hypot(a.x-anchor.x,a.z-anchor.z)-Math.hypot(b.x-anchor.x,b.z-anchor.z));
+    this.pedestrians.forEach((ped,i)=>{
+      const node=ordered[i%ordered.length];
+      ped.x=node.x;ped.z=node.z;ped.path=[];ped.index=0;this.nextDestination(ped);this.placePed(ped);
+    });
+    this.elapsed=0;
+    const chosen=this.cars.reduce((best,c)=>!best||c.object.position.distanceToSquared(this.pedestrians[0].object.position)<best.object.position.distanceToSquared(this.pedestrians[0].object.position)?c:best,null);
+    return {anchor:{x:anchor.x,z:anchor.z},cars:this.cars.length,pedestrians:this.pedestrians.length,nearestCar:chosen.object.position.toArray()};
+  }
   destroy(){this.group.removeFromParent();this.cars=[];this.pedestrians=[];}
 }
