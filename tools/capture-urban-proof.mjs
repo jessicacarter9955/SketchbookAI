@@ -129,11 +129,20 @@ async function captureFreeRoam(){
   const page=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
   const consoleErrors=[];
   page.on('console',msg=>{if(msg.type()==='error')consoleErrors.push(msg.text());});
+  page.on('pageerror',error=>consoleErrors.push('PAGE ERROR '+error.message));
   await page.goto(`${base}/editor.html?scene=urban-photoreal&play=1`,{waitUntil:'domcontentloaded'});
-  await page.waitForFunction(()=>{
+  try{await page.waitForFunction(()=>{
     const world=globalThis.world,state=world?.levelRuntime?.visualState;
     return state?.status==='ready'&&globalThis.sceneEditor?.active===false&&world?.editorPlayer&&world?.vehicles?.length>=2;
-  },null,{timeout:120000,polling:500});
+  },null,{timeout:35000,polling:500});}catch(error){
+    const diagnostic=await page.evaluate(()=>({loading:document.querySelector('#loading-screen')?.textContent,
+      world:!!globalThis.world,sceneEditor:!!globalThis.sceneEditor,active:globalThis.sceneEditor?.active,
+      visual:globalThis.world?.levelRuntime?.visualState,vehicles:globalThis.world?.vehicles?.length,
+      dialogue:!!globalThis.world?.urbanDialogue}));
+    console.error('CITY INITIALIZATION DIAGNOSTIC',JSON.stringify({diagnostic,consoleErrors}));
+    await fs.writeFile(`${out}/urban-dialogue-init-error.json`,JSON.stringify({diagnostic,consoleErrors},null,2));
+    throw error;
+  }
   const initial=await page.evaluate(()=>{
     const world=globalThis.world,player=world.editorPlayer,skyline=world.levelRuntime.root.getObjectByName('Distant skyline');
     const nearest=world.vehicles.slice().sort((a,b)=>a.position.distanceTo(player.position)-b.position.distanceTo(player.position))[0];
