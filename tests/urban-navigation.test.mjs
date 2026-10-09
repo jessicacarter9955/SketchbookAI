@@ -34,3 +34,18 @@ test('dense-population visual proof includes a conversation camera and unique sc
   assert.ok(URBAN_CAPTURE_VIEWS.some(v=>v.kind==='pedestrian'));
   assert.ok(URBAN_CAPTURE_VIEWS.length>=6);
 });
+
+import {inspectHumanoidRig,findHumanoidJoint} from '../src/editor/humanoid-rig.mjs';
+test('Three.js humanoid rig detector only accepts real bones',()=>{
+  const rightArm={name:'upper_arm.R',type:'Bone',isBone:true,children:[]};
+  const head={name:'head',type:'Bone',isBone:true,children:[]};
+  const staticMesh={name:'upper_arm.R',type:'Mesh',isMesh:true,children:[]};
+  const hierarchy={traverse(fn){for(const n of [rightArm,head,staticMesh])fn(n);}};
+  const info=inspectHumanoidRig(hierarchy);
+  assert.equal(info.boneCount,2);
+  assert.equal(info.supportsRealArmGesture,true);
+  assert.equal(findHumanoidJoint(hierarchy),rightArm);
+  const unrigged={traverse(fn){fn(staticMesh);}};
+  assert.equal(inspectHumanoidRig(unrigged).supportsRealArmGesture,false);
+  assert.equal(findHumanoidJoint(unrigged),null);
+});
