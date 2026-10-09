@@ -1,7 +1,7 @@
 /* Shared by the AI sandbox and the scene editor. No bundled credentials. */
 (function () {
     const client = new SketchfabClient();
-    const fabClient = new FabClient();
+    const fabClient = typeof FabClient === 'function' ? new FabClient() : null;
     const localAccess = client.loadLocalToken();
     const dialog = document.createElement('dialog');
     dialog.className = 'asset-picker';
@@ -36,6 +36,7 @@
     function openFab() {
         const {query}=normalizedQuery($('[name=query]').value);
         if(!query)return status('Scrivi una ricerca per Fab, ad esempio @fab medieval house.');
+        if(!fabClient)return status('Fab non disponibile in questa pagina. Apri l’editor per utilizzare Fab.');
         const link=fabClient.searchURL(query,{free:$('[name=fab-free]').checked,category:$('[name=fab-category]').value});
         const opened=window.open(link,'_blank','noopener,noreferrer');
         if(!opened) {
@@ -111,6 +112,7 @@
     }
     $('.asset-search').onsubmit = e => { e.preventDefault(); search(); };
     $('[name=source]').onchange = e => {controller?.abort();generation++;switchSource(e.target.value);};
+    if(!fabClient)$('[name=source]').querySelector('[value=fab]').disabled=true;
     $('[name=query]').addEventListener('input',()=>{
         const text=$('[name=query]').value;
         if(/^@fab(?:\\s|$)/i.test(text))switchSource('fab');
@@ -120,6 +122,7 @@
     $('[name=fab-file]').onchange=async e=>{
         const file=e.target.files?.[0];e.target.value='';if(!file||busy)return;
         try{
+            if(!fabClient)throw new Error('Fab non disponibile in questa pagina.');
             fabClient.supportedFile(file);
             if(!fabCallback)throw new Error('Apri la libreria dalla scena per importare il modello.');
             busy=true;status('Importazione di '+file.name+'…');
