@@ -29,8 +29,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Use preinstalled Android SDK
+        run: |
+          echo "ANDROID_HOME=${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          test -d "${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          command -v java
       - name: Install web dependencies
         run: npm ci
       - name: Restore verified CC0 urban assets
