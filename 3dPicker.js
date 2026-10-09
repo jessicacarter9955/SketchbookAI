@@ -18,9 +18,9 @@
     let models = [], next = null, controller, generation = 0, callback = null, fabCallback = null, busy = false, pendingModel = null;
     const normalizedQuery = value => {
         const valueString=String(value||'').trim();
-        const fab=/^@fab(?:\\s+|$)/i.test(valueString);
-        const sketchfab=/^@sketchfab(?:\\s+|$)/i.test(valueString);
-        return {source:fab?'fab':sketchfab?'sketchfab':$('[name=source]').value, query:valueString.replace(/^@(?:fab|sketchfab)(?=\\s|$)\\s*/i,'').trim()};
+        const fab=/^@fab(?:\s+|$)/i.test(valueString);
+        const sketchfab=/^@sketchfab(?:\s+|$)/i.test(valueString);
+        return {source:fab?'fab':sketchfab?'sketchfab':$('[name=source]').value, query:valueString.replace(/^@(?:fab|sketchfab)(?=\s|$)\s*/i,'').trim()};
     };
     function switchSource(source) {
         $('[name=source]').value=source;
@@ -115,8 +115,8 @@
     if(!fabClient)$('[name=source]').querySelector('[value=fab]').disabled=true;
     $('[name=query]').addEventListener('input',()=>{
         const text=$('[name=query]').value;
-        if(/^@fab(?:\\s|$)/i.test(text))switchSource('fab');
-        else if(/^@sketchfab(?:\\s|$)/i.test(text))switchSource('sketchfab');
+        if(/^@fab(?:\s|$)/i.test(text))switchSource('fab');
+        else if(/^@sketchfab(?:\s|$)/i.test(text))switchSource('sketchfab');
     });
     $('[data-fab-open]').onclick=()=>openFab();
     $('[name=fab-file]').onchange=async e=>{
