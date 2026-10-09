@@ -51,3 +51,16 @@ body.editor-page { margin:0; overflow:hidden; font-family:system-ui,sans-serif; 
 .fab-shortcuts { display:flex; gap:8px; flex-wrap:wrap; margin:12px 0; }
 .fab-drop { display:block; margin-top:14px; padding:12px; border:1px dashed #526878; border-radius:8px; }
 .fab-drop input { display:block; margin-top:8px; width:100%; }
+
+/* In-game, stateful RPG dialogue: visible only while talking to an NPC. */
+.urban-rpg-dialogue[hidden],.urban-dialogue-hint[hidden]{display:none!important}
+.urban-rpg-dialogue{position:fixed;left:6%;right:6%;bottom:4%;z-index:350;display:grid;grid-template-columns:1fr minmax(260px,39%);gap:22px;padding:25px 30px;background:rgba(12,20,32,.84);border:1px solid rgba(168,194,216,.5);border-radius:14px;box-shadow:0 15px 55px #07101ca8;backdrop-filter:blur(12px);color:#f0f6ff;font:19px/1.5 system-ui,sans-serif;min-height:210px}
+.urban-rpg-name{font-size:15px;letter-spacing:.06em;font-weight:700;color:#bcdcf8;background:#304b64;padding:7px 17px;border-radius:7px;display:inline-block;margin-bottom:21px}
+.urban-rpg-line{font-size:23px;line-height:1.45;max-width:660px;text-wrap:pretty}
+.urban-rpg-options{display:grid;align-content:center;gap:9px}
+.urban-rpg-choice{cursor:pointer;background:rgba(13,21,32,.89);color:#edf4fd;text-align:left;border:1px solid #53687e;border-radius:8px;padding:11px 17px;font:inherit;font-size:16px;transition:border-color .1s ease,background .1s ease}
+.urban-rpg-choice.selected,.urban-rpg-choice:focus-visible{border-color:#72c7ff;background:rgba(33,92,140,.65);outline:2px solid rgba(104,196,255,.6);outline-offset:0}
+.urban-rpg-close{position:absolute;right:9px;top:5px;color:#d9e7f5;background:transparent;border:0;cursor:pointer;font:26px system-ui}
+.urban-dialogue-hint{position:fixed;left:50%;bottom:18%;transform:translateX(-50%);z-index:325;background:#101c2be8;color:white;padding:11px 20px;border:1px solid #87aac5;border-radius:8px;font:600 16px system-ui;pointer-events:none}
+body:not(.playing) .urban-dialogue-hint{display:none}
+@media(max-width:760px){.urban-rpg-dialogue{left:2%;right:2%;bottom:2%;grid-template-columns:1fr;gap:12px;padding:18px;max-height:60vh;overflow-y:auto}.urban-rpg-line{font-size:17px}.urban-rpg-choice{font-size:14px;padding:8px 12px}}
