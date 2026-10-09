@@ -34,6 +34,7 @@ jobs:
         run: |
           set -euo pipefail
           mode=population
+          capture_script=tools/capture-urban-proof.mjs
           capture=true
           assets=false
           package=false
@@ -45,6 +46,9 @@ jobs:
             mode=full; assets=true; package=true
           else
             changed=$(git diff --name-only "$BEFORE_SHA" HEAD)
+            if grep -Eq '^(src/editor/(UrbanDialogue\.js|humanoid-rig\.mjs)|tools/capture-dialogue-proof\.mjs)' <<< "$changed"; then
+              capture_script=tools/capture-dialogue-proof.mjs
+            fi
             echo "Changed files:"
             printf '%s\n' "$changed"
             if grep -Eq '^(src/editor/(UrbanRuntime|UrbanStreets|UrbanLighting|UrbanArchitecture|UrbanVegetation|UrbanProps|urban-data)|assets/|tools/(capture-urban-assets|fetch-urban-kits|prepare-urban-lods)|urban-examples.html|urban-assets.html|\.github/workflows/urban-ci\.yml)' <<< "$changed"; then
@@ -56,6 +60,7 @@ jobs:
           fi
           {
             echo "CAPTURE_MODE=$mode"
+            echo "CAPTURE_SCRIPT=$capture_script"
             echo "RUN_CAPTURE=$capture"
             echo "RUN_ASSET_SCREENSHOTS=$assets"
             echo "RUN_PACKAGE=$package"
@@ -130,7 +135,7 @@ jobs:
         if: env.RUN_CAPTURE == 'true'
         env:
           URBAN_CAPTURE_MODE: ${{ env.CAPTURE_MODE }}
-        run: node tools/capture-urban-proof.mjs
+        run: node "${{ env.CAPTURE_SCRIPT }}"
       - name: Package playable city with current compiled bundle
         if: env.RUN_PACKAGE == 'true'
         run: python tools/package-urban-preview.py
