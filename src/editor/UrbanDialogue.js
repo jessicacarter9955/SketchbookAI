@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import {findHumanoidJoint,inspectHumanoidRig} from './humanoid-rig.mjs';
 
 const STORY={
