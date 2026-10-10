@@ -23,7 +23,7 @@ export class InputManager extends InputManagerBase implements IUpdatable
 	// Call the new function when the script is loaded
 	constructor(world: World, domElement: HTMLElement) {
 		super(world, domElement);
-		if (globalThis.isMobile) {
+		if (globalThis.isMobile && new URLSearchParams(location.search).get('mobile') !== '1') {
 			this.initJoystick();
 			this.initTouchArea();
 			this.initFButton();
