@@ -1,8 +1,10 @@
+import * as THREE from 'three';
 import { UrbanDialogue } from './UrbanDialogue.js';
 import { WorldWeather } from './WorldWeather.js';
 import { loadCatalog, createScene } from './scene-catalog.mjs';
 import { sceneStorageKey, loadRevisions, saveRevision, forkScene } from './scene-revisions.mjs';
 
+globalThis.THREE = THREE; // shared by procedural weather and the 3D game
 const loading = document.getElementById('loading-screen');
 const query = new URLSearchParams(location.search);
 const catalog = loadCatalog(localStorage);
