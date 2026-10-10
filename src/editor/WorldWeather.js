@@ -39,7 +39,7 @@ function precipitation(kind,count){
     const x=random(46)-23,y=random(28),z=random(46)-23;
     if(isRain){
       positions.set([x,y,z,x,y,z],i*6);
-      randoms[i*2]=Math.random();randoms[i*2+1]=Math.random();
+      randoms[i*2]=Math.random();randoms[i*2+1]=randoms[i*2];
     }else{
       positions.set([x,y,z],i*3);
       randoms[i]=Math.random();
@@ -368,12 +368,14 @@ export class WorldWeather {
     }
     if(this.moon.visible)this.moon.position.copy(camera.position).add(new THREE.Vector3(-105,90,-170));
     if(this.aurora.visible){
-      this.aurora.position.copy(camera.position).add(new THREE.Vector3(0,56,-175));
+      const dir=new THREE.Vector3();camera.getWorldDirection(dir);dir.y=0;dir.normalize();
+      this.aurora.position.copy(camera.position).addScaledVector(dir,150).add(new THREE.Vector3(0,42,0));
       this.aurora.lookAt(camera.position);
       this.aurora.material.uniforms.uTime.value=elapsed;
     }
     if(this.rainbow.visible){
-      this.rainbow.position.copy(camera.position).add(new THREE.Vector3(0,-8,-185));
+      const dir=new THREE.Vector3();camera.getWorldDirection(dir);dir.y=0;dir.normalize();
+      this.rainbow.position.copy(camera.position).addScaledVector(dir,155).add(new THREE.Vector3(0,-9,0));
       this.rainbow.lookAt(camera.position);
     }
     if(this.state==='storm'){
