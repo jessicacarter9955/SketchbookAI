@@ -31,10 +31,10 @@ export async function photographicLighting(world,preset='day') {
     const fxaa=new ShaderPass(FXAAShader);composer.addPass(fxaa);composer.addPass(new ShaderPass(GammaCorrectionShader));
     const resize=()=>{const ratio=renderer.getPixelRatio();composer.setSize(innerWidth,innerHeight);fxaa.uniforms.resolution.value.set(1/(innerWidth*ratio),1/(innerHeight*ratio));};
     resize();addEventListener('resize',resize);world.composer.dispose();world.composer=composer;
-    world.urbanLighting={sun,hdr,environment,fill,update(){
+    world.urbanLighting={sun,hdr,environment,fill,sunOffset:new THREE.Vector3(-50,65,55),update(){
       const p=world.camera.position;
       sun.target.position.set(Math.round(p.x/8)*8,0,Math.round(p.z/8)*8);
-      sun.position.copy(sun.target.position).add(new THREE.Vector3(-50,65,55));
+      sun.position.copy(sun.target.position).add(world.urbanLighting.sunOffset);
       sun.target.updateMatrixWorld();
     }};
     })();
