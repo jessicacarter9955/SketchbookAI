@@ -140,7 +140,9 @@ function createDistantSkyline(plan,config){
 
 export class UrbanRuntime {
   constructor(world){
-    this.world=world; world.sky.setPhotographic(true); this.ready=false; this.config=null; this.bodies=[]; this.visualState={status:'idle',architecture:[],vegetation:null,error:null};
+    this.world=world;
+    this.mobileLite=/Android|iPhone|iPad/i.test(navigator.userAgent)&&!new URLSearchParams(location.search).has('hd');
+    world.sky.setPhotographic(!this.mobileLite); this.ready=false; this.config=null; this.bodies=[]; this.visualState={status:'idle',architecture:[],vegetation:null,error:null};
     this.root=new THREE.Group(); this.root.name='Città procedurale'; world.graphicsWorld.add(this.root);
     world.camera.far=1800; world.camera.updateProjectionMatrix(); world.renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
     world.renderer.toneMapping=THREE.ACESFilmicToneMapping; world.renderer.toneMappingExposure=1.08; world.renderer.outputColorSpace=THREE.SRGBColorSpace;
@@ -259,6 +261,30 @@ export class UrbanRuntime {
     // The procedural geometry and physics are already playable at this point.
     // Never hide the whole city behind optional remote photoreal assets.
     group.visible=true;
+    if(this.mobileLite){
+      // Avoid HDR PMREM, 4K shadow maps, SSAO, 100 MB glTF geometry and
+      // heavy texture uploads on Android WebView. Use direct WebGL baseline.
+      const scene=this.world.graphicsWorld;
+      this.world.sky.setPhotographic(false);
+      scene.background=new THREE.Color(0x8daec7);
+      scene.fog=new THREE.Fog(0xa6bbcb,125,570);
+      const ambient=new THREE.HemisphereLight(0xe0eeff,0x798578,1.5);
+      const sun=new THREE.DirectionalLight(0xfff2dc,2.0);
+      sun.position.set(80,120,55);sun.castShadow=false;
+      scene.add(ambient,sun);
+      this.world.urbanLighting={
+        sun,fill:ambient,hdr:null,
+        sunOffset:new THREE.Vector3(80,120,55),
+        update:()=>{const p=this.world.camera.position;
+          sun.position.copy(p).add(this.world.urbanLighting.sunOffset);}
+      };
+      this.visualProgress={completed:5,total:5,failed:0,label:'Grafica mobile leggera pronta'};
+      this.visualState={status:'ready',architecture:[],vegetation:null,
+        lighting:'mobile WebGL',props:null,error:null,progress:{...this.visualProgress}};
+      this.onVisualProgress?.({...this.visualProgress});
+      this.visualPromise=Promise.resolve(this.visualState);
+      return;
+    }
     this.visualProgress={completed:0,total:5,failed:0,label:'Città procedurale pronta'};
     this.visualState={status:'loading',architecture:[],vegetation:null,error:null,progress:this.visualProgress};
     const stages=[
