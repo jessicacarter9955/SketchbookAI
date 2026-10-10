@@ -16,19 +16,43 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
+      - name: Restore local CC0 photoreal city assets
+        uses: actions/cache@v4
+        id: cc0
+        with:
+          path: |
+            assets/urban-kits
+            assets/roadforge
+          key: ubuntu-urban-cc0-v3-${{ hashFiles('tools/fetch-urban-kits.py', 'tools/prepare-urban-lods.mjs') }}
+
+      - name: Fetch city assets if absent
+        if: steps.cc0.outputs.cache-hit != 'true'
+        run: python tools/fetch-urban-kits.py
+
+      - name: Build game and editor
         run: npm run build
+
+      - name: Package playable City Player
+        run: python tools/package-urban-preview.py
+
+      - name: Verify player assets before publishing
+        run: |
+          set -euo pipefail
+          for f in editor.html build/sketchbook.min.js build/editor.bundle.js src/editor/editor.css assets/urban-kits/tree_small_02/scene-lod0.gltf assets/roadforge/T_RF_Asphalt_BC.png; do
+            test -s "artifacts/urban-playable/$f" || { echo "Missing $f"; exit 1; }
+          done
+          du -sh artifacts/urban-playable
 
       - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v3.0
         with:
-          publish-dir: '.'
+          publish-dir: 'artifacts/urban-playable'
           production-branch: master
           github-token: ${{ secrets.GITHUB_TOKEN }}
           deploy-message: "Deploy from GitHub Actions - ${{ github.event.head_commit.message }}"
@@ -38,5 +62,5 @@ jobs:
         env:
           NETLIFY_AUTH_TOKEN: nfp_7mrwfjfXpwtAA2yRS9Cdj52S5GLWuB8v6393
           NETLIFY_SITE_ID: ef61ba0a-53d3-45ed-8965-4fcd861654ba
-        timeout-minutes: 1
+        timeout-minutes: 10
 
