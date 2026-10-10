@@ -1,4 +1,5 @@
-import * as THREE from 'three';
+// THREE is supplied by the editor's already-loaded Sketchbook bundle.
+// A bare 'three' import cannot be resolved by native browser modules.
 import {interpretWorldCommands} from './world-commands.mjs';
 
 // Free, local, deterministic world controls: the Sketchfab/Fab asset search remains separate.
@@ -94,7 +95,7 @@ export class WorldWeather {
           if(/trunk|bark|wood|branch/.test(n))continue;
           if(!this.baseColors.has(material))this.baseColors.set(material,material.color.clone());
           material.color.copy(this.baseColors.get(material));
-          if(color!==null)material.color.lerp(new THREE.Color(color),name==='winter'?.76:name==='autumn'?.65:.3);
+          if(color!==null)material.color.lerp(new THREE.Color(color),name==='winter' ? 0.76 : name==='autumn' ? 0.65 : 0.3);
         }
       });
     }
