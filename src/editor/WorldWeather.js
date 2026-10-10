@@ -347,7 +347,7 @@ export class WorldWeather {
     const night=this.time==='night';
     const bgcolor=sand?0xa8875b:stormy?0x485464:this.snowing?0xa0aebe:
       this.enabled?0x869aaa:night?0x07142c:null;
-    graphics.background=bgcolor===null?(lighting?.hdr||null):new THREE.Color(bgcolor);
+    graphics.background=bgcolor===null?(lighting?.hdr||new THREE.Color(0x8daec7)):new THREE.Color(bgcolor);
     const fogColor=sand?0xa8875b:stormy?0x485464:this.snowing?0xb5c3d1:
       this.enabled?0x8298aa:p.fog;
     const heavyFog=this.foggy||sand;
