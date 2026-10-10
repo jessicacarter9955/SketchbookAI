@@ -146,7 +146,7 @@ export class UrbanRuntime {
     world.renderer.toneMapping=THREE.ACESFilmicToneMapping; world.renderer.toneMappingExposure=1.08; world.renderer.outputColorSpace=THREE.SRGBColorSpace;
     world.respawnPosition=new CANNON.Vec3(0,3,0); world.isOutOfBounds=p=>p.y<-25||Math.abs(p.x)>2500||Math.abs(p.z)>2500;
   }
-  initialize(){this.generate(DEFAULT_URBAN);}
+  initialize(config=DEFAULT_URBAN){this.generate(config);}
   clearGenerated(){
     this.bodies.forEach(body=>this.world.physicsWorld.removeBody(body)); this.bodies=[];
     this.root.traverse(node=>{if(node.userData.sharedUrbanAsset)return;node.geometry?.dispose();for(const m of [].concat(node.material||[])){for(const v of Object.values(m||{}))if(v?.isTexture)v.dispose?.();m?.dispose?.();}});
