@@ -46,3 +46,20 @@ test('independent world instructions combine without AI or keys',()=>{
   assert.equal(result.actions.find(a=>a.type==='time').value,'sunset');
   assert.equal(interpretWorldCommand('sole a ovest').value,'west');
 });
+
+test('snow and blizzard work as free in-city text commands',()=>{
+  const snow=interpretWorldCommand('fai nevicare');
+  assert.equal(snow.type,'snow');assert.equal(snow.enabled,true);
+  const blizzard=interpretWorldCommand('bufera di neve');
+  assert.equal(blizzard.actions.find(a=>a.type==='state').value,'blizzard');
+  assert.equal(interpretWorldCommand('togli la neve').enabled,false);
+});
+test('twelve procedural weather presets are routed into the same city command input',()=>{
+  for(const [prompt,state] of [['sereno','clear'],['cielo nuvoloso','cloudy'],
+    ['temporale','storm'],['tempesta di sabbia','sandstorm'],
+    ['aurora boreale','aurora'],['grandine','hail']]){
+    const result=interpretWorldCommand(prompt);
+    assert.equal(result.actions.find(a=>a.type==='state')?.value,state,prompt);
+  }
+  assert.equal(interpretWorldCommand('vento forte').actions[0].type,'wind');
+});
