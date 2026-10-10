@@ -80,3 +80,7 @@ body:not(.playing) .urban-dialogue-hint{display:none}
 .city-world-command button{min-height:38px;background:#2d6a84;color:white;border:1px solid #79acc3;border-radius:6px;padding:8px}
 .city-world-command [data-command-result]{font:12px system-ui,sans-serif;color:#c4e4ef;flex-basis:100%;min-height:14px}
 @media(max-width:900px){.city-world-command{flex:1 1 100%;justify-content:center}.city-world-command input{min-width:110px}}
+
+/* Keep weather presets accessible on phones while Sketchfab/Fab search is unchanged. */
+.city-world-command select{display:block!important;max-width:145px;min-height:42px;background:#152d3d;color:#eef6ff;border:1px solid #5083a5;border-radius:7px;padding:7px}
+@media(max-width:900px){.city-world-command{position:fixed;top:62px;left:8px;right:8px;z-index:220;background:#152938e8;padding:8px;border-radius:10px}.city-world-command input{flex:1 1 120px;width:40%;font-size:14px}.city-world-command [data-command-result]{display:block;width:100%}}
