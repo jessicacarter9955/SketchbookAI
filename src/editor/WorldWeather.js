@@ -54,7 +54,7 @@ export class WorldWeather {
     }
     this.geometry.attributes.position.needsUpdate=true;
     this.geometry.computeBoundingSphere();
-    this.material.opacity=this.intensity>1?.7:.5;
+    this.material.opacity=this.intensity > 1 ? 0.7 : 0.5;
   }
   dispose(){
     cancelAnimationFrame(this.raf);
