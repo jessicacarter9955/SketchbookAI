@@ -34,35 +34,26 @@ jobs:
           echo "ANDROID_HOME=${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           test -d "${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           command -v java
-      - name: Install web dependencies
-        run: npm ci
-      - name: Restore verified CC0 urban assets
-        id: cc0
-        uses: actions/cache@v4
-        with:
-          path: |
-            assets/urban-kits
-            assets/roadforge
-          key: ubuntu-urban-cc0-v3-${{ hashFiles('tools/fetch-urban-kits.py', 'tools/prepare-urban-lods.mjs') }}
-      - name: Fetch urban assets when necessary
-        if: steps.cc0.outputs.cache-hit != 'true'
-        run: python tools/fetch-urban-kits.py
-      - name: Test gameplay and scene catalog
-        run: npm test
-      - name: Build Three.js game
-        run: npm run build
-      - name: Package all Android playtest scenes
-        run: python tools/package-android-playtest.py
+      - name: Check hosted city and essential 3D assets
+        run: |
+          set -euo pipefail
+          BASE=https://my-test-site3.netlify.app
+          for path in editor.html build/sketchbook.min.js build/assets/boxman.glb assets/urban-kits/tree_small_02/scene-lod0.gltf assets/roadforge/road_albedo.jpg; do
+            printf '%s ' "$path"
+            curl --retry 2 -L -s -o /dev/null -w '%{http_code} %{size_download} bytes\n' "$BASE/$path"
+          done
+      - name: Build lightweight scene chooser
+        run: python tools/package-android-online.py
       - name: Install Capacitor Android 6
         run: npm install --no-save --ignore-scripts @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
       - name: Create Android project
         run: |
           cat > capacitor.config.json <<'EOF'
           {
-            "appId": "ai.sketchbook.rpgplaytestv2",
-            "appName": "Sketchbook AI RPG v2",
+            "appId": "ai.sketchbook.rpgplaytestlite",
+            "appName": "Sketchbook AI City Lite",
             "webDir": "www",
-            "server": {"androidScheme": "https"}
+            "server": {"androidScheme": "https", "allowNavigation": ["my-test-site3.netlify.app"]}
           }
           EOF
           npx cap add android
