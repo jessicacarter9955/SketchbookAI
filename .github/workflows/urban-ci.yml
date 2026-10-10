@@ -116,9 +116,18 @@ jobs:
       - name: Start editor
         if: env.RUN_CAPTURE == 'true'
         run: |
-          npx webpack serve --config webpack.dev.js --host 127.0.0.1 --port 8401 > /tmp/sketchbook-editor.log 2>&1 &
+          set -euo pipefail
+          # Browser-native modules cannot resolve "three". For the user-facing
+          # City Player, screenshot the production bundle and packed assets,
+          # not raw unbundled source files.
+          if [[ "$CAPTURE_SCRIPT" == "tools/capture-dialogue-proof.mjs" ]]; then
+            python tools/package-urban-preview.py
+            (cd artifacts/urban-playable && python -m http.server 8401 --bind 127.0.0.1 > /tmp/sketchbook-editor.log 2>&1) &
+          else
+            npx webpack serve --config webpack.dev.js --host 127.0.0.1 --port 8401 > /tmp/sketchbook-editor.log 2>&1 &
+          fi
           echo $! > /tmp/sketchbook-editor.pid
-          for i in {1..40}; do
+          for i in {1..60}; do
             if curl -fsS http://127.0.0.1:8401/editor.html >/dev/null; then exit 0; fi
             sleep 1
           done
