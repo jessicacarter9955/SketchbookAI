@@ -37,14 +37,14 @@ jobs:
       - name: Check hosted city and essential 3D assets
         run: |
           set -euo pipefail
-          BASE=https://my-test-site3.netlify.app
+          BASE=https://6ac957570f93df0fe9c6979e--my-test-site3.netlify.app
           for path in editor.html build/sketchbook.min.js build/assets/boxman.glb assets/urban-kits/tree_small_02/scene-lod0.gltf assets/roadforge/road_albedo.jpg; do
             printf '%s ' "$path"
             curl --retry 2 -L -s -o /dev/null -w '%{http_code} %{size_download} bytes\n' "$BASE/$path"
           done
       - name: Inspect hosted game response
         run: |
-          curl -Ls 'https://my-test-site3.netlify.app/editor.html?scene=urban-photoreal&play=1' -o /tmp/hosted-editor.html
+          curl -Ls 'https://6ac957570f93df0fe9c6979e--my-test-site3.netlify.app/editor.html?scene=urban-photoreal&play=1' -o /tmp/hosted-editor.html
           echo "Netlify editor bytes: $(wc -c < /tmp/hosted-editor.html)"
           head -c 700 /tmp/hosted-editor.html
           echo
