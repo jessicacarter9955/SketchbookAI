@@ -361,6 +361,13 @@ try {
     loading.style.display = 'flex';
     report(`Errore di avvio: ${error.message}`);
     if(retryButton)retryButton.hidden=false;
-    if(skipVisualButton&&globalThis.sceneEditor){skipVisualButton.disabled=false;}
+    if(skipVisualButton)skipVisualButton.hidden=true;
+    loading.style.cssText='display:flex!important;z-index:99999!important;background:#13232e!important';
+    const panel=loading.querySelector('.city-loading-panel');
+    if(panel){
+      panel.style.display='block';
+      panel.querySelector('#city-load-message').textContent='Errore di avvio: '+String(error?.message||error);
+      panel.querySelector('#city-load-counter').textContent='La scena NON è stata mostrata perché non è ancora verificata.';
+    }
     console.error(error);
 }
