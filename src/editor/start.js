@@ -9,6 +9,7 @@ globalThis.THREE = THREE; // shared by procedural weather and the 3D game
 const loading = document.getElementById('loading-screen');
 const query = new URLSearchParams(location.search);
 const minimalMobile=query.get('mobile')==='1';
+if(minimalMobile)document.body.classList.add('mobile-city-boot');
 const catalog = loadCatalog(localStorage);
 const current = catalog.find(s => s.id === query.get('scene')) || catalog[0];
 const storageKey = sceneStorageKey(current.id);
@@ -187,6 +188,7 @@ function sceneControls(editor) {
 
 try {
     globalThis.world = new World();
+    if(minimalMobile){world.params.FXAA=false;world.params.Shadows=false;world.renderer.shadowMap.enabled=false;world.renderer.setPixelRatio(1);}
     if (current.world === 'liberty-city') {
         world.levelRuntime = new CityRuntime(world);
         await world.initialize(undefined, false); loading.style.display = 'flex';
@@ -284,25 +286,30 @@ try {
     if(current.world==='procedural-city')globalThis.urbanDialogue=world.urbanDialogue=new UrbanDialogue(world,sceneEditor);
     if(current.playerProfile==='dds') new DdsGame(world,{key:`${storageKey}.dds-game`});
     if(current.world==='procedural-city'){
-        if(skipVisualButton)skipVisualButton.disabled=false;
-        const currentProgress=world.levelRuntime.visualProgress;
-        if(currentProgress)setVisualProgress(currentProgress);
-        report('Dettagli HD in caricamento. Puoi già entrare nella città.');
-        // Important: optional models are large on mobile and some hosts omit
-        // assets. The game, NPCs and vehicles are ready without waiting for HD.
-        let watchdog;
-        const timed=new Promise(resolve=>{watchdog=setTimeout(()=>resolve({status:'timeout'}),14000);});
-        const skipped=new Promise(resolve=>{resolveVisualSkip=resolve;});
-        const visual=await Promise.race([world.levelRuntime.visualPromise,timed,skipped]);
-        clearTimeout(watchdog);resolveVisualSkip=null;
-        if(visual?.status==='partial'||visual?.status==='error'){
-            console.warn('Some optional 3D scenery could not be loaded:',visual.error);
-            sceneEditor.message('Città avviata con alcuni dettagli HD non disponibili.');
-        }else if(visual?.status==='timeout'){
-            sceneEditor.message('Città giocabile: i dettagli HD continuano a caricarsi in background.');
+        const progress=world.levelRuntime.visualProgress;
+        if(progress)setVisualProgress(progress);
+        if(minimalMobile){
+            if(skipVisualButton)skipVisualButton.hidden=true;
+            report('Attendo il completamento della scena 3D…');
+            // No mobile fast-forward; a failed asset must display an error,
+            // not silently reveal a black player with empty surroundings.
+            const visual=await Promise.race([
+              world.levelRuntime.visualPromise,
+              new Promise((_,reject)=>setTimeout(()=>reject(new Error('Caricamento scena oltre 90 secondi. Riprova o usa la modalità mobile leggera.')),90000))
+            ]);
+            if(visual?.status!=='ready')throw new Error('Alcuni elementi 3D non sono stati caricati: '+(visual?.error||'sconosciuto'));
+        }else{
+            if(skipVisualButton)skipVisualButton.disabled=false;
+            let watchdog;
+            const timed=new Promise(resolve=>{watchdog=setTimeout(()=>resolve({status:'timeout'}),14000);});
+            const skipped=new Promise(resolve=>{resolveVisualSkip=resolve;});
+            const visual=await Promise.race([world.levelRuntime.visualPromise,timed,skipped]);
+            clearTimeout(watchdog);resolveVisualSkip=null;
+            if(visual?.status==='partial'||visual?.status==='error')
+                sceneEditor.message('Alcuni dettagli HD non disponibili: '+visual.error);
         }
     }
-    loading.style.display = 'none';
+    if(!minimalMobile)loading.style.display='none';
     if(current.id === 'portland-grass' && sceneEditor.mapEdits.length) {
         const select=sceneEditor.surfaceTool.$('[data-layers]'); select.value=sceneEditor.mapEdits[0].id;
         select.dispatchEvent(new Event('change')); sceneEditor.surfaceTool.cancel();
@@ -324,9 +331,28 @@ try {
     }
     if (query.get('play') === '1'||minimalMobile) sceneEditor.setActive(false);
     if(minimalMobile&&current.world==='procedural-city'){
+        // Actually draw into the default framebuffer before revealing it.
+        // The WebGL engine can have live UI even when its 3D viewport is black.
+        report('Verifica GPU e primo fotogramma 3D…');
+        world.params.FXAA=false;
+        world.renderer.setRenderTarget(null);
+        world.renderer.render(world.graphicsWorld,world.camera);
+        const gl=world.renderer.getContext();
+        if(gl.isContextLost())throw new Error('WebGL: contesto grafico perso. Apri in Chrome e riprova.');
+        const samples=[];
+        const coords=[[.5,.5],[.2,.2],[.8,.3],[.5,.8]];
+        for(const [fx,fy] of coords){
+            const px=new Uint8Array(4);
+            gl.readPixels(Math.floor(gl.drawingBufferWidth*fx),Math.floor(gl.drawingBufferHeight*fy),1,1,gl.RGBA,gl.UNSIGNED_BYTE,px);
+            samples.push(Array.from(px));
+        }
+        const glError=gl.getError();
+        console.info('City mobile GPU verification',{samples,glError,items:world.levelRuntime.root.children.length});
+        if(glError!==gl.NO_ERROR)throw new Error('Errore rendering WebGL: '+glError);
+        if(samples.every(c=>c[0]+c[1]+c[2]<15))throw new Error('Rendering ancora nero. Diagnostica pixel: '+JSON.stringify(samples));
         mountMobileCityPlayer(world,sceneEditor);
-        // Keep the original marketplace search code intact in the editor,
-        // but show only a single world command field in the mobile player.
+        document.body.classList.remove('mobile-city-boot');
+        loading.style.display='none';
         document.title='Sketchbook City · Mobile Player';
     }
     if(current.world==='procedural-city' && query.get('play')==='1') sceneEditor.message('Free roam · WASD muovi · E parla con un abitante · 1-4 scegli risposta · F entra in auto · F2 editor.');
