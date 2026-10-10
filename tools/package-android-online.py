@@ -4,7 +4,7 @@ No huge glTF kits in the APK. Needs Internet to play.
 from pathlib import Path
 out=Path(__file__).resolve().parents[1]/'www'
 out.mkdir(exist_ok=True)
-base='https://my-test-site3.netlify.app/editor.html?scene='
+base='https://6ac957570f93df0fe9c6979e--my-test-site3.netlify.app/editor.html?scene='
 scenes=[
 ('urban-photoreal','🏙️ Città · Pedoni, auto e dialoghi','Gioca nella città 3D con 36 pedoni, traffico NPC e conversazioni RPG'),
 ('urban-photoreal-sunset','🌇 Città al tramonto','Stessa città con luce serale'),
