@@ -129,6 +129,39 @@ try{
   const rainBytes=await writeDataUrl(`${out}/urban-weather-rain.png`,weatherProof.png);
   await fs.writeFile(`${out}/urban-weather-proof.json`,JSON.stringify({rain:weatherProof.rain,clear:weatherProof.clear,particles:weatherProof.particles,pngBytes:rainBytes},null,2));
   console.log('Free rain command verified in rendered city',{rainBytes,particles:weatherProof.particles});
+
+  // Capture actual WebGL canvas after applying environment instructions through
+  // the SAME visible city textbox the player can use. Never render mockups.
+  const worldEffects=[];
+  for(const [command,label] of [
+    ['tramonto','urban-weather-sunset'],
+    ['notte','urban-weather-night-moon'],
+    ['mezzogiorno con nebbia','urban-weather-fog'],
+    ['togli la nebbia e autunno','urban-weather-autumn'],
+    ['inverno','urban-weather-winter']
+  ]){
+    const shot=await page.evaluate(command=>{
+      const form=document.querySelector('.city-world-command');
+      if(!form)throw new Error('Visible city command textbox missing');
+      form.elements.namedItem('instruction').value=command;
+      form.requestSubmit();
+      const weather=globalThis.worldWeather;
+      const message=form.querySelector('[data-command-result]').textContent;
+      if(message.includes('non riconosciuto'))throw new Error('Environment command unrecognized: '+command);
+      weather.draw(performance.now()+150);
+      const world=globalThis.world;
+      world.urbanLighting?.update();
+      world.composer.render();
+      return {png:world.renderer.domElement.toDataURL('image/png'),message,
+        state:{time:weather.time,season:weather.season,foggy:weather.foggy,moonVisible:weather.moon.visible,
+          rain:weather.enabled,sunOffset:world.urbanLighting?.sunOffset?.toArray()}};
+    },command);
+    const pngBytes=await writeDataUrl(`${out}/${label}.png`,shot.png);
+    worldEffects.push({command,label,pngBytes,message:shot.message,state:shot.state});
+    console.log('City environment screenshot',label,pngBytes,shot.message);
+  }
+  await fs.writeFile(`${out}/urban-weather-effects-proof.json`,JSON.stringify(worldEffects,null,2));
+
   console.log('RPG dialogue captured; error count:',errors.length);
   if(errors.length)await fs.writeFile(`${out}/dialogue-console-errors.json`,JSON.stringify(errors,null,2));
 }finally{await page.close();await browser.close();}
