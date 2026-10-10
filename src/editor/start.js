@@ -130,7 +130,12 @@ function sceneControls(editor) {
         const form=document.createElement('form');
         form.className='city-world-command';
         form.setAttribute('aria-label','Comandi gratuiti per la città');
-        form.innerHTML='<input name="instruction" aria-label="Cambia il mondo" list="world-command-examples" maxlength="160" autocomplete="off" placeholder="tramonto · inverno · nebbia · fai piovere"><datalist id="world-command-examples"><option value="fai piovere"><option value="pioggia intensa"><option value="stop rain"><option value="tramonto"><option value="alba"><option value="notte"><option value="mezzogiorno"><option value="nebbia"><option value="togli la nebbia"><option value="autunno"><option value="inverno"><option value="primavera"><option value="estate"><option value="sole a ovest"></datalist><button type="submit">Applica</button><span role="status" aria-live="polite" data-command-result></span>';
+        form.innerHTML='<input name="instruction" aria-label="Cambia il mondo" list="world-command-examples" maxlength="160" autocomplete="off" placeholder="tramonto · inverno · nebbia · fai piovere"><datalist id="world-command-examples"><option value="fai piovere"><option value="pioggia intensa"><option value="stop rain"><option value="tramonto"><option value="alba"><option value="notte"><option value="mezzogiorno"><option value="nebbia"><option value="togli la nebbia"><option value="autunno"><option value="inverno"><option value="primavera"><option value="estate"><option value="sole a ovest"><option value="temporale"><option value="fai nevicare"><option value="bufera di neve"><option value="tempesta di sabbia"><option value="aurora boreale"><option value="cielo nuvoloso"><option value="sereno"></datalist><button type="submit">Applica</button><span role="status" aria-live="polite" data-command-result></span>';
+        const presets=document.createElement('select');
+        presets.setAttribute('aria-label','Scegli un meteo');
+        presets.innerHTML='<option value="">Meteo…</option><option value="sereno">Sereno</option><option value="cielo nuvoloso">Nuvoloso</option><option value="pioggia leggera">Pioviggine</option><option value="fai piovere">Pioggia</option><option value="pioggia intensa">Pioggia intensa</option><option value="temporale">Temporale</option><option value="nevicata leggera">Neve leggera</option><option value="fai nevicare">Neve</option><option value="bufera di neve">Bufera</option><option value="nebbia">Nebbia</option><option value="tempesta di sabbia">Tempesta di sabbia</option><option value="aurora boreale">Aurora boreale</option><option value="grandine">Grandine</option>';
+        presets.onchange=()=>{if(!presets.value)return;form.elements.namedItem('instruction').value=presets.value;form.requestSubmit();};
+        form.prepend(presets);
         form.onsubmit=event=>{
             event.preventDefault();
             const input=form.elements.namedItem('instruction');
@@ -234,6 +239,19 @@ try {
     }
     sceneEditor.islandTool?.focus();
     sceneEditor.urbanTool?.focus();
+    // Deep links open the actual City Player and apply one preset after assets load.
+    // Example: editor.html?scene=urban-photoreal&play=1&weather=storm
+    if(current.world==='procedural-city'&&query.has('weather')){
+        const aliases={storm:'temporale',heavyRain:'pioggia intensa',rain:'fai piovere',
+          drizzle:'pioggia leggera',snow:'fai nevicare',lightSnow:'nevicata leggera',
+          blizzard:'bufera di neve',fog:'nebbia',clear:'sereno',cloudy:'cielo nuvoloso',
+          sandstorm:'tempesta di sabbia',aurora:'aurora boreale',hail:'grandine'};
+        const requested=query.get('weather'),command=aliases[requested]||requested;
+        if(command.length<=120){const result=world.worldWeather.execute(command);
+          world.worldWeather.draw(performance.now()+180);
+          document.querySelector('.city-world-command [data-command-result]').textContent=result.message;
+        }
+    }
     if (query.get('play') === '1') sceneEditor.setActive(false);
     if(current.world==='procedural-city' && query.get('play')==='1') sceneEditor.message('Free roam · WASD muovi · E parla con un abitante · 1-4 scegli risposta · F entra in auto · F2 editor.');
     document.title = `${current.name} · Sketchbook`;
