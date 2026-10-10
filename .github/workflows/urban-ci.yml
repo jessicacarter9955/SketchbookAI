@@ -46,7 +46,7 @@ jobs:
             mode=full; assets=true; package=true
           else
             changed=$(git diff --name-only "$BEFORE_SHA" HEAD)
-            if grep -Eq '^(src/editor/(UrbanDialogue\.js|humanoid-rig\.mjs)|tools/capture-dialogue-proof\.mjs|\.github/workflows/urban-ci\.yml)' <<< "$changed"; then
+            if grep -Eq '^(src/editor/(UrbanDialogue\.js|humanoid-rig\.mjs|WorldWeather\.js|world-commands\.mjs|start\.js)|tools/capture-dialogue-proof\.mjs|\.github/workflows/urban-ci\.yml)' <<< "$changed"; then
               capture_script=tools/capture-dialogue-proof.mjs
             fi
             echo "Changed files:"
