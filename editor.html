@@ -7,7 +7,19 @@
     <link rel="stylesheet" href="src/editor/editor.css">
 </head>
 <body class="editor-page">
-    <div id="loading-screen">Caricamento della mappa…</div>
+    <div id="loading-screen" role="status" aria-live="polite">
+        <section class="city-loading-panel">
+          <h1>Sketchbook City Player</h1>
+          <p id="city-load-message">Preparazione della città…</p>
+          <progress id="city-load-progress" max="5" value="0" aria-label="Caricamento dettagli città"></progress>
+          <p id="city-load-counter">0 di 5 elementi fotorealistici caricati</p>
+          <p class="city-load-note">Edifici, strade, auto e pedoni possono essere giocabili anche prima degli asset HD.</p>
+          <div class="city-load-actions">
+            <button id="city-load-continue" type="button" disabled>Entra nella città (grafica base)</button>
+            <button id="city-load-retry" type="button" onclick="location.reload()" hidden>Riprova</button>
+          </div>
+        </section>
+    </div>
     <div id="ui-container"><div id="controls"></div></div>
     <div id="statsBox" hidden></div><div id="dat-gui-container" hidden></div>
     <script src="build/sketchbook.min.js"></script>
