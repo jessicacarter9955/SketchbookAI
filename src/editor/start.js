@@ -1,4 +1,5 @@
 import { UrbanDialogue } from './UrbanDialogue.js';
+import { WorldWeather } from './WorldWeather.js';
 import { loadCatalog, createScene } from './scene-catalog.mjs';
 import { sceneStorageKey, loadRevisions, saveRevision, forkScene } from './scene-revisions.mjs';
 
@@ -122,6 +123,24 @@ function sceneControls(editor) {
             finally { world.levelRuntime.transitioning = false; world.levelRuntime.lastRefresh = 0; district.disabled = false; loading.style.display = 'none'; }
         };
         hud.prepend(district);
+    }
+    if (current.world==='procedural-city') {
+        const weather = new WorldWeather(world);
+        globalThis.worldWeather = world.worldWeather = weather;
+        const form=document.createElement('form');
+        form.className='city-world-command';
+        form.setAttribute('aria-label','Comandi gratuiti per la città');
+        form.innerHTML='<input name="instruction" aria-label="Cambia il mondo" maxlength="160" autocomplete="off" placeholder="fai piovere · stop rain"><button type="submit">Applica</button><span role="status" aria-live="polite" data-command-result></span>';
+        form.onsubmit=event=>{
+            event.preventDefault();
+            const input=form.elements.namedItem('instruction');
+            const result=weather.execute(input.value);
+            form.querySelector('[data-command-result]').textContent=result.message;
+            editor.message(result.message);
+            input.value='';
+            if(!editor.active)world.renderer.domElement.focus();
+        };
+        hud.append(form);
     }
     editor.root.append(hud);
 }
