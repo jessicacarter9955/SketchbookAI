@@ -63,7 +63,7 @@ jobs:
             "appId": "ai.sketchbook.rpgplaytestlite",
             "appName": "Sketchbook AI City Lite",
             "webDir": "www",
-            "server": {"androidScheme": "https", "allowNavigation": ["my-test-site3.netlify.app"]}
+            "server": {"androidScheme": "https", "allowNavigation": ["6ac957570f93df0fe9c6979e--my-test-site3.netlify.app"]}
           }
           EOF
           npx cap add android
