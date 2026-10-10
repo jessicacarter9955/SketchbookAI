@@ -24,3 +24,25 @@ test('Other prompts never silently claim to work',()=>{
  assert.equal(interpretWorldCommand('add a castle').type,'unsupported');
  assert.equal(interpretWorldCommand('').type,'help');
 });
+
+test('day presets support dawn, sunset, night with moon and midday',()=>{
+  for(const [prompt,value] of [['alba','sunrise'],['tramonto','sunset'],['notte','night'],['luna piena','night'],['mezzogiorno','noon']]){
+    const result=interpretWorldCommand(prompt);
+    assert.equal(result.type,'time',prompt);assert.equal(result.value,value,prompt);
+  }
+});
+test('season intent and seasonal foliage presets',()=>{
+  for(const [prompt,value] of [['estate','summer'],['autunno','autumn'],['inverno','winter'],['primavera','spring']]){
+    assert.equal(interpretWorldCommand(prompt).value,value,prompt);
+  }
+});
+test('fog can be turned on and off safely',()=>{
+  assert.equal(interpretWorldCommand('nebbia').enabled,true);
+  assert.equal(interpretWorldCommand('togli la nebbia').enabled,false);
+});
+test('independent world instructions combine without AI or keys',()=>{
+  const result=interpretWorldCommand('tramonto con pioggia e nebbia');
+  assert.deepEqual(result.actions.map(a=>a.type),['rain','fog','time']);
+  assert.equal(result.actions.find(a=>a.type==='time').value,'sunset');
+  assert.equal(interpretWorldCommand('sole a ovest').value,'west');
+});
