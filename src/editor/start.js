@@ -130,7 +130,7 @@ function sceneControls(editor) {
         const form=document.createElement('form');
         form.className='city-world-command';
         form.setAttribute('aria-label','Comandi gratuiti per la città');
-        form.innerHTML='<input name="instruction" aria-label="Cambia il mondo" maxlength="160" autocomplete="off" placeholder="fai piovere · stop rain"><button type="submit">Applica</button><span role="status" aria-live="polite" data-command-result></span>';
+        form.innerHTML='<input name="instruction" aria-label="Cambia il mondo" list="world-command-examples" maxlength="160" autocomplete="off" placeholder="tramonto · inverno · nebbia · fai piovere"><datalist id="world-command-examples"><option value="fai piovere"><option value="pioggia intensa"><option value="stop rain"><option value="tramonto"><option value="alba"><option value="notte"><option value="mezzogiorno"><option value="nebbia"><option value="togli la nebbia"><option value="autunno"><option value="inverno"><option value="primavera"><option value="estate"><option value="sole a ovest"></datalist><button type="submit">Applica</button><span role="status" aria-live="polite" data-command-result></span>';
         form.onsubmit=event=>{
             event.preventDefault();
             const input=form.elements.namedItem('instruction');
