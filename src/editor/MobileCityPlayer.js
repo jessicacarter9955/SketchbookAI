@@ -18,8 +18,34 @@ export function mountMobileCityPlayer(world,editor){
   form.onsubmit=e=>{
     e.preventDefault();
     const command=input.value.trim();if(!command)return;
-    const result=world.worldWeather?.execute(command);
-    showMessage(result?.message||'Comando non disponibile');
+    const normalized=command.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase();
+    const kinds=[
+      ['tree',/\\b(?:alber[oi]|tree)\\b/,'Albero'],
+      ['lamp',/\\b(?:lampione|lampada|streetlight|street lamp)\\b/,'Lampione'],
+      ['building',/\\b(?:edificio|palazzo|building|casa)\\b/,'Edificio'],
+      ['road',/\\b(?:strada|road)\\b/,'Strada']
+    ];
+    const kind=kinds.find(([,pattern])=>pattern.test(normalized));
+    if(kind&&/\\b(?:aggiungi|crea|inserisci|metti|posiziona|add|create|place|spawn)\\b/.test(normalized)){
+      try{
+        if(editor.items.length>=500)throw new Error('Limite di 500 oggetti raggiunto');
+        const player=world.editorPlayer;
+        const p=player?.position||world.camera.position;
+        const theta=world.cameraOperator.theta*Math.PI/180;
+        const x=p.x-Math.sin(theta)*8;
+        const z=p.z-Math.cos(theta)*8;
+        const y=world.levelRuntime?.groundAt(x,z)??0;
+        const item={id:crypto.randomUUID(),prefab:kind[0],name:kind[2],
+          position:[x,y+.1,z],rotation:[0,0,0],scale:[1,1,1],collider:false};
+        editor.items.push(item);
+        editor.create(item);
+        editor.commit();
+        showMessage(kind[2]+' aggiunto davanti al giocatore.');
+      }catch(error){showMessage('Impossibile aggiungere: '+error.message);}
+    }else{
+      const result=world.worldWeather?.execute(command);
+      showMessage(result?.message||'Comando non disponibile');
+    }
     input.value='';input.blur();
   };
   const joy=layer.querySelector('.mobile-city-joystick');
