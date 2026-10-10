@@ -162,6 +162,49 @@ try{
   }
   await fs.writeFile(`${out}/urban-weather-effects-proof.json`,JSON.stringify(worldEffects,null,2));
 
+
+  // Render weather inside the actual City Player, with its existing cars and
+  // pedestrians still present. Test mobile-compatible GPU precipitation and snow.
+  const proceduralProof=[];
+  for(const [command,label] of [
+    ['pioggia intensa','city-player-heavy-rain'],
+    ['fai nevicare','city-player-snowfall'],
+    ['bufera di neve','city-player-blizzard'],
+    ['temporale','city-player-thunderstorm'],
+    ['tempesta di sabbia','city-player-sandstorm'],
+    ['aurora boreale','city-player-aurora'],
+    ['cielo nuvoloso','city-player-cloudy'],
+    ['sereno','city-player-clear']
+  ]){
+    const proof=await page.evaluate(command=>{
+      const form=document.querySelector('.city-world-command');
+      if(!form)throw new Error('Player command textbox missing');
+      const apply=text=>{form.elements.namedItem('instruction').value=text;form.requestSubmit();};
+      apply('estate');apply('mezzogiorno');apply('sereno');apply(command);
+      const weather=globalThis.worldWeather,world=globalThis.world;
+      if(!weather||!world?.editorPlayer||!world.urbanDialogue||
+          !(world.actorLayer.urbanPopulation?.pedestrians?.length>0))
+        throw new Error('Weather test missing playable city, NPC or dialogue');
+      // Thunderbolt is triggered by the real procedural controller.
+      if(weather.state==='storm')weather.nextFlash=0;
+      weather.draw(performance.now()+700);
+      world.urbanLighting?.update();
+      world.composer.render();
+      return {png:world.renderer.domElement.toDataURL('image/png'),
+        message:form.querySelector('[data-command-result]').textContent,
+        state:weather.state,rain:weather.streaks.visible,snow:weather.snowflakes.visible,
+        dust:weather.dust.visible,aurora:weather.aurora.visible,
+        snowGround:!!weather.snowCover?.visible,
+        pedestrians:world.actorLayer.urbanPopulation.pedestrians.length,
+        cars:world.vehicles?.length??0};
+    },command);
+    if(!proof.message||proof.message.includes('non riconosciuto'))throw new Error('Failed city command: '+command);
+    const bytes=await writeDataUrl(`${out}/${label}.png`,proof.png);
+    proceduralProof.push({command,label,pngBytes:bytes,...Object.fromEntries(Object.entries(proof).filter(([k])=>k!=='png'))});
+    console.log('Playable City screenshot',label,bytes,proof.state);
+  }
+  await fs.writeFile(`${out}/city-player-procedural-weather.json`,JSON.stringify(proceduralProof,null,2));
+
   console.log('RPG dialogue captured; error count:',errors.length);
   if(errors.length)await fs.writeFile(`${out}/dialogue-console-errors.json`,JSON.stringify(errors,null,2));
 }finally{await page.close();await browser.close();}
