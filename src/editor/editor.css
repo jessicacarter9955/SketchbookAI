@@ -73,3 +73,10 @@ body:not(.playing) .urban-dialogue-hint{display:none}
 .asset-fab-tools [data-fab-open]{background:#325f7b;min-height:40px}
 .asset-unified-search select{min-width:130px}
 @media(max-width:650px){.asset-unified-search{display:grid;grid-template-columns:1fr auto}.asset-unified-search select{grid-column:1/-1;min-height:44px}.asset-unified-search input{width:100%;min-height:44px}.asset-unified-search button{min-height:44px}.asset-fab-tools input[type=file]{width:100%}}
+
+/* Free local scene commands (separate from asset marketplace search). */
+.city-world-command{display:flex;align-items:center;flex-wrap:wrap;gap:6px;flex:1 1 240px;margin:0}
+.city-world-command input{flex:1 1 160px;min-width:120px;min-height:38px;background:#0d1f2c;color:#eef7ff;border:1px solid #537d98;border-radius:6px;padding:8px 10px}
+.city-world-command button{min-height:38px;background:#2d6a84;color:white;border:1px solid #79acc3;border-radius:6px;padding:8px}
+.city-world-command [data-command-result]{font:12px system-ui,sans-serif;color:#c4e4ef;flex-basis:100%;min-height:14px}
+@media(max-width:900px){.city-world-command{flex:1 1 100%;justify-content:center}.city-world-command input{min-width:110px}}
