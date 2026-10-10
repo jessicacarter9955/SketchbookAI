@@ -146,3 +146,11 @@ body.mobile-city-player canvas{position:fixed!important;inset:0!important;width:
  .mobile-city-joystick{width:120px;height:120px;bottom:12px;}
  .mobile-city-thumb{width:52px;height:52px;}
 }
+
+/* Contextual gameplay actions are the only extra buttons in mobile game view. */
+.mobile-city-actions{position:absolute;bottom:max(32px,env(safe-area-inset-bottom));right:max(15px,env(safe-area-inset-right));display:flex;flex-direction:column;gap:10px;align-items:flex-end;pointer-events:none}
+.mobile-city-actions button{pointer-events:auto;touch-action:manipulation;background:#174c69e9;border:1px solid #abd8ed;color:#f3fbff;font:600 14px system-ui;border-radius:14px;min-height:52px;padding:10px 18px;box-shadow:0 5px 18px #0008}
+.mobile-city-actions button[hidden]{display:none!important}
+body.mobile-city-player .urban-rpg-dialogue{z-index:480}
+body.mobile-city-player .urban-rpg-dialogue[hidden]{display:none!important}
+@media(orientation:landscape){.mobile-city-actions{bottom:12px}.mobile-city-actions button{min-height:44px}}
