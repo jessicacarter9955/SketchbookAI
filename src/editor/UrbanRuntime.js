@@ -256,26 +256,59 @@ export class UrbanRuntime {
 
     this.clearGenerated();this.root.add(group);bodies.forEach(b=>this.world.physicsWorld.addBody(b));this.bodies=bodies;
     this.plan=plan;this.config=config;this.manifest={spawns:plan.spawns};this.applySky(config.sky);this.ready=true;
-    this.visualState={status:'loading',architecture:[],vegetation:null,error:null};
-    this.visualPromise=Promise.all([
-      this.loadPhotorealArchitecture(group,plan,config),
-      this.loadPhotorealVegetation(group,treeItems,config),
-      this.loadPhotorealSurfaces(group,matRoad,matSidewalk,matGrass),
-      photographicLighting(this.world,config.sky),
-      this.loadStreetProps(group,plan,config)
-    ]).then(([architecture,vegetation,,lighting,props])=>{
+    // The procedural geometry and physics are already playable at this point.
+    // Never hide the whole city behind optional remote photoreal assets.
+    group.visible=true;
+    this.visualProgress={completed:0,total:5,failed:0,label:'Città procedurale pronta'};
+    this.visualState={status:'loading',architecture:[],vegetation:null,error:null,progress:this.visualProgress};
+    const stages=[
+      ['Facciate fotorealistiche',()=>this.loadPhotorealArchitecture(group,plan,config)],
+      ['Vegetazione',()=>this.loadPhotorealVegetation(group,treeItems,config)],
+      ['Strade e materiali',()=>this.loadPhotorealSurfaces(group,matRoad,matSidewalk,matGrass)],
+      ['Cielo e illuminazione',()=>photographicLighting(this.world,config.sky)],
+      ['Lampioni e arredi',()=>this.loadStreetProps(group,plan,config)]
+    ];
+    const loads=stages.map(async ([label,task])=>{
+      // Convert each failure to a result; a missing facade must not block NPCs,
+      // traffic or the user's ability to move and talk.
+      try {
+        const value=await task();
+        if(group.parent===this.root){
+          this.visualProgress.completed++;
+          this.visualProgress.label=label+' completato';
+          this.onVisualProgress?.({...this.visualProgress});
+        }
+        return {ok:true,value};
+      }catch(error){
+        if(group.parent===this.root){
+          this.visualProgress.completed++;
+          this.visualProgress.failed++;
+          this.visualProgress.label=label+' non disponibile: '+String(error?.message||error);
+          this.onVisualProgress?.({...this.visualProgress});
+        }
+        console.warn('Optional city detail failed:',label,error);
+        return {ok:false,error:String(error?.message||error)};
+      }
+    });
+    this.onVisualProgress?.({...this.visualProgress});
+    this.visualPromise=Promise.all(loads).then(results=>{
       if(group.parent!==this.root)return this.visualState;
-      group.visible=true;
-      captureStreetReflections(this.world,group);
+      const errors=results.map((r,i)=>r.ok?null:stages[i][0]+': '+r.error).filter(Boolean);
       const skyline=group.getObjectByName('Distant skyline')?.userData||{};
-      this.visualState={status:'ready',architecture,vegetation,lighting,props,assembledBuildings:plan.buildings.length,skyline,error:null};
-      group.userData.photorealReady=true;
-      return this.visualState;
-    }).catch(error=>{
-      if(group.parent!==this.root)return this.visualState;
-      this.visualState={status:'error',architecture:group.userData.photorealAssets||[],vegetation:group.userData.photorealVegetation||null,error:String(error?.message||error)};
-      group.userData.photorealError=this.visualState.error;
-      console.error('Urban photoreal layer failed',error);
+      this.visualState={
+        status:errors.length?'partial':'ready',
+        architecture:results[0].ok?results[0].value:[],
+        vegetation:results[1].ok?results[1].value:null,
+        lighting:results[3].ok?results[3].value:null,
+        props:results[4].ok?results[4].value:null,
+        assembledBuildings:plan.buildings.length,skyline,
+        error:errors.length?errors.join(' | '):null,
+        progress:{...this.visualProgress}
+      };
+      group.userData.photorealReady=errors.length===0;
+      // Cube reflection capture is costly, especially on mobile. Do not
+      // synchronously block the playable city or weather on that optional pass.
+      this.onVisualProgress?.({...this.visualProgress});
       return this.visualState;
     });
 
