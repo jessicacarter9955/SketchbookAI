@@ -84,3 +84,18 @@ body:not(.playing) .urban-dialogue-hint{display:none}
 /* Keep weather presets accessible on phones while Sketchfab/Fab search is unchanged. */
 .city-world-command select{display:block!important;max-width:145px;min-height:42px;background:#152d3d;color:#eef6ff;border:1px solid #5083a5;border-radius:7px;padding:7px}
 @media(max-width:900px){.city-world-command{position:fixed;top:62px;left:8px;right:8px;z-index:220;background:#152938e8;padding:8px;border-radius:10px}.city-world-command input{flex:1 1 120px;width:40%;font-size:14px}.city-world-command [data-command-result]{display:block;width:100%}}
+
+/* Honest stage progress: no fake byte percentage; optional HD assets load in parallel. */
+#loading-screen { display:flex; overflow:auto; padding:18px; box-sizing:border-box; }
+.city-loading-panel { width:min(92vw,520px); margin:auto; padding:24px; border:1px solid #365c74; border-radius:16px; background:#172e3e; box-shadow:0 20px 70px #0008; text-align:center; }
+.city-loading-panel h1 { font-size:22px; margin:0 0 15px; color:#f3f9ff; }
+.city-loading-panel p { line-height:1.5; color:#d1e2ec; overflow-wrap:anywhere; }
+#city-load-message { font-size:16px; min-height:2.5em; }
+#city-load-progress { width:100%; height:18px; accent-color:#65dca9; color:#65dca9; border-radius:9px; }
+#city-load-counter { margin:6px 0 12px; font-size:13px; color:#a6cddf; }
+.city-loading-panel .city-load-note { margin:12px 0 20px; font-size:13px; color:#adc9d9; }
+.city-load-actions { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; }
+.city-load-actions button { min-height:44px; padding:10px 14px; border-radius:9px; color:#102b2e; font-weight:700; background:#a7efd6; border:0; cursor:pointer; }
+.city-load-actions button:disabled { cursor:not-allowed; background:#496879; color:#bdd3da; opacity:.8; }
+.city-load-actions button[hidden] { display:none; }
+@media(max-width:600px) { .city-loading-panel { padding:18px 14px; } }
