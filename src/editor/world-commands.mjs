@@ -7,7 +7,7 @@ export function interpretWorldCommand(input) {
   if(/\b(?:pioggia|piovere|rain|raining)\b/.test(text)){
     const strong=/\b(?:forte|intensa|temporale|storm|heavy|strong|tanta)\b/.test(text);
     const light=/\b(?:leggera|poca|light|drizzle|debole)\b/.test(text);
-    return {type:'rain',enabled:true,intensity:strong?1.7:light?.55:1,message:strong?'Pioggia intensa attivata.':light?'Pioggia leggera attivata.':'Pioggia attivata.'};
+    return {type:'rain',enabled:true,intensity:strong ? 1.7 : light ? 0.55 : 1,message:strong?'Pioggia intensa attivata.':light?'Pioggia leggera attivata.':'Pioggia attivata.'};
   }
   return {type:'unsupported',message:'Comando non riconosciuto. Prova «fai piovere», «pioggia intensa», «pioggia leggera» o «stop rain».'};
 }
