@@ -198,7 +198,19 @@ try {
         world.levelRuntime.onVisualProgress=setVisualProgress;
         report('Preparazione strade, pedoni e traffico…');
         await world.initialize(undefined, false); loading.style.display = 'flex';
-        await world.levelRuntime.initialize();
+        // Generate only once: the previous 6x6 default city followed by a 4x4
+        // scene regeneration overworked Android and held the main thread.
+        const mobileCity=/Android|iPhone|iPad/i.test(navigator.userAgent);
+        const cityDefault={
+            seed:1847,blocksX:mobileCity?2:4,blocksZ:mobileCity?2:4,
+            blockSize:42,roadWidth:10,sidewalkWidth:3.5,
+            minFloors:3,maxFloors:7,buildingDensity:.9,terrain:'flat',
+            sky:current.id==='urban-photoreal-sunset'?'sunset':'day'
+        };
+        globalThis.cityInitialPreset=cityDefault;
+        report('Generazione città: strade, incroci e collisioni…');
+        await world.levelRuntime.initialize(cityDefault);
+        report('Strade e edifici di base pronti. Caricamento auto e personaggi…');
     } else await world.initialize('build/assets/world.glb');
     report('Caricamento personaggio e veicoli…');
     const actors = new ActorLayer(world); await actors.initialize(current.playerProfile);
@@ -246,7 +258,7 @@ try {
     }
     if (!hadSaved && current.world === 'procedural-city') {
         if(current.id==='urban-photoreal'||current.id==='urban-photoreal-sunset') {
-            const preset={...sceneEditor.generator,seed:1847,blocksX:4,blocksZ:4,blockSize:42,roadWidth:10,sidewalkWidth:3.5,minFloors:3,maxFloors:7,buildingDensity:.9,terrain:'flat',sky:current.id==='urban-photoreal-sunset'?'sunset':'day'};
+            const preset={...sceneEditor.generator,...globalThis.cityInitialPreset};
             sceneEditor.restore({version:1,world:current.world,objects:[],generator:preset});
         }
         const objects=[];
