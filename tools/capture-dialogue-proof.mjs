@@ -111,6 +111,24 @@ try{
   if(await page.evaluate(()=>globalThis.world.urbanDialogue.active))throw new Error('Escape failed to close RPG dialogue');
 
 
+  // Real WebGL frame of locally generated rain, not a synthetic illustration.
+  const weatherProof=await page.evaluate(()=>{
+    const weather=globalThis.worldWeather;
+    if(!weather)throw new Error('Free city command engine not attached');
+    const rain=weather.execute('fai piovere');
+    if(rain.type!=='rain'||!weather.enabled||!weather.streaks.visible)
+      throw new Error('Rain command did not start real weather effect');
+    weather.draw(performance.now()+200);
+    globalThis.world.composer.render();
+    const png=globalThis.world.renderer.domElement.toDataURL('image/png');
+    const clear=weather.execute('stop rain');
+    if(clear.type!=='rain'||weather.enabled||weather.streaks.visible)
+      throw new Error('Stopping rain did not remove weather');
+    return {rain,clear,png,particles:weather.count};
+  });
+  const rainBytes=await writeDataUrl(`${out}/urban-weather-rain.png`,weatherProof.png);
+  await fs.writeFile(`${out}/urban-weather-proof.json`,JSON.stringify({rain:weatherProof.rain,clear:weatherProof.clear,particles:weatherProof.particles,pngBytes:rainBytes},null,2));
+  console.log('Free rain command verified in rendered city',{rainBytes,particles:weatherProof.particles});
   console.log('RPG dialogue captured; error count:',errors.length);
   if(errors.length)await fs.writeFile(`${out}/dialogue-console-errors.json`,JSON.stringify(errors,null,2));
 }finally{await page.close();await browser.close();}
