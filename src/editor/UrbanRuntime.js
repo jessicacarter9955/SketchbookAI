@@ -142,7 +142,7 @@ export class UrbanRuntime {
   constructor(world){
     this.world=world;
     const url=new URLSearchParams(location.search);
-    this.mobileLite=/Android|iPhone|iPad/i.test(navigator.userAgent)&&!url.has('hd')&&url.get('mobile')!=='1';
+    this.mobileLite=/Android|iPhone|iPad/i.test(navigator.userAgent)&&!url.has('hd');
     world.sky.setPhotographic(!this.mobileLite); this.ready=false; this.config=null; this.bodies=[]; this.visualState={status:'idle',architecture:[],vegetation:null,error:null};
     this.root=new THREE.Group(); this.root.name='Città procedurale'; world.graphicsWorld.add(this.root);
     world.camera.far=1800; world.camera.updateProjectionMatrix(); world.renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
@@ -280,8 +280,8 @@ export class UrbanRuntime {
           sun.position.copy(p).add(this.world.urbanLighting.sunOffset);}
       };
       this.visualProgress={completed:5,total:5,failed:0,label:'Grafica mobile leggera pronta'};
-      this.visualState={status:'ready',architecture:[],vegetation:null,
-        lighting:'mobile WebGL',props:null,error:null,progress:{...this.visualProgress}};
+      this.visualState={status:'ready',architecture:['procedural buildings'],vegetation:'procedural trees',
+        lighting:'mobile WebGL',props:'procedural street props',error:null,progress:{...this.visualProgress}};
       this.onVisualProgress?.({...this.visualProgress});
       this.visualPromise=Promise.resolve(this.visualState);
       return;
