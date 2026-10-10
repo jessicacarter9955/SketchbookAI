@@ -141,7 +141,8 @@ function createDistantSkyline(plan,config){
 export class UrbanRuntime {
   constructor(world){
     this.world=world;
-    this.mobileLite=/Android|iPhone|iPad/i.test(navigator.userAgent)&&!new URLSearchParams(location.search).has('hd');
+    const url=new URLSearchParams(location.search);
+    this.mobileLite=/Android|iPhone|iPad/i.test(navigator.userAgent)&&!url.has('hd')&&url.get('mobile')!=='1';
     world.sky.setPhotographic(!this.mobileLite); this.ready=false; this.config=null; this.bodies=[]; this.visualState={status:'idle',architecture:[],vegetation:null,error:null};
     this.root=new THREE.Group(); this.root.name='Città procedurale'; world.graphicsWorld.add(this.root);
     world.camera.far=1800; world.camera.updateProjectionMatrix(); world.renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
