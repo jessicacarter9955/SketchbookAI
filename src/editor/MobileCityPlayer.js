@@ -18,15 +18,15 @@ export function mountMobileCityPlayer(world,editor){
   form.onsubmit=e=>{
     e.preventDefault();
     const command=input.value.trim();if(!command)return;
-    const normalized=command.normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase();
+    const normalized=command.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
     const kinds=[
-      ['tree',/\\b(?:alber[oi]|tree)\\b/,'Albero'],
-      ['lamp',/\\b(?:lampione|lampada|streetlight|street lamp)\\b/,'Lampione'],
-      ['building',/\\b(?:edificio|palazzo|building|casa)\\b/,'Edificio'],
-      ['road',/\\b(?:strada|road)\\b/,'Strada']
+      ['tree',/\b(?:alber[oi]|tree)\b/,'Albero'],
+      ['lamp',/\b(?:lampione|lampada|streetlight|street lamp)\b/,'Lampione'],
+      ['building',/\b(?:edificio|palazzo|building|casa)\b/,'Edificio'],
+      ['road',/\b(?:strada|road)\b/,'Strada']
     ];
     const kind=kinds.find(([,pattern])=>pattern.test(normalized));
-    if(kind&&/\\b(?:aggiungi|crea|inserisci|metti|posiziona|add|create|place|spawn)\\b/.test(normalized)){
+    if(kind&&/\b(?:aggiungi|crea|inserisci|metti|posiziona|add|create|place|spawn)\b/.test(normalized)){
       try{
         if(editor.items.length>=500)throw new Error('Limite di 500 oggetti raggiunto');
         const player=world.editorPlayer;
