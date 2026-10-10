@@ -42,6 +42,16 @@ jobs:
             printf '%s ' "$path"
             curl --retry 2 -L -s -o /dev/null -w '%{http_code} %{size_download} bytes\n' "$BASE/$path"
           done
+      - name: Inspect hosted game response
+        run: |
+          curl -Ls 'https://my-test-site3.netlify.app/editor.html?scene=urban-photoreal&play=1' -o /tmp/hosted-editor.html
+          echo "Netlify editor bytes: $(wc -c < /tmp/hosted-editor.html)"
+          head -c 700 /tmp/hosted-editor.html
+          echo
+          echo "GitHub Pages status:"
+          curl -Ls -o /tmp/pages-editor.html -w '%{http_code} %{size_download} bytes\n' 'https://jessicacarter9955.github.io/SketchbookAI/editor.html'
+          head -c 240 /tmp/pages-editor.html
+          echo
       - name: Build lightweight scene chooser
         run: python tools/package-android-online.py
       - name: Install Capacitor Android 6
