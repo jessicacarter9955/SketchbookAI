@@ -290,6 +290,9 @@ export class UrbanRuntime {
   async loadPhotorealSurfaces(group,road,pavement,grass){
     const materials=await Promise.all([loadSurface('asphalt_02',3,0xbababa),loadSurface('concrete_pavement',3,0xd6d1c6),loadSurface('leafy_grass',2,0x91a27b)]);
     if(group.parent!==this.root)return;
+    // Named shared materials let procedural weather darken wet asphalt and
+    // whiten snowy sidewalks without altering model-import or physics data.
+    ['Urban asphalt','Urban pavement','Urban lawns'].forEach((name,i)=>{materials[i].name=name;});
     group.traverse(node=>{if(node.isMesh){const index=[road,pavement,grass].indexOf(node.material);if(index>=0){node.material=materials[index];metricUV(node);}}});
   }
   async loadPhotorealArchitecture(group,plan,config){
