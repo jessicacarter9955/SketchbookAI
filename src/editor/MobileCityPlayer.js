@@ -6,7 +6,8 @@ export function mountMobileCityPlayer(world,editor){
   const layer=document.createElement('div');
   layer.className='mobile-city-controls';
   layer.innerHTML=`<form class="mobile-city-command" autocomplete="off" aria-label="Comando per il mondo"><input name="instruction" aria-label="Crea o cambia la scena" maxlength="160" enterkeyhint="go" placeholder="Scrivi: tramonto, neve, nebbia…"><span class="mobile-city-message" role="status" aria-live="polite"></span></form>
-    <div class="mobile-city-joystick" role="group" aria-label="Joystick movimento"><div class="mobile-city-thumb"></div></div>`;
+    <div class="mobile-city-joystick" role="group" aria-label="Joystick movimento"><div class="mobile-city-thumb"></div></div>
+    <div class="mobile-city-actions"><button type="button" data-mobile-talk hidden>Parla</button><button type="button" data-mobile-car hidden>Entra in auto</button></div>`;
   document.body.append(layer);
   const form=layer.querySelector('form'),input=form.elements.namedItem('instruction'),status=layer.querySelector('.mobile-city-message');
   let messageTimeout;
@@ -48,6 +49,40 @@ export function mountMobileCityPlayer(world,editor){
     }
     input.value='';input.blur();
   };
+  const talk=layer.querySelector('[data-mobile-talk]');
+  const carButton=layer.querySelector('[data-mobile-car]');
+  const nearestCar=()=>{
+    const player=world.editorPlayer;if(!player||player.controlledObject)return null;
+    const cars=(world.vehicles||[]).filter(car=>car.seats?.some(seat=>seat&&!seat.occupiedBy));
+    return cars.find(car=>car.position.distanceTo(player.position)<8)||null;
+  };
+  talk.onclick=()=>{
+    const dialogue=world.urbanDialogue;
+    if(!dialogue)return;
+    if(dialogue.active){dialogue.close();return;}
+    const npc=dialogue.nearest(6);if(npc)dialogue.open(npc);
+  };
+  carButton.onclick=()=>{
+    const player=world.editorPlayer;if(!player)return;
+    if(player.controlledObject){
+      player.controlledObject.forceCharacterOut?.();player.takeControl?.();
+      return;
+    }
+    const target=nearestCar();
+    const seat=target?.seats?.find(s=>s?.type==='driver'&&!s.occupiedBy)||target?.seats?.find(s=>s&&!s.occupiedBy);
+    if(seat){player.teleportToVehicle(target,seat);player.takeControl();}
+  };
+  const updateActions=()=>{
+    if(!layer.isConnected)return;
+    const dialogue=world.urbanDialogue,player=world.editorPlayer;
+    const hasNpc=!!dialogue?.nearest(6);
+    talk.hidden=!(dialogue?.active||hasNpc);
+    talk.textContent=dialogue?.active?'Chiudi dialogo':'Parla';
+    const driving=!!player?.controlledObject;
+    carButton.hidden=!(driving||nearestCar());
+    carButton.textContent=driving?'Esci dall’auto':'Entra in auto';
+  };
+  updateActions();const actionsInterval=setInterval(updateActions,250);
   const joy=layer.querySelector('.mobile-city-joystick');
   const thumb=joy.querySelector('.mobile-city-thumb');
   let joyPointer=null,joyX=0,joyY=0,lastActions={};
@@ -93,5 +128,5 @@ export function mountMobileCityPlayer(world,editor){
   window.addEventListener('blur',stopStick);
   // Prevent accidental scrolling/zoom during simultaneous touch movement.
   document.addEventListener('contextmenu',e=>{if(e.target===canvas||joy.contains(e.target))e.preventDefault();});
-  return {layer,showMessage,stopStick};
+  return {layer,showMessage,stopStick,dispose(){clearInterval(actionsInterval);stopStick();layer.remove();}};
 }
