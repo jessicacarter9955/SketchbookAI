@@ -1,12 +1,14 @@
 import * as THREE from 'three';
 import { UrbanDialogue } from './UrbanDialogue.js';
 import { WorldWeather } from './WorldWeather.js';
+import { mountMobileCityPlayer } from './MobileCityPlayer.js';
 import { loadCatalog, createScene } from './scene-catalog.mjs';
 import { sceneStorageKey, loadRevisions, saveRevision, forkScene } from './scene-revisions.mjs';
 
 globalThis.THREE = THREE; // shared by procedural weather and the 3D game
 const loading = document.getElementById('loading-screen');
 const query = new URLSearchParams(location.search);
+const minimalMobile=query.get('mobile')==='1';
 const catalog = loadCatalog(localStorage);
 const current = catalog.find(s => s.id === query.get('scene')) || catalog[0];
 const storageKey = sceneStorageKey(current.id);
@@ -320,7 +322,13 @@ try {
           document.querySelector('.city-world-command [data-command-result]').textContent=result.message;
         }
     }
-    if (query.get('play') === '1') sceneEditor.setActive(false);
+    if (query.get('play') === '1'||minimalMobile) sceneEditor.setActive(false);
+    if(minimalMobile&&current.world==='procedural-city'){
+        mountMobileCityPlayer(world,sceneEditor);
+        // Keep the original marketplace search code intact in the editor,
+        // but show only a single world command field in the mobile player.
+        document.title='Sketchbook City · Mobile Player';
+    }
     if(current.world==='procedural-city' && query.get('play')==='1') sceneEditor.message('Free roam · WASD muovi · E parla con un abitante · 1-4 scegli risposta · F entra in auto · F2 editor.');
     document.title = `${current.name} · Sketchbook`;
 } catch (error) {
