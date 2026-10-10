@@ -15,7 +15,20 @@ const loadingProgress=loading?.querySelector('#city-load-progress');
 const loadingCounter=loading?.querySelector('#city-load-counter');
 const skipVisualButton=loading?.querySelector('#city-load-continue');
 const retryButton=loading?.querySelector('#city-load-retry');
-const report=message=>{ if(loadingMessage)loadingMessage.textContent=message; };
+let bootStage='Avvio editor',bootSince=performance.now();
+const report=message=>{
+ bootStage=message;bootSince=performance.now();
+ if(loadingMessage)loadingMessage.textContent=message;
+};
+const stageTimer=setInterval(()=>{
+ if(loading.style.display==='none'){clearInterval(stageTimer);return;}
+ const elapsed=Math.floor((performance.now()-bootSince)/1000);
+ if(loadingMessage&&elapsed>7)loadingMessage.textContent=bootStage+' · '+elapsed+'s';
+ if(elapsed>25 && retryButton)retryButton.hidden=false;
+ if(elapsed>18&&globalThis.sceneEditor&&skipVisualButton)skipVisualButton.disabled=false;
+},1000);
+window.addEventListener('error',event=>{report('Errore JavaScript: '+event.message);if(retryButton)retryButton.hidden=false;});
+window.addEventListener('unhandledrejection',event=>{report('Errore caricamento: '+String(event.reason?.message||event.reason));if(retryButton)retryButton.hidden=false;});
 const setVisualProgress=({completed=0,total=5,failed=0,label=''})=>{
     if(loadingProgress){loadingProgress.max=total;loadingProgress.value=completed;}
     if(loadingCounter)loadingCounter.textContent=`${completed} di ${total} dettagli HD completati`+
@@ -187,7 +200,9 @@ try {
         await world.initialize(undefined, false); loading.style.display = 'flex';
         await world.levelRuntime.initialize();
     } else await world.initialize('build/assets/world.glb');
+    report('Caricamento personaggio e veicoli…');
     const actors = new ActorLayer(world); await actors.initialize(current.playerProfile);
+    report('Personaggio e veicoli caricati. Preparazione giocatore…');
     if (world.levelRuntime) {
         const spawn = world.levelRuntime.manifest.spawns.find(s => s.id === current.spawn)?.position || [0,0,0];
         world.levelRuntime.transitioning = true;
@@ -196,10 +211,14 @@ try {
             world.respawnPosition.set(...actors.spawn.toArray()); world.levelRuntime.refreshPhysics(actors.spawn);
         } finally { world.levelRuntime.transitioning = false; world.levelRuntime.lastRefresh = 0; }
     }
+    report('Creazione giocatore…');
     actors.resetPlayer();
     if (world.levelRuntime) { world.cameraOperator.theta = current.playerProfile==='dds'?0:180; world.cameraOperator.phi = 12; }
+    report('Preparazione controlli e editor…');
     globalThis.sceneEditor = new SceneEditor(world, { storageKey, worldId: current.world });
+    if(skipVisualButton&&current.world==='procedural-city')skipVisualButton.disabled=false;
     const hadSaved = localStorage.getItem(storageKey) !== null;
+    report('Caricamento della scena salvata e degli abitanti…');
     await sceneEditor.run(() => sceneEditor.restoreSaved());
     if (!hadSaved && current.id === 'portland-lab') {
         const original = localStorage.getItem(sceneStorageKey('liberty-city'));
@@ -246,6 +265,7 @@ try {
         for(const x of [-12,12]) add('pedestrian','Abitante',x,-12);
         sceneEditor.restore({version:1,world:current.world,objects,generator:{...sceneEditor.generator,sky:current.id==='island-sunset'?'sunset':'day'}});sceneEditor.commit();
     }
+    report('Attivazione menu, dialoghi e modelli…');
     sceneControls(sceneEditor);
     if(current.world==='procedural-city')globalThis.urbanDialogue=world.urbanDialogue=new UrbanDialogue(world,sceneEditor);
     if(current.playerProfile==='dds') new DdsGame(world,{key:`${storageKey}.dds-game`});
