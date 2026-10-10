@@ -1,0 +1,125 @@
+name: Android City RPG Offline Lite APK
+
+on:
+  push:
+    branches: [android-city-offline-lite]
+    paths: ['.github/workflows/android-city-offline-lite.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-city-offline-lite-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install web dependencies
+        run: npm ci
+      - name: Restore CC0 city assets
+        id: cc0
+        uses: actions/cache@v4
+        with:
+          path: |
+            assets/urban-kits
+            assets/roadforge
+          key: ubuntu-urban-cc0-v3-${{ hashFiles('tools/fetch-urban-kits.py', 'tools/prepare-urban-lods.mjs') }}
+      - name: Fetch missing city kits
+        if: steps.cc0.outputs.cache-hit != 'true'
+        run: python tools/fetch-urban-kits.py
+      - name: Check game code
+        run: npm test
+      - name: Compile game
+        run: npm run build
+      - name: Package real offline playable scenes
+        run: python tools/package-android-playtest.py
+      - name: Optimize city texture resolution
+        run: |
+          python -m pip install --quiet Pillow
+          python tools/optimize-android-city-textures.py
+      - name: Assert gameplay resources are packaged
+        run: |
+          set -euo pipefail
+          test -s www/editor.html
+          test -s www/build/sketchbook.min.js
+          test -s www/build/assets/boxman.glb
+          test -s www/assets/urban-kits/tree_small_02/scene-lod0.gltf
+          test -s www/assets/urban-kits/tree_small_02/lod0.bin
+          test -s www/assets/roadforge/T_RF_Asphalt_BC.png
+          grep -q urban-rpg-dialogue www/src/editor/scene-catalog.mjs
+          grep -q UrbanDialogue www/src/editor/start.js
+          echo 'PASS: player, city, 3D vegetation, road texture and RPG dialogue are locally packaged'
+      - name: Install Capacitor Android 6
+        run: npm install --no-save --ignore-scripts @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+      - name: Create fresh independent Android package
+        run: |
+          cat > capacitor.config.json <<'EOF'
+          {
+            "appId": "ai.sketchbook.cityoffline2026",
+            "appName": "Sketchbook City RPG Lite",
+            "webDir": "www",
+            "server": {"androidScheme": "https"}
+          }
+          EOF
+          npx cap add android
+          npx cap sync android
+      - name: Generate test release signing key
+        run: |
+          keytool -genkeypair -noprompt -keystore android/ci-signing.jks \
+            -storepass androidci2026 -keypass androidci2026 -alias citytest \
+            -keyalg RSA -keysize 2048 -validity 1800 \
+            -dname "CN=Sketchbook City Playtest, OU=Development, O=Sketchbook, C=US"
+      - name: Build Android release APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+      - name: Align sign and verify release APK
+        run: |
+          set -euo pipefail
+          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          BUILD_TOOLS=$(find "$SDK/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
+          ORIGINAL=android/app/build/outputs/apk/release/app-release-unsigned.apk
+          ALIGNED=android/app/build/outputs/apk/release/city-aligned.apk
+          FINAL=android/app/build/outputs/apk/release/SketchbookAI-City-Offline-Lite.apk
+          test -s "$ORIGINAL"
+          "$BUILD_TOOLS/zipalign" -f -v 4 "$ORIGINAL" "$ALIGNED"
+          "$BUILD_TOOLS/apksigner" sign \
+            --ks android/ci-signing.jks --ks-key-alias citytest \
+            --ks-pass pass:androidci2026 --key-pass pass:androidci2026 \
+            --out "$FINAL" "$ALIGNED"
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs --min-sdk-version 23 "$FINAL"
+          "$BUILD_TOOLS/aapt" dump badging "$FINAL" | head -n 12
+          unzip -t "$FINAL" | tail -n 1
+          echo "RELEASE SHA256: $(sha256sum "$FINAL")"
+          ls -lh "$FINAL"
+      - name: Upload signed offline RPG city APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sketchbookai-city-offline-lite
+          path: android/app/build/outputs/apk/release/SketchbookAI-City-Offline-Lite.apk
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload build diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: city-lite-build-diagnostics
+          path: android/app/build/outputs/apk/
+          if-no-files-found: ignore
