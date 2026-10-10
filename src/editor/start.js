@@ -10,7 +10,25 @@ const query = new URLSearchParams(location.search);
 const catalog = loadCatalog(localStorage);
 const current = catalog.find(s => s.id === query.get('scene')) || catalog[0];
 const storageKey = sceneStorageKey(current.id);
-const report = message => { loading.textContent = message; };
+const loadingMessage=loading?.querySelector('#city-load-message');
+const loadingProgress=loading?.querySelector('#city-load-progress');
+const loadingCounter=loading?.querySelector('#city-load-counter');
+const skipVisualButton=loading?.querySelector('#city-load-continue');
+const retryButton=loading?.querySelector('#city-load-retry');
+const report=message=>{ if(loadingMessage)loadingMessage.textContent=message; };
+const setVisualProgress=({completed=0,total=5,failed=0,label=''})=>{
+    if(loadingProgress){loadingProgress.max=total;loadingProgress.value=completed;}
+    if(loadingCounter)loadingCounter.textContent=`${completed} di ${total} dettagli HD completati`+
+        (failed?` · ${failed} non disponibili`:'');
+    if(label)report(label);
+};
+let resolveVisualSkip=null;
+if(skipVisualButton)skipVisualButton.onclick=()=>{
+    if(!globalThis.sceneEditor)return;
+    if(resolveVisualSkip)resolveVisualSkip({status:'skipped'});
+    else {sceneEditor.setActive(false);loading.style.display='none';}
+};
+
 
 function sceneControls(editor) {
     const manager = document.createElement('section'); manager.className = 'scene-manager';
@@ -164,6 +182,8 @@ try {
         await world.levelRuntime.initialize();
     } else if(current.world === 'procedural-city') {
         world.levelRuntime = new UrbanRuntime(world);
+        world.levelRuntime.onVisualProgress=setVisualProgress;
+        report('Preparazione strade, pedoni e traffico…');
         await world.initialize(undefined, false); loading.style.display = 'flex';
         await world.levelRuntime.initialize();
     } else await world.initialize('build/assets/world.glb');
@@ -230,9 +250,23 @@ try {
     if(current.world==='procedural-city')globalThis.urbanDialogue=world.urbanDialogue=new UrbanDialogue(world,sceneEditor);
     if(current.playerProfile==='dds') new DdsGame(world,{key:`${storageKey}.dds-game`});
     if(current.world==='procedural-city'){
-        report('Caricamento di facciate, vegetazione e materiali…');
-        const visual=await world.levelRuntime.visualPromise;
-        if(visual?.status==='error')throw new Error(visual.error);
+        if(skipVisualButton)skipVisualButton.disabled=false;
+        const currentProgress=world.levelRuntime.visualProgress;
+        if(currentProgress)setVisualProgress(currentProgress);
+        report('Dettagli HD in caricamento. Puoi già entrare nella città.');
+        // Important: optional models are large on mobile and some hosts omit
+        // assets. The game, NPCs and vehicles are ready without waiting for HD.
+        let watchdog;
+        const timed=new Promise(resolve=>{watchdog=setTimeout(()=>resolve({status:'timeout'}),14000);});
+        const skipped=new Promise(resolve=>{resolveVisualSkip=resolve;});
+        const visual=await Promise.race([world.levelRuntime.visualPromise,timed,skipped]);
+        clearTimeout(watchdog);resolveVisualSkip=null;
+        if(visual?.status==='partial'||visual?.status==='error'){
+            console.warn('Some optional 3D scenery could not be loaded:',visual.error);
+            sceneEditor.message('Città avviata con alcuni dettagli HD non disponibili.');
+        }else if(visual?.status==='timeout'){
+            sceneEditor.message('Città giocabile: i dettagli HD continuano a caricarsi in background.');
+        }
     }
     loading.style.display = 'none';
     if(current.id === 'portland-grass' && sceneEditor.mapEdits.length) {
@@ -258,5 +292,9 @@ try {
     if(current.world==='procedural-city' && query.get('play')==='1') sceneEditor.message('Free roam · WASD muovi · E parla con un abitante · 1-4 scegli risposta · F entra in auto · F2 editor.');
     document.title = `${current.name} · Sketchbook`;
 } catch (error) {
-    loading.style.display = 'flex'; loading.textContent = `Impossibile avviare la scena: ${error.message}`; console.error(error);
+    loading.style.display = 'flex';
+    report(`Errore di avvio: ${error.message}`);
+    if(retryButton)retryButton.hidden=false;
+    if(skipVisualButton&&globalThis.sceneEditor){skipVisualButton.disabled=false;}
+    console.error(error);
 }
