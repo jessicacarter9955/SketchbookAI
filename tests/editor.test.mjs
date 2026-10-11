@@ -48,6 +48,14 @@ test('revisions preserve the first state and forks never overwrite their source'
     assert.equal(loadCatalog(storage).at(-1).parentId,'sandbox');
     assert.throws(()=>forkScene(storage,{id:'sandbox',world:'sketchbook'},scene(),'Duplicate','branch-1'));
 });
+test('two city player links share the streaming world but keep independently saved actors and rigs', () => {
+    const data=new Map(),storage={getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v)};
+    const scenes=loadCatalog(storage), normal=scenes.find(s=>s.id==='urban-photoreal'), dds=scenes.find(s=>s.id==='urban-photoreal-dds');
+    assert.equal(normal.world,'liberty-city');assert.equal(dds.world,normal.world);
+    assert.equal(normal.playerProfile,undefined);assert.equal(dds.playerProfile,'dds');
+    assert.equal(normal.spawn,dds.spawn);
+    assert.notEqual(sceneStorageKey(normal.id),sceneStorageKey(dds.id));
+});
 test('DDS test scene and forks preserve their player profile without changing original maps', () => {
     const data = new Map(), storage = {getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)};
     const parent = loadCatalog(storage).find(s=>s.id==='dds-portland');
