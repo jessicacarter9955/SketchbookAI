@@ -207,7 +207,9 @@ class PipelineTests(unittest.TestCase):
             if process.poll() is None:
                 process.terminate()
             try:
-                process.communicate(timeout=5)
+                _, errors = process.communicate(timeout=5)
+                if errors:
+                    print(errors, file=sys.stderr)
             except subprocess.TimeoutExpired:
                 process.kill()
                 process.communicate(timeout=5)
@@ -235,7 +237,7 @@ class PipelineTests(unittest.TestCase):
             if not status["busy"]:
                 break
             time.sleep(0.05)
-        self.assertEqual(status["exit_code"], 0)
+        self.assertEqual(status["exit_code"], 0, '\n'.join(status.get('logs', [])))
         self.assertEqual(status["state"]["tasks"]["inventory"]["attempts"], 2)
         process.terminate()
         process.communicate(timeout=5)

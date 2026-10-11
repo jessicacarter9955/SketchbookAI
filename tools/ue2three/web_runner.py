@@ -163,11 +163,10 @@ def main():
     try:
         urllib.request.urlopen("http://127.0.0.1:8401/", timeout=1).close()
     except OSError:
-        npm = shutil.which("npm.cmd") or shutil.which("npm")
-        if not npm:
-            print("FAILED: Three.js editor runtime is unavailable.", flush=True)
+        if not (repo / 'build' / 'editor.min.js').is_file():
+            print("FAILED: Three.js editor bundle is unavailable.", flush=True)
             return 2
-        command = ["cmd.exe", "/c", npm, "run", "editor"] if sys.platform == "win32" else [npm, "run", "editor"]
+        command = [sys.executable, str(repo / 'tools' / 'ue2three' / 'preview_server.py')]
         flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
         subprocess.Popen(command, cwd=repo, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                          stderr=subprocess.DEVNULL, creationflags=flags)
@@ -181,6 +180,7 @@ def main():
             print("FAILED: Three.js editor runtime did not become ready.", flush=True)
             return 2
     scenes = []
+    visual_issues = 0
     for item in map_report.get("maps", []):
         if item.get("status") not in {"exported", "reused"}:
             continue
@@ -188,6 +188,18 @@ def main():
             "build/local-scenes/ue2three/projects/" + project_output.name + "/maps/" + item["filename"], safe="/")
         scene_url += "&title=" + quote(item["package"].rsplit("/", 1)[-1])
         scenes.append((item["package"].rsplit("/", 1)[-1], scene_url))
+        phase('verify', 'Verifico la mappa nel browser e salvo gli screenshot...')
+        from visual_verification import verify_scene
+        audit_dir = project_output / 'verification' / Path(item['filename']).stem
+        audit = verify_scene(repo, scene_url, project_output / 'maps' / item['filename'], audit_dir)
+        if audit.get('status') != 'captured':
+            visual_issues += 1
+        print('VISUAL_CHECK ' + audit['status'] + ' ' + item['package'], flush=True)
+        if (audit_dir / 'index.html').is_file():
+            audit_url = 'http://127.0.0.1:8401/' + audit_dir.relative_to(repo).as_posix() + '/index.html'
+            scenes.append(('Verifica visiva · ' + Path(item['filename']).stem, audit_url))
+        if audit.get('errors'):
+            print('NOTICE: Verifica visiva: ' + '; '.join(audit['errors']), flush=True)
     ui_manifest = project_output / "ui-manifest.json"
     # The first UMG batch overlays the source menu layout on its own migrated level.
     # Keep the map and widget manifest separate so later screen exports can reuse them.
@@ -231,6 +243,8 @@ def main():
         phase("done", f"Prima tranche pronta: {ready_maps} mappe leggibili, {failed_maps} livelli non esportati. {ui_note} Logiche Blueprint ancora da tradurre.")
     else:
         phase("done", f"Prima tranche pronta: {ready_maps} mappe e schermata menu originale. Logiche Blueprint ancora da tradurre.")
+    if visual_issues:
+        phase('done', f'Preparazione conclusa; {visual_issues} verifiche visive richiedono correzioni. Apri gli screenshot dalla lista scene.')
     return 0
 
 

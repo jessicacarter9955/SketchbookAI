@@ -39,7 +39,7 @@ def _link_tree(source, destination, excluded_packages=(), root_mount="/Game", in
             continue
         relative = item.relative_to(source)
         package = root_mount.rstrip("/") + "/" + relative.with_suffix("").as_posix()
-        if item.suffix.lower() in {".uasset", ".uexp", ".ubulk", ".uptnl"}:
+        if item.suffix.lower() in {".uasset", ".umap", ".uexp", ".ubulk", ".uptnl"}:
             if package in excluded or (included is not None and package not in included):
                 continue
         target = destination / relative
@@ -64,7 +64,10 @@ def prepare_project(directory, snapshot, scratch_name="inspection-project", mirr
     if not version or version[0] not in (4, 5):
         raise EngineError("ENGINE_UNSUPPORTED", "No Python metadata adapter for this engine version.")
     source = Path(snapshot["project"]).parent
-    scratch = directory / "engine" / scratch_name
+    engine_directory = (Path(directory) / "engine").resolve()
+    scratch = engine_directory / scratch_name
+    if scratch.resolve() == engine_directory or engine_directory not in scratch.resolve().parents:
+        raise EngineError("SCRATCH_PATH_INVALID", "Export scratch must stay inside the workspace engine directory.")
     scratch.mkdir(parents=True, exist_ok=True)
     if (source / "Content").is_dir():
         if mirror_assets:

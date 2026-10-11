@@ -45,7 +45,16 @@ def atomic_json(path, value):
         stream.write("\n")
         stream.flush()
         os.fsync(stream.fileno())
-    os.replace(temp, path)
+    # Windows readers can briefly prevent replacement of an open destination.
+    # Keep the complete temporary file and retry; never truncate the live state.
+    for attempt in range(8):
+        try:
+            os.replace(temp, path)
+            break
+        except PermissionError as error:
+            if getattr(error, 'winerror', None) not in (5, 32) or attempt == 7:
+                raise
+            time.sleep(min(0.01 * 2 ** attempt, 0.1))
 
 
 class Logger:

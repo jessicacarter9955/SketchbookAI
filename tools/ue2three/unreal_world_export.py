@@ -15,6 +15,36 @@ def atomic(path, data):
     os.replace(temp, path)
 
 
+def restore_parent_materials(world):
+    """Use inherited source materials when map actors hold empty transient MIDs.
+
+    Construction scripts commonly wrap a MaterialInstanceConstant in a dynamic
+    instance even when they do not override any parameters. Preserve those
+    inherited values with a stable parent assignment in the isolated export world.
+    This alone does not resolve every material baking failure.
+    """
+    changed = []
+    for actor in unreal.EditorLevelLibrary.get_all_level_actors():
+        for component in actor.get_components_by_class(unreal.StaticMeshComponent):
+            for index in range(component.get_num_materials()):
+                material = component.get_material(index)
+                if not material or material.get_class().get_name() != "MaterialInstanceDynamic":
+                    continue
+                try:
+                    parent = material.get_editor_property("parent")
+                    has_overrides = any(material.get_editor_property(name) for name in (
+                        "vector_parameter_values", "scalar_parameter_values", "texture_parameter_values"))
+                except Exception:
+                    continue
+                if not parent or parent.get_class().get_name() == "MaterialInstanceDynamic" or has_overrides:
+                    continue
+                component.set_material(index, parent)
+                changed.append({"actor": actor.get_actor_label(), "slot": index,
+                                "instance": material.get_name(), "parent": parent.get_path_name()})
+    unreal.log("UE2THREE_MATERIAL_INSTANCES_RESOLVED " + json.dumps(changed, sort_keys=True))
+    return changed
+
+
 job = json.loads(Path(os.environ["UE2THREE_MAP_JOB_FILE"]).read_text(encoding="utf-8"))
 active = Path(unreal.Paths.convert_relative_path_to_full(unreal.Paths.get_project_file_path())).resolve()
 if active != Path(job["scratch_project"]).resolve():
@@ -28,10 +58,12 @@ options = unreal.GLTFExportOptions()
 for name, value in (("export_uniform_scale", 0.01), ("export_vertex_skin_weights", True),
                     ("export_animation_sequences", False), ("export_skeletal_meshes", True),
                     ("export_static_meshes", True), ("export_cameras", True),
-                    ("export_lights", True)):
+                    ("export_lights", True), ("export_vertex_colors", False)):
     if hasattr(options, name):
         options.set_editor_property(name, value)
 if hasattr(unreal, "GLTFMaterialBakeMode") and hasattr(options, "bake_material_inputs"):
+    # World-position shaders need the actual component geometry. A quad bake
+    # removes their world-space grids and per-instance surface colors.
     options.set_editor_property("bake_material_inputs", unreal.GLTFMaterialBakeMode.USE_MESH_DATA)
 if hasattr(unreal, "GLTFTextureImageFormat") and hasattr(options, "texture_image_format"):
     options.set_editor_property("texture_image_format", unreal.GLTFTextureImageFormat.PNG)
@@ -64,6 +96,7 @@ for index, item in enumerate(job["maps"], 1):
         world = editor.get_editor_world()
         if world is None:
             raise RuntimeError("Unreal returned no editor world after loading the level")
+        resolved_materials = restore_parent_materials(world)
         if job.get("progress"):
             atomic(job["progress"], {"completed": index - 1, "total": len(job["maps"]),
                                       "package": package, "status": "baking",
@@ -76,7 +109,8 @@ for index, item in enumerate(job["maps"], 1):
         if not target.is_file() or target.stat().st_size < 20:
             raise RuntimeError("Exporter produced no GLB file")
         row.update(status="exported", bytes=target.stat().st_size,
-                   warnings=[str(message) for message in warnings])
+                   warnings=[str(message) for message in warnings],
+                   resolved_dynamic_material_instances=len(resolved_materials))
         unreal.log(f"UE2THREE_MAP_DONE {package} {target.stat().st_size}")
     except Exception as error:
         row["error"] = str(error)

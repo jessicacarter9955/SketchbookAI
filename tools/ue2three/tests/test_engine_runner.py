@@ -5,8 +5,9 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from engine_runner import prepare_project
-from map_migration import MapMigrationError, _select_map_packages, glb_summary
+from core import file_hash
+from engine_runner import EngineError, _link_tree, prepare_project
+from map_migration import MapMigrationError, _cached_map_matches, _map_export_packages, _select_map_packages, glb_summary
 
 
 class ExportMirrorTests(unittest.TestCase):
@@ -20,11 +21,61 @@ class ExportMirrorTests(unittest.TestCase):
     def test_glb_summary_reports_renderable_geometry(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "scene.glb"
-            document = json.dumps({"asset": {"version": "2.0"}, "nodes": [{}], "meshes": [{}]}).encode()
+            document = json.dumps({"asset": {"version": "2.0"}, "nodes": [{}], "meshes": [{}],
+                                   "materials": [{}, {}], "textures": [{}],
+                                   "images": [{"bufferView": 0}, {"uri": "external.png"}]}).encode()
             document += b" " * ((4 - len(document) % 4) % 4)
             path.write_bytes(b"glTF" + (2).to_bytes(4, "little") + (20 + len(document)).to_bytes(4, "little") +
                              len(document).to_bytes(4, "little") + (0x4E4F534A).to_bytes(4, "little") + document)
-            self.assertEqual(glb_summary(path), {"mesh_count": 1, "node_count": 1})
+            self.assertEqual(glb_summary(path), {"mesh_count": 1, "node_count": 1, "material_count": 2,
+                                                "texture_count": 1, "image_count": 2, "embedded_image_count": 1})
+            record = {"fingerprint": "source-and-exporter"}
+            prior = {**record, "status": "exported", "output_sha256": file_hash(path)}
+            self.assertTrue(_cached_map_matches(record, prior, path))
+            # Still a valid GLB header/JSON, but contents no longer match the cache.
+            path.write_bytes(path.read_bytes().replace(b"external.png", b"modified.png"))
+            self.assertFalse(_cached_map_matches(record, prior, path))
+
+    def test_map_dependencies_preserve_inherited_materials_and_nested_types(self):
+        def asset(name, kind, dependencies=(), **tags):
+            return {"package": "/Game/" + name, "class": kind,
+                    "dependencies": ["/Game/" + dep for dep in dependencies], "tags": tags}
+        registry = {"assets": [
+            asset("Map", "World", ["Actor"]),
+            asset("Actor", "BlueprintGeneratedClass", ["Walk", "Widget"],
+                  ParentClass="/Script/Engine.BlueprintGeneratedClass'/Game/Parent.Parent_C'"),
+            asset("Parent", "BlueprintGeneratedClass", ["Style", "Helper"]),
+            asset("Style", "UserDefinedStruct", ["Params"]),
+            asset("Params", "UserDefinedStruct", ["Colors"]),
+            asset("Colors", "UserDefinedEnum"),
+            asset("Helper", "BlueprintGeneratedClass", ["Material", "Parent"]),
+            asset("Material", "MaterialInstanceConstant", ["Animals/Texture"]),
+            asset("Animals/Texture", "Texture2D"),
+            asset("Walk", "AnimSequence"), asset("Widget", "WidgetBlueprintGeneratedClass"),
+            asset("OtherMap", "World"), asset("Unrelated", "StaticMesh"),
+        ]}
+        self.assertEqual(_map_export_packages("/Game/Map", registry),
+                         {"/Game/" + name for name in ["Map", "Actor", "Parent", "Style", "Params",
+                                                      "Colors", "Helper", "Material", "Animals/Texture"]})
+
+    def test_selective_mirror_filters_unselected_maps_and_keeps_bulk_data(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source, target = root / "Content", root / "Mirror"
+            source.mkdir()
+            for name in ("Chosen.umap", "Other.umap", "Mesh.uasset", "Mesh.ubulk"):
+                (source / name).write_bytes(b"source")
+            _link_tree(source, target, included_packages={"/Game/Chosen", "/Game/Mesh"})
+            self.assertEqual({p.name for p in target.iterdir()}, {"Chosen.umap", "Mesh.uasset", "Mesh.ubulk"})
+            self.assertTrue((target / "Chosen.umap").samefile(source / "Chosen.umap"))
+
+    def test_scratch_path_cannot_escape_workspace(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            snapshot = {"project": str(Path(temporary) / "Game.uproject"), "files": [], "engine": {
+                "status": "detected", "executable": "UnrealEditor-Cmd", "requested_association": "5.7",
+                "version_parts": [5, 7, 4]}}
+            with self.assertRaises(EngineError):
+                prepare_project(Path(temporary), snapshot, scratch_name="../../outside", mirror_assets=True)
 
     def test_map_export_mirror_hardlinks_content_and_omits_only_requested_package(self):
         with tempfile.TemporaryDirectory() as temporary:

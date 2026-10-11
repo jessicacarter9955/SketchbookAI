@@ -31,23 +31,36 @@ def valid_glb(path):
 
 def glb_summary(path):
     path = Path(path)
+    empty = {key: 0 for key in ("mesh_count", "node_count", "material_count", "texture_count",
+                                "image_count", "embedded_image_count")}
     try:
         with path.open("rb") as stream:
             header = stream.read(20)
             if len(header) != 20:
-                return {"mesh_count": 0, "node_count": 0}
+                return empty
             chunk_length, chunk_type = struct.unpack_from("<II", header, 12)
             document_bytes = stream.read(chunk_length)
         if chunk_type != 0x4E4F534A:
-            return {"mesh_count": 0, "node_count": 0}
+            return empty
         document = json.loads(document_bytes.decode("utf-8").rstrip(" \0"))
-        return {"mesh_count": len(document.get("meshes", [])), "node_count": len(document.get("nodes", []))}
+        return {"mesh_count": len(document.get("meshes", [])), "node_count": len(document.get("nodes", [])),
+                "material_count": len(document.get("materials", [])),
+                "texture_count": len(document.get("textures", [])),
+                "image_count": len(document.get("images", [])),
+                "embedded_image_count": sum("bufferView" in image or image.get("uri", "").startswith("data:")
+                                            for image in document.get("images", []))}
     except (OSError, ValueError, UnicodeDecodeError, struct.error):
-        return {"mesh_count": 0, "node_count": 0}
+        return empty
 
 
 def _slug(value):
     return "".join(char if char.isalnum() or char in "-_" else "-" for char in value).strip("-")[:72]
+
+
+def _cached_map_matches(record, prior, target):
+    return (prior.get("status") in {"exported", "reused"} and
+            prior.get("fingerprint") == record["fingerprint"] and valid_glb(target) and
+            prior.get("output_sha256") == file_hash(target))
 
 
 def _unreal_failure_detail(log_path, exit_code):
@@ -93,36 +106,39 @@ def _dependency_packages(root, registry):
 
 
 def _map_export_packages(root, registry):
-    """Keep only map actors and their visual dependency graph in the export mirror."""
+    """Retain visual assets and the types needed to deserialize authored map actors.
+
+    Blueprint parents, helper classes and nested structs can carry mesh/material
+    defaults. Stripping them silently changes construction-script output.
+    Animation and widget assets are exported through their own pipelines.
+    """
     by_package = {item.get("package"): item for item in registry.get("assets", [])}
-    root_item = by_package.get(root, {})
     included = {root}
     visual = {"StaticMesh", "SkeletalMesh", "Texture2D", "Material", "MaterialInstanceConstant",
               "MaterialFunction", "MaterialFunctionInstance", "MaterialParameterCollection",
+              "MaterialFunctionMaterialLayer", "MaterialFunctionMaterialLayerBlend", "SubsurfaceProfile",
+              "TextureCube", "Texture2DArray", "VolumeTexture", "TextureRenderTarget2D",
+              "Skeleton", "PhysicsAsset", "SkeletalMeshLODSettings",
               "LandscapeLayerInfoObject", "LandscapeGrassType", "PhysicalMaterial"}
-    pending_visual = []
-    direct = [item for item in root_item.get("dependencies", [])
-              if not item.startswith(("/Engine/", "/Script/"))]
-    for package in direct:
+    authored_types = {"Blueprint", "BlueprintGeneratedClass", "UserDefinedStruct", "UserDefinedEnum",
+                      "DataTable", "CurveTable", "DataAsset", "PrimaryDataAsset",
+                      "CurveFloat", "CurveVector", "CurveLinearColor"}
+    pending = [root]
+    while pending:
+        package = pending.pop()
         item = by_package.get(package, {})
-        kind = item.get("class")
-        if kind in visual:
-            included.add(package)
-            pending_visual.append(package)
-        elif kind == "BlueprintGeneratedClass":
-            # Level instances need their source actor class; follow only rendered assets from it.
-            included.add(package)
-            pending_visual.append(package)
-    while pending_visual:
-        package = pending_visual.pop()
-        item = by_package.get(package, {})
-        for dependency in item.get("dependencies", []):
+        dependencies = list(item.get("dependencies", []))
+        # Some registries expose inheritance only as a tag, not a dependency.
+        parent = re.search(r"'(/[^']+)'", item.get("tags", {}).get("ParentClass", ""))
+        if parent:
+            dependencies.append(parent.group(1).split(".", 1)[0])
+        for dependency in dependencies:
             if dependency.startswith(("/Engine/", "/Script/")) or dependency in included:
                 continue
             child = by_package.get(dependency, {})
-            if child.get("class") in visual:
+            if child.get("class") in visual | authored_types:
                 included.add(dependency)
-                pending_visual.append(dependency)
+                pending.append(dependency)
     return included
 
 
@@ -207,14 +223,15 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
     animation_classes = {"AnimBlueprintGeneratedClass", "AnimMontage", "AnimSequence", "AnimSequenceBase", "AnimComposite"}
     animation_packages = {item.get("package") for item in registry.get("assets", [])
                           if item.get("class") in animation_classes}
-    for item in inventory.get("assets", []):
-        parts = Path(item.get("path", "")).parts
-        if any("anim" in part.lower() for part in parts):
-            animation_packages.add(item.get("package"))
     animation_packages.discard(None)
     map_exclusions = excluded_packages | animation_packages
     included_packages = set().union(*(_map_export_packages(package, registry) for package in packages))
-    implementation_hash = file_hash(Path(__file__).with_name("unreal_world_export.py"))
+    implementation_hash = digest({
+        "exporter": file_hash(Path(__file__).with_name("unreal_world_export.py")),
+        "runner": file_hash(Path(__file__)),
+        "scratch": file_hash(Path(__file__).with_name("engine_runner.py")),
+        "fixup": file_hash(Path(__file__).with_name("map_fixup.py")),
+    })
     source_files = {item["path"]: item for item in inventory.get("files", [])}
     records = [_map_record(package, inventory, registry, source_files, engine, implementation_hash,
                            state["snapshot_hash"], map_exclusions) for package in packages]
@@ -225,14 +242,14 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
     for record in records:
         target = map_dir / record["filename"]
         prior = old.get(record["package"], {})
-        if not force and prior.get("fingerprint") == record["fingerprint"] and valid_glb(target):
+        if not force and _cached_map_matches(record, prior, target):
             geometry = glb_summary(target)
             if geometry["mesh_count"] == 0:
                 results.append({**record, "status": "failed", "error": "Unreal exported no renderable mesh geometry for this level",
                                 **geometry})
                 continue
             results.append({**record, "status": "reused", "output": str(target), "bytes": target.stat().st_size,
-                            "warnings": prior.get("warnings", []), **geometry})
+                            "warnings": prior.get("warnings", []), "output_sha256": prior["output_sha256"], **geometry})
             logger.event("map-reuse", f"Reused unchanged map {record['package']}", task="map_export", output=str(target))
         else:
             pending.append(record)
@@ -263,6 +280,10 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
             environment["UE2THREE_MAP_JOB_FILE"] = str(job_path)
             command = [engine["executable"], str(scratch), "-run=pythonscript", f"-script={script}",
                        "-unattended", "-nosplash", "-AllowCommandletRendering",
+                       # UE disables per-shader DDC for non-cook commandlets by default.
+                       # Enable the editor's on-demand path instead of compiling every
+                       # shader permutation of every material loaded with the level.
+                       "-forceAllowShaderCompilerJobCache",
                        "-nosound", "-NoSourceControl",
                        "-NoEpicPortal", "-NoAnalytics", "-stdout", "-FullStdOutLogOutput",
                        f"-abslog={run_dir / 'unreal.log'}"]
@@ -276,6 +297,7 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
                                  stdout=stdout, stderr=stderr, creationflags=flags)
                 atomic_json(run_dir / "process.json", {"pid": process.pid, "started": time.time(), "command": command})
                 previous = None
+                last_notice = started
                 try:
                     while process.poll() is None:
                         if time.monotonic() - started > timeout:
@@ -289,8 +311,15 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
                                              task="map_export", completed=progress.get("completed"),
                                              total=progress.get("total"), status=progress.get("status"))
                                 previous = progress
+                                last_notice = time.monotonic()
                         except FileNotFoundError:
                             pass
+                        if time.monotonic() - last_notice >= 30:
+                            elapsed = int(time.monotonic() - started)
+                            stage_text = (previous or {}).get("message", "Preparo Unreal")
+                            logger.event("map-progress", f"{display_name}: {stage_text} · {elapsed // 60} min {elapsed % 60:02d} s trascorsi",
+                                         task="map_export", status="running", elapsed_seconds=elapsed)
+                            last_notice = time.monotonic()
                         time.sleep(0.25)
                 finally:
                     if process.poll() is None:
@@ -326,6 +355,16 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
             if not valid_glb(staged):
                 results.append({**record, "status": "failed", "error": "The exported GLB header or byte length is invalid"})
                 continue
+            validation = {"status": "unavailable", "warnings": []}
+            try:
+                from map_fixup import source_scene, fixup_map
+                source = source_scene(project, record["package"], workspace)
+                validation = fixup_map(staged, source)
+                validation["status"] = "source_constraints_checked"
+                atomic_json(staged.with_suffix('.source.json'), source)
+            except (OSError, ValueError, KeyError, TypeError, RuntimeError) as error:
+                validation["warnings"].append(str(error))
+                logger.event("map-validation-warning", str(error), task="map_export")
             geometry = glb_summary(staged)
             if geometry["mesh_count"] == 0:
                 results.append({**record, "status": "failed", "error": "Unreal exported no renderable mesh geometry for this level",
@@ -344,10 +383,15 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
             temp = target.with_suffix(".glb.tmp")
             shutil.copy2(staged, temp)
             os.replace(temp, target)
+            atomic_json(target.with_suffix('.validation.json'), validation)
             results.append({**record, "status": "exported", "output": str(target), "bytes": target.stat().st_size,
-                            "warnings": result.get("warnings", []), "log": str(run_dir / "unreal.log"), **geometry})
+                            "warnings": result.get("warnings", []) + validation.get("warnings", []),
+                            "validation": validation, "log": str(run_dir / "unreal.log"),
+                            "output_sha256": file_hash(target), **geometry})
             logger.event("map-export-done", f"Exported Unreal level {record['package']}", task="map_export",
                          output=str(target), bytes=target.stat().st_size)
+            logger.event("map-progress", f"{display_name}: {geometry['mesh_count']} mesh, {geometry['material_count']} materiali, "
+                         f"{geometry['image_count']} immagini esportate", task="map_export", **geometry)
 
     results.sort(key=lambda item: item["package"])
     counts = {name: sum(item["status"] == name for item in results) for name in ("exported", "reused", "failed")}

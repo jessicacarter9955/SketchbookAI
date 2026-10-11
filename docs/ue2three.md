@@ -17,6 +17,58 @@ AI, networking, or physics/collision into Three.js behavior. The migration repor
 lists exported, reused, and failed maps and identifies unsupported content.
 Processing completion remains separate from visual/gameplay fidelity.
 
+### Visual map verification
+
+Map exports now run an offline source check using the cached UAssetAPI reader.
+Landscape vertices outside the authored `CachedLocalBox` are repaired only when
+the source bounds are almost flat, at least 75% of exported heights are valid,
+and all valid heights agree. Non-flat or insufficient data is reported and left
+unchanged. The GLB and `.validation.json` retain the repair diagnostics.
+
+Mesh-dependent material baking preserves world-aligned patterns. Eight materials
+in the local DDS RaidMapTest bake returned magenta constants; source parameter
+tints are used as an explicitly reported fallback for those failed bakes.
+Successful textured bakes are preserved without applying the source tint twice.
+This does not establish shader fidelity for the fallback materials.
+
+After migration, the manager runs Chrome screenshot verification at 1120×700
+in three fixed views: overview, source player spawn (when available), and detail.
+It checks browser/resource failures, non-finite vertices, empty/uniform renders
+and views that are more than 85% nearly black. Each scene has a local screenshot
+gallery and JSON report in its `verification` directory, selectable in the
+manager. Status `captured` means these checks completed, not full Unreal fidelity.
+Punctual source lights and shadows are retained in the map viewer; Unreal
+SkyLight/Lumen, exposure and postprocessing are not fully translated and the
+viewer explicitly identifies its ambient-light approximation. A neutral reflection
+environment keeps reflective PBR surfaces visible; it is not an exported SkyLight
+capture. Detail cameras select nearby colored props and check sight lines without
+relying on DDS actor names.
+
+Screenshots are cached by GLB, viewer and audit-script hashes and validated by
+their own checksums. No repeated Unreal run is needed to verify a cached GLB.
+The browser audit reuses an installed Chrome and Playwright package (project
+installation, `UE2THREE_PLAYWRIGHT_PATH`, or the Codex bundled runtime). It does
+not download software. Missing browser dependencies produce a visible failure
+report, never a successful verification. Browser startup/timeout failures also
+replace any stale gallery rather than displaying old screenshots as new evidence.
+The preview server serves the existing bundles without starting a webpack watcher.
+
+#### DDS evidence, 2026-10-11
+
+The cached mesh-dependent RaidMapTest export was corrected and published without
+launching Unreal: 6 shared landscape position buffers contained 3,072 invalid
+heights (instanced across 12 components). Authored flat bounds allowed their
+replacement; the scene minimum Y changed from -256 m to approximately -0.56 m.
+The reused bake contains 214 embedded images, with 8 reported tint fallbacks.
+Three Chrome views loaded without browser/resource errors; a second verification
+reused the checksummed screenshots. This is a static map preview, not proof of a
+complete playable game or equivalent Unreal lighting. The local evidence is in
+`build/local-scenes/ue2three/projects/<project-id>/verification/<map-name>/`.
+Windows dashboard polling also exposed a transient `WinError 5` on state-file
+replacement; atomic JSON writes now retry sharing failures briefly while keeping
+the prior state intact. Persistent failures are still raised. The batch passed
+47 Python tests and 29 JavaScript tests.
+
 No upload, AI, account, API key, network call, or package installation is needed.
 Use Python 3.12+ and files already on disk. Unreal itself will be required for
 engine package extraction; Blender will be optional for formats needing it.

@@ -27,10 +27,9 @@ export class Ue2ThreeMapRuntime {
     async initialize(report) {
         report?.('Carico il livello Unreal esportato…');
         const gltf = await new GLTFLoader().loadAsync('/' + this.mapPath);
-        // Unreal levels can export transient editor-only and baked scene lights
-        // with incomplete glTF light metadata. The world renderer already owns
-        // a directional CSM rig; keep the source meshes/materials and let it light them.
-        gltf.scene.traverse(node => { if (node.isLight) node.removeFromParent(); });
+        // Keep KHR_lights_punctual lights from the source map. The UE exporter
+        // has already flattened these to portable light nodes; removing them
+        // discards authored map lighting and leaves the migrated PBR textures flat.
         this.root.add(gltf.scene);
         this.root.updateMatrixWorld(true);
         this.bounds = new THREE.Box3().setFromObject(this.root);
