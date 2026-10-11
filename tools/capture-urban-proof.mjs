@@ -99,8 +99,18 @@ async function captureRuntime(){
       trees:world.levelRuntime.plan?.trees?.length||0
     };
   });
-  if(proof.assets.length<2||!proof.vegetation||proof.cc0TreeCount<8||proof.state.assembledBuildings!==proof.buildings||proof.state.props?.instances<10)
-    throw new Error(`Photoreal proof incomplete: ${JSON.stringify(proof)}`);
+  // Streaming should only instantiate nearby/visible assets; don't require
+  // every far-away tree or facade to be uploaded to GPU during startup.
+  const streaming=await page.evaluate(()=>{
+    const runtime=globalThis.world.levelRuntime,streamer=runtime.facadeStreamer;
+    for(let i=0;i<Math.min(6,streamer?.clusters.length||0);i++)runtime.streamPhotorealDetails(true);
+    runtime.root.getObjectByName('CC0 photoreal vegetation')?.userData.stream?.(globalThis.world.camera);
+    return {installed:!!streamer,renderedBuildings:streamer?.assembled||0,
+      sectors:streamer?.clusters.filter(cluster=>cluster.node).length||0,
+      treeInstances:runtime.root.getObjectByName('CC0 photoreal vegetation')?.children.length||0};
+  });
+  if(proof.assets.length<2||!proof.vegetation||!streaming.installed||streaming.renderedBuildings<1||streaming.sectors<1||streaming.treeInstances<1||proof.state.props?.instances<10)
+    throw new Error(`Progressive photoreal proof incomplete: ${JSON.stringify({proof,streaming})}`);
 
   const shots=[
     ['urban-proof-overview',[58,31,-38],[7,7,6]],
@@ -112,6 +122,8 @@ async function captureRuntime(){
       const world=globalThis.world;
       world.camera.fov=48;world.camera.updateProjectionMatrix();
       world.camera.position.set(...camera);world.camera.lookAt(...target);world.camera.updateMatrixWorld(true);
+      for(let i=0;i<4;i++)world.levelRuntime.streamPhotorealDetails(true);
+      world.levelRuntime.root.getObjectByName('CC0 photoreal vegetation')?.userData.stream?.(world.camera);
       world.levelRuntime.update();
       world.composer.render();
       return world.renderer.domElement.toDataURL('image/png');
@@ -270,6 +282,8 @@ async function captureFreeRoam(){
         camera.fov=view.fov;camera.updateProjectionMatrix();
         camera.lookAt(subject.x,subject.y+(view.kind==='pedestrian'?1:1.2),subject.z);
         camera.updateMatrixWorld(true);
+        for(let i=0;i<3;i++)world.levelRuntime.streamPhotorealDetails(true);
+        world.levelRuntime.root.getObjectByName('CC0 photoreal vegetation')?.userData.stream?.(camera);
         world.composer.render();
         results.push({name:view.name,png:world.renderer.domElement.toDataURL('image/png'),
           camera:camera.position.toArray(),target:subject.toArray()});
