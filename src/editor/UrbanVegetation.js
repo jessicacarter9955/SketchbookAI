@@ -13,14 +13,40 @@ async function templates(){
 }
 export async function createVegetation(items,seed=0){
   const sources=await templates(),layer=new THREE.Group();layer.name='CC0 photoreal vegetation';
-  for(const [index,t] of items.entries()){
+  const loaded=new Map(),forward=new THREE.Vector3(),point=new THREE.Vector3();
+  const addTree=(index,t)=>{
     const lod=new THREE.LOD(),height=(t.kind==='median'?5:6.7)*(t.scale||1);
     lod.position.set(t.x,(t.y||0)+.17,t.z);lod.rotation.y=index*2.3999632297+seed*.17;
-    for(const [level,source]of sources.entries()){
+    for(const [level,source] of sources.entries()){
       const wrapper=new THREE.Group(),tree=source.root.clone(true);wrapper.add(tree);wrapper.scale.setScalar(height/source.height);
       lod.addLevel(wrapper,level===0?0:24,.2);
     }
-    layer.add(lod);
-  }
+    layer.add(lod);loaded.set(index,lod);
+  };
+  // Streaming density is unchanged at the camera: the full LOD models are
+  // still used, but off-screen trees are not cloned or uploaded to the GPU.
+  layer.userData.stream=camera=>{
+    camera.getWorldDirection(forward);forward.y=0;forward.normalize();
+    const desired=[];
+    for(const [i,t] of items.entries()){
+      const dx=t.x-camera.position.x,dz=t.z-camera.position.z;
+      const distance=Math.hypot(dx,dz);
+      const front=distance<.01||((dx*forward.x+dz*forward.z)/distance)>-.2;
+      if(distance<60 || (distance<210&&front))desired.push({i,t,distance});
+    }
+    desired.sort((a,b)=>a.distance-b.distance);
+    const wanted=new Set(desired.map(x=>x.i));
+    let created=0;
+    for(const {i,t} of desired){
+      if(!loaded.has(i)&&created<7){addTree(i,t);created++;}
+      if(loaded.has(i))loaded.get(i).visible=true;
+    }
+    for(const [i,node] of loaded){
+      if(wanted.has(i))continue;
+      node.visible=false;
+      const tree=items[i],distance=Math.hypot(tree.x-camera.position.x,tree.z-camera.position.z);
+      if(distance>270){node.removeFromParent();loaded.delete(i);}
+    }
+  };
   return layer;
 }
