@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="it"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sketchbook City · WebGPU / WebGL2 benchmark</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0d1721;color:#fff;font:14px/1.4 system-ui}
+canvas{display:block;touch-action:none}
+#hud{position:fixed;z-index:20;left:12px;top:12px;width:min(370px,calc(100vw - 24px));background:#101c29e9;border:1px solid #4b7184;border-radius:11px;padding:12px;box-sizing:border-box}
+h1{font-size:16px;line-height:1.1;margin:0 0 8px}
+#backend{font-weight:700;color:#abf0d9}
+#status{white-space:pre-wrap;font-size:12px;color:#d2e5ef;max-height:175px;overflow:auto}
+#fps{font:600 22px ui-monospace,monospace;margin:6px 0}
+.links{display:flex;gap:5px;flex-wrap:wrap;margin:8px 0}
+a,button{display:inline-block;background:#254e64;border:1px solid #61889b;border-radius:6px;padding:6px 8px;color:#fff;font:12px system-ui;text-decoration:none;cursor:pointer}
+a[aria-current=page]{background:#1c704f}
+#loading{position:fixed;inset:0;background:#142230ee;z-index:16;display:grid;place-items:center;text-align:center;padding:24px}
+#loading[hidden]{display:none}
+#loading>div{max-width:370px}
+#touch{position:fixed;inset:auto 0 0;display:none;z-index:12;pointer-events:none;padding:16px;justify-content:space-between}
+#touch button{font-size:23px;min-width:52px;min-height:52px;pointer-events:auto;background:#23485da6;touch-action:none}
+@media (pointer:coarse){#touch{display:flex}}
+#hud.collapsed #details{display:none}
+</style>
+<script type="importmap">
+{"imports":{
+"three":"./webgpu/vendor/three/build/three.webgpu.js",
+"three/webgpu":"./webgpu/vendor/three/build/three.webgpu.js",
+"three/tsl":"./webgpu/vendor/three/build/three.tsl.js",
+"three/addons/":"./webgpu/vendor/three/examples/jsm/"
+}}
+</script>
+</head><body>
+<div id="loading"><div><h1>Sketchbook WebGPU Lab</h1><p id="boot">Preparazione benchmark urbano…</p><p>Backend GPU verificato, senza modificare la City Player originale.</p></div></div>
+<section id="hud"><h1>Sketchbook · City GPU Comparison</h1>
+<div id="backend">Controllo WebGPU…</div>
+<div id="fps">FPS —</div>
+<div id="details">
+<div class="links"><a id="gpu" href="?backend=webgpu">WebGPU</a><a id="gl2" href="?backend=webgl2">WebGL2 (stesso renderer)</a><a href="editor.html?scene=urban-photoreal&play=1&perf=1">Gioco WebGL originale</a></div>
+<div id="status">Avvio…</div>
+<p style="font-size:11px;color:#bcd0db;margin:6px 0">WASD / frecce muovi · mouse trascina per guardare · touch sotto. Pianta, seed e materiali del mondo urbano originale; benchmark rendering indipendente, non replica ancora NPC, interazioni e tutte le facciate HD del gioco.</p>
+<button id="copy">Copia benchmark JSON</button>
+</div>
+<button id="toggle">Nascondi dettagli</button>
+</section>
+<div id="touch"><span><button data-key="KeyA">◀</button><button data-key="KeyW">▲</button><button data-key="KeyS">▼</button><button data-key="KeyD">▶</button></span><span><button data-key="ArrowLeft">↶</button><button data-key="ArrowRight">↷</button></span></div>
+<script type="module" src="webgpu/city-benchmark.mjs"></script>
+</body></html>
