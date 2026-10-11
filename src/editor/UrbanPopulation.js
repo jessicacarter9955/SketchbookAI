@@ -7,13 +7,20 @@ export class UrbanPopulation {
     this.group.name='Urban AI traffic';world.graphicsWorld.add(this.group);
     this.cars=[];this.pedestrians=[];this.elapsed=0;
     const road=this.net.roads,nodes=this.net.pedestrians.nodes;
+    const trafficCanInstance=!car.getObjectByProperty('isSkinnedMesh',true);
     for(let i=0;i<20;i++){
-      const seg=(i*19+7)%road.length,o=clone(car);
+      // Simulation agents are cheap transforms. Their repeating car geometry
+      // becomes a single InstancedMesh for each original mesh part.
+      const seg=(i*19+7)%road.length,o=trafficCanInstance?new THREE.Group():clone(car);
       const a={object:o,seg,t:(i*.19)%1,speed:0,maxSpeed:5+i%4,seed:i};
-      const bounds=new THREE.Box3().setFromObject(o);
+      const bounds=new THREE.Box3().setFromObject(car);
       a.groundOffset=Number.isFinite(bounds.min.y)?Math.max(0.03,-bounds.min.y+0.03):0.6;
-      this.group.add(o);this.cars.push(a);this.placeCar(a);
+      if(!trafficCanInstance)this.group.add(o);
+      this.cars.push(a);this.placeCar(a);
     }
+    this.trafficBatches=[];
+    if(trafficCanInstance)this.buildTrafficBatches(car);
+
     for(let i=0;i<36;i++){
       const p=nodes[(i*11+3)%nodes.length],o=clone(person);
       const a={object:o,x:p.x,z:p.z,path:[],index:0,speed:1.1+(i%4)*.12,seed:i};
@@ -27,6 +34,39 @@ export class UrbanPopulation {
     }
     this.conversations=[];this.createConversations();
     this.stats={cars:this.cars.length,pedestrians:this.pedestrians.length,conversations:this.conversations.length};
+  }
+  buildTrafficBatches(template){
+    template.updateMatrixWorld(true);
+    const inverse=template.matrixWorld.clone().invert();
+    const count=this.cars.length;
+    template.traverse(mesh=>{
+      if(!mesh.isMesh||!mesh.geometry)return;
+      const relative=inverse.clone().multiply(mesh.matrixWorld);
+      for(const material of [].concat(mesh.material)){
+        if(!material)continue;
+        const batch=new THREE.InstancedMesh(mesh.geometry,material,count);
+        batch.name='Urban traffic GPU instancing';
+        batch.castShadow=mesh.castShadow;batch.receiveShadow=mesh.receiveShadow;
+        batch.frustumCulled=false; // matrices move as cars drive
+        this.group.add(batch);
+        this.trafficBatches.push({batch,relative});
+      }
+    });
+    this.refreshTrafficBatches();
+  }
+  refreshTrafficBatches(){
+    if(!this.trafficBatches?.length)return;
+    const camera=this.world.camera, matrix=new THREE.Matrix4(),hidden=new THREE.Matrix4().makeScale(0,0,0);
+    for(const {batch,relative} of this.trafficBatches){
+      for(let i=0;i<this.cars.length;i++){
+        const obj=this.cars[i].object;
+        const visible=obj.position.distanceToSquared(camera.position)<260*260;
+        obj.updateMatrix();
+        matrix.copy(obj.matrix).multiply(relative);
+        batch.setMatrixAt(i,visible?matrix:hidden);
+      }
+      batch.instanceMatrix.needsUpdate=true;
+    }
   }
   placeCar(a){
     const s=this.net.roads[a.seg],x=s.a.x+(s.b.x-s.a.x)*a.t,z=s.a.z+(s.b.z-s.a.z)*a.t;
@@ -122,6 +162,7 @@ export class UrbanPopulation {
       }
       this.placeCar(a);
     }
+    this.refreshTrafficBatches();
     for(const a of this.pedestrians){
       if(a.state==='chatting'||a.dialoguePaused)continue;
       if(a.index>=a.path.length)this.nextDestination(a);
@@ -156,6 +197,7 @@ export class UrbanPopulation {
       ped.x=node.x;ped.z=node.z;ped.path=[];ped.index=0;this.nextDestination(ped);this.placePed(ped);
     });
     this.elapsed=0;this.conversations.forEach(g=>g.elapsed=0);
+    this.refreshTrafficBatches();
     const chosen=this.cars.reduce((best,c)=>!best||c.object.position.distanceToSquared(this.pedestrians[0].object.position)<best.object.position.distanceToSquared(this.pedestrians[0].object.position)?c:best,null);
     return {anchor:{x:anchor.x,z:anchor.z},cars:this.cars.length,pedestrians:this.pedestrians.length,conversations:this.conversations.length,nearestCar:chosen.object.position.toArray()};
   }
