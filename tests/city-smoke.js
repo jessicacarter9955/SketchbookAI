@@ -32,6 +32,8 @@
         result.textContent += `Driven distance: ${car.collision.position.distanceTo(carStart).toFixed(2)} m\n`;
         ok(car.collision.position.distanceTo(carStart) > 0.5 && car.collision.position.y > carFloor - 3, 'Player can enter and drive the car on imported geometry');
         const pedestrian = actors.actors[1]; ok(Number.isFinite(pedestrian.position.y) && pedestrian.behaviour, 'Inhabitant runs a walking behaviour');
+        const pedestrianFloor=city.groundAt(pedestrian.position.x,pedestrian.position.z,pedestrian.position.y+4);
+        ok(Number.isFinite(pedestrianFloor) && Math.abs(pedestrian.position.y-pedestrian.rayCastLength-pedestrianFloor)<0.4, 'Pedestrian capsule feet align with loaded city ground (±40 cm)');
         actors.stop();
         ok(!world.editorPlayer.controlledObject && actors.actors.length === 0 && world.vehicles.length === 0, 'Returning to edit safely resets a player inside a vehicle');
         ok([...city.loaded.values()].every(s => s.meta.physics.every(p => p.count < 32768)), 'Every collision batch fits Cannon signed 16-bit indices');
