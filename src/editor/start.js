@@ -78,9 +78,9 @@ function sceneControls(editor) {
             const wasPlaying = !editor.active; editor.setActive(true); globalThis.cityLoading?.show();
             world.levelRuntime.transitioning = true; world.levelRuntime.ready = false;
             try {
-                await world.levelRuntime.ensure(new THREE.Vector3(...spawn.position), 350);
+                await world.levelRuntime.ensure(new THREE.Vector3(...spawn.position), 185);
                 const y = world.levelRuntime.groundAt(spawn.position[0], spawn.position[2], spawn.position[1] + 5) ?? spawn.position[1];
-                world.actorLayer.spawn.set(spawn.position[0], y + 1.2, spawn.position[2]);
+                world.actorLayer.spawn.set(spawn.position[0], y + 0.67, spawn.position[2]);
                 world.respawnPosition.set(...world.actorLayer.spawn.toArray()); world.actorLayer.resetPlayer();
                 world.levelRuntime.refreshPhysics(world.actorLayer.spawn); editor.setActive(!wasPlaying);
             } catch (error) { editor.message(error.message); }
@@ -97,7 +97,7 @@ try {
     if (current.world === 'liberty-city') {
         world.levelRuntime = new CityRuntime(world);
         await world.initialize(undefined, false); loading.style.display = 'flex';
-        await world.levelRuntime.initialize(report);
+        await world.levelRuntime.initialize(report, current.spawn);
     } else if(current.world === 'procedural-island') {
         world.levelRuntime = new IslandRuntime(world);
         await world.initialize(undefined, false); loading.style.display = 'flex';
@@ -108,8 +108,8 @@ try {
     if (world.levelRuntime) {
         const spawn = world.levelRuntime.manifest.spawns.find(s => s.id === current.spawn)?.position || [0,0,0];
         world.levelRuntime.transitioning = true;
-        try { report('Caricamento facciate, vegetazione e strade vicine'); await world.levelRuntime.ensure(new THREE.Vector3(...spawn), 350);
-            actors.spawn.set(spawn[0], (world.levelRuntime.groundAt(spawn[0], spawn[2], spawn[1]+5) ?? spawn[1]) + 1.2, spawn[2]);
+        try { report('Caricamento facciate, vegetazione e strade vicine'); await world.levelRuntime.ensure(new THREE.Vector3(...spawn), 185);
+            actors.spawn.set(spawn[0], (world.levelRuntime.groundAt(spawn[0], spawn[2], spawn[1]+5) ?? spawn[1]) + 0.67, spawn[2]);
             world.respawnPosition.set(...actors.spawn.toArray()); world.levelRuntime.refreshPhysics(actors.spawn);
         } finally { world.levelRuntime.transitioning = false; world.levelRuntime.lastRefresh = 0; }
     }
@@ -125,7 +125,7 @@ try {
             await sceneEditor.run(() => sceneEditor.restoreSaved());
         }
     }
-    if (!hadSaved && current.id === 'liberty-city') {
+    if (!hadSaved && ['liberty-city','urban-photoreal','urban-photoreal-dds','dds-portland'].includes(current.id)) {
         const objects = [];
         const add = (prefab, name, x, z, rotation = 0) => {
             const y = world.levelRuntime.groundAt(x, z, 5);
