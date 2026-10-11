@@ -1,0 +1,36 @@
+name: City and DDS regression checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - name: Unit tests (scenes, streaming, DDS, editor)
+        run: npm test
+      - name: Compile city runtime and player scripts
+        run: npm run build
+      - name: Verify scene entrypoints
+        run: |
+          test -f src/editor/city-streaming.mjs
+          test -f src/editor/scene-catalog.mjs
+          test -f build/sketchbook.min.js
+          grep -q "urban-photoreal-dds" src/editor/scene-catalog.mjs
+      - name: Report large city / DDS assets availability
+        run: |
+          if [ ! -f build/local-scenes/liberty-city/manifest.json ]; then
+            echo "::warning::City scene assets are not tracked in this repository; runtime testing needs the deployed assets."
+          fi
+          if [ ! -f build/local-scenes/dds/manifest.json ]; then
+            echo "::warning::DDS mannequin, weapon, and animation exports are not tracked in this repository."
+          fi
