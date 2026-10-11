@@ -14,13 +14,13 @@
   details.innerHTML='<summary>Diagnostica in tempo reale · ogni 2,5 secondi</summary><div id="city-debug-summary">Preparazione monitor…</div><pre id="city-debug-log" aria-live="off"></pre>';
   panel?.querySelector('.city-loading-panel')?.append(details);
   const summary=details.querySelector('#city-debug-summary'),logEl=details.querySelector('#city-debug-log');
-  function line(s,type=''){
+  function line(s,type='',activity=true){
     const txt='['+new Date().toLocaleTimeString()+'] '+s;
     history.push(txt);if(history.length>100)history.shift();
     if(logEl){const span=document.createElement('div');span.textContent=txt;if(type)span.className='log-'+type;logEl.append(span);
       while(logEl.children.length>100)logEl.firstChild.remove();logEl.scrollTop=logEl.scrollHeight;}
     if(type==='error')console.error('[CITY DIAG]',txt);else console.info('[CITY DIAG]',txt);
-    lastActivity=performance.now();
+    if(activity)lastActivity=performance.now();
   }
   const api={
     stage(name,state='running'){
@@ -44,6 +44,7 @@
   }
   function finish(id,error){
     const entry=pending.get(id);if(!entry)return;
+    lastActivity=performance.now();
     pending.delete(id);const duration=((performance.now()-entry.start)/1000).toFixed(1);
     lastCompleted=entry.url+' ('+duration+'s)';
     if(error)line(entry.kind+' FALLITO '+entry.url+' · '+error,'error');
@@ -56,7 +57,7 @@
     const url=this.__cityUrl;
     if(url&&!/^(data:|blob:)/i.test(String(url))){
       const id=register(url,'XHR');let failed='';
-      this.addEventListener('progress',e=>{const entry=pending.get(id);if(entry){entry.loaded=e.loaded;entry.total=e.lengthComputable?e.total:0;}});
+      this.addEventListener('progress',e=>{const entry=pending.get(id);if(entry){entry.loaded=e.loaded;entry.total=e.lengthComputable?e.total:0;lastActivity=performance.now();}});
       this.addEventListener('error',()=>{failed='errore rete';});
       this.addEventListener('timeout',()=>{failed='timeout';});
       this.addEventListener('abort',()=>{failed='annullato';});
@@ -90,10 +91,10 @@
       '\nIn rete '+active.length+': '+(most||'nessun download attivo; possibile attesa JS/promise')+
       '\nUltimo completato: '+lastCompleted+' · '+perf+blocked;
     if(summary)summary.textContent=status;
-    line('CHECK '+now()+'s | '+(waiting.at(-1)||lastStage)+' | '+perf+' | pendenti '+active.length+(most?' | '+most:'')+blocked);
-    if(slow.length)line('DOWNLOAD LENTO: '+slow.map(x=>x.url+' '+Math.round((nowMs-x.start)/1000)+'s').join(' | '),'warn');
+    line('CHECK '+now()+'s | '+(waiting.at(-1)||lastStage)+' | '+perf+' | pendenti '+active.length+(most?' | '+most:'')+blocked,'',false);
+    if(slow.length)line('DOWNLOAD LENTO: '+slow.map(x=>x.url+' '+Math.round((nowMs-x.start)/1000)+'s').join(' | '),'warn',false);
     if(!active.length&&waiting.length&&nowMs-lastActivity>12000)
-      line('NESSUN DOWNLOAD ATTIVO da '+Math.round((nowMs-lastActivity)/1000)+'s; fase ancora incompleta: '+waiting.join(' | '),'warn');
+      line('NESSUN DOWNLOAD ATTIVO da '+Math.round((nowMs-lastActivity)/1000)+'s; fase ancora incompleta: '+waiting.join(' | '),'warn',false);
   }
   setInterval(heartbeat,2500);
   addEventListener('unhandledrejection',e=>api.problem(e.reason,'Promise non gestita'));
