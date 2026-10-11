@@ -306,6 +306,15 @@ async function captureFreeRoam(){
 
   await page.keyboard.press('f');
   await checkVehicleControl(false,'exit');
+  // In headless software WebGL the exit animation may advance far slower than
+  // wall-clock time. Simulate fixed physics ticks before testing talk input.
+  const exitPhysics=await page.evaluate(()=>{
+    const world=globalThis.world,player=world.editorPlayer;
+    let ticks=0;
+    while(player.occupyingSeat&&ticks<360){world.update(1/60,1/60);ticks++;}
+    return {ticks,stillSeated:!!player.occupyingSeat,characterState:player.charState?.constructor?.name};
+  });
+  if(exitPhysics.stillSeated)throw new Error('Vehicle exit animation did not release driver seat: '+JSON.stringify(exitPhysics));
   const exited=await page.evaluate(()=>({
     controlled:Boolean(globalThis.world?.editorPlayer?.controlledObject),
     prompt:document.querySelector('[data-vehicle-prompt]')?.textContent||''
