@@ -49,14 +49,15 @@ export class CityRuntime {
         if (this.loaded.has(sector.id)) return;
         if (this.pending.has(sector.id)) return this.pending.get(sector.id);
         const task = (async () => {
-            const request = async name => {
+            const request = async (name, type = 'arrayBuffer') => {
                 let lastError;
                 for (let attempt = 0; attempt < 2; attempt++) {
                     try {
                         const url = this.base + name;
                         const response = await fetch(url, { cache: attempt ? 'reload' : 'default', signal: AbortSignal.timeout(30000) });
                         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                        return response;
+                        // Read the body inside the retry: HTTP/2 can fail AFTER headers.
+                        return type === 'json' ? await response.json() : await response.arrayBuffer();
                     } catch (error) {
                         lastError = error;
                         if (!attempt) await new Promise(resolve => setTimeout(resolve, 350));
@@ -65,7 +66,7 @@ export class CityRuntime {
                 throw new Error(`Settore ${sector.id} · ${name}: ${lastError?.message || 'errore rete'}`);
             };
             const [meta, vertices, collisions] = await Promise.all([
-                request(sector.id + '.json').then(r => r.json()), request(sector.id + '.bin').then(r => r.arrayBuffer()), request(sector.id + '.collision.bin').then(r => r.arrayBuffer())
+                request(sector.id + '.json', 'json'), request(sector.id + '.bin'), request(sector.id + '.collision.bin')
             ]);
             const group = new THREE.Group(); group.name = sector.id;
             const buffer = new THREE.InterleavedBuffer(new Float32Array(vertices), 8);
