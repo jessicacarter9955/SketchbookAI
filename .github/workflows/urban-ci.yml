@@ -91,6 +91,12 @@ jobs:
       - name: Download verified CC0 architecture kits on cache miss
         if: env.RUN_CAPTURE == 'true' && steps.cc0-cache.outputs.cache-hit != 'true'
         run: python tools/fetch-urban-kits.py
+      - name: Validate browser test and profiler syntax
+        if: env.RUN_CAPTURE == 'true'
+        run: |
+          node --check tools/capture-urban-proof.mjs
+          node --check src/editor/city-perf.js
+          node --check src/editor/city-telemetry.js
       - name: Unit tests
         if: env.RUN_TESTS == 'true'
         run: npm test
