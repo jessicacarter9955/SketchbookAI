@@ -8,6 +8,13 @@ for name in ['editor.html','urban-examples.html','urban-assets.html','3dPicker.j
     shutil.copy2(root/name,out/name)
 for name in ['src/editor','build/assets','assets/roadforge','assets/urban-kits','node_modules/three']:
     shutil.copytree(root/name,out/name,dirs_exist_ok=True,ignore=shutil.ignore_patterns('*.part','__pycache__'))
+# Include original DDS mannequin, weapon meshes and animation exports when supplied.
+# Keep the Sketchbook variant deployable when DDS exports are not available.
+dds=root/'build/local-scenes/dds'
+if dds.is_dir():
+    shutil.copytree(dds,out/'build/local-scenes/dds',dirs_exist_ok=True)
+else:
+    print('DDS export not present: photoreal Sketchbook mode works; DDS requires exported assets.')
 shutil.copy2(root/'build/sketchbook.min.js',out/'build/sketchbook.min.js')
 # A real static host cannot resolve bare module imports such as 'three'.
 # The dedicated webpack bundle includes city, traffic, NPC conversations and weather.
