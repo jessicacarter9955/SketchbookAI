@@ -218,9 +218,13 @@ export class World
 			this.sky.update(0);
 			return;
 		}
+		const fpsMonitor = (globalThis as any).cityPerfMonitor;
+		const physicsStarted = fpsMonitor ? performance.now() : 0;
 		this.updatePhysics(timeStep);
+		if (fpsMonitor) (this as any).__cityPhysicsMs = performance.now() - physicsStarted;
 
 		// Update registred objects
+		const actorsStarted = fpsMonitor ? performance.now() : 0;
 		this.updatables.forEach((entity) => {
 			try {
 				entity.update(timeStep, unscaledTimeStep);
@@ -229,6 +233,8 @@ export class World
 				throw error;
 			}
 		});
+
+		if (fpsMonitor) (this as any).__cityActorsMs = performance.now() - actorsStarted;
 
 		// Lerp time scale
 		this.params.Time_Scale = THREE.MathUtils.lerp(this.params.Time_Scale, this.timeScaleTarget, 0.2);
@@ -302,8 +308,11 @@ export class World
 		let timeStep = unscaledTimeStep * this.params.Time_Scale;
 		timeStep = Math.min(timeStep, 1 / 30);    // min 30 fps
 
+		const fpsMonitor = (globalThis as any).cityPerfMonitor;
+		const updateStarted = fpsMonitor ? performance.now() : 0;
 		// Logic
 		world.update(timeStep, unscaledTimeStep);
+		const updateMs = fpsMonitor ? performance.now() - updateStarted : 0;
 
 		// Measuring logic time
 		this.logicDelta = this.clock.getDelta();
@@ -318,11 +327,19 @@ export class World
 		this.stats.begin();
 
 		// Actual rendering with a FXAA ON/OFF switch
+		const renderStarted = fpsMonitor ? performance.now() : 0;
 		if (this.params.FXAA) this.composer.render();
 		else this.renderer.render(this.graphicsWorld, this.camera);
 
 		// Measuring render time
+		const renderMs = fpsMonitor ? performance.now() - renderStarted : 0;
 		this.renderDelta = this.clock.getDelta();
+		if (fpsMonitor) fpsMonitor.record({updateMs,renderMs,
+			physicsMs: (this as any).__cityPhysicsMs || 0,
+			actorsMs: (this as any).__cityActorsMs || 0,
+			calls:this.renderer.info.render.calls,triangles:this.renderer.info.render.triangles,
+			geometries:this.renderer.info.memory.geometries,textures:this.renderer.info.memory.textures,
+			pixelRatio:this.renderer.getPixelRatio()});
 	}
 
 	public setTimeScale(value: number): void
