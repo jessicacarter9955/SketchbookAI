@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { createStreetProps } from './UrbanProps.js';
+import { batchUrbanStaticBoxes } from './UrbanStaticBatch.js';
 import { buildUrbanStreets } from './UrbanStreets.js';
 import { createVegetation } from './UrbanVegetation.js';
 import { photographicLighting, loadSurface, metricUV, captureStreetReflections } from './UrbanLighting.js';
@@ -259,6 +260,7 @@ export class UrbanRuntime {
     }
     const treeItems=plan.trees.filter(t=>t.kind!=='median'||!(plan.roads.some(r=>r.axis==='x'&&Math.abs(t.z-r.z)<config.roadWidth/2+6)&&plan.roads.some(r=>r.axis==='z'&&Math.abs(t.x-r.x)<config.roadWidth/2+6))).map(t=>({...t,y:urbanGroundHeight(t.x,t.z,config)}));group.add(treeInstances(treeItems));
     group.userData.materialSource='RoadForge UE5 CC0 asphalt/concrete';
+    group.userData.staticBatches=batchUrbanStaticBoxes(group,new Set([matRoad,matSidewalk,matGrass]),config.blockSize);
 
     this.clearGenerated();this.root.add(group);bodies.forEach(b=>this.world.physicsWorld.addBody(b));this.bodies=bodies;
     this.plan=plan;this.config=config;this.manifest={spawns:plan.spawns};this.applySky(config.sky);this.ready=true;
