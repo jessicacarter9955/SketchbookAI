@@ -10,11 +10,19 @@ export class UrbanPopulation {
     for(let i=0;i<20;i++){
       const seg=(i*19+7)%road.length,o=clone(car);
       const a={object:o,seg,t:(i*.19)%1,speed:0,maxSpeed:5+i%4,seed:i};
+      const bounds=new THREE.Box3().setFromObject(o);
+      a.groundOffset=Number.isFinite(bounds.min.y)?Math.max(0.03,-bounds.min.y+0.03):0.6;
       this.group.add(o);this.cars.push(a);this.placeCar(a);
     }
     for(let i=0;i<36;i++){
       const p=nodes[(i*11+3)%nodes.length],o=clone(person);
       const a={object:o,x:p.x,z:p.z,path:[],index:0,speed:1.1+(i%4)*.12,seed:i};
+      const bounds=new THREE.Box3().setFromObject(o);
+      a.groundOffset=Number.isFinite(bounds.min.y)?Math.max(0.02,-bounds.min.y+0.02):0.65;
+      if(person.animations?.length) {
+        const clip=person.animations.find(c=>c.name==='walk')||person.animations.find(c=>c.name==='run');
+        if(clip) {a.mixer=new THREE.AnimationMixer(o);a.walkAction=a.mixer.clipAction(clip);a.walkAction.play();}
+      }
       this.group.add(o);this.pedestrians.push(a);this.nextDestination(a);this.placePed(a);
     }
     this.conversations=[];this.createConversations();
@@ -22,11 +30,11 @@ export class UrbanPopulation {
   }
   placeCar(a){
     const s=this.net.roads[a.seg],x=s.a.x+(s.b.x-s.a.x)*a.t,z=s.a.z+(s.b.z-s.a.z)*a.t;
-    a.object.position.set(x,this.world.levelRuntime.groundAt(x,z)+.6,z);
+    a.object.position.set(x,this.world.levelRuntime.groundAt(x,z)+a.groundOffset,z);
     a.object.rotation.y=Math.atan2(s.b.x-s.a.x,s.b.z-s.a.z);
   }
   placePed(a){
-    a.object.position.set(a.x,this.world.levelRuntime.groundAt(a.x,a.z)+.65,a.z);
+    a.object.position.set(a.x,this.world.levelRuntime.groundAt(a.x,a.z)+a.groundOffset,a.z);
   }
   nextDestination(a){
     const nodes=this.net.pedestrians.nodes;
@@ -88,6 +96,14 @@ export class UrbanPopulation {
   }
   update(dt){
     dt=Math.max(0,Math.min(.05,dt||0));this.elapsed+=dt;this.updateConversations(dt);
+    // Animate only pedestrians near the camera; farther agents keep their AI paths.
+    const camera=this.world.camera;
+    for(const p of this.pedestrians) if(p.mixer){
+      const distance=p.object.position.distanceTo(camera.position),visible=distance<90;
+      p.object.visible=distance<220;
+      if(visible) p.mixer.update(dt);
+    }
+    for(const car of this.cars)car.object.visible=car.object.position.distanceTo(camera.position)<260;
     const player=this.world.editorPlayer;
     for(const a of this.cars){
       const s=this.net.roads[a.seg],len=s.length;
