@@ -419,7 +419,7 @@ async function captureFreeRoam(){
   if(!fpsEvidence?.metrics || !Number.isFinite(fpsEvidence.metrics.fps) || fpsEvidence.metrics.samples<5)
     throw new Error('Missing live FPS measurements from production game loop: '+JSON.stringify(fpsEvidence?.metrics));
   await fs.writeFile(`${out}/urban-fps-ci.json`,JSON.stringify(fpsEvidence,null,2));
-  console.log('Software WebGL FPS benchmark (not user's GPU):',fpsEvidence.metrics);
+  console.log("Software WebGL FPS benchmark (not the user device):",fpsEvidence.metrics);
   await fs.writeFile(`${out}/urban-free-roam.json`,JSON.stringify({initial,driving,exited,consoleErrors},null,2));
   console.log('free roam proof',{initial,driving,exited});
   await page.close();
