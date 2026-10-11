@@ -20,6 +20,7 @@ const skipVisualButton=loading?.querySelector('#city-load-continue');
 const retryButton=loading?.querySelector('#city-load-retry');
 let bootStage='Avvio editor',bootSince=performance.now();
 const report=message=>{
+ globalThis.cityDiagnostics?.activity('BOOT: '+message);
  bootStage=message;bootSince=performance.now();
  if(loadingMessage)loadingMessage.textContent=message;
 };
@@ -198,6 +199,11 @@ try {
         await world.initialize(undefined, false); loading.style.display = 'flex';
         await world.levelRuntime.initialize();
     } else if(current.world === 'procedural-city') {
+        if(current.playerProfile==='dds') {
+            report('DDS: controllo file build/local-scenes/dds/manifest.json prima del mondo HD');
+            const check=await fetch('build/local-scenes/dds/manifest.json',{signal:AbortSignal.timeout(12000)});
+            if(!check.ok)throw new Error('DDS non disponibile (HTTP '+check.status+'): manca build/local-scenes/dds/manifest.json. Esporta mannequin, armi e animazioni e ripubblica il pacchetto. La scena Sketchbook originale resta disponibile.');
+        }
         world.levelRuntime = new UrbanRuntime(world);
         world.levelRuntime.onVisualProgress=setVisualProgress;
         report('Preparazione strade, pedoni e traffico…');
