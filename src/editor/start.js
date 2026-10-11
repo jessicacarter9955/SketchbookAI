@@ -223,7 +223,7 @@ try {
         const spawn = world.levelRuntime.manifest.spawns.find(s => s.id === current.spawn)?.position || [0,0,0];
         world.levelRuntime.transitioning = true;
         try { await world.levelRuntime.ensure(new THREE.Vector3(...spawn), 350);
-            actors.spawn.set(spawn[0], (world.levelRuntime.groundAt(spawn[0], spawn[2], spawn[1]+5) ?? spawn[1]) + 1.2, spawn[2]);
+            actors.spawn.set(spawn[0], (world.levelRuntime.groundAt(spawn[0], spawn[2], spawn[1]+5) ?? spawn[1]) + 0.67, spawn[2]);
             world.respawnPosition.set(...actors.spawn.toArray()); world.levelRuntime.refreshPhysics(actors.spawn);
         } finally { world.levelRuntime.transitioning = false; world.levelRuntime.lastRefresh = 0; }
     }
@@ -261,7 +261,7 @@ try {
         }]}); sceneEditor.commit();
     }
     if (!hadSaved && current.world === 'procedural-city') {
-        if(current.id==='urban-photoreal'||current.id==='urban-photoreal-sunset') {
+        if(['urban-photoreal','urban-photoreal-dds','urban-photoreal-sunset'].includes(current.id)) {
             const preset={...sceneEditor.generator,...globalThis.cityInitialPreset};
             sceneEditor.restore({version:1,world:current.world,objects:[],generator:preset});
         }
@@ -301,7 +301,9 @@ try {
         }else{
             if(skipVisualButton)skipVisualButton.disabled=false;
             let watchdog;
-            const timed=new Promise(resolve=>{watchdog=setTimeout(()=>resolve({status:'timeout'}),14000);});
+            // Free-roam can start immediately using full-quality procedural geometry;
+            // optional HD assets stream in after the player gains control.
+            const timed=new Promise(resolve=>{watchdog=setTimeout(()=>resolve({status:'timeout'}),query.get('play')==='1'?150:14000);});
             const skipped=new Promise(resolve=>{resolveVisualSkip=resolve;});
             const visual=await Promise.race([world.levelRuntime.visualPromise,timed,skipped]);
             clearTimeout(watchdog);resolveVisualSkip=null;
