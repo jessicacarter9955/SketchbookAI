@@ -42,15 +42,12 @@ export class UrbanPopulation {
     template.traverse(mesh=>{
       if(!mesh.isMesh||!mesh.geometry)return;
       const relative=inverse.clone().multiply(mesh.matrixWorld);
-      for(const material of [].concat(mesh.material)){
-        if(!material)continue;
-        const batch=new THREE.InstancedMesh(mesh.geometry,material,count);
-        batch.name='Urban traffic GPU instancing';
-        batch.castShadow=mesh.castShadow;batch.receiveShadow=mesh.receiveShadow;
-        batch.frustumCulled=false; // matrices move as cars drive
-        this.group.add(batch);
-        this.trafficBatches.push({batch,relative});
-      }
+      const batch=new THREE.InstancedMesh(mesh.geometry,mesh.material,count);
+      batch.name='Urban traffic GPU instancing';
+      batch.castShadow=mesh.castShadow;batch.receiveShadow=mesh.receiveShadow;
+      batch.frustumCulled=false; // matrices move as cars drive
+      this.group.add(batch);
+      this.trafficBatches.push({batch,relative});
     });
     this.refreshTrafficBatches();
   }
