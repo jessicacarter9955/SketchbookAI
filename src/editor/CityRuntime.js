@@ -137,7 +137,13 @@ export class CityRuntime {
         const next = wanted.filter(s => !this.loaded.has(s.id) && !this.pending.has(s.id) && performance.now() - (this.failed.get(s.id) || -10000) > 10000);
         if (this.pending.size < 2 && next.length) this.loadSector(next[0]).catch(error => this.report?.(error.message));
         const retained = new Set(selectCitySectors(this.manifest.sectors, position, view, visible, {retain:true}).map(s => s.id));
-        for (const [id] of this.loaded) if (!retained.has(id)) this.unload(id);
+        // Keep recently visible meshes for 3 s to avoid thrashing GPU buffers / texture requests on camera turns.
+        const now = performance.now();
+        for (const [id, data] of this.loaded) {
+            if (retained.has(id)) { data.outOfRangeSince = 0; continue; }
+            if (!data.outOfRangeSince) data.outOfRangeSince = now;
+            else if (now - data.outOfRangeSince > 3000) this.unload(id);
+        }
         this.refreshPhysics(position);
         this.world.actorLayer?.update(position);
         const status = document.querySelector('[data-city-status]');
