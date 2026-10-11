@@ -306,6 +306,7 @@ export class UrbanRuntime {
       // traffic or the user's ability to move and talk.
       try {
         const value=await Promise.race([task(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Timeout dettaglio HD: '+label)),50000))]);
+        globalThis.cityDiagnostics?.stage(label,'done');
         if(group.parent===this.root){
           this.visualProgress.completed++;
           this.visualProgress.label=label+' completato';
@@ -313,6 +314,8 @@ export class UrbanRuntime {
         }
         return {ok:true,value};
       }catch(error){
+        globalThis.cityDiagnostics?.stage(label,'error');
+        globalThis.cityDiagnostics?.problem(error,label);
         if(group.parent===this.root){
           this.visualProgress.completed++;
           this.visualProgress.failed++;
