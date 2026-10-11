@@ -6,7 +6,7 @@ const query = new URLSearchParams(location.search);
 const catalog = loadCatalog(localStorage);
 const current = catalog.find(s => s.id === query.get('scene')) || catalog[0];
 const storageKey = sceneStorageKey(current.id);
-const report = message => { loading.textContent = message; };
+const report = message => { globalThis.cityLoading?.stage(message); };
 
 function sceneControls(editor) {
     const manager = document.createElement('section'); manager.className = 'scene-manager';
@@ -75,7 +75,7 @@ function sceneControls(editor) {
         district.value = current.spawn || world.levelRuntime.manifest.spawns[0].id;
         district.onchange = async () => {
             district.disabled = true; const spawn = world.levelRuntime.manifest.spawns.find(s => s.id === district.value);
-            const wasPlaying = !editor.active; editor.setActive(true); loading.style.display = 'flex';
+            const wasPlaying = !editor.active; editor.setActive(true); globalThis.cityLoading?.show();
             world.levelRuntime.transitioning = true; world.levelRuntime.ready = false;
             try {
                 await world.levelRuntime.ensure(new THREE.Vector3(...spawn.position), 350);
@@ -84,7 +84,7 @@ function sceneControls(editor) {
                 world.respawnPosition.set(...world.actorLayer.spawn.toArray()); world.actorLayer.resetPlayer();
                 world.levelRuntime.refreshPhysics(world.actorLayer.spawn); editor.setActive(!wasPlaying);
             } catch (error) { editor.message(error.message); }
-            finally { world.levelRuntime.transitioning = false; world.levelRuntime.lastRefresh = 0; district.disabled = false; loading.style.display = 'none'; }
+            finally { world.levelRuntime.transitioning = false; world.levelRuntime.lastRefresh = 0; district.disabled = false; globalThis.cityLoading?.hide(); }
         };
         hud.prepend(district);
     }
@@ -92,6 +92,7 @@ function sceneControls(editor) {
 }
 
 try {
+    report('Avvio motore 3D e renderer');
     globalThis.world = new World();
     if (current.world === 'liberty-city') {
         world.levelRuntime = new CityRuntime(world);
@@ -102,11 +103,12 @@ try {
         await world.initialize(undefined, false); loading.style.display = 'flex';
         await world.levelRuntime.initialize();
     } else await world.initialize('build/assets/world.glb');
+    report('Preparazione giocatore e pedoni');
     const actors = new ActorLayer(world); await actors.initialize(current.playerProfile);
     if (world.levelRuntime) {
         const spawn = world.levelRuntime.manifest.spawns.find(s => s.id === current.spawn)?.position || [0,0,0];
         world.levelRuntime.transitioning = true;
-        try { await world.levelRuntime.ensure(new THREE.Vector3(...spawn), 350);
+        try { report('Caricamento facciate, vegetazione e strade vicine'); await world.levelRuntime.ensure(new THREE.Vector3(...spawn), 350);
             actors.spawn.set(spawn[0], (world.levelRuntime.groundAt(spawn[0], spawn[2], spawn[1]+5) ?? spawn[1]) + 1.2, spawn[2]);
             world.respawnPosition.set(...actors.spawn.toArray()); world.levelRuntime.refreshPhysics(actors.spawn);
         } finally { world.levelRuntime.transitioning = false; world.levelRuntime.lastRefresh = 0; }
@@ -149,9 +151,10 @@ try {
         for(const x of [-12,12]) add('pedestrian','Abitante',x,-12);
         sceneEditor.restore({version:1,world:current.world,objects,generator:{...sceneEditor.generator,sky:current.id==='island-sunset'?'sunset':'day'}});sceneEditor.commit();
     }
+    report('Preparazione interfaccia e controlli');
     sceneControls(sceneEditor);
     if(current.playerProfile==='dds') new DdsGame(world,{key:`${storageKey}.dds-game`});
-    loading.style.display = 'none';
+    globalThis.cityLoading?.done(); loading.style.display = 'none';
     if(current.id === 'portland-grass' && sceneEditor.mapEdits.length) {
         const select=sceneEditor.surfaceTool.$('[data-layers]'); select.value=sceneEditor.mapEdits[0].id;
         select.dispatchEvent(new Event('change')); sceneEditor.surfaceTool.cancel();
@@ -160,5 +163,5 @@ try {
     if (query.get('play') === '1') sceneEditor.setActive(false);
     document.title = `${current.name} · Sketchbook`;
 } catch (error) {
-    loading.style.display = 'flex'; loading.textContent = `Impossibile avviare la scena: ${error.message}`; console.error(error);
+    loading.style.display = 'flex'; globalThis.cityLoading?.error(error); console.error(error);
 }
