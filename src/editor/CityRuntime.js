@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { SurfaceLayers } from './SurfaceLayers';
+import { distanceToSector, selectCitySectors, CITY_STREAM } from './city-streaming.mjs';
 
-const horizontalDistance = (point, bounds) => Math.hypot(Math.max(bounds[0][0] - point.x, 0, point.x - bounds[1][0]), Math.max(bounds[0][2] - point.z, 0, point.z - bounds[1][2]));
+const horizontalDistance = distanceToSector;
 
 export class CityRuntime {
     constructor(world) {
@@ -10,8 +11,10 @@ export class CityRuntime {
         this.root = new THREE.Group(); this.root.name = 'Liberty City'; world.graphicsWorld.add(this.root);
         this.base = 'build/local-scenes/liberty-city/'; this.lastRefresh = 0;
         this.surfaces = new SurfaceLayers(this);
+        this.groundRay = new THREE.Raycaster(); this.fps = 0; this.resolutionScale = 1;
+        this.setupAdaptiveResolution();
     }
-    async initialize(report) {
+    async initialize(report, spawnId) {
         this.report = report;
         const response = await fetch(this.base + 'manifest.json');
         if (!response.ok) throw new Error('Liberty City non convertita. Esegui tools/import-liberty-city.py sul percorso della mappa.');
@@ -23,8 +26,10 @@ export class CityRuntime {
         this.world.sky.csm.lights.forEach(light => light.castShadow = false);
         this.world.respawnPosition = new CANNON.Vec3(0, 3, 0);
         this.world.isOutOfBounds = p => p.y < -80 || Math.abs(p.x) > 6000 || Math.abs(p.z) > 6000;
-        await this.ensure(new THREE.Vector3(), 350);
-        this.refreshPhysics(new THREE.Vector3()); this.ready = true;
+        const selectedSpawn = this.manifest.spawns?.find(s => s.id === spawnId) || this.manifest.spawns?.[0];
+        const start = new THREE.Vector3(...(selectedSpawn?.position || [0,0,0]));
+        await this.ensure(start, CITY_STREAM.collisionBubble);
+        this.refreshPhysics(start); this.ready = true;
     }
     focusPosition() {
         const player = this.world.editorPlayer || this.world.characters[0];
@@ -44,7 +49,21 @@ export class CityRuntime {
         if (this.loaded.has(sector.id)) return;
         if (this.pending.has(sector.id)) return this.pending.get(sector.id);
         const task = (async () => {
-            const request = async name => { const response = await fetch(this.base + name); if (!response.ok) throw new Error(`Settore ${sector.id}: HTTP ${response.status}`); return response; };
+            const request = async name => {
+                let lastError;
+                for (let attempt = 0; attempt < 2; attempt++) {
+                    try {
+                        const url = this.base + name;
+                        const response = await fetch(url, { cache: attempt ? 'reload' : 'default', signal: AbortSignal.timeout(30000) });
+                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                        return response;
+                    } catch (error) {
+                        lastError = error;
+                        if (!attempt) await new Promise(resolve => setTimeout(resolve, 350));
+                    }
+                }
+                throw new Error(`Settore ${sector.id} · ${name}: ${lastError?.message || 'errore rete'}`);
+            };
             const [meta, vertices, collisions] = await Promise.all([
                 request(sector.id + '.json').then(r => r.json()), request(sector.id + '.bin').then(r => r.arrayBuffer()), request(sector.id + '.collision.bin').then(r => r.arrayBuffer())
             ]);
@@ -84,19 +103,20 @@ export class CityRuntime {
         // Limit simultaneous conversion/upload work to avoid freezing the browser.
         for (let i = 0; i < wanted.length; i += 2) {
             this.report?.(`Liberty City · caricamento settori ${Math.min(i + 2, wanted.length)}/${wanted.length}…`);
-            await Promise.all(wanted.slice(i, i + 2).map(s => this.loadSector(s)));
+            const results = await Promise.allSettled(wanted.slice(i, i + 2).map(s => this.loadSector(s)));
+            for (const result of results) if (result.status === 'rejected') this.report?.(`Settore non disponibile: ${result.reason.message}`);
         }
     }
     refreshPhysics(position) {
         for (const data of this.loaded.values()) {
             data.meta.physics.forEach((part, index) => {
                 const distance = horizontalDistance(position, part.bounds);
-                if (distance < 130 && !data.bodies.has(index)) {
+                if (distance < CITY_STREAM.physicsEnable && !data.bodies.has(index)) {
                     const vertices = data.collision.subarray(part.start * 3, (part.start + part.count) * 3);
                     const shape = new CANNON.Trimesh(vertices, Array.from({ length: part.count }, (_, i) => i));
                     const body = new CANNON.Body({ mass: 0, shape, position: new CANNON.Vec3(...part.center) });
                     this.world.physicsWorld.addBody(body); data.bodies.set(index, body);
-                } else if (distance > 190 && data.bodies.has(index)) {
+                } else if (distance > CITY_STREAM.physicsDisable && data.bodies.has(index)) {
                     this.world.physicsWorld.removeBody(data.bodies.get(index)); data.bodies.delete(index);
                 }
             });
@@ -108,20 +128,54 @@ export class CityRuntime {
         this.lastRefresh = performance.now();
         const position = this.focusPosition();
         const view = this.world.sceneEditor?.active ? this.world.sceneEditor.orbit?.target || position : position;
-        const wanted = this.manifest.sectors.filter(s => Math.min(horizontalDistance(position, s.bounds), horizontalDistance(view, s.bounds)) < 450);
+        this.world.camera.updateMatrixWorld(true);
+        const frustum = new THREE.Frustum().setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(this.world.camera.projectionMatrix, this.world.camera.matrixWorldInverse));
+        const visible = sector => frustum.intersectsBox(new THREE.Box3(new THREE.Vector3(...sector.bounds[0]), new THREE.Vector3(...sector.bounds[1])));
+        const wanted = selectCitySectors(this.manifest.sectors, position, view, visible);
         this.ready = wanted.filter(s => horizontalDistance(position, s.bounds) < 40).every(s => this.loaded.has(s.id));
-        const next = wanted.filter(s => !this.loaded.has(s.id) && !this.pending.has(s.id) && performance.now() - (this.failed.get(s.id) || -10000) > 10000)
-            .sort((a, b) => horizontalDistance(position, a.bounds) - horizontalDistance(position, b.bounds));
+        const next = wanted.filter(s => !this.loaded.has(s.id) && !this.pending.has(s.id) && performance.now() - (this.failed.get(s.id) || -10000) > 10000);
         if (this.pending.size < 2 && next.length) this.loadSector(next[0]).catch(error => this.report?.(error.message));
-        for (const [id, data] of this.loaded) if (Math.min(horizontalDistance(position, data.meta.bounds), horizontalDistance(view, data.meta.bounds)) > 800) this.unload(id);
+        const retained = new Set(selectCitySectors(this.manifest.sectors, position, view, visible, {retain:true}).map(s => s.id));
+        for (const [id] of this.loaded) if (!retained.has(id)) this.unload(id);
         this.refreshPhysics(position);
         this.world.actorLayer?.update(position);
         const status = document.querySelector('[data-city-status]');
-        if (status) status.textContent = this.ready ? `Liberty City · ${this.loaded.size}/${this.manifest.sectors.length} settori · ${Math.round(this.world.editorPlayer?.controlledObject?.collision.velocity.length() * 3.6 || 0)} km/h` : 'Caricamento della zona davanti a te…';
+        if (status) status.textContent = this.ready ? `Liberty City · ${this.loaded.size}/${this.manifest.sectors.length} settori · ${this.fps || '…'} FPS · ${Math.round(this.world.editorPlayer?.controlledObject?.collision.velocity.length() * 3.6 || 0)} km/h` : 'Caricamento della zona davanti a te…';
     }
+    /** Raycast only geometries covering the XY map tile, not all buildings in the city. */
     groundAt(x, z, top = 300) {
-        this.root.updateMatrixWorld(true);
-        const hit = new THREE.Raycaster(new THREE.Vector3(x, top, z), new THREE.Vector3(0, -1, 0)).intersectObject(this.root, true)[0];
+        const candidates = [];
+        for (const [id, data] of this.loaded) {
+            const b = data.meta.bounds;
+            if (x < b[0][0] - 0.1 || x > b[1][0] + 0.1 || z < b[0][2] - 0.1 || z > b[1][2] + 0.1) continue;
+            candidates.push(data.mesh);
+            const overlays = this.surfaces.sectors.get(id);
+            if (overlays) for (const mesh of overlays.children) if (mesh.isMesh && !mesh.isInstancedMesh) candidates.push(mesh);
+        }
+        if (!candidates.length) return undefined;
+        this.groundRay.set(new THREE.Vector3(x, top, z), new THREE.Vector3(0,-1,0));
+        this.groundRay.far = Math.max(1,top + 200);
+        const hit = this.groundRay.intersectObjects(candidates, false)[0];
         return hit?.point.y;
+    }
+    /** Dynamically adjust internal pixel density, never geometry, textures or draw distance. */
+    setupAdaptiveResolution() {
+        if (typeof window === 'undefined' || !window.requestAnimationFrame) return;
+        let frames = 0, previous = performance.now(), lastChange = previous;
+        const sample = now => {
+            frames++;
+            if (now - previous >= 2000) {
+                this.fps = Math.round(frames * 1000 / (now - previous));
+                const max = Math.min(window.devicePixelRatio || 1, 1.25);
+                if (now - lastChange > 5000 && this.ready && !this.transitioning && new URLSearchParams(location.search).get('adaptive') !== '0') {
+                    const current = this.world.renderer.getPixelRatio();
+                    const target = this.fps < 38 ? Math.max(0.8, current - 0.1) : this.fps > 56 ? Math.min(max, current + 0.05) : current;
+                    if (Math.abs(target - current) > 0.01) { this.world.renderer.setPixelRatio(target); lastChange = now; this.resolutionScale = target; }
+                }
+                frames = 0; previous = now;
+            }
+            requestAnimationFrame(sample);
+        };
+        requestAnimationFrame(sample);
     }
 }
