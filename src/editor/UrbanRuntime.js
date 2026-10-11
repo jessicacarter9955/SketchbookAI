@@ -350,6 +350,7 @@ export class UrbanRuntime {
 
   }
   async loadStreetProps(group,plan,config){
+    globalThis.cityDiagnostics?.activity('Arredo urbano: attesa street_lamp_01 / painted_wooden_bench / metal_trash_can');
     const {layer,assets,instances}=await createStreetProps(plan,config);
     if(group.parent!==this.root)return null;
     group.add(layer);
@@ -425,6 +426,7 @@ export class UrbanRuntime {
     streamer.group.userData.assembledBuildings=streamer.assembled;
   }
   async loadPhotorealVegetation(group,items,config){
+    globalThis.cityDiagnostics?.activity('Vegetazione LOD: attesa tree_small_02/scene-lod0.gltf e scene-lod1.gltf con .bin e texture');
     const layer=await createVegetation(items,config.seed);
     if(group.parent!==this.root)return null;
     layer.userData.stream?.(this.world.camera);
