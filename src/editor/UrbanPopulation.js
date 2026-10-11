@@ -1,11 +1,14 @@
 import * as THREE from 'three';
 import {clone} from 'three/examples/jsm/utils/SkeletonUtils';
 import {urbanNetworks,shortestUrbanPath,safeFollowingSpeed} from './urban-navigation.mjs';
+import {advanceSimulationClock,isHiddenBehindBuildings} from './urban-visibility.mjs';
 export class UrbanPopulation {
   constructor(world,person,car){
     this.world=world;this.net=urbanNetworks(world.levelRuntime.config);this.group=new THREE.Group();
     this.group.name='Urban AI traffic';world.graphicsWorld.add(this.group);
     this.cars=[];this.pedestrians=[];this.elapsed=0;
+    this.visibilityElapsed=0;this.forward=new THREE.Vector3();
+    this.simulationStats={activeCars:0,activePedestrians:0,sleepingCars:0,sleepingPedestrians:0,occludedAgents:0};
     const road=this.net.roads,nodes=this.net.pedestrians.nodes;
     const trafficCanInstance=!car.getObjectByProperty('isSkinnedMesh',true);
     for(let i=0;i<20;i++){
@@ -57,7 +60,7 @@ export class UrbanPopulation {
     for(const {batch,relative} of this.trafficBatches){
       for(let i=0;i<this.cars.length;i++){
         const obj=this.cars[i].object;
-        const visible=obj.position.distanceToSquared(camera.position)<260*260;
+        const visible=obj.position.distanceToSquared(camera.position)<260*260 && this.cars[i].renderAllowed!==false;
         obj.updateMatrix();
         matrix.copy(obj.matrix).multiply(relative);
         batch.setMatrixAt(i,visible?matrix:hidden);
@@ -131,29 +134,65 @@ export class UrbanPopulation {
       }
     }
   }
+  /** Simulation LOD: full-rate near player; sparse updates in distant districts.
+   * The active dialogue character, nearby cars and collision-related checks
+   * retain full-rate updates regardless of what is visible on camera.
+   */
   update(dt){
-    dt=Math.max(0,Math.min(.05,dt||0));this.elapsed+=dt;this.updateConversations(dt);
-    // Animate only pedestrians near the camera; farther agents keep their AI paths.
+    dt=Math.max(0,Math.min(.1,dt||0));
+    this.elapsed+=dt;
     const camera=this.world.camera;
-    for(const p of this.pedestrians) if(p.mixer){
-      const distance=p.object.position.distanceTo(camera.position),visible=distance<90;
-      p.object.visible=distance<220;
-      if(visible) p.mixer.update(dt);
-    }
-    for(const car of this.cars)car.object.visible=car.object.position.distanceTo(camera.position)<260;
     const player=this.world.editorPlayer;
+    const focus=player?.controlledObject?.position||player?.position||camera.position;
+    camera.getWorldDirection(this.forward);
+    const buildings=this.world.levelRuntime?.plan?.buildings||[];
+    this.visibilityElapsed+=dt;
+    const refreshVisuals=this.visibilityElapsed>=.26;
+    if(refreshVisuals)this.visibilityElapsed=0;
+    this.updateConversations(dt);
+    const sim={activeCars:0,activePedestrians:0,sleepingCars:0,sleepingPedestrians:0,occludedAgents:0};
+    const isFacing=(x,z)=>{
+      const dx=x-camera.position.x,dz=z-camera.position.z;
+      return (dx*this.forward.x+dz*this.forward.z)>-.15*Math.hypot(dx,dz);
+    };
+    const isObstructed=(x,y,z,height)=>{
+      const from=camera.position;
+      if(Math.hypot(from.x-x,from.z-z)<60)return false;
+      return isHiddenBehindBuildings(from,[{x,y:y+height*.25,z},{x,y:y+height*.95,z}],buildings);
+    };
     for(const a of this.cars){
-      const s=this.net.roads[a.seg],len=s.length;
-      let ahead=Infinity;
-      for(const b of this.cars)if(b!==a&&b.seg===a.seg&&b.t>a.t)ahead=Math.min(ahead,(b.t-a.t)*len);
       const p=a.object.position;
-      if(player){const d=Math.hypot(p.x-player.position.x,p.z-player.position.z);if(d<7)ahead=Math.min(ahead,d);}
-      for(const b of this.pedestrians)if(this.nearCrosswalk(b)&&Math.hypot(p.x-b.x,p.z-b.z)<7)ahead=Math.min(ahead,Math.hypot(p.x-b.x,p.z-b.z));
+      const distance=Math.hypot(p.x-focus.x,p.z-focus.z);
+      const facing=isFacing(p.x,p.z);
+      const detailDt=advanceSimulationClock(a,dt,distance,facing,distance<55);
+      if(refreshVisuals||a.renderAllowed===undefined){
+        a.renderAllowed=p.distanceToSquared(camera.position)<260*260 &&
+          !isObstructed(p.x,p.y-a.groundOffset,p.z,2.5);
+        if(!a.renderAllowed)sim.occludedAgents++;
+        if(!this.trafficBatches?.length)a.object.visible=a.renderAllowed;
+      }
+      if(!detailDt){sim.sleepingCars++;continue;}
+      sim.activeCars++;
+      const s=this.net.roads[a.seg],len=s.length;
+      // Detailed vehicle separation and crosswalk checks only matter near
+      // the active player; distant traffic remains moving using cheap lanes.
+      let ahead=Infinity;
+      if(distance<110){
+        for(const b of this.cars)if(b!==a&&b.seg===a.seg&&b.t>a.t)
+          ahead=Math.min(ahead,(b.t-a.t)*len);
+        if(player&&distance<7)ahead=Math.min(ahead,distance);
+        for(const ped of this.pedestrians){
+          const d=Math.hypot(p.x-ped.x,p.z-ped.z);
+          if(d<7&&this.nearCrosswalk(ped))ahead=Math.min(ahead,d);
+        }
+      }
       const target=safeFollowingSpeed(ahead,a.maxSpeed);
-      a.speed+=Math.max(-5*dt,Math.min(2*dt,(target-a.speed)*dt*3));
-      a.t+=Math.max(0,a.speed)*dt/len;
+      a.speed+=Math.max(-5*detailDt,Math.min(2*detailDt,(target-a.speed)*detailDt*3));
+      a.t+=Math.max(0,a.speed)*detailDt/Math.max(1,len);
       if(a.t>=1){
-        const options=this.net.roads.map((r,i)=>({i,d:Math.hypot(r.a.x-s.b.x,r.a.z-s.b.z)})).filter(o=>o.i!==a.seg&&o.d<this.net.config.roadWidth+3).sort((x,y)=>x.d-y.d);
+        const options=this.net.roads.map((r,i)=>({i,d:Math.hypot(r.a.x-s.b.x,r.a.z-s.b.z)}))
+          .filter(o=>o.i!==a.seg&&o.d<this.net.config.roadWidth+3)
+          .sort((x,y)=>x.d-y.d);
         if(options.length)a.seg=options[(a.seed+Math.floor(this.elapsed/12))%Math.min(2,options.length)].i;
         a.t=0;
       }
@@ -161,16 +200,35 @@ export class UrbanPopulation {
     }
     this.refreshTrafficBatches();
     for(const a of this.pedestrians){
-      if(a.state==='chatting'||a.dialoguePaused)continue;
+      const distance=Math.hypot(a.x-focus.x,a.z-focus.z);
+      const facing=isFacing(a.x,a.z);
+      const interacting=Boolean(a.dialoguePaused||distance<48);
+      // Conversation groups stay at their fixed sidewalk location.
+      if(refreshVisuals||a.renderAllowed===undefined){
+        a.renderAllowed=a.object.position.distanceToSquared(camera.position)<220*220 &&
+          !isObstructed(a.x,a.object.position.y-a.groundOffset,a.z,2);
+        a.object.visible=a.renderAllowed;
+        if(!a.renderAllowed)sim.occludedAgents++;
+      }
+      if(a.mixer&&a.renderAllowed&&distance<95&&facing)a.mixer.update(dt);
+      if(a.state==='chatting'||a.dialoguePaused){if(interacting)sim.activePedestrians++;continue;}
+      const detailDt=advanceSimulationClock(a,dt,distance,facing,interacting);
+      if(!detailDt){sim.sleepingPedestrians++;continue;}
+      sim.activePedestrians++;
       if(a.index>=a.path.length)this.nextDestination(a);
-      const t=a.path[a.index];if(!t)continue;
-      const dx=t.x-a.x,dz=t.z-a.z,d=Math.hypot(dx,dz);
+      const target=a.path[a.index];if(!target)continue;
+      const dx=target.x-a.x,dz=target.z-a.z,d=Math.hypot(dx,dz);
       if(d<.35){a.index++;continue;}
-      if(this.nearCrosswalk(a)&&this.cars.some(c=>Math.hypot(c.object.position.x-a.x,c.object.position.z-a.z)<7))continue;
-      if(this.pedestrians.some(b=>b!==a&&b.seed<a.seed&&Math.hypot(a.x-b.x,a.z-b.z)<.9))continue;
-      const step=Math.min(d,a.speed*dt);a.x+=dx/d*step;a.z+=dz/d*step;
+      if(distance<110){
+        if(this.nearCrosswalk(a)&&this.cars.some(c=>Math.hypot(c.object.position.x-a.x,c.object.position.z-a.z)<7))continue;
+        if(this.pedestrians.some(b=>b!==a&&b.seed<a.seed&&Math.hypot(a.x-b.x,a.z-b.z)<.9))continue;
+      }
+      const step=Math.min(d,a.speed*detailDt);
+      a.x+=dx/d*step;a.z+=dz/d*step;
       a.object.rotation.y=Math.atan2(dx,dz);this.placePed(a);
     }
+    this.simulationStats=sim;
+    this.stats.simulation=sim;
   }
 
   // Deterministic visual QA scene: positions come from the actual lane and
