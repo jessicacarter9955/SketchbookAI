@@ -45,6 +45,11 @@
         const data=new Map(),storage={getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v)};
         const game=new DdsGame(world,{storage,key:'dds-test'}), fighter=world.editorPlayer;
         await step(90);
+        const residents=game.population.actors.filter(npc=>!npc.dead);
+        ok(residents.every(npc=>{
+            const y=city.groundAt(npc.actor.position.x,npc.actor.position.z,npc.actor.position.y+4);
+            return Number.isFinite(y)&&Math.abs(npc.actor.position.y-npc.actor.rayCastLength-y)<0.45;
+        }),'DDS residents stand on the ground within 45 cm');
         fighter.handleKeyboardEvent(new KeyboardEvent('keydown',{code:'KeyC'}),'KeyC',true);await step(5);
         ok(fighter.crouching&&fighter.moveSpeed===2&&fighter.locomotionAction.getClip().name.startsWith('crouch_idle')&&fighter.locomotionAction.isRunning(),'C toggles exported crouch animation and slower movement');
         fighter.handleKeyboardEvent(new KeyboardEvent('keydown',{code:'KeyC'}),'KeyC',true);
