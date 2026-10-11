@@ -3,5 +3,5 @@
   "private": true,
   "version": "1.0.0",
   "description": "Isolated Three.js WebGPU comparison (does not change the legacy engine)",
-  "dependencies": {"three": "0.187.0"}
+  "dependencies": {"three": "0.186.1"}
 }
