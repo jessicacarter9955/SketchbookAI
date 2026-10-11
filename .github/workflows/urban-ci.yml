@@ -124,7 +124,10 @@ jobs:
         run: npm install --prefix tools/webgpu --no-audit --no-fund
       - name: Verify WebGPU experiment syntax
         if: env.RUN_CAPTURE == 'true'
-        run: node --check webgpu/city-benchmark.mjs
+        run: |
+          node --check webgpu/city-benchmark.mjs
+          node --check tools/capture-webgpu-comparison.mjs
+          python -m py_compile tools/package-urban-preview.py
       - name: Start editor
         if: env.RUN_CAPTURE == 'true'
         run: |
@@ -154,6 +157,9 @@ jobs:
           name: urban-asset-inspection
           path: artifacts/assets
           if-no-files-found: warn
+      - name: Verify WebGPU experiment and fallback
+        if: env.RUN_CAPTURE == 'true'
+        run: node tools/capture-webgpu-comparison.mjs
       - name: Capture all relevant urban screenshots
         if: env.RUN_CAPTURE == 'true'
         env:
