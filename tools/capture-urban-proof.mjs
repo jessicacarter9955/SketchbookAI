@@ -142,7 +142,7 @@ async function captureFreeRoam(){
   const consoleErrors=[];
   page.on('console',msg=>{if(msg.type()==='error')consoleErrors.push(msg.text());});
   page.on('pageerror',error=>consoleErrors.push('PAGE ERROR '+error.message));
-  await page.goto(`${base}/editor.html?scene=urban-photoreal&play=1`,{waitUntil:'domcontentloaded'});
+  await page.goto(`${base}/editor.html?scene=urban-photoreal&play=1&perf=1`,{waitUntil:'domcontentloaded'});
   try{await page.waitForFunction(()=>{
     const world=globalThis.world,state=world?.levelRuntime?.visualState;
     return state?.status==='ready'&&globalThis.sceneEditor?.active===false&&world?.vehicles?.length>=2;
@@ -413,6 +413,13 @@ async function captureFreeRoam(){
   await page.keyboard.press('Escape');
   if(await page.evaluate(()=>globalThis.world.urbanDialogue.active))throw new Error('Escape failed to close RPG dialogue');
 
+  // Real engine loop, real game view. Headless software WebGL FPS is a
+  // CI regression observation, NOT a desktop/phone FPS target.
+  const fpsEvidence=await page.evaluate(()=>globalThis.cityPerfMonitor?.snapshot());
+  if(!fpsEvidence?.metrics || !Number.isFinite(fpsEvidence.metrics.fps) || fpsEvidence.metrics.samples<5)
+    throw new Error('Missing live FPS measurements from production game loop: '+JSON.stringify(fpsEvidence?.metrics));
+  await fs.writeFile(`${out}/urban-fps-ci.json`,JSON.stringify(fpsEvidence,null,2));
+  console.log('Software WebGL FPS benchmark (not user's GPU):',fpsEvidence.metrics);
   await fs.writeFile(`${out}/urban-free-roam.json`,JSON.stringify({initial,driving,exited,consoleErrors},null,2));
   console.log('free roam proof',{initial,driving,exited});
   await page.close();
