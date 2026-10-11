@@ -54,7 +54,7 @@ jobs:
             if grep -Eq '^(src/editor/(UrbanRuntime|UrbanStreets|UrbanLighting|UrbanArchitecture|UrbanVegetation|UrbanProps|urban-data)|assets/|tools/(capture-urban-assets|fetch-urban-kits|prepare-urban-lods)|urban-examples.html|urban-assets.html|\.github/workflows/urban-ci\.yml)' <<< "$changed"; then
               mode=full; assets=true; package=true
             fi
-            if ! grep -Eq '^(src/|tests/|tools/|assets/|build/|editor.html|urban-|webpack|package(-lock)?\.json|\.github/workflows/urban-ci\.yml)' <<< "$changed"; then
+            if ! grep -Eq '^(src/|tests/|tools/|webgpu/|assets/|build/|editor.html|urban-|webpack|package(-lock)?\.json|\.github/workflows/urban-ci\.yml)' <<< "$changed"; then
               capture=false; tests=false
             fi
           fi
@@ -119,6 +119,12 @@ jobs:
           else
             npx playwright install chromium
           fi
+      - name: Install isolated Three.js WebGPU experiment
+        if: env.RUN_CAPTURE == 'true'
+        run: npm install --prefix tools/webgpu --no-audit --no-fund
+      - name: Verify WebGPU experiment syntax
+        if: env.RUN_CAPTURE == 'true'
+        run: node --check webgpu/city-benchmark.mjs
       - name: Start editor
         if: env.RUN_CAPTURE == 'true'
         run: |
