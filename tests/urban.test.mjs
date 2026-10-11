@@ -39,3 +39,18 @@ test('building massing is deterministic, typed and bounded',()=>{
   assert.ok(new Set(plan.buildings.map(b=>b.massing)).size>=4);
   assert.deepEqual(plan.buildings,generateUrbanPlan({...DEFAULT_URBAN,blocksX:10,blocksZ:10,seed:42}).buildings);
 });
+
+import {loadCatalog} from '../src/editor/scene-catalog.mjs';
+test('original Sketchbook and DDS photoreal links are independent but share the same city',()=>{
+  const storage={getItem:()=>null};
+  const scenes=loadCatalog(storage);
+  const original=scenes.find(s=>s.id==='urban-photoreal');
+  const dds=scenes.find(s=>s.id==='urban-photoreal-dds');
+  assert.ok(original&&dds);
+  assert.equal(original.world,'procedural-city');
+  assert.equal(dds.world,original.world);
+  assert.equal(original.playerProfile,'mannequin');
+  assert.equal(dds.playerProfile,'dds');
+  assert.notEqual(original.id,dds.id);
+  assert.equal(original.spawn,dds.spawn);
+});
