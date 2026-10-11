@@ -25,14 +25,14 @@ export async function createVegetation(items,seed=0){
   };
   // Streaming density is unchanged at the camera: the full LOD models are
   // still used, but off-screen trees are not cloned or uploaded to the GPU.
-  layer.userData.stream=camera=>{
+  layer.userData.stream=(camera,isVisible)=>{
     camera.getWorldDirection(forward);forward.y=0;forward.normalize();
     const desired=[];
     for(const [i,t] of items.entries()){
       const dx=t.x-camera.position.x,dz=t.z-camera.position.z;
       const distance=Math.hypot(dx,dz);
       const front=distance<.01||((dx*forward.x+dz*forward.z)/distance)>-.2;
-      if(distance<60 || (distance<210&&front))desired.push({i,t,distance});
+      if((distance<60 || (distance<210&&front)) && (distance<42||!isVisible||isVisible(t)))desired.push({i,t,distance});
     }
     desired.sort((a,b)=>a.distance-b.distance);
     const wanted=new Set(desired.map(x=>x.i));
