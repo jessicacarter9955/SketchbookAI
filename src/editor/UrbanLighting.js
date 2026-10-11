@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { SSAOPass } from 'three/examples/jsm/postprocessing/SSAOPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
@@ -19,16 +20,22 @@ export async function photographicLighting(world,preset='day') {
     scene.environment=environment.texture;scene.background=hdr;
     world.sky.setPhotographic(true);
     const sun=new THREE.DirectionalLight(0xfff1df,3.2);sun.castShadow=true;
-    sun.shadow.mapSize.set(4096,4096);Object.assign(sun.shadow.camera,{left:-45,right:45,top:45,bottom:-45,near:1,far:190});
+    sun.shadow.mapSize.set(new URLSearchParams(location.search).get('quality')==='ultra'?4096:2048,new URLSearchParams(location.search).get('quality')==='ultra'?4096:2048);Object.assign(sun.shadow.camera,{left:-45,right:45,top:45,bottom:-45,near:1,far:190});
     sun.shadow.camera.updateProjectionMatrix();sun.shadow.bias=-.00008;sun.shadow.normalBias=.025;
     const fill=new THREE.HemisphereLight(0xd1e2ee,0x655c47,.15);
     scene.add(sun,sun.target,fill);pmrem.dispose();
     const composer=new EffectComposer(renderer);
-    const ao=new SSAOPass(scene,world.camera,innerWidth,innerHeight);
-    ao.kernelRadius=.7;ao.minDistance=.002;ao.maxDistance=.018;
-    ao.beautyRenderTarget.samples=4;
-    composer.addPass(ao);
+    const ultra=new URLSearchParams(location.search).get('quality')==='ultra';
+    // The old always-on 4x MSAA SSAO produced several full-screen passes.
+    // Retain HDR, physically based lighting, shadows, and FXAA in performance mode.
+    if(ultra){
+      const ao=new SSAOPass(scene,world.camera,innerWidth,innerHeight);
+      ao.kernelRadius=.7;ao.minDistance=.002;ao.maxDistance=.018;
+      ao.beautyRenderTarget.samples=2;
+      composer.addPass(ao);
+    } else composer.addPass(new RenderPass(scene,world.camera));
     const fxaa=new ShaderPass(FXAAShader);composer.addPass(fxaa);composer.addPass(new ShaderPass(GammaCorrectionShader));
+    globalThis.cityDiagnostics?.activity('GPU: '+(ultra?'SSAO 2x + ombre 4K':'HDR PBR + FXAA + ombre 2K, SSAO multi-pass disattivato'));
     const resize=()=>{const ratio=renderer.getPixelRatio();composer.setSize(innerWidth,innerHeight);fxaa.uniforms.resolution.value.set(1/(innerWidth*ratio),1/(innerHeight*ratio));};
     resize();addEventListener('resize',resize);world.composer.dispose();world.composer=composer;
     world.urbanLighting={sun,hdr,environment,fill,sunOffset:new THREE.Vector3(-50,65,55),update(){
