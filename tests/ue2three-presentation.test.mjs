@@ -1,11 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import {safeMapPath, mapAssetURL, configureMapLights} from '../tools/ue2three/map-presentation.mjs';
+import {safeMapPath, mapAssetURL, configureMapLights, mapValidationSummary} from '../tools/ue2three/map-presentation.mjs';
 import {installMapOutputPass} from '../src/editor/ue2three-output.mjs';
 
 const path = 'build/local-scenes/ue2three/projects/example/maps/Level.glb';
 const hash = 'a'.repeat(64);
+
+test('visible source checks distinguish actor coverage from material and lighting fidelity', () => {
+  const rows = mapValidationSummary({transforms: {matched: 152, mismatched: 0, skipped: 1},
+    landscapes: [{repaired_vertices: 3072}], material_fallbacks: Array(8).fill({})});
+  assert.match(rows[0], /152 coerenti, 0 diverse, 1 non confrontabili/);
+  assert.match(rows[1], /3072 vertici/);
+  assert.match(rows[2], /8 ripieghi.*ancora da verificare/);
+  assert.match(rows[3], /approssimata/);
+  assert.match(mapValidationSummary(null)[0], /non disponibile/);
+  assert.match(mapValidationSummary({transforms: {matched: NaN, mismatched: -1, skipped: 0}})[0], /non disponibile/);
+});
 
 test('composer encodes final pixels once after FXAA without changing its existing passes', () => {
   const fxaa = {name: 'FXAA'};

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { mapAssetURL, applyMapPresentation } from './map-presentation.mjs';
+import { mapAssetURL, applyMapPresentation, mapValidationSummary } from './map-presentation.mjs';
 
 const params = new URLSearchParams(location.search);
 const model = params.get('model') || '';
@@ -62,6 +62,14 @@ async function openModel() {
     view.value=params.get('view');window.__ue2threeAudit.setView(view.value);
   }
   status.textContent = 'Scena caricata · trascina per ruotare, rotella per zoom. Illuminazione ambiente approssimata; fedeltà in verifica.';
+  const checks = document.querySelector('#scene-checks');
+  const list = checks.querySelector('ul');
+  for (const text of mapValidationSummary(gltf.userData?.ue2three_validation)) {
+    const row = document.createElement('li');
+    row.textContent = text;
+    list.append(row);
+  }
+  checks.hidden = false;
   window.__ue2threeAudit.ready = true;
 }
 

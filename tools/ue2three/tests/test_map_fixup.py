@@ -7,8 +7,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from core import atomic_json, digest, file_hash
-from map_fixup import _read_glb, fixup_map
+from core import atomic_json, digest, file_hash, read_json
+from map_fixup import _read_glb, fixup_map, _authored_transform, compare_actor_transforms
 from preview_server import Handler
 from visual_verification import verify_scene
 
@@ -40,6 +40,37 @@ def source():
 
 
 class MapFixupTests(unittest.TestCase):
+    def test_authored_transform_units_axes_and_rotator_conversion(self):
+        converted = _authored_transform({'RelativeLocation': {'X': 100, 'Y': 200, 'Z': 300},
+                                        'RelativeScale3D': {'X': 2, 'Y': 3, 'Z': 4},
+                                        'RelativeRotation': {'Pitch': 0, 'Yaw': 90, 'Roll': 0}})
+        self.assertEqual(converted['translation'], [1, 3, 2])
+        self.assertEqual(converted['scale'], [2, 4, 3])
+        self.assertAlmostEqual(converted['rotation'][1], -(0.5 ** 0.5))
+        self.assertAlmostEqual(converted['rotation'][3], 0.5 ** 0.5)
+        for field, axis in (('Pitch', 2), ('Roll', 0)):
+            rotation = dict(Pitch=0, Yaw=0, Roll=0); rotation[field] = 90
+            quaternion = _authored_transform({'RelativeRotation': rotation})['rotation']
+            self.assertAlmostEqual(quaternion[axis], 0.5 ** 0.5)
+
+    def test_transform_comparison_skips_inherited_values_and_parent_transforms(self):
+        actors = {'Good': {'transform': {'translation': [1, 2, 3]}},
+                  'Wrong': {'transform': {'scale': [2, 1, 1]}},
+                  'Child': {'transform': {'translation': [1, 2, 3]}}}
+        document = {'nodes': [{'name': 'Good', 'translation': [1, 2, 3], 'scale': [9, 9, 9]},
+                              {'name': 'Wrong'}, {'name': 'Child', 'translation': [1, 2, 3]},
+                              {'translation': [1, 0, 0], 'children': [2]}]}
+        report = compare_actor_transforms(document, actors)
+        self.assertEqual((report['matched'], report['mismatched'], report['skipped']), (1, 1, 1))
+
+    def test_transform_comparison_accepts_quaternion_sign_and_rejects_nonfinite_positions(self):
+        actors = {'Actor': {'transform': {'rotation': [0, 0, 0, 1], 'translation': [0, 0, 0]}}}
+        report = compare_actor_transforms({'nodes': [{'name': 'Actor', 'rotation': [0, 0, 0, -1]}]}, actors)
+        self.assertEqual(report['matched'], 1)
+        report = compare_actor_transforms({'nodes': [{'name': 'Actor', 'translation': [float('nan'), 0, 0]}]}, actors)
+        self.assertEqual(report['mismatched'], 1)
+        self.assertNotIn('rotation', _authored_transform({'RelativeRotation': {'Pitch': float('inf'), 'Yaw': 0, 'Roll': 0}}))
+
     def test_atomic_json_retries_windows_sharing_error(self):
         import os
         with tempfile.TemporaryDirectory() as temporary:
@@ -58,6 +89,31 @@ class MapFixupTests(unittest.TestCase):
                 atomic_json(path, {'new': True})
             self.assertEqual(len(calls), 2)
             self.assertEqual(json.loads(path.read_text()), {'new': True})
+
+    def test_json_read_retries_transient_windows_lock(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / 'state.json'; atomic_json(path, {'ready': True})
+            original = Path.open; calls = []
+            def open_file(target, *args, **kwargs):
+                calls.append(1)
+                if len(calls) == 1:
+                    error = PermissionError('destination being replaced'); error.winerror = 32
+                    raise error
+                return original(target, *args, **kwargs)
+            with patch('core.Path.open', side_effect=open_file, autospec=True), patch('core.time.sleep'):
+                self.assertEqual(read_json(path), {'ready': True})
+            self.assertEqual(len(calls), 2)
+
+    def test_json_read_does_not_hide_persistent_lock_or_bad_json(self):
+        error = PermissionError('locked'); error.winerror = 5
+        with patch('core.Path.open', side_effect=error) as opener, patch('core.time.sleep'):
+            with self.assertRaises(PermissionError):
+                read_json('state.json')
+            self.assertEqual(opener.call_count, 8)
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / 'state.json'; path.write_text('{invalid')
+            with self.assertRaises(ValueError):
+                read_json(path)
 
     def test_atomic_json_does_not_hide_persistent_failure(self):
         with tempfile.TemporaryDirectory() as temporary:

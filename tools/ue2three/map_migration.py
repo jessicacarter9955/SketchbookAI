@@ -2,7 +2,6 @@
 import json
 import os
 import re
-import shutil
 import struct
 import subprocess
 import time
@@ -11,6 +10,7 @@ from pathlib import Path
 from core import atomic_json, digest, file_hash, read_json
 from engine_runner import EngineError, prepare_project
 from pipeline import load_state
+from map_processing import export_implementation_hash, read_raw_export, store_raw_export, process_raw_export
 
 
 class MapMigrationError(RuntimeError):
@@ -61,6 +61,13 @@ def _cached_map_matches(record, prior, target):
     return (prior.get("status") in {"exported", "reused"} and
             prior.get("fingerprint") == record["fingerprint"] and valid_glb(target) and
             prior.get("output_sha256") == file_hash(target))
+
+
+def _merge_map_catalog(old, results):
+    catalog = {key: {**value, 'verified_in_run': False} for key, value in old.items()}
+    for result in results:
+        catalog[result['package']] = {**result, 'verified_in_run': True}
+    return sorted(catalog.values(), key=lambda item: item['package'])
 
 
 def _unreal_failure_detail(log_path, exit_code):
@@ -156,7 +163,17 @@ def _map_record(package, inventory, registry, source_files, engine, implementati
     for dependency in sorted(_dependency_packages(package, registry)):
         package_items.extend(_package_sources(dependency, inventory))
     package_items = {item["path"]: item for item in package_items}
-    files = [source_files[path] for path in sorted(package_items) if path in source_files]
+    paths = set(package_items)
+    stems = {str(Path(path).with_suffix('')) for path in paths}
+    # Split cooked/editor packages can carry their geometry and texture payload
+    # in sidecars. Project configuration and native/shader source affect export
+    # even when Asset Registry does not declare them as package dependencies.
+    for path in source_files:
+        suffix = Path(path).suffix.lower()
+        if (suffix in {'.uproject', '.uplugin', '.ini', '.h', '.hpp', '.cpp', '.c', '.cs', '.ush', '.usf'} or
+                suffix in {'.uexp', '.ubulk', '.uptnl'} and str(Path(path).with_suffix('')) in stems):
+            paths.add(path)
+    files = [source_files[path] for path in sorted(paths) if path in source_files]
     if not any(item.get("kind") == "map" for item in _package_sources(package, inventory)):
         raise MapMigrationError(f"No source map file exists for {package}")
     fingerprint = digest({"schema": 1, "package": package,
@@ -169,9 +186,11 @@ def _map_record(package, inventory, registry, source_files, engine, implementati
 
 
 def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, force=False,
-                 timeout=3600, popen=subprocess.Popen, map_package=None):
+                 timeout=3600, popen=subprocess.Popen, map_package=None, allow_engine=True):
     project = Path(project).resolve(strict=True)
     workspace, publish_dir = Path(workspace).resolve(strict=True), Path(publish_dir).resolve()
+    if project.parent == publish_dir or project.parent in publish_dir.parents:
+        raise MapMigrationError('Published maps must stay outside the source project')
     state = load_state(workspace)
     if Path(state["config"]["project"]).resolve() != project:
         raise MapMigrationError("Inspection workspace belongs to another Unreal project")
@@ -193,8 +212,6 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
         from adapters import detect_engine
         descriptor = read_json(project)
         engine = detect_engine(str(descriptor.get("EngineAssociation", "")), engine_override)
-    if engine.get("status") != "detected" or not engine.get("executable"):
-        raise EngineError("ENGINE_MISSING", "The matching Unreal Editor installation was not detected.")
 
     packages = _select_map_packages(inventory.get("maps", []), map_package)
     if not packages:
@@ -226,12 +243,7 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
     animation_packages.discard(None)
     map_exclusions = excluded_packages | animation_packages
     included_packages = set().union(*(_map_export_packages(package, registry) for package in packages))
-    implementation_hash = digest({
-        "exporter": file_hash(Path(__file__).with_name("unreal_world_export.py")),
-        "runner": file_hash(Path(__file__)),
-        "scratch": file_hash(Path(__file__).with_name("engine_runner.py")),
-        "fixup": file_hash(Path(__file__).with_name("map_fixup.py")),
-    })
+    implementation_hash = export_implementation_hash()
     source_files = {item["path"]: item for item in inventory.get("files", [])}
     records = [_map_record(package, inventory, registry, source_files, engine, implementation_hash,
                            state["snapshot_hash"], map_exclusions) for package in packages]
@@ -239,22 +251,46 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
     map_dir.mkdir(parents=True, exist_ok=True)
 
     results, pending = [], []
+    def checkpoint():
+        atomic_json(manifest_path, {'schema_version': 2, 'project': str(project),
+                    'engine_version': engine.get('version'), 'source_snapshot_hash': state['snapshot_hash'],
+                    'selected_packages': packages, 'maps': _merge_map_catalog(old, results),
+                    'excluded_incompatible_assets': sorted(excluded_packages)})
+
     for record in records:
         target = map_dir / record["filename"]
         prior = old.get(record["package"], {})
-        if not force and _cached_map_matches(record, prior, target):
+        raw = None if force else read_raw_export(workspace, record['fingerprint'], project, record['package'])
+        if raw:
+            processed = process_raw_export(raw, target, project, workspace)
+            results.append({**record, 'status': 'reused', 'output': str(target), **processed,
+                            'fingerprint': record['fingerprint'],
+                            'processing_fingerprint': processed['fingerprint'],
+                            'warnings': raw.get('warnings', []) + processed['validation'].get('warnings', []),
+                            'cache': {'raw_export': 'reused', 'postprocess': 'reused' if processed['reused'] else 'processed',
+                                      'unreal_started': False}})
+            logger.event('map-reuse', f"Riutilizzo export Unreal: {record['package']} · correzioni " +
+                         ('in cache' if processed['reused'] else 'aggiornate offline'), task='map_export',
+                         processing_seconds=processed['processing_seconds'])
+            checkpoint()
+        elif not force and not prior.get('processing_fingerprint') and _cached_map_matches(record, prior, target):
             geometry = glb_summary(target)
             if geometry["mesh_count"] == 0:
                 results.append({**record, "status": "failed", "error": "Unreal exported no renderable mesh geometry for this level",
                                 **geometry})
                 continue
-            results.append({**record, "status": "reused", "output": str(target), "bytes": target.stat().st_size,
+            results.append({**prior, **record, "status": "reused", "output": str(target), "bytes": target.stat().st_size,
                             "warnings": prior.get("warnings", []), "output_sha256": prior["output_sha256"], **geometry})
             logger.event("map-reuse", f"Reused unchanged map {record['package']}", task="map_export", output=str(target))
+            checkpoint()
         else:
             pending.append(record)
 
     if pending:
+        if not allow_engine:
+            raise MapMigrationError('An unchanged verified raw export is unavailable; offline mode will not launch Unreal')
+        if engine.get("status") != "detected" or not engine.get("executable"):
+            raise EngineError("ENGINE_MISSING", "The matching Unreal Editor installation was not detected.")
         engine_snapshot = {"project": str(project), "files": snapshot.get("files", []),
                            "omitted_links": snapshot.get("omitted_links", []), "engine": engine}
         exclusion_key = digest(sorted(map_exclusions))[:12] if map_exclusions else "clean"
@@ -355,16 +391,6 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
             if not valid_glb(staged):
                 results.append({**record, "status": "failed", "error": "The exported GLB header or byte length is invalid"})
                 continue
-            validation = {"status": "unavailable", "warnings": []}
-            try:
-                from map_fixup import source_scene, fixup_map
-                source = source_scene(project, record["package"], workspace)
-                validation = fixup_map(staged, source)
-                validation["status"] = "source_constraints_checked"
-                atomic_json(staged.with_suffix('.source.json'), source)
-            except (OSError, ValueError, KeyError, TypeError, RuntimeError) as error:
-                validation["warnings"].append(str(error))
-                logger.event("map-validation-warning", str(error), task="map_export")
             geometry = glb_summary(staged)
             if geometry["mesh_count"] == 0:
                 results.append({**record, "status": "failed", "error": "Unreal exported no renderable mesh geometry for this level",
@@ -380,14 +406,17 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
                 if not source or file_hash(source) != expected_hash:
                     raise EngineError("SOURCE_CHANGED_DURING_MAP_EXPORT", f"Source changed during map export: {relative}")
             target = map_dir / record["filename"]
-            temp = target.with_suffix(".glb.tmp")
-            shutil.copy2(staged, temp)
-            os.replace(temp, target)
-            atomic_json(target.with_suffix('.validation.json'), validation)
-            results.append({**record, "status": "exported", "output": str(target), "bytes": target.stat().st_size,
-                            "warnings": result.get("warnings", []) + validation.get("warnings", []),
-                            "validation": validation, "log": str(run_dir / "unreal.log"),
-                            "output_sha256": file_hash(target), **geometry})
+            raw = store_raw_export(staged, workspace, record['fingerprint'], project, record['package'],
+                                   warnings=result.get('warnings', []), source_hashes={
+                                       str(project.parent / row['path']): row['sha256'] for row in record['source_files']})
+            processed = process_raw_export(raw, target, project, workspace)
+            results.append({**record, **processed, 'fingerprint': record['fingerprint'],
+                            'processing_fingerprint': processed['fingerprint'],
+                            'status': 'exported', 'output': str(target),
+                            'warnings': raw.get('warnings', []) + processed['validation'].get('warnings', []),
+                            'log': str(run_dir / 'unreal.log'),
+                            'cache': {'raw_export': 'exported', 'postprocess': 'processed', 'unreal_started': True}})
+            checkpoint()
             logger.event("map-export-done", f"Exported Unreal level {record['package']}", task="map_export",
                          output=str(target), bytes=target.stat().st_size)
             logger.event("map-progress", f"{display_name}: {geometry['mesh_count']} mesh, {geometry['material_count']} materiali, "
@@ -395,14 +424,17 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
 
     results.sort(key=lambda item: item["package"])
     counts = {name: sum(item["status"] == name for item in results) for name in ("exported", "reused", "failed")}
+    catalog = _merge_map_catalog(old, results)
     game_assets = registry.get("assets", [])
     widgets = sum(item.get("class") == "WidgetBlueprintGeneratedClass" for item in game_assets)
     blueprints = sum(item.get("class") in {"BlueprintGeneratedClass", "AnimBlueprintGeneratedClass"}
                      for item in game_assets)
     public_results = [{key: value for key, value in item.items() if key not in {"source_files", "fingerprint"}}
-                      for item in results]
+                      for item in catalog]
     report = {"schema_version": 1, "project": str(project), "engine_version": engine.get("version"),
               "source_snapshot_hash": state["snapshot_hash"], "counts": counts, "maps": public_results,
+              "counts_scope": "selected_packages", "selected_packages": packages,
+              "retained_map_count": sum(not item['verified_in_run'] for item in catalog),
               "excluded_incompatible_assets": sorted(excluded_packages),
               "omitted_animation_package_count": len(animation_packages),
               "inventory": {"widget_blueprints": widgets, "gameplay_blueprints": blueprints,
@@ -414,10 +446,7 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
                   "Map GLBs are static scenes. Animation assets are omitted only from a separate hard-link export mirror so UE 5.7 can inspect map geometry; character clips are migrated separately.",
                   "Unsupported or unresolved map actors are recorded in Unreal export logs; source assets remain unchanged."
               ]}
-    manifest = {"schema_version": 1, "project": str(project), "engine_version": engine.get("version"),
-                "source_snapshot_hash": state["snapshot_hash"], "maps": results,
-                "excluded_incompatible_assets": sorted(excluded_packages)}
-    atomic_json(manifest_path, manifest)
+    checkpoint()
     report_path = publish_dir / "migration-report.json"
     atomic_json(report_path, report)
     if counts["exported"] + counts["reused"] == 0:

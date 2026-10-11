@@ -30,6 +30,76 @@ def _color(value):
     return None
 
 
+def _authored_transform(props):
+    result = {}
+    for field, channel, factor in (('RelativeLocation', 'translation', 0.01), ('RelativeScale3D', 'scale', 1)):
+        value = _unwrap(props.get(field))
+        if isinstance(value, dict) and all(key in value for key in ('X', 'Y', 'Z')):
+            numbers = [float(value[key]) * factor for key in ('X', 'Z', 'Y')]
+            if all(math.isfinite(v) for v in numbers):
+                result[channel] = numbers
+    value = _unwrap(props.get('RelativeRotation'))
+    if isinstance(value, dict) and all(key in value for key in ('Pitch', 'Yaw', 'Roll')):
+        pitch, yaw, roll = [math.radians(float(value[key])) / 2 for key in ('Pitch', 'Yaw', 'Roll')]
+        if not all(math.isfinite(v) for v in (pitch, yaw, roll)):
+            return result
+        sp, sy, sr, cp, cy, cr = math.sin(pitch), math.sin(yaw), math.sin(roll), math.cos(pitch), math.cos(yaw), math.cos(roll)
+        # UE FRotator quaternion, reflected from X/Y/Z into glTF X/Z/Y.
+        result['rotation'] = [sr*cp*cy-cr*sp*sy, sr*sp*cy-cr*cp*sy,
+                              cr*sp*cy+sr*cp*sy, cr*cp*cy+sr*sp*sy]
+    return result
+
+
+def compare_actor_transforms(document, actors):
+    names, parents = {}, {}
+    nodes = document.get('nodes', [])
+    for i, node in enumerate(nodes):
+        names.setdefault(node.get('name'), []).append(i)
+        for child in node.get('children', []):
+            parents.setdefault(child, []).append(i)
+    report = {'matched': 0, 'mismatched': 0, 'skipped': 0, 'actors': []}
+    defaults = {'translation': [0, 0, 0], 'scale': [1, 1, 1], 'rotation': [0, 0, 0, 1]}
+    for name, authored in actors.items():
+        candidates = names.get(name, [])
+        row = {'actor': name}
+        if len(candidates) != 1:
+            row.update(status='skipped', reason='missing or ambiguous exported actor')
+        else:
+            index = candidates[0]; pending = list(parents.get(index, [])); seen = set(); transformed_parent = False
+            while pending:
+                parent = pending.pop()
+                if parent in seen:
+                    transformed_parent = True; break
+                seen.add(parent); node = nodes[parent]
+                if ('matrix' in node or any(node.get(k, v) != v for k, v in defaults.items())):
+                    transformed_parent = True; break
+                pending.extend(parents.get(parent, []))
+            node = nodes[index]
+            if authored.get('attached') or transformed_parent or 'matrix' in node:
+                row.update(status='skipped', reason='attachment, parent transform or matrix requires world-space comparison')
+            else:
+                errors = {}
+                for channel, expected in authored.get('transform', {}).items():
+                    actual = node.get(channel, defaults[channel])
+                    if len(actual) != len(expected) or not all(math.isfinite(float(v)) for v in actual):
+                        errors[channel] = None; continue
+                    if channel == 'rotation':
+                        norm = math.sqrt(sum(v*v for v in actual))
+                        if norm < 1e-8: errors[channel] = None; continue
+                        actual = [v/norm for v in actual]
+                        errors[channel] = min(max(abs(a-b) for a,b in zip(actual, expected)),
+                                              max(abs(a+b) for a,b in zip(actual, expected)))
+                    else:
+                        errors[channel] = max(abs(a-b) for a,b in zip(actual, expected))
+                tolerance = {'translation': 0.0001, 'scale': 0.00001, 'rotation': 0.00001}
+                status = ('mismatched' if any(v is None or v > tolerance[k] for k,v in errors.items()) else 'matched')
+                row.update(status=status if errors else 'skipped', errors=errors,
+                           authored_channels=list(authored.get('transform', {})))
+        report[row['status']] += 1
+        report['actors'].append(row)
+    return report
+
+
 def _reference(package, reference):
     if not isinstance(reference, int) or reference == 0:
         return None
@@ -63,7 +133,7 @@ def source_scene(project, map_package, workspace):
     version = str(engine.get('version', '')).split('-')[0]
     cache = workspace / 'artifacts' / 'uasset-json'
     package, sha = _asset_document(map_package, source, tool, cache, version)
-    material_cache = {}
+    material_cache, material_graphs = {}, {}
     source_hashes = {str(source): sha}
 
     def parameters(pkg, export, ancestry=()):
@@ -88,6 +158,10 @@ def source_scene(project, map_package, workspace):
                     if root:
                         values.update(parameters(parent_pkg, root, ancestry + (name,)))
         if pkg.class_name(export) == 'Material':
+            editor = pkg.export(props.get('EditorOnlyData', 0))
+            material_graphs[export['ObjectName']] = {
+                'root_connections': 'unavailable_raw_export' if editor and isinstance(editor.get('Data'), str) else 'not_evaluated',
+                'expression_count': sum(pkg.class_name(e).startswith('MaterialExpression') for e in pkg.exports)}
             for expression in pkg.exports:
                 kind = pkg.class_name(expression)
                 if kind not in ('MaterialExpressionVectorParameter', 'MaterialExpressionScalarParameter'):
@@ -107,9 +181,17 @@ def source_scene(project, map_package, workspace):
                 values[info['Name']] = float(row.get('ParameterValue', 0))
         return values
 
-    landscapes, materials = {}, {}
+    landscapes, materials, actors = {}, {}, {}
     for export in package.exports:
         kind, props = package.class_name(export), package.props(export)
+        root = package.export(props.get('RootComponent', 0))
+        if root:
+            root_props = package.props(root)
+            transform = _authored_transform(root_props)
+            if transform:
+                label = props.get('ActorLabel', export['ObjectName'])
+                actors[label] = {'transform': transform, 'attached': bool(root_props.get('AttachParent')),
+                                 'source_object': export['ObjectName']}
         if kind == 'LandscapeComponent':
             bounds = _unwrap(props.get('CachedLocalBox'))
             if isinstance(bounds, dict) and bounds.get('IsValid'):
@@ -129,7 +211,7 @@ def source_scene(project, map_package, workspace):
                           'parent': _reference(package, props.get('Parent'))}
     return {'schema_version': 1, 'project': str(project), 'map': map_package,
             'source_sha256': sha, 'source_hashes': source_hashes, 'landscapes': landscapes,
-            'grid_materials': materials}
+            'grid_materials': materials, 'actor_transforms': actors, 'material_graphs': material_graphs}
 
 
 def _read_glb(path):
@@ -163,6 +245,10 @@ def fixup_map(path, source, restore_tints=True):
     path = Path(path)
     document, blob = _read_glb(path)
     report = {'landscapes': [], 'material_fallbacks': [], 'warnings': [], 'source_sha256': source['source_sha256']}
+    report['transforms'] = compare_actor_transforms(document, source.get('actor_transforms', {}))
+    report['material_graphs'] = source.get('material_graphs', {})
+    if report['transforms']['mismatched']:
+        report['warnings'].append('Authored actor transform mismatches detected; transforms were not changed automatically.')
     for mesh in document.get('meshes', []):
         bounds = source.get('landscapes', {}).get(mesh.get('name'))
         if not bounds:

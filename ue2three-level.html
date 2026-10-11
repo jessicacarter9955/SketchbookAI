@@ -11,6 +11,7 @@
     h1{font-size:17px;margin:0 0 4px}p{font-size:13px;color:#bacbd8;margin:0}#status{position:fixed;z-index:2;left:18px;bottom:16px;padding:10px 13px;border-radius:8px;background:#101923dd;color:#c5d4df;max-width:min(80vw,800px)}
     #status.error{color:#ffb5a8}a{color:#83d9ff}
     select{margin-top:8px;background:#182430;color:#ecf3f9;border:1px solid #63798e;border-radius:5px;padding:5px}
+    details{font-size:12px;max-width:350px;margin-top:10px;color:#bacbd8}summary{cursor:pointer;color:#ecf3f9}ul{padding-left:18px;margin-bottom:0}li{margin:6px 0}
   </style>
   <script type="importmap">
     {"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}
@@ -18,8 +19,8 @@
 </head>
 <body>
   <div id="view"></div>
-  <header><h1 id="title">Mappa Unreal migrata</h1><p>Anteprima della scena esportata da ue2three</p><select id="camera-view" aria-label="Vista della mappa" disabled><option value="overview">Panoramica</option><option value="ground">Vista a terra</option><option value="detail">Dettaglio materiali</option></select></header>
+  <header><h1 id="title">Mappa Unreal migrata</h1><p>Anteprima della scena esportata da ue2three</p><select id="camera-view" aria-label="Vista della mappa" disabled><option value="overview">Panoramica</option><option value="ground">Vista a terra</option><option value="detail">Dettaglio materiali</option></select><details id="scene-checks" hidden><summary>Controlli della scena</summary><ul></ul></details></header>
   <div id="status" role="status">Caricamento della scena…</div>
-  <script type="module" src="/tools/ue2three/ue2three-level-viewer.js?revision=shared-lighting-5"></script>
+  <script type="module" src="/tools/ue2three/ue2three-level-viewer.js?revision=source-checks-6"></script>
 </body>
 </html>

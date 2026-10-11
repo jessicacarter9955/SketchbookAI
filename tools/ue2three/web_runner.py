@@ -190,9 +190,16 @@ def main():
         if item.get('output_sha256'):
             scene_url += '&v=' + item['output_sha256']
         scenes.append((item["package"].rsplit("/", 1)[-1], scene_url))
+        audit_dir = project_output / 'verification' / Path(item['filename']).stem
+        if item.get('verified_in_run') is False:
+            # Keep older scenes selectable without starting new browser jobs
+            # for maps outside the selected batch.
+            if (audit_dir / 'index.html').is_file():
+                audit_url = 'http://127.0.0.1:8401/' + audit_dir.relative_to(repo).as_posix() + '/index.html'
+                scenes.append(('Verifica precedente · ' + Path(item['filename']).stem, audit_url))
+            continue
         phase('verify', 'Verifico la mappa nel browser e salvo gli screenshot...')
         from visual_verification import verify_scene
-        audit_dir = project_output / 'verification' / Path(item['filename']).stem
         audit = verify_scene(repo, scene_url, project_output / 'maps' / item['filename'], audit_dir)
         if audit.get('status') != 'captured':
             visual_issues += 1

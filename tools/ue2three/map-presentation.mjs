@@ -1,5 +1,23 @@
 import * as THREE from 'three';
 
+export function mapValidationSummary(validation) {
+  const count = value => Number.isSafeInteger(value) && value >= 0;
+  const rows = [];
+  const transforms = validation?.transforms;
+  if (transforms && ['matched', 'mismatched', 'skipped'].every(key => count(transforms[key]))) {
+    rows.push(`Trasformazioni esplicite: ${transforms.matched} coerenti, ${transforms.mismatched} diverse, ${transforms.skipped} non confrontabili.`);
+  } else rows.push('Confronto delle trasformazioni sorgenti non disponibile.');
+  if (Array.isArray(validation?.landscapes)) {
+    const repaired = validation.landscapes.reduce((sum, row) => sum + (count(row?.repaired_vertices) ? row.repaired_vertices : 0), 0);
+    if (repaired) rows.push(`Terreno: ${repaired} vertici corretti entro i limiti sorgenti.`);
+  }
+  if (Array.isArray(validation?.material_fallbacks)) {
+    rows.push(`Materiali: ${validation.material_fallbacks.length} ripieghi sui colori sorgenti; fedeltà degli shader ancora da verificare.`);
+  } else rows.push('Fedeltà dei materiali non verificata.');
+  rows.push('Illuminazione ambiente approssimata; confronto visivo ancora aperto.');
+  return rows;
+}
+
 export function safeMapPath(value) {
   const path = String(value || '').replace(/\\/g, '/');
   if (!path.startsWith('build/local-scenes/ue2three/projects/') || !path.includes('/maps/') ||

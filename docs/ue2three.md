@@ -17,6 +17,55 @@ AI, networking, or physics/collision into Three.js behavior. The migration repor
 lists exported, reused, and failed maps and identifies unsupported content.
 Processing completion remains separate from visual/gameplay fidelity.
 
+### Independent map export and offline correction caches
+
+New exports keep immutable raw GLBs under `maps/raw/<fingerprint>.glb` in the
+inspection workspace. Export fingerprints cover source dependencies (including
+package sidecars), project/configuration and native/shader source, engine version
+and export implementation. Editing offline corrections no longer forces
+another Unreal export. Processing starts from those raw bytes, checks their
+checksum and source dependencies, and caches the corrected GLB plus its source
+and validation sidecars independently. Corrupt outputs or missing diagnostics
+are reprocessed; corrupt raw exports and changed source dependencies are refused.
+Source project files are never used as output destinations.
+
+`migrate-maps --offline` permits only cache reuse and offline processing. It
+fails explicitly when a matching raw export is unavailable, without starting
+Unreal. Legacy export fingerprints are not silently treated as the new contract.
+The DDS verification below uses its earlier cached export with explicit legacy
+provenance, rather than asserting a new source export took place.
+
+Selective exports retain the other map catalog entries. Each completed map is
+checkpointed, and retained entries have `verified_in_run: false`: they remain
+selectable but are not presented as freshly verified or sent through another
+screenshot job. Report counts describe only the selected batch.
+
+The lightweight DDS replay checked 152 explicitly authored actor transforms,
+found zero mismatches and skipped one actor requiring a world-space comparison.
+These checks cover stored local translation/rotation/scale values, not inherited
+Blueprint defaults or every mesh in the level. The preview exposes the counts
+under **Controlli della scena**, alongside the 3,072 repaired terrain vertices,
+eight material fallbacks and approximate lighting.
+
+Two local measurements of offline processing showed reductions of roughly
+75–86% on the cached second pass (0.66→0.09 seconds when idle, 4.05→1.03 seconds
+while tests were running). These are observations of this phase on this laptop,
+not a total migration speed estimate. No Unreal or external parser process was
+allowed during this DDS replay.
+
+Material inspection identified 91 expression nodes in `M_Grid`, but its root
+connections remain an undecoded `MaterialEditorOnlyData` raw export. Parameter
+tints are therefore still fallbacks; shader composition and lighting fidelity
+remain open. Windows JSON reads now briefly retry transient sharing errors,
+matching the existing atomic-write retry. Persistent errors and invalid JSON
+still raise errors instead of becoming successful empty state.
+
+This batch passed 61 Python tests and 36 JavaScript tests. The published DDS
+GLB loaded in the integrated browser in overview, ground and material-detail
+views with no captured console errors. Local screenshots are stored under
+`build/local-scenes/ue2three/verification/offline-cache/`. This verifies loading
+and the visible checks panel; it does not establish complete shader fidelity.
+
 ### Visual map verification
 
 Map exports now run an offline source check using the cached UAssetAPI reader.

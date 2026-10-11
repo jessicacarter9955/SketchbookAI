@@ -32,8 +32,17 @@ def file_hash(path):
 
 
 def read_json(path):
-    with Path(path).open("r", encoding="utf-8-sig") as stream:
-        return json.load(stream)
+    # Destination replacement can briefly deny an open on Windows as well.
+    # Retry only sharing/access errors; malformed JSON and persistent failures
+    # must remain visible to callers rather than becoming empty state.
+    for attempt in range(8):
+        try:
+            with Path(path).open("r", encoding="utf-8-sig") as stream:
+                return json.load(stream)
+        except PermissionError as error:
+            if getattr(error, 'winerror', None) not in (5, 32) or attempt == 7:
+                raise
+            time.sleep(min(0.01 * 2 ** attempt, 0.1))
 
 
 def atomic_json(path, value):
