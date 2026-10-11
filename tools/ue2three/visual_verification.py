@@ -23,7 +23,9 @@ def verify_scene(repo, url, model, output):
     script = repo / 'tools' / 'ue2three' / 'visual-audit.mjs'
     viewer = script.with_name('ue2three-level-viewer.js')
     fingerprint = digest({'model': file_hash(model), 'audit': file_hash(script),
-                          'viewer': file_hash(viewer), 'url': url, 'viewport': [1120, 700]})
+                          'viewer': file_hash(viewer),
+                          'presentation': file_hash(script.with_name('map-presentation.mjs')),
+                          'url': url, 'viewport': [1120, 700]})
     output.mkdir(parents=True, exist_ok=True)
     cache_path = output / 'cache.json'
     try:

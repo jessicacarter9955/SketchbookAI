@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { mapAssetURL, applyMapPresentation } from './map-presentation.mjs';
 
 const params = new URLSearchParams(location.search);
 const model = params.get('model') || '';
@@ -26,18 +27,6 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 let importedScene = null;
 window.__ue2threeAudit = {ready:false, error:null};
-const ambient = new THREE.HemisphereLight(0xffffff, 0x8090a0, 1.5);
-scene.add(ambient);
-// glTF has no SkyLight reflection capture. A neutral, explicitly approximate
-// environment keeps reflective surfaces visible without changing source PBR values.
-const reflectionScene = new THREE.Scene();
-reflectionScene.background = new THREE.Color(0.25, 0.25, 0.25);
-const pmrem = new THREE.PMREMGenerator(renderer);
-const reflectionTarget = pmrem.fromScene(reflectionScene, 0);
-scene.environment = reflectionTarget.texture;
-pmrem.dispose();
-const key = new THREE.DirectionalLight(0xffedcf, 2.2);
-key.position.set(8, 15, 9);
 
 function fit(object) {
   const bounds = new THREE.Box3().setFromObject(object);
@@ -55,39 +44,16 @@ function fit(object) {
 }
 
 async function openModel() {
-  if (!model.startsWith('build/local-scenes/ue2three/projects/') || model.includes('..')) {
-    throw new Error('Percorso del modello non valido. Riapri la scena dal Migration Manager.');
-  }
   // Stable filenames can survive in the integrated browser's HTTP cache after
   // publication. Version the asset request itself, not only the HTML page URL.
-  let revision=params.get('v');
-  if(!revision) {
-    const manifestPath='/' + model.split('/maps/')[0] + '/map-manifest.json';
-    const response=await fetch(manifestPath,{cache:'no-store'});
-    if(response.ok) {
-      const manifest=await response.json();
-      revision=manifest.maps?.find(row=>row.filename===model.split('/').pop())?.output_sha256;
-    }
-  }
-  const assetUrl='/' + model + '?revision=' + encodeURIComponent(revision || Date.now());
+  const assetUrl=await mapAssetURL(model,{revision:params.get('v')});
   const gltf = await new GLTFLoader().loadAsync(assetUrl);
   importedScene = gltf.scene;
   scene.add(gltf.scene);
-  const bounds = new THREE.Box3().setFromObject(gltf.scene);
-  const radius = Math.max(10,bounds.getSize(new THREE.Vector3()).length()*0.5);
-  let sourceDirectional = false;
-  gltf.scene.traverse(node => {
-    if(node.isMesh) { node.castShadow=true; node.receiveShadow=true; }
-    if(node.isDirectionalLight) {
-      sourceDirectional=true; node.castShadow=true;
-      node.shadow.mapSize.set(2048,2048);
-      Object.assign(node.shadow.camera,{left:-radius,right:radius,top:radius,bottom:-radius,near:0.1,far:radius*6});
-      node.shadow.bias=-0.00005; node.shadow.normalBias=0.08;
-    }
-  });
   // glTF does not carry Unreal SkyLight capture/Lumen. Keep this modest ambient
   // fallback explicit; the authored punctual lights provide direct illumination.
-  if(!sourceDirectional) scene.add(key);
+  window.__ue2threeAudit.presentation=applyMapPresentation(renderer,scene,gltf.scene);
+  window.__ue2threeAudit.assetUrl=assetUrl;
   fit(gltf.scene);
   const view=document.querySelector('#camera-view');
   view.disabled=false;

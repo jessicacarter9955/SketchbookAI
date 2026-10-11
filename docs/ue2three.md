@@ -225,6 +225,33 @@ project-specific acceptance test, not a file-count percentage.
 
 ## Verification
 
+### Lightweight map presentation batch · 2026-10-11
+
+The level preview and playable imported level share `map-presentation.mjs`.
+Both use the exported map checksum to version GLB requests, source punctual
+lights, ACES exposure 1, sRGB output, and the same explicitly approximate neutral
+reflection/ambient environment. The playable level hides the playground sky and
+its lights. Shadows are limited to one source directional light at 2048 pixels;
+other source lights retain their color and intensity without shadow allocations.
+
+Native browser screenshots exposed an additional playable-rendering discrepancy:
+the FXAA composer returned linear pixels without final sRGB encoding, making the
+level much darker than the direct-rendered preview. A final gamma correction pass
+now encodes the output once. Direct rendering with FXAA disabled already encodes
+via the renderer. This batch reuses existing exports and does not launch Unreal.
+
+| Area | Status | Remaining acceptance work |
+| --- | --- | --- |
+| Map geometry | Partial | Full source transform/dimension comparison; the bounded flat-landscape spike repair is retained |
+| Materials/textures | Partial | Translate missing shaders beyond the eight parameter tint fallbacks |
+| Lighting | Partial | Source SkyLight, exposure, postprocessing and lighting fidelity; shared presentation is implemented |
+| Cache/output regression checks | Passed | Checksum URL, missing manifest fallback, shadow budget and single output encoding have automated coverage |
+
+Screenshot cache fingerprints include the shared presentation module, so a
+lighting change cannot reuse old visual evidence. Browser screenshots confirm
+appearance for the tested map; they do not prove complete Unreal fidelity or
+correctness of the character's materials, animations and weapon attachments.
+
 ```powershell
 python -m unittest discover -s tools/ue2three/tests -v
 ```

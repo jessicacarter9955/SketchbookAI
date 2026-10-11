@@ -2,21 +2,13 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { forEachCollisionChunk } from './ue2three-collision.mjs';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-
-const MAP_PREFIX = 'build/local-scenes/ue2three/projects/';
-
-function safeMapURL(value) {
-    const path = String(value || '').replace(/\\/g, '/');
-    if (!path.startsWith(MAP_PREFIX) || !path.includes('/maps/') || path.includes('..') || !path.toLowerCase().endsWith('.glb')) {
-        throw new Error('Percorso mappa Unreal non valido. Riapri il livello esportato dal Migration Manager.');
-    }
-    return path;
-}
+import { installMapOutputPass } from './ue2three-output.mjs';
+import { safeMapPath, mapAssetURL, applyMapPresentation } from '../../tools/ue2three/map-presentation.mjs';
 
 export class Ue2ThreeMapRuntime {
     constructor(world, mapPath) {
         this.world = world;
-        this.mapPath = safeMapURL(mapPath);
+        this.mapPath = safeMapPath(mapPath);
         this.ready = false;
         this.root = new THREE.Group();
         this.root.name = 'Livello Unreal migrato';
@@ -26,7 +18,9 @@ export class Ue2ThreeMapRuntime {
 
     async initialize(report) {
         report?.('Carico il livello Unreal esportato…');
-        const gltf = await new GLTFLoader().loadAsync('/' + this.mapPath);
+        const assetURL = await mapAssetURL(this.mapPath);
+        const gltf = await new GLTFLoader().loadAsync(assetURL);
+        this.assetURL = assetURL;
         // Keep KHR_lights_punctual lights from the source map. The UE exporter
         // has already flattened these to portable light nodes; removing them
         // discards authored map lighting and leaves the migrated PBR textures flat.
@@ -47,9 +41,18 @@ export class Ue2ThreeMapRuntime {
         }];
         this.world.camera.far = Math.max(1200, this.bounds.getSize(_size).length() * 2);
         this.world.camera.updateProjectionMatrix();
-        this.world.params.Shadows = false;
-        this.world.renderer.shadowMap.enabled = false;
-        this.world.sky.csm.lights.forEach(light => light.castShadow = false);
+        report?.('Preparo luci e materiali del livello…');
+        // The playground sky owns ambient and CSM lights outside its Object3D.
+        // Hide those lights as well as the sky sphere; keep the map's own lights.
+        const sourceLights = new Set();
+        this.root.traverse(node => { if (node.isLight) sourceLights.add(node); });
+        this.world.graphicsWorld.traverse(node => {
+            if (node.isLight && !sourceLights.has(node)) node.visible = false;
+        });
+        this.world.sky.visible = false;
+        this.presentation = applyMapPresentation(this.world.renderer, this.world.graphicsWorld, this.root);
+        this.outputPass = installMapOutputPass(this.world.composer);
+        this.world.params.Shadows = true;
         this.world.isOutOfBounds = p => p.y < this.bounds.min.y - 100 ||
             Math.abs(p.x - this.bounds.getCenter(_center).x) > Math.max(500, _size.x * 2) ||
             Math.abs(p.z - _center.z) > Math.max(500, _size.z * 2);

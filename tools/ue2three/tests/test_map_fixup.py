@@ -122,13 +122,15 @@ class MapFixupTests(unittest.TestCase):
     def test_visual_cache_reuses_only_complete_unchanged_evidence(self):
         with tempfile.TemporaryDirectory() as temporary:
             repo = Path(temporary); scripts = repo / 'tools/ue2three'; scripts.mkdir(parents=True)
-            for name in ('visual-audit.mjs', 'ue2three-level-viewer.js'):
+            for name in ('visual-audit.mjs', 'ue2three-level-viewer.js', 'map-presentation.mjs'):
                 (scripts / name).write_text(name)
             model = repo / 'map.glb'; model.write_bytes(b'model')
             output = repo / 'audit'; output.mkdir()
             url = 'http://127.0.0.1:8401/map'
             fingerprint = digest({'model': file_hash(model), 'audit': file_hash(scripts / 'visual-audit.mjs'),
-                                  'viewer': file_hash(scripts / 'ue2three-level-viewer.js'), 'url': url, 'viewport': [1120, 700]})
+                                  'viewer': file_hash(scripts / 'ue2three-level-viewer.js'),
+                                  'presentation': file_hash(scripts / 'map-presentation.mjs'),
+                                  'url': url, 'viewport': [1120, 700]})
             for name in ('overview.png', 'ground.png', 'detail.png', 'index.html'):
                 (output / name).write_bytes(b'evidence')
             atomic_json(output / 'report.json', {'status': 'captured', 'views': []})
@@ -137,6 +139,9 @@ class MapFixupTests(unittest.TestCase):
             with patch('visual_verification.subprocess.run') as launch:
                 self.assertTrue(verify_scene(repo, url, model, output)['reused'])
                 launch.assert_not_called()
+            (scripts / 'map-presentation.mjs').write_text('changed lighting')
+            with patch('visual_verification.shutil.which', return_value=None):
+                self.assertEqual(verify_scene(repo, url, model, output)['status'], 'unavailable')
             (output / 'overview.png').unlink()
             with patch('visual_verification.shutil.which', return_value=None):
                 self.assertEqual(verify_scene(repo, url, model, output)['status'], 'unavailable')
@@ -145,7 +150,7 @@ class MapFixupTests(unittest.TestCase):
     def test_failed_browser_startup_replaces_stale_gallery(self):
         with tempfile.TemporaryDirectory() as temporary:
             repo = Path(temporary); scripts = repo / 'tools/ue2three'; scripts.mkdir(parents=True)
-            for name in ('visual-audit.mjs', 'ue2three-level-viewer.js'):
+            for name in ('visual-audit.mjs', 'ue2three-level-viewer.js', 'map-presentation.mjs'):
                 (scripts / name).write_text(name)
             model = repo / 'map.glb'; model.write_bytes(b'model')
             output = repo / 'audit'; output.mkdir()
