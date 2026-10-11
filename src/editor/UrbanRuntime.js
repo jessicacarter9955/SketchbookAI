@@ -183,7 +183,7 @@ export class UrbanRuntime {
     const matDrain=new THREE.MeshStandardMaterial({color:0x23282a,roughness:.72,metalness:.48});
     const matAwning=new THREE.MeshStandardMaterial({color:0x3d5962,roughness:.55,metalness:.12});
     const box=(size,pos,mat,collision=false)=>{
-      const mesh=new THREE.Mesh(new THREE.BoxGeometry(...size),mat);mesh.position.set(...pos);mesh.receiveShadow=true;mesh.castShadow=true;group.add(mesh);
+      const mesh=new THREE.Mesh(new THREE.BoxGeometry(...size),mat);mesh.position.set(...pos);mesh.receiveShadow=true;mesh.castShadow=size[1]>1.3;group.add(mesh);
       if(collision){const body=new CANNON.Body({mass:0,shape:new CANNON.Box(new CANNON.Vec3(...size.map(v=>v/2))),position:new CANNON.Vec3(...pos)});bodies.push(body);}
       return mesh;
     };
