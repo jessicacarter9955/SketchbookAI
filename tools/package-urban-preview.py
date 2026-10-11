@@ -1,6 +1,7 @@
 """Package the freshly compiled runtime and local assets, never the stale Git bundle."""
 from pathlib import Path
 import shutil
+import subprocess
 root=Path(__file__).resolve().parents[1]
 out=root/'artifacts'/'urban-playable'
 out.mkdir(parents=True,exist_ok=True)
@@ -12,7 +13,10 @@ for name in ['src/editor','build/assets','assets/roadforge','assets/urban-kits',
 # game's 0.152 bundle. This exact distribution is served without an external CDN.
 modern=root/'tools/webgpu/node_modules/three'
 if not (modern/'build/three.webgpu.js').is_file():
-    raise RuntimeError('Pinned WebGPU runtime missing: npm install --prefix tools/webgpu')
+    print('Installing pinned Three.js 0.187.0 for WebGPU lab (separate from the game)...')
+    subprocess.run(['npm','install','--prefix',str(root/'tools/webgpu'),'--no-audit','--no-fund'],check=True,timeout=120)
+if not (modern/'build/three.webgpu.js').is_file():
+    raise RuntimeError('Pinned WebGPU runtime unavailable after installation')
 shutil.copytree(root/'webgpu',out/'webgpu',dirs_exist_ok=True)
 shutil.copytree(modern/'build',out/'webgpu/vendor/three/build',dirs_exist_ok=True)
 if (modern/'LICENSE').is_file():
