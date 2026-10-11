@@ -67,7 +67,11 @@ complete playable game or equivalent Unreal lighting. The local evidence is in
 Windows dashboard polling also exposed a transient `WinError 5` on state-file
 replacement; atomic JSON writes now retry sharing failures briefly while keeping
 the prior state intact. Persistent failures are still raised. The batch passed
-47 Python tests and 29 JavaScript tests.
+48 Python tests and 29 JavaScript tests.
+The integrated browser exposed an additional stale-model cache issue: changing
+the page URL did not invalidate the GLB request. Asset URLs now include the
+published content revision; links opened without a revision resolve it from the
+local map manifest. Source exports remain cached on disk.
 
 No upload, AI, account, API key, network call, or package installation is needed.
 Use Python 3.12+ and files already on disk. Unreal itself will be required for

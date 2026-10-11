@@ -187,6 +187,8 @@ def main():
         scene_url = "http://127.0.0.1:8401/ue2three-level.html?model=" + quote(
             "build/local-scenes/ue2three/projects/" + project_output.name + "/maps/" + item["filename"], safe="/")
         scene_url += "&title=" + quote(item["package"].rsplit("/", 1)[-1])
+        if item.get('output_sha256'):
+            scene_url += '&v=' + item['output_sha256']
         scenes.append((item["package"].rsplit("/", 1)[-1], scene_url))
         phase('verify', 'Verifico la mappa nel browser e salvo gli screenshot...')
         from visual_verification import verify_scene

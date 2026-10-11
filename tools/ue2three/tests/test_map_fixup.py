@@ -110,6 +110,15 @@ class MapFixupTests(unittest.TestCase):
         self.assertEqual(Handler.extensions_map['.js'], 'text/javascript')
         self.assertEqual(Handler.extensions_map['.mjs'], 'text/javascript')
 
+    def test_preview_revalidates_entrypoints_without_disabling_glb_cache(self):
+        import io
+        for path, expected in (('/viewer.js?revision=1', True), ('/scene.glb?revision=sha', False)):
+            handler = object.__new__(Handler)
+            handler.path, handler.request_version = path, 'HTTP/1.1'
+            handler._headers_buffer, handler.wfile = [], io.BytesIO()
+            handler.end_headers()
+            self.assertEqual(b'Cache-Control: no-cache' in handler.wfile.getvalue(), expected)
+
     def test_visual_cache_reuses_only_complete_unchanged_evidence(self):
         with tempfile.TemporaryDirectory() as temporary:
             repo = Path(temporary); scripts = repo / 'tools/ue2three'; scripts.mkdir(parents=True)

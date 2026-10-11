@@ -13,7 +13,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.physicallyCorrectLights = true;
+renderer.useLegacyLights = false;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.querySelector('#view').append(renderer.domElement);
@@ -58,7 +58,19 @@ async function openModel() {
   if (!model.startsWith('build/local-scenes/ue2three/projects/') || model.includes('..')) {
     throw new Error('Percorso del modello non valido. Riapri la scena dal Migration Manager.');
   }
-  const gltf = await new GLTFLoader().loadAsync('/' + model);
+  // Stable filenames can survive in the integrated browser's HTTP cache after
+  // publication. Version the asset request itself, not only the HTML page URL.
+  let revision=params.get('v');
+  if(!revision) {
+    const manifestPath='/' + model.split('/maps/')[0] + '/map-manifest.json';
+    const response=await fetch(manifestPath,{cache:'no-store'});
+    if(response.ok) {
+      const manifest=await response.json();
+      revision=manifest.maps?.find(row=>row.filename===model.split('/').pop())?.output_sha256;
+    }
+  }
+  const assetUrl='/' + model + '?revision=' + encodeURIComponent(revision || Date.now());
+  const gltf = await new GLTFLoader().loadAsync(assetUrl);
   importedScene = gltf.scene;
   scene.add(gltf.scene);
   const bounds = new THREE.Box3().setFromObject(gltf.scene);
@@ -77,7 +89,12 @@ async function openModel() {
   // fallback explicit; the authored punctual lights provide direct illumination.
   if(!sourceDirectional) scene.add(key);
   fit(gltf.scene);
-  if(params.get('view')==='ground') window.__ue2threeAudit.setView('ground');
+  const view=document.querySelector('#camera-view');
+  view.disabled=false;
+  view.onchange=()=>window.__ue2threeAudit.setView(view.value);
+  if(['overview','ground','detail'].includes(params.get('view'))) {
+    view.value=params.get('view');window.__ue2threeAudit.setView(view.value);
+  }
   status.textContent = 'Scena caricata · trascina per ruotare, rotella per zoom. Illuminazione ambiente approssimata; fedeltà in verifica.';
   window.__ue2threeAudit.ready = true;
 }

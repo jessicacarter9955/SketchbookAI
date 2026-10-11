@@ -10,6 +10,12 @@ class Handler(SimpleHTTPRequestHandler):
                       '.js': 'text/javascript', '.mjs': 'text/javascript',
                       '.glb': 'model/gltf-binary', '.json': 'application/json'}
 
+    def end_headers(self):
+        # Revalidate mutable entrypoints; GLBs use content revisions in their URLs.
+        if self.path.split('?', 1)[0].endswith(('.html', '.js', '.mjs', '.json')):
+            self.send_header('Cache-Control', 'no-cache')
+        super().end_headers()
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

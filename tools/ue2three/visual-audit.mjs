@@ -27,7 +27,7 @@ try {
     report.scene = await page.evaluate(() => window.__ue2threeAudit.stats());
     if(report.scene.invalid_vertices) report.errors.push('Scene contains non-finite vertices');
     for (const view of ['overview','ground','detail']) {
-        await page.evaluate(view => window.__ue2threeAudit.setView(view),view);
+        await page.locator('#camera-view').selectOption(view);
         await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
         const filename = view + '.png';
         await page.screenshot({path:path.join(output,filename)});
