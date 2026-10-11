@@ -1,0 +1,11 @@
+.editor-page #loading-screen{display:flex;box-sizing:border-box;padding:24px;overflow:auto;color:#e8eff4}
+.load-panel{width:min(680px,94vw);margin:auto;padding:24px;background:#172936;border:1px solid #425462;border-radius:14px;box-shadow:0 20px 60px #0005;font:14px system-ui,sans-serif}
+.load-panel h2{font-size:22px;margin:0 0 12px}.load-panel p{margin:9px 0}
+.load-track{height:14px;border-radius:999px;background:#344957;overflow:hidden;margin:16px 0 8px}
+#load-progress{height:100%;width:0;background:linear-gradient(90deg,#60b5e9,#adf0bc);transition:width .25s}
+#load-numbers{font-size:12px;color:#bdd0dc}#load-current{font-size:13px;overflow-wrap:anywhere;color:#ecdb9d;min-height:36px;margin:12px 0}
+.load-panel details{border-top:1px solid #41576a;padding-top:10px}
+#load-log{box-sizing:border-box;height:200px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:#0b1820;padding:12px;border-radius:7px;font:11px/1.6 ui-monospace,monospace}
+#load-log .load-error{color:#ff9999}#load-log .load-ok{color:#a6edb8}
+#load-retry{margin-top:14px;background:#adf0bc;color:#112a1b;font-weight:700}
+#load-retry[hidden]{display:none}
