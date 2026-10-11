@@ -153,6 +153,7 @@ export class UrbanRuntime {
   }
   initialize(config=DEFAULT_URBAN){this.generate(config);}
   clearGenerated(){
+    this.facadeStreamer=null;
     this.bodies.forEach(body=>this.world.physicsWorld.removeBody(body)); this.bodies=[];
     this.root.traverse(node=>{if(node.userData.sharedUrbanAsset)return;node.geometry?.dispose();for(const m of [].concat(node.material||[])){for(const v of Object.values(m||{}))if(v?.isTexture)v.dispose?.();m?.dispose?.();}});
     this.root.clear();
@@ -420,6 +421,7 @@ export class UrbanRuntime {
   async loadPhotorealVegetation(group,items,config){
     const layer=await createVegetation(items,config.seed);
     if(group.parent!==this.root)return null;
+    layer.userData.stream?.(this.world.camera);
     const soil=new THREE.MeshStandardMaterial({color:0x302e23,roughness:1});
     const iron=new THREE.MeshStandardMaterial({color:0x343c38,metalness:.7,roughness:.65});
     for(const t of items.filter(t=>t.kind==='street')){
@@ -432,7 +434,7 @@ export class UrbanRuntime {
     group.add(layer);
     const fallback=group.getObjectByName('Procedural vegetation fallback');if(fallback)fallback.removeFromParent();
     group.userData.photorealVegetation='tree_small_02 · Poly Haven CC0';
-    return {assetId:'tree_small_02',count:layer.children.length,lods:2};
+    return {assetId:'tree_small_02',count:items.length,lods:2};
   }
   applySky(preset){
     const settings={day:{elevation:47,azimuth:145,haze:2.2,fog:0xaec2cb,sun:0xffefd6,intensity:.72},sunset:{elevation:8,azimuth:245,haze:5,fog:0xb98d85,sun:0xffaa63,intensity:.45},haze:{elevation:30,azimuth:160,haze:14,fog:0x9ea9ad,sun:0xd0d4d5,intensity:.28}}[preset];
@@ -448,7 +450,7 @@ export class UrbanRuntime {
       frames++;
       if(now-last>=1800){
         this.fps=Math.round(frames*1000/(now-last));frames=0;last=now;
-        if(now-changed>5500&&new URLSearchParams(location.search).get('adaptive')!=='0'){
+        if(this.world.renderer&&now-changed>5500&&new URLSearchParams(location.search).get('adaptive')!=='0'){
           const current=this.world.renderer.getPixelRatio();
           const next=this.fps<38?Math.max(min,current-0.1):this.fps>56?Math.min(max,current+0.05):current;
           if(Math.abs(next-current)>0.01){this.world.renderer.setPixelRatio(next);changed=now;}
