@@ -301,10 +301,11 @@ export class UrbanRuntime {
       ['Lampioni e arredi',()=>this.loadStreetProps(group,plan,config)]
     ];
     const loads=stages.map(async ([label,task])=>{
+      globalThis.cityDiagnostics?.stage(label);
       // Convert each failure to a result; a missing facade must not block NPCs,
       // traffic or the user's ability to move and talk.
       try {
-        const value=await task();
+        const value=await Promise.race([task(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Timeout dettaglio HD: '+label)),50000))]);
         if(group.parent===this.root){
           this.visualProgress.completed++;
           this.visualProgress.label=label+' completato';
