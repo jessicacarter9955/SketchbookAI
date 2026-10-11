@@ -12,7 +12,7 @@ test('opaque building blocks targets behind it, but never ones in front or above
  assert.ok(segmentBoxEntry2D(eye,{x:0,y:2,z:-18},{...block,rotation:Math.PI/2})!==null);
 });
 test('all corners must be hidden before occluding a whole city sector',()=>{
- const cluster={x:0,z:-30,size:20,buildings:[{b:{height:10},index:1}]};
+ const cluster={x:0,z:-30,size:12,buildings:[{b:{height:10},index:1}]};
  assert.equal(isOccludedSector({x:0,y:2,z:80},cluster,[block,{...block,z:-30}]),true);
  assert.equal(isOccludedSector({x:0,y:30,z:80},cluster,[block,{...block,z:-30}]),false);
  assert.equal(isHiddenBehindBuildings(eye,[{x:0,y:2,z:-18},{x:25,y:2,z:-18}],[block]),false);
