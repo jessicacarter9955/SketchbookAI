@@ -38,8 +38,29 @@ try{
       throw new Error('Forced WebGL2 ignored: '+JSON.stringify(state));
     if(!['WebGPU','WebGL2 fallback'].includes(state.actual))
       throw new Error('Renderer backend not truthfully identified: '+JSON.stringify(state));
-    results.push({backend,...state,consoleErrors:errors});
-    console.log('GPU comparison backend check',JSON.stringify(results.at(-1)));
+    // Rendering is asynchronous with WebGPU; a valid backend alone is not
+    // proof that the canvas has actually displayed the city.
+    await page.waitForFunction(()=>(
+      (globalThis.__sketchbookWebGpuBench?.frames?.length||0)>=6 ||
+      (globalThis.__sketchbookWebGpuBench?.errors?.length||0)>0
+    ),null,{timeout:60000,polling:500});
+    const frames=await page.evaluate(()=>({
+      count:globalThis.__sketchbookWebGpuBench.frames.length,
+      fps:globalThis.__sketchbookWebGpuBench.fps,
+      p95:globalThis.__sketchbookWebGpuBench.p95,
+      actual:globalThis.__sketchbookWebGpuBench.actual
+    }));
+    // Wait for shader compilation to finish, then fail on any GPU
+    // validation error rather than reporting initialization as success.
+    await page.waitForTimeout(1800);
+    const fatal=errors.filter(x=>/createView|GPUTexture|WebGPU.*[Ee]rror|Validation Error|TypeError|uncaptured error|device lost|pipeline failed/i.test(x));
+    if(fatal.length)throw new Error('WebGPU canvas has GPU validation errors ('+backend+'): '+JSON.stringify(fatal.slice(0,5)));
+    if(!frames.count)throw new Error('No rendered animation frames: '+JSON.stringify({backend,frames}));
+    const png=await page.locator('canvas').first().screenshot({type:'png',timeout:30000});
+    if(png.length<5000)throw new Error('WebGPU canvas screenshot suspiciously empty: '+png.length+' bytes ('+backend+')');
+    await fs.writeFile(out+'/urban-'+backend+'-canvas.png',png);
+    results.push({backend,...state,frames,canvasPngBytes:png.length,consoleErrors:errors});
+    console.log('GPU comparison rendered scene',JSON.stringify(results.at(-1)));
     await page.close();
   }
   await fs.writeFile(out+'/urban-webgpu-backend-proof.json',JSON.stringify(results,null,2));
