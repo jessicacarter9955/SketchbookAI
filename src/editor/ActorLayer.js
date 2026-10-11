@@ -33,11 +33,13 @@ export class ActorLayer {
         this.playerProfile = profile;
         this.world.actorLayer = this;
     }
-    preview(type) { return clone(type === 'vehicle' ? this.car.scene : this.person.scene); }
+    preview(type) { return clone(type === 'vehicle' ? this.car.scene : (this.playerProfile==='dds'?this.playerModel.scene:this.person.scene)); }
+    ground(x,z,previous=0) {const h=this.world.levelRuntime?.groundAt(x,z,previous+4);return Number.isFinite(h)?h:previous;}
     resetPlayer() {
         const old = this.world.editorPlayer;
         if (old) { old.stopControllingVehicle(); old.leaveSeat(); old.removeFromParent(); this.world.remove(old); }
         const player = this.playerProfile === 'dds' ? new DdsCharacter(this.playerModel) : new Character(this.playerModel.scene);
+        this.spawn.y=this.ground(this.spawn.x,this.spawn.z,this.spawn.y-player.rayCastLength)+player.rayCastLength+0.08;
         player.setPosition(...this.spawn.toArray());
         player.userData.playerProfile = this.playerProfile;
         if(this.playerProfile==='dds') player.setOrientation(new THREE.Vector3(0,0,-1),true);
@@ -48,14 +50,14 @@ export class ActorLayer {
     start(items) {
         this.stop(false);
         const urban=Boolean(this.world.levelRuntime?.plan?.roads);
-        if(urban)this.urbanPopulation=new UrbanPopulation(this.world,this.person.scene,this.car.scene);
+        if(urban)this.urbanPopulation=new UrbanPopulation(this.world,this.playerProfile==='dds'?this.playerModel.scene:this.person.scene,this.car.scene);
         for (const item of items) {
             if(urban && item.prefab==='pedestrian')continue;
             if (!['vehicle', 'pedestrian'].includes(item.prefab)) continue;
             let actor;
             if (item.prefab === 'vehicle') {
                 actor = new Car({ ...this.car, scene: clone(this.car.scene) });
-                actor.setPosition(item.position[0], item.position[1] + 0.6, item.position[2]);
+                actor.setPosition(item.position[0], this.ground(item.position[0],item.position[2],item.position[1]) + 0.9, item.position[2]);
                 actor.collision.quaternion.setFromEuler(...item.rotation);
                 actor.collision.initQuaternion.copy(actor.collision.quaternion);
                 // Cannon does not implement box/trimesh contacts. Rounded bumpers supply
@@ -63,7 +65,7 @@ export class ActorLayer {
                 for (const x of [-0.55, 0.55]) for (const z of [-1.1, 0, 1.1]) actor.collision.addShape(new CANNON.Sphere(0.38), new CANNON.Vec3(x, 0.45, z));
             } else {
                 actor = new Character(this.person.scene);
-                actor.setPosition(item.position[0], item.position[1] + 0.65, item.position[2]);
+                actor.setPosition(item.position[0], this.ground(item.position[0],item.position[2],item.position[1])+actor.rayCastLength+0.08, item.position[2]);
                 const home = new THREE.Vector3(...item.position); let timer = 0, target = home.clone();
                 actor.setBehaviour({ character: actor, update: dt => {
                     timer -= dt; const delta = target.clone().sub(actor.position); delta.y = 0;
@@ -74,7 +76,7 @@ export class ActorLayer {
                         if (y !== undefined && Math.abs(y - home.y) > 1.5) target.copy(home);
                     }
                     actor.setViewVector(delta); actor.triggerAction('up', delta.length() > 1);
-                    if (actor.position.distanceTo(home) > 25) actor.setPosition(home.x, home.y + 1, home.z);
+                    if (actor.position.distanceTo(home) > 25) actor.setPosition(home.x, this.ground(home.x,home.z,home.y)+actor.rayCastLength+0.08, home.z);
                 } });
             }
             actor.userData.editorActor = true; actor.userData.home = [...item.position]; this.world.add(actor); this.actors.push(actor);
@@ -92,7 +94,7 @@ export class ActorLayer {
             const distance = Math.hypot(actor.position.x - position.x, actor.position.z - position.z);
             if (distance > 160 && !actor.userData.dormant) { this.world.remove(actor); actor.userData.dormant = true; }
             else if (distance < 100 && actor.userData.dormant) {
-                const home = actor.userData.home; actor.setPosition(home[0], home[1] + 0.65, home[2]);
+                const home = actor.userData.home; actor.setPosition(home[0], this.ground(home[0],home[2],home[1])+(actor.rayCastLength??0.9)+0.08, home[2]);
                 this.world.add(actor); actor.userData.dormant = false;
             }
         }
