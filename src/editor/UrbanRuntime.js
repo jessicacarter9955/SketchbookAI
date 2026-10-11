@@ -5,6 +5,7 @@ import { createStreetProps } from './UrbanProps.js';
 import { batchUrbanStaticBoxes } from './UrbanStaticBatch.js';
 import { buildUrbanStreets } from './UrbanStreets.js';
 import { createVegetation } from './UrbanVegetation.js';
+import { isHiddenBehindBuildings,isOccludedSector,isOccludedTree } from './urban-visibility.mjs';
 import { photographicLighting, loadSurface, metricUV, captureStreetReflections } from './UrbanLighting.js';
 import { prepareFacadeKit, buildModularBuilding, instanceArchitecture } from './UrbanArchitecture.js';
 import { DEFAULT_URBAN, validateUrban, generateUrbanPlan, urbanGroundHeight } from './urban-data.mjs';
@@ -149,12 +150,13 @@ export class UrbanRuntime {
     world.camera.far=1800; world.camera.updateProjectionMatrix(); world.renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
     world.renderer.toneMapping=THREE.ACESFilmicToneMapping; world.renderer.toneMappingExposure=1.08; world.renderer.outputColorSpace=THREE.SRGBColorSpace;
     world.respawnPosition=new CANNON.Vec3(0,3,0); world.isOutOfBounds=p=>p.y<-25||Math.abs(p.x)>2500||Math.abs(p.z)>2500;
-    this.facadeStreamer=null;this.lastDetailTick=0;this.lastFoliageTick=0;this.lastHudTick=0;this.fps=0;
+    this.facadeStreamer=null;this.lastDetailTick=0;this.lastFoliageTick=0;this.lastOcclusionTick=0;this.lastHudTick=0;this.fps=0;
+    this.fallbackBuildingNodes=new Map();this.occlusionStats={buildingsHidden:0,sectorsHidden:0};
     this.adaptiveQuality();
   }
   initialize(config=DEFAULT_URBAN){this.generate(config);}
   clearGenerated(){
-    this.facadeStreamer=null;
+    this.facadeStreamer=null;this.hdBuildingIndices=new Set();this.fallbackBuildingNodes.clear();
     this.bodies.forEach(body=>this.world.physicsWorld.removeBody(body)); this.bodies=[];
     this.root.traverse(node=>{if(node.userData.sharedUrbanAsset)return;node.geometry?.dispose();for(const m of [].concat(node.material||[])){for(const v of Object.values(m||{}))if(v?.isTexture)v.dispose?.();m?.dispose?.();}});
     this.root.clear();
@@ -259,6 +261,13 @@ export class UrbanRuntime {
       group.children.slice(first).forEach(node=>{node.userData.primitiveLamp=true;});
     }
     const treeItems=plan.trees.filter(t=>t.kind!=='median'||!(plan.roads.some(r=>r.axis==='x'&&Math.abs(t.z-r.z)<config.roadWidth/2+6)&&plan.roads.some(r=>r.axis==='z'&&Math.abs(t.x-r.x)<config.roadWidth/2+6))).map(t=>({...t,y:urbanGroundHeight(t.x,t.z,config)}));group.add(treeInstances(treeItems));
+    this.fallbackBuildingNodes.clear();
+    for(const node of group.children){
+      if(!node.userData.urbanBuildingVisual)continue;
+      const id=node.userData.urbanBuildingIndex;
+      if(!this.fallbackBuildingNodes.has(id))this.fallbackBuildingNodes.set(id,[]);
+      this.fallbackBuildingNodes.get(id).push(node);
+    }
     group.userData.materialSource='RoadForge UE5 CC0 asphalt/concrete';
     group.userData.staticBatches=batchUrbanStaticBoxes(group,new Set([matRoad,matSidewalk,matGrass]),config.blockSize);
 
@@ -377,7 +386,7 @@ export class UrbanRuntime {
     const size=config.blockSize, clusters=new Map(),minX=plan.bounds.minX,minZ=plan.bounds.minZ;
     plan.buildings.forEach((b,index)=>{
       const cx=Math.floor((b.x-minX)/size),cz=Math.floor((b.z-minZ)/size),key=cx+':'+cz;
-      if(!clusters.has(key))clusters.set(key,{key,x:minX+(cx+.5)*size,z:minZ+(cz+.5)*size,buildings:[],node:null});
+      if(!clusters.has(key))clusters.set(key,{key,x:minX+(cx+.5)*size,z:minZ+(cz+.5)*size,size,ground:urbanGroundHeight(b.x,b.z,config),buildings:[],node:null});
       clusters.get(key).buildings.push({b,index});
     });
     const placeholders=new Map();
@@ -407,11 +416,13 @@ export class UrbanRuntime {
       const dPlayer=Math.hypot(player.x-cluster.x,player.z-cluster.z);
       const bounds=new THREE.Box3(new THREE.Vector3(cluster.x-streamer.config.blockSize/2,-3,cluster.z-streamer.config.blockSize/2),
                                   new THREE.Vector3(cluster.x+streamer.config.blockSize/2,170,cluster.z+streamer.config.blockSize/2));
-      return dPlayer<55||(dCamera<225&&frustum.intersectsBox(bounds));
+      return dPlayer<55||(dCamera<225&&frustum.intersectsBox(bounds)&&!isOccludedSector(camera.position,cluster,this.plan.buildings));
     };
     const needed=streamer.clusters.filter(inRange).sort((a,b)=>Math.hypot(a.x-player.x,a.z-player.z)-Math.hypot(b.x-player.x,b.z-player.z));
     // Existing distant cells are not drawn, while cached buffers survive short camera turns.
-    for(const c of streamer.clusters)if(c.node)c.node.visible=inRange(c);
+    let occluded=0;
+    for(const c of streamer.clusters)if(c.node){const visible=inRange(c);c.node.visible=visible;if(!visible)occluded++;}
+    this.occlusionStats.sectorsHidden=occluded;
     const next=needed.find(c=>!c.node);
     if(!next)return;
     const assembly=new THREE.Group();
@@ -421,6 +432,8 @@ export class UrbanRuntime {
     }
     const batch=instanceArchitecture(assembly);batch.name='PBR city sector '+next.key;
     next.node=batch;streamer.group.add(batch);
+    if(!this.hdBuildingIndices)this.hdBuildingIndices=new Set();
+    for(const {index} of next.buildings)this.hdBuildingIndices.add(index);
     for(const {index} of next.buildings)for(const mesh of streamer.placeholders.get(index)||[])mesh.visible=false;
     streamer.assembled+=next.buildings.length;
     streamer.group.userData.assembledBuildings=streamer.assembled;
@@ -468,14 +481,34 @@ export class UrbanRuntime {
     };
     requestAnimationFrame(sample);
   }
+  updateBuildingOcclusion(){
+    if(!this.plan?.buildings?.length)return;
+    const camera=this.world.camera,from=camera.position,buildings=this.plan.buildings;
+    let hidden=0;
+    for(const [index,nodes] of this.fallbackBuildingNodes){
+      if(this.hdBuildingIndices?.has(index))continue;
+      const b=buildings[index],y=urbanGroundHeight(b.x,b.z,this.config);
+      const distance=Math.hypot(from.x-b.x,from.z-b.z);
+      const blocked=distance>65&&isHiddenBehindBuildings(from,[
+        {x:b.x,y:y+Math.min(b.height*.5,10),z:b.z},
+        {x:b.x,y:y+b.height,z:b.z},
+        {x:b.x-b.w*.5,y:y+b.height*.8,z:b.z-b.d*.5},
+        {x:b.x+b.w*.5,y:y+b.height*.8,z:b.z+b.d*.5}
+      ],buildings,new Set([index]));
+      for(const mesh of nodes)mesh.visible=!blocked;
+      if(blocked)hidden++;
+    }
+    this.occlusionStats.buildingsHidden=hidden;
+  }
   update(){
     this.world.urbanLighting?.update();
     this.streamPhotorealDetails();
     const now=performance.now();
+    if(now-this.lastOcclusionTick>320){this.lastOcclusionTick=now;this.updateBuildingOcclusion();}
     if(now-this.lastFoliageTick>160){
       this.lastFoliageTick=now;
       const vegetation=this.root.getObjectByName('CC0 photoreal vegetation');
-      vegetation?.userData.stream?.(this.world.camera);
+      vegetation?.userData.stream?.(this.world.camera,tree=>!isOccludedTree(this.world.camera.position,tree,this.plan.buildings));
       vegetation?.children.forEach(lod=>{if(lod.visible)lod.update(this.world.camera);});
     }
     const player=this.world.editorPlayer,p=player?.controlledObject?.position||player?.position;if(p)this.world.actorLayer?.update(p);
@@ -483,7 +516,7 @@ export class UrbanRuntime {
     if(now-this.lastHudTick>250){
       this.lastHudTick=now;
       const status=document.querySelector('[data-city-status]');
-      if(status)status.textContent=`Procedural City · ${this.fps||'…'} FPS · ${this.facadeStreamer?.assembled||0} facciate HD · ${this.plan?.trees.length||0} alberi · ${Math.round(player?.controlledObject?.collision.velocity.length()*3.6||0)} km/h`;
+      if(status)status.textContent=`Procedural City · ${this.fps||'…'} FPS · ${this.facadeStreamer?.assembled||0} facciate HD · ${this.occlusionStats.buildingsHidden} edifici coperti · ${this.occlusionStats.sectorsHidden} settori non disegnati · ${this.plan?.trees.length||0} alberi · ${Math.round(player?.controlledObject?.collision.velocity.length()*3.6||0)} km/h`;
     }
   }
 }
