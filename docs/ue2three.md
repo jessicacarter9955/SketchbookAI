@@ -274,6 +274,26 @@ project-specific acceptance test, not a file-count percentage.
 
 ## Verification
 
+### Cached material graphs and project checklist · 2026-10-12
+
+The generic offline reader recovers native material input connections omitted
+from cached package JSON. DDS M_Grid now has 66 direct connections preserved in
+the source sidecar; nested functions and shader execution remain unsupported.
+The manager and level preview link to a generated checklist of 18 project areas
+and scoped completed checkpoints. Lighting is the last priority.
+See the [complete checklist and verification scope](ue2three-progress.md).
+
+Generate it from existing metadata without opening Unreal or rescanning:
+
+```powershell
+python tools/ue2three/ue2three.py progress --workspace WORKSPACE --publish-dir PUBLISHED_PROJECT --character-dir PUBLISHED_CHARACTER
+```
+
+Missing/corrupt published files or changed report code invalidate the checklist
+cache. Source graph reading changes invalidate only offline map processing;
+existing raw exports remain reusable. A checklist green is a completed scoped
+checkpoint; full-game fidelity is a separate acceptance gate.
+
 ### Lightweight map presentation batch · 2026-10-11
 
 The level preview and playable imported level share `map-presentation.mjs`.

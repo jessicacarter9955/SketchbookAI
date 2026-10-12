@@ -70,6 +70,9 @@ async function openModel() {
     list.append(row);
   }
   checks.hidden = false;
+  const progress = document.querySelector('#project-progress');
+  progress.href = assetUrl.split('/maps/')[0] + '/progress.html';
+  progress.hidden = false;
   window.__ue2threeAudit.ready = true;
 }
 

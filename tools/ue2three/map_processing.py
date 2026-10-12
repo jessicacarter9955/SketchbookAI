@@ -63,6 +63,7 @@ def processing_implementation_hash(workspace):
     root = Path(__file__).parent
     reader = Path(workspace) / 'tool-cache' / 'UAssetGUI-1.1.0.exe'
     return digest({'processor': file_hash(Path(__file__)), 'fixup': file_hash(root / 'map_fixup.py'),
+                   'material_graph': file_hash(root / 'material_graph.py'),
                    'source_reader': file_hash(root / 'umg_migration.py'),
                    'parser': file_hash(reader) if reader.is_file() else None})
 

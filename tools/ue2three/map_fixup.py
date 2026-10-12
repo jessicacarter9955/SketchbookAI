@@ -136,7 +136,7 @@ def source_scene(project, map_package, workspace):
     material_cache, material_graphs = {}, {}
     source_hashes = {str(source): sha}
 
-    def parameters(pkg, export, ancestry=()):
+    def parameters(pkg, export, ancestry=(), source_file=None):
         props = pkg.props(export)
         parent = props.get('Parent')
         values = {}
@@ -144,7 +144,7 @@ def source_scene(project, map_package, workspace):
         if isinstance(parent, int) and parent > 0:
             parent_export = pkg.export(parent)
             if parent_export and parent_export is not export:
-                values.update(parameters(pkg, parent_export, ancestry))
+                values.update(parameters(pkg, parent_export, ancestry, source_file))
         elif parent_path and parent_path.startswith('/Game/'):
             name = parent_path.split('.', 1)[0]
             if name not in ancestry:
@@ -156,12 +156,26 @@ def source_scene(project, map_package, workspace):
                     source_hashes[str(parent_file)] = parent_sha
                     root = next((e for e in parent_pkg.exports if parent_pkg.class_name(e) in ('Material', 'MaterialInstanceConstant')), None)
                     if root:
-                        values.update(parameters(parent_pkg, root, ancestry + (name,)))
+                        values.update(parameters(parent_pkg, root, ancestry + (name,), parent_file))
         if pkg.class_name(export) == 'Material':
             editor = pkg.export(props.get('EditorOnlyData', 0))
-            material_graphs[export['ObjectName']] = {
-                'root_connections': 'unavailable_raw_export' if editor and isinstance(editor.get('Data'), str) else 'not_evaluated',
-                'expression_count': sum(pkg.class_name(e).startswith('MaterialExpression') for e in pkg.exports)}
+            if export['ObjectName'] not in material_graphs:
+                from material_graph import extract_material_graph
+                graph = {'root_connections': 'not_evaluated',
+                         'expression_count': sum(pkg.class_name(e).startswith('MaterialExpression') for e in pkg.exports)}
+                # The verified JSON name/export tables identify byte ranges.
+                # Recover native inputs dropped by older JSON serializers.
+                if editor and isinstance(editor.get('Data'), str):
+                    if source_file:
+                        material_file = Path(source_file)
+                        if project.parent in material_file.resolve().parents and material_file.is_file():
+                            try:
+                                shader = extract_material_graph(pkg, material_file.read_bytes())
+                                graph.update(root_connections=shader['status'], connection_count=shader['connection_count'],
+                                             graph=shader, shader_execution=shader['shader_execution'])
+                            except (ValueError, OSError, struct.error) as error:
+                                graph.update(root_connections='unsupported_serialization', error=str(error))
+                material_graphs[export['ObjectName']] = graph
             for expression in pkg.exports:
                 kind = pkg.class_name(expression)
                 if kind not in ('MaterialExpressionVectorParameter', 'MaterialExpressionScalarParameter'):
@@ -246,7 +260,9 @@ def fixup_map(path, source, restore_tints=True):
     document, blob = _read_glb(path)
     report = {'landscapes': [], 'material_fallbacks': [], 'warnings': [], 'source_sha256': source['source_sha256']}
     report['transforms'] = compare_actor_transforms(document, source.get('actor_transforms', {}))
-    report['material_graphs'] = source.get('material_graphs', {})
+    # Keep the full IR in the source sidecar; the GLB needs only audit counts.
+    report['material_graphs'] = {name: {key: value for key, value in graph.items() if key != 'graph'}
+                                 for name, graph in source.get('material_graphs', {}).items()}
     if report['transforms']['mismatched']:
         report['warnings'].append('Authored actor transform mismatches detected; transforms were not changed automatically.')
     for mesh in document.get('meshes', []):

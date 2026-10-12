@@ -16,6 +16,8 @@ test('visible source checks distinguish actor coverage from material and lightin
   assert.match(rows[3], /approssimata/);
   assert.match(mapValidationSummary(null)[0], /non disponibile/);
   assert.match(mapValidationSummary({transforms: {matched: NaN, mismatched: -1, skipped: 0}})[0], /non disponibile/);
+  assert.ok(mapValidationSummary({material_graphs: {Grid: {
+    root_connections: 'direct_connections_recovered', connection_count: 66}}}).some(row => /66 collegamenti diretti.*da tradurre/.test(row)));
 });
 
 test('composer encodes final pixels once after FXAA without changing its existing passes', () => {

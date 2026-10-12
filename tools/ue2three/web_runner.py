@@ -228,6 +228,13 @@ def main():
         character_preview_url = "http://127.0.0.1:8401/ue2three-character.html?base=build/local-scenes/ue2three/current/"
         scenes.insert(0, ("Personaggio DDS · animazioni e armi originali", character_preview_url))
         scenes.append(("Sketchbook - personaggio giocabile", character_url))
+    try:
+        from progress_report import project_progress
+        project_progress(workspace, project_output, repo / 'build/local-scenes/ue2three/current')
+        scenes.append(('Avanzamento progetto · checklist completa',
+                       'http://127.0.0.1:8401/' + project_output.relative_to(repo).as_posix() + '/progress.html'))
+    except (OSError, ValueError, KeyError) as error:
+        print('NOTICE: Checklist non disponibile: ' + str(error), flush=True)
     for name, scene_url in scenes:
         print("SCENE\t" + name + "\t" + scene_url, flush=True)
     visual_maps = [item for item in map_report.get("maps", [])

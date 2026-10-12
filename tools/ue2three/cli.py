@@ -57,6 +57,10 @@ def parser():
     controls.add_argument("--workspace", type=Path, required=True, help="Verified ue2three scan workspace")
     controls.add_argument("--publish-dir", type=Path, required=True, help="Local output directory, outside the source project")
     controls.add_argument("--force", action="store_true", help="Re-read source assets instead of reusing cached JSON")
+    progress = commands.add_parser('progress', help='Build a cached project checklist without scanning or starting Unreal')
+    progress.add_argument('--workspace', type=Path, required=True)
+    progress.add_argument('--publish-dir', type=Path, required=True)
+    progress.add_argument('--character-dir', type=Path)
     return result
 
 
@@ -65,6 +69,12 @@ def default_workspace(project):
 
 
 def execute(args):
+    if args.command == 'progress':
+        from progress_report import project_progress
+        report = project_progress(args.workspace, args.publish_dir, args.character_dir)
+        print(f"Project checklist: {args.publish_dir / 'progress.html'}")
+        print(f"Areas: {len(report['rows'])}; completed scoped checkpoints: {len(report['milestones'])}")
+        return 0
     project = getattr(args, "project", None)
     if project:
         project = project.resolve(strict=True)

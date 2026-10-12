@@ -14,6 +14,9 @@ export function mapValidationSummary(validation) {
   if (Array.isArray(validation?.material_fallbacks)) {
     rows.push(`Materiali: ${validation.material_fallbacks.length} ripieghi sui colori sorgenti; fedeltà degli shader ancora da verificare.`);
   } else rows.push('Fedeltà dei materiali non verificata.');
+  const graphs = Object.values(validation?.material_graphs || {}).filter(graph =>
+    graph?.root_connections === 'direct_connections_recovered' && count(graph.connection_count));
+  if (graphs.length) rows.push(`Shader sorgenti: ${graphs.reduce((sum, graph) => sum + graph.connection_count, 0)} collegamenti diretti recuperati; esecuzione ancora da tradurre.`);
   rows.push('Illuminazione ambiente approssimata; confronto visivo ancora aperto.');
   return rows;
 }
