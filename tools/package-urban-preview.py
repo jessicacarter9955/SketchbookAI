@@ -3,6 +3,9 @@ from pathlib import Path
 import shutil
 import subprocess
 root=Path(__file__).resolve().parents[1]
+# Ensure the same verified HD actor geometry in BOTH CI and Netlify deploys.
+# Download before copying build/assets into the static package.
+subprocess.run(['python',str(root/'tools'/'fetch-city-actors.py')],cwd=root,check=True,timeout=190)
 out=root/'artifacts'/'urban-playable'
 out.mkdir(parents=True,exist_ok=True)
 for name in ['editor.html','urban-examples.html','urban-assets.html','urban-webgpu.html','3dPicker.js','city-assets-sw.js','_headers']:
