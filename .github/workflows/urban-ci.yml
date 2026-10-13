@@ -46,15 +46,15 @@ jobs:
             mode=full; assets=true; package=true
           else
             changed=$(git diff --name-only "$BEFORE_SHA" HEAD)
-            if grep -Eq '^(src/editor/(UrbanDialogue\.js|humanoid-rig\.mjs|WorldWeather\.js|world-commands\.mjs|start\.js)|tools/capture-dialogue-proof\.mjs|\.github/workflows/urban-ci\.yml)' <<< "$changed"; then
+            if grep -Eq '^(src/editor/(UrbanDialogue\.js|humanoid-rig\.mjs|WorldWeather\.js|world-commands\.mjs|start\.js)|tools/capture-dialogue-proof\.mjs|\.github/workflows/(urban-ci|netlify-deploy)\.yml)' <<< "$changed"; then
               capture_script=tools/capture-dialogue-proof.mjs
             fi
             echo "Changed files:"
             printf '%s\n' "$changed"
-            if grep -Eq '^(src/editor/(UrbanRuntime|UrbanStreets|UrbanLighting|UrbanArchitecture|UrbanVegetation|UrbanProps|urban-data)|assets/|tools/(capture-urban-assets|fetch-urban-kits|prepare-urban-lods)|urban-examples.html|urban-assets.html|\.github/workflows/urban-ci\.yml)' <<< "$changed"; then
+            if grep -Eq '^(src/editor/(UrbanRuntime|UrbanStreets|UrbanLighting|UrbanArchitecture|UrbanVegetation|UrbanProps|urban-data)|assets/|tools/(capture-urban-assets|fetch-urban-kits|prepare-urban-lods)|urban-examples.html|urban-assets.html|\.github/workflows/(urban-ci|netlify-deploy)\.yml)' <<< "$changed"; then
               mode=full; assets=true; package=true
             fi
-            if ! grep -Eq '^(src/|tests/|tools/|webgpu/|assets/|build/|editor.html|urban-|webpack|package(-lock)?\.json|\.github/workflows/urban-ci\.yml)' <<< "$changed"; then
+            if ! grep -Eq '^(src/|tests/|tools/|webgpu/|assets/|build/|editor.html|urban-|webpack|package(-lock)?\.json|\.github/workflows/(urban-ci|netlify-deploy)\.yml)' <<< "$changed"; then
               capture=false; tests=false
             fi
           fi
