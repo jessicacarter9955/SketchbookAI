@@ -99,8 +99,8 @@ async function captureRuntime(){
       trees:world.levelRuntime.plan?.trees?.length||0
     };
   });
-  // Streaming should only instantiate nearby/visible assets; don't require
-  // every far-away tree or facade to be uploaded to GPU during startup.
+  // HD startup now builds all facade sectors before releasing controls.
+  // Runtime streaming still controls visibility and prevents unnecessary draws.
   const streaming=await page.evaluate(()=>{
     const runtime=globalThis.world.levelRuntime,streamer=runtime.facadeStreamer;
     for(let i=0;i<Math.min(6,streamer?.clusters.length||0);i++)runtime.streamPhotorealDetails(true);
@@ -158,6 +158,8 @@ async function captureFreeRoam(){
   }
   const initial=await page.evaluate(()=>{
     const world=globalThis.world,player=world.editorPlayer,skyline=world.levelRuntime.root.getObjectByName('Distant skyline');
+    const runtime=world.levelRuntime;
+    let fallbackVisible=0;runtime.root.traverse(node=>{if(node.userData?.urbanBuildingVisual&&node.visible)fallbackVisible++;});
     const nearest=world.vehicles.slice().sort((a,b)=>a.position.distanceTo(player.position)-b.position.distanceTo(player.position))[0];
     return {
       vehicles:world.vehicles.length,
@@ -167,12 +169,16 @@ async function captureFreeRoam(){
       nearestVehiclePosition:nearest?.position.toArray()||null,
       playing:globalThis.sceneEditor.active===false,
       prompt:document.querySelector('[data-vehicle-prompt]')?.textContent||'',
-      skyline:skyline?.userData||null
+      skyline:skyline?.userData||null,
+      hdReady:runtime.visualState.status==='ready',
+      hdSectorsBuilt:runtime.facadeStreamer?.clusters?.filter(c=>c.node).length||0,
+      hdSectorsTotal:runtime.facadeStreamer?.clusters?.length||0,
+      fallbackVisible
     };
   });
   console.log('free roam initial',initial);
   await fs.writeFile(`${out}/urban-free-roam-initial.json`,JSON.stringify(initial,null,2));
-  if(!initial.playing||initial.vehicles<2||!initial.skyline?.distantSkyline||initial.skyline.buildingCount<100)
+  if(!initial.playing||initial.vehicles<2||!initial.hdReady||initial.hdSectorsBuilt!==initial.hdSectorsTotal||initial.fallbackVisible!==0||initial.skyline!==null)
     throw new Error(`Free-roam setup incomplete: ${JSON.stringify(initial)}`);
 
   const vehicleState=()=>page.evaluate(()=>({
