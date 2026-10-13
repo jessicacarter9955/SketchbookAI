@@ -21,7 +21,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
         with:
@@ -95,6 +95,7 @@ jobs:
         if: env.RUN_CAPTURE == 'true'
         run: |
           node --check tools/capture-urban-proof.mjs
+          node --check tools/capture-urban-hd-smoke.mjs
           node --check src/editor/city-perf.js
           node --check src/editor/city-telemetry.js
       - name: Unit tests
@@ -157,6 +158,9 @@ jobs:
           name: urban-asset-inspection
           path: artifacts/assets
           if-no-files-found: warn
+      - name: Guard original photorealism in actual playable renderer
+        if: env.RUN_CAPTURE == 'true'
+        run: node tools/capture-urban-hd-smoke.mjs
       - name: Verify WebGPU experiment and fallback
         if: env.RUN_CAPTURE == 'true'
         run: node tools/capture-webgpu-comparison.mjs
