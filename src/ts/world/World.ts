@@ -327,6 +327,12 @@ export class World
 		this.stats.end();
 		this.stats.begin();
 
+		// Never spend GPU time presenting placeholders behind the opaque
+		// HD loading overlay. Shader precompilation still uses this renderer.
+		if (this.levelRuntime?.loadingHeavy) {
+			this.renderDelta = this.clock.getDelta();
+			return;
+		}
 		// Actual rendering with a FXAA ON/OFF switch
 		const renderStarted = fpsMonitor ? performance.now() : 0;
 		if (this.useDirectUrbanRender || !this.params.FXAA) this.renderer.render(this.graphicsWorld, this.camera);
