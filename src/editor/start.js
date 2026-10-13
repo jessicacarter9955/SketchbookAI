@@ -9,6 +9,12 @@ globalThis.THREE = THREE; // shared by procedural weather and the 3D game
 const loading = document.getElementById('loading-screen');
 const query = new URLSearchParams(location.search);
 const minimalMobile=query.get('mobile')==='1';
+// Warm and retain actual photoreal GLTF meshes, textures and binaries locally.
+// IndexedDB separately preserves the expensive instanced facade assembly.
+if('serviceWorker' in navigator && location.protocol!=='file:'){
+  navigator.serviceWorker.register('city-assets-sw.js',{scope:'./'}).catch(error=>
+    console.warn('[CITY ASSET CACHE] Service worker not available',error));
+}
 if(minimalMobile)document.body.classList.add('mobile-city-boot');
 const catalog = loadCatalog(localStorage);
 const current = catalog.find(s => s.id === query.get('scene')) || catalog[0];
