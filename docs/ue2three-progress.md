@@ -32,7 +32,7 @@ are not a percentage of completed gameplay.
 | Animation clips | 🟡 | 45 unique clip files published; assumed functioning to continue at the user's request. Unreal fidelity, curves, notifies, root motion and transitions are deferred |
 | Animation systems | 🔴 | Translate nine AnimBlueprints, 105 montages, 10 blendspaces, pose databases, chooser and Control Rig behavior |
 | Weapons and armed movement | 🟡 | Two accessories published; compare grip, aim, recoil, reload, hit detection and original damage rules |
-| Blueprint and native behavior | 🟡 | 23 straight-line functions translated (six empty in source); 477 blocked functions in read packages and 263 packages not cached. Calls, jumps, timers and native dependencies remain |
+| Blueprint and native behavior | 🟡 | 30 functions translated (six empty in source); 470 blocked functions in read packages and 263 packages not cached. Local/native calls, dynamic jumps and timers remain |
 | Menu, HUD and UI | 🟡 | One hierarchy published among 57 source widgets; migrate styles, assets, bindings and events |
 | Inventory, loot and saves | 🔴 | Translate original item, container, equipment and persistence rules |
 | NPC, shop, dialogue and missions | 🔴 | Translate actual source interactions, AI, prices, conditions and progression |
@@ -123,3 +123,31 @@ Fixed failures in this batch:
 The next converter step is validated control-flow offsets and conditional
 branches, followed by local Blueprint calls and explicit native adapters.
 Use [the saved handoff](ue2three-handoff.md) to resume without new scans/exports.
+
+## Conditional control-flow batch · 2026-10-13
+
+Static jumps and conditional branches now use verified Kismet memory offsets.
+Every computed function size must equal `ScriptBytecodeSize`; every destination
+must be an instruction boundary. Unknown layouts are rejected. The interpreter
+preserves false-branch semantics, primitive local defaults and explicit inputs,
+and stops runaway loops with an instruction budget.
+
+Seven additional functions now translate, bringing the total to 30 (24 with
+source behavior, six empty callbacks). They include `GetHolsterSocketForSlot`,
+`GetCurrency`, weapon/utility/injector slot selection, `IsValidSlotForCategory`
+and `CanSprint`. 470 functions remain blocked in parsed packages. Native calls,
+latent events, physics and multiplayer are not implemented by this batch.
+
+The browser passed 90 generic scenarios and 32 explicit DDS comparisons covering
+health, stamina thresholds, the sprint conditions, three currencies and slot
+selection. DDS fixtures are separate from the generic audit and bound to each
+original function's bytecode hash, so another project's rules are not mistaken
+for DDS rules. Screenshots and structured results are saved under
+`build/local-scenes/ue2three/verification/blueprint-control-flow/`.
+
+The preview service was also repaired: Python's default HTTP logger crashes
+under `pythonw` when stderr is absent. Logging now checks for the stream; a
+regression test confirms complete HTTP responses without a terminal.
+
+Batch verification: 78 Python tests and 47 JavaScript tests passed. Animation
+fidelity was not re-tested; it remains explicitly deferred and yellow.

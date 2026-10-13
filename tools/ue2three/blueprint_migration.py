@@ -95,20 +95,77 @@ def expression(value, reads, outputs, depth=0, package=None):
     raise BlueprintTranslationError(f'Unsupported opcode: {token}')
 
 
+def memory_size(value, depth=0):
+    """Kismet VM offsets (64-bit pointers), not serialized package byte sizes.
+
+    Layouts follow UAssetAPI expression Visit implementations. Unknown layouts
+    are rejected so no jump is ever guessed from on-disk offsets.
+    """
+    if not isinstance(value, dict) or depth > 48:
+        raise BlueprintTranslationError('Invalid bytecode size expression')
+    token = kind(value)
+    if token in ('EX_Tracepoint', 'EX_WireTracepoint', 'EX_Nothing', 'EX_EndOfScript',
+                 'EX_True', 'EX_False', 'EX_IntZero', 'EX_IntOne'): return 1
+    if token in ('EX_InstanceVariable', 'EX_LocalVariable', 'EX_LocalOutVariable'): return 9
+    if token in ('EX_ByteConst', 'EX_IntConstByte'): return 2
+    if token in ('EX_IntConst', 'EX_FloatConst'): return 5
+    if token == 'EX_DoubleConst': return 9
+    if token == 'EX_NameConst': return 13
+    if token in ('EX_StringConst', 'EX_UnicodeStringConst'):
+        text = value.get('Value')
+        if not isinstance(text, str) or '\0' in text: raise BlueprintTranslationError('Invalid string layout')
+        if token == 'EX_StringConst':
+            if any(ord(c) > 127 for c in text): raise BlueprintTranslationError('Unsupported non-ASCII narrow string layout')
+            return 2 + len(text)
+        return 3 + len(text.encode('utf-16-le'))
+    if token in ('EX_Let', 'EX_LetBool', 'EX_LetObj'):
+        left = value.get('Variable' if token == 'EX_Let' else 'VariableExpression')
+        right = value.get('Expression' if token == 'EX_Let' else 'AssignmentExpression')
+        return (9 if token == 'EX_Let' else 1) + memory_size(left, depth+1) + memory_size(right, depth+1)
+    if token == 'EX_Return': return 1 + memory_size(value.get('ReturnExpression'), depth+1)
+    if token == 'EX_Jump': return 5
+    if token == 'EX_JumpIfNot': return 5 + memory_size(value.get('BooleanExpression'), depth+1)
+    if token == 'EX_CallMath':
+        args = value.get('Parameters')
+        if not isinstance(args, list): raise BlueprintTranslationError('Invalid math layout')
+        return 10 + sum(memory_size(arg, depth+1) for arg in args)
+    raise BlueprintTranslationError(f'Unsupported bytecode memory layout: {token}')
+
+
 def translate_function(export, package=None):
     bytecode = export.get('ScriptBytecode')
     if not isinstance(bytecode, list) or not bytecode or len(bytecode) > 100000:
         raise BlueprintTranslationError('Parsed source bytecode is required')
     reads, outputs, writes, steps = set(), set(), set(), []
+    branching = any(kind(instruction) in ('EX_Jump', 'EX_JumpIfNot') for instruction in bytecode)
+    offsets, boundaries, offset = {}, {}, 0
+    if branching:
+        for index, instruction in enumerate(bytecode):
+            offsets[index] = offset; boundaries[offset] = index
+            offset += memory_size(instruction)
+        if not isinstance(export.get('ScriptBytecodeSize'), int) or export['ScriptBytecodeSize'] != offset:
+            raise BlueprintTranslationError('Computed Kismet memory size differs from ScriptBytecodeSize')
     returned = ended = False
     for index, instruction in enumerate(bytecode):
         token = kind(instruction)
-        if token in ('EX_Tracepoint', 'EX_WireTracepoint', 'EX_Nothing'): continue
         if ended: raise BlueprintTranslationError('Bytecode after EndOfScript')
+        if token in ('EX_Tracepoint', 'EX_WireTracepoint', 'EX_Nothing'):
+            if branching: steps.append({'op': 'nop', 'source_index': index})
+            continue
         if token == 'EX_EndOfScript':
             ended = True
+            if branching: steps.append({'op': 'end', 'source_index': index})
             continue
-        if returned: raise BlueprintTranslationError('Instructions after return require control-flow translation')
+        if returned and not branching: raise BlueprintTranslationError('Instructions after return require control-flow translation')
+        if token in ('EX_Jump', 'EX_JumpIfNot'):
+            target = instruction.get('CodeOffset')
+            if not isinstance(target, int) or isinstance(target, bool) or target not in boundaries:
+                raise BlueprintTranslationError('Jump target is not a Kismet instruction boundary')
+            entry = {'op': 'jump' if token == 'EX_Jump' else 'branch', 'target': boundaries[target],
+                     'target_offset': target, 'source_index': index}
+            if token == 'EX_JumpIfNot': entry['value'] = expression(instruction.get('BooleanExpression'), reads, outputs, package=package)
+            steps.append(entry)
+            continue
         if token in ('EX_Let', 'EX_LetBool', 'EX_LetObj'):
             variable = instruction.get('Variable' if token == 'EX_Let' else 'VariableExpression')
             if not isinstance(variable, dict) or kind(variable) not in ('EX_LocalVariable', 'EX_LocalOutVariable', 'EX_InstanceVariable'):
@@ -125,7 +182,10 @@ def translate_function(export, package=None):
         else:
             raise BlueprintTranslationError(f'Unsupported opcode: {token}')
     if not returned or not ended: raise BlueprintTranslationError('Complete return and EndOfScript are required')
-    return {'schema_version': 1, 'name': export['ObjectName'], 'status': 'translated_straight_line',
+    if branching:
+        for step in steps: step['source_offset'] = offsets[step['source_index']]
+    return {'schema_version': 1, 'name': export['ObjectName'], 'status': 'translated_control_flow' if branching else 'translated_straight_line',
+            'memory_size_verified': offset if branching else None,
             'source_bytecode_sha256': digest(bytecode), 'self_reads': sorted(reads),
             'self_writes': sorted(writes),
             'output_fields': sorted(outputs), 'steps': steps}
@@ -154,7 +214,7 @@ def translate_package(package):
                     if isinstance(value, dict):
                         if value.get('scope') == 'local': used_locals.add(value['field'])
                         for arg in value.get('args', []): local_reads(arg)
-                local_reads(step['value'])
+                if 'value' in step: local_reads(step['value'])
             program['field_types'] = {
                 'self': {name: property_type(class_properties[name]) for name in program['self_reads'] if name in class_properties},
                 'local': {prop['Name']: property_type(prop) for prop in export.get('LoadedProperties', []) if prop.get('Name') in used_locals}}
@@ -232,8 +292,8 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
         counts.update(packages[name]['counts'])
     report = {'schema_version': 1, 'project': str(project), 'fingerprint': fingerprint,
               'packages': packages, 'counts': dict(counts), 'missing_cached_packages': missing,
-              'limitations': ['Straight-line locals, instance state, property reads, comparisons, Boolean math, constants and returns execute.',
-                             'Other calls, jumps, latent actions, native modules, replication and animation graphs are blocked.',
+              'limitations': ['Locals, instance state, comparisons, Boolean math and validated static conditional jumps execute.',
+                             'Other calls, dynamic jumps, latent actions, native modules, replication and animation graphs are blocked.',
                              'Translated functions are not connected to the complete game runtime yet.']}
     report['content_sha256'] = digest(report)
     atomic_json(report_file, report)

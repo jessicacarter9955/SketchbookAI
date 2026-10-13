@@ -3,11 +3,23 @@ const owns = (object, key) => object != null && Object.hasOwn(object, key);
 const safeField = key => typeof key === 'string' && key.length > 0 && !['__proto__', 'constructor', 'prototype'].includes(key);
 
 export function executeBlueprint(program, self = {}, inputs = {}) {
-    if (program?.schema_version !== 1 || program.status !== 'translated_straight_line'
+    if (program?.schema_version !== 1 || !['translated_straight_line', 'translated_control_flow'].includes(program.status)
         || !Array.isArray(program.steps) || program.steps.length > 10000
         || !Array.isArray(program.output_fields) || program.output_fields.some(name => !safeField(name)))
         throw new Error('Unsupported Blueprint program');
     const locals = Object.assign(Object.create(null), structuredClone(inputs));
+    for (const field of program.input_fields || []) {
+        if (!safeField(field) || !owns(locals, field)) throw new Error(`Missing Blueprint input: ${field}`);
+    }
+    // Unreal initializes primitive local/out property storage before executing
+    // a UFunction. Struct constructors need their source type/defaults and are
+    // deliberately not invented here.
+    const primitiveDefaults = {BoolProperty: false, ByteProperty: 0, IntProperty: 0,
+        FloatProperty: 0, DoubleProperty: 0, StrProperty: '', NameProperty: 'None'};
+    for (const [field, type] of Object.entries(program.field_types?.local || {})) {
+        if (!safeField(field)) throw new Error('Invalid local field');
+        if (!owns(locals, field) && owns(primitiveDefaults, type)) locals[field] = primitiveDefaults[type];
+    }
     const instance = structuredClone(self);
     const trace = [];
     const checkType = (scope, field, value) => {
@@ -62,7 +74,25 @@ export function executeBlueprint(program, self = {}, inputs = {}) {
         }
         throw new Error(`Unsupported Blueprint expression: ${expression.op}`);
     };
-    for (const step of program.steps) {
+    let pc = 0, budget = 10000;
+    while (pc < program.steps.length) {
+        if (--budget < 0) throw new Error('Blueprint instruction budget exceeded');
+        const step = program.steps[pc++];
+        if (step.op === 'nop') continue;
+        if (step.op === 'jump' || step.op === 'branch') {
+            if (!Number.isInteger(step.target) || step.target < 0 || step.target >= program.steps.length)
+                throw new Error('Invalid Blueprint jump target');
+            let take = true;
+            if (step.op === 'branch') {
+                const condition = evaluate(step.value);
+                if (typeof condition !== 'boolean') throw new Error('Blueprint branch requires Boolean');
+                take = !condition;
+            }
+            trace.push({source_index: step.source_index, op: step.op, taken: take, target: step.target});
+            if (take) pc = step.target;
+            continue;
+        }
+        if (step.op === 'end') throw new Error('Blueprint reached EndOfScript without return');
         if (step.op === 'set' && safeField(step.field)) {
             const scope = step.scope || 'local';
             if (!['self', 'local'].includes(scope)) throw new Error('Invalid assignment scope');

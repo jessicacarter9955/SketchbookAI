@@ -115,7 +115,7 @@ def project_progress(workspace, published, character_dir=None):
     translated = blueprint_report.get('counts', {}).get('translated', 0)
     blocked = blueprint_report.get('counts', {}).get('blocked', 0)
     no_ops = blueprint_report.get('counts', {}).get('no_op_functions', 0)
-    row('blueprints', 'Blueprint e moduli nativi', f"{classes['BlueprintGeneratedClass']} classi Blueprint; {translated} funzioni lineari tradotte ({no_ops} vuote nel sorgente), {blocked} bloccate nei pacchetti letti",
+    row('blueprints', 'Blueprint e moduli nativi', f"{classes['BlueprintGeneratedClass']} classi Blueprint; {translated} funzioni tradotte ({no_ops} vuote nel sorgente), {blocked} bloccate nei pacchetti letti",
         'Tradurre chiamate, salti, eventi, timer e moduli nativi; collegare le funzioni al runtime originale', bool(translated))
     ui = documents.get('ui', {})
     ui_layout = bool(ui.get('tree') and ui.get('project') == project)

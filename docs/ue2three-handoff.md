@@ -28,8 +28,8 @@ assets. Tool code, built editor and this checkpoint are saved in Git.
 
 ## Exact current scope
 
-23 translated straight-line functions: 17 with source behavior and six empty
-callbacks. 477 functions are blocked in parsed packages; 60 delegate signatures
+30 translated functions: 24 with source behavior and six empty
+callbacks. 470 functions are blocked in parsed packages; 60 delegate signatures
 are declarations; 263 Blueprint/widget/animation packages are not parsed yet.
 Original whole-game fidelity is not established. Most gameplay logic, Motion
 Matching/Mover, latent actions, RPC/replication and native simulation remain open.
@@ -43,14 +43,20 @@ Shared socket transform: `src/editor/ue2three-attachment.mjs`.
 
 1. Check Git status/branch and remote divergence before changing files.
 2. Read `blueprint-programs.json` blocked reasons and corresponding cached JSON.
-3. Implement control-flow offsets using original Kismet **memory offsets**, not
-   on-disk export offsets. Validate computed size against `ScriptBytecodeSize`
-   and every jump against instruction boundaries; reject unsupported opcodes.
+3. Static control flow is now implemented with validated Kismet **memory offsets**.
+   Extend only known layouts. `ScriptBytecodeSize` and instruction-boundary
+   checks must continue rejecting unknown layouts or malformed destinations.
 4. Add local-call/out-parameter support and native adapters incrementally, with
    exact source ownership and explicit unsupported dependencies.
 5. Connect complete translated paths to runtime only when their required state
    and native dependencies exist; getters alone do not make a game system green.
 6. Regenerate reports, check in the integrated browser, save screenshots, push.
+
+Last browser result: 30 functions / 90 generic scenarios + 32 DDS comparisons
+passed. Cases live in `tests/fixtures/dds-blueprints.json`; their bytecode hashes
+must match the parsed source. Open the Blueprint audit with
+`&fixtures=dds-blueprints.json` for these DDS-specific comparisons. Animation
+checks remain deferred. Native preview server supports `pythonw` without stderr.
 
 ## Reuse commands (for the coding agent; no user terminal work needed)
 

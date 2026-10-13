@@ -62,3 +62,24 @@ test('original comparison and Boolean math do not coerce their arguments', () =>
     assert.throws(() => evaluate('Greater_DoubleDouble', ['1', 0]), /Invalid native math/);
     assert.throws(() => evaluate('Divide_DoubleDouble', [1, 0]), /Unsupported native math/);
 });
+test('conditional jumps take the original false branch and keep output defaults', () => {
+    const conditional = {schema_version: 1, status: 'translated_control_flow', output_fields: ['Result'],
+        input_fields: ['Condition'], field_types: {local: {Condition: 'BoolProperty', Result: 'NameProperty'}},
+        steps: [
+            {op: 'branch', value: {op: 'get', scope: 'local', field: 'Condition'}, target: 2},
+            {op: 'set', field: 'Result', value: {op: 'constant', value: 'Holster_Back_R'}},
+            {op: 'return', value: {op: 'get', scope: 'local', field: 'Result'}}
+        ]};
+    assert.equal(executeBlueprint(conditional, {}, {Condition: true}).value, 'Holster_Back_R');
+    assert.equal(executeBlueprint(conditional, {}, {Condition: false}).value, 'None');
+    assert.throws(() => executeBlueprint(conditional), /Missing Blueprint input/);
+    assert.throws(() => executeBlueprint(conditional, {}, {Condition: 1}), /BoolProperty/);
+});
+test('invalid jump destinations and loops stop without mutating caller state', () => {
+    const flow = {schema_version: 1, status: 'translated_control_flow', output_fields: [], steps: [{op: 'jump', target: 0}]};
+    assert.throws(() => executeBlueprint(flow), /budget exceeded/);
+    flow.steps[0].target = 1;
+    assert.throws(() => executeBlueprint(flow), /Invalid Blueprint jump target/);
+    flow.steps = [{op: 'end'}];
+    assert.throws(() => executeBlueprint(flow), /without return/);
+});

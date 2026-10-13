@@ -2,7 +2,7 @@ import unittest
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from blueprint_migration import BlueprintTranslationError, translate_function, translate_package, property_type
+from blueprint_migration import BlueprintTranslationError, translate_function, translate_package, property_type, memory_size
 from umg_migration import Package
 
 
@@ -26,7 +26,7 @@ class BlueprintMigrationTests(unittest.TestCase):
         self.assertEqual(result['steps'][0]['source_index'], 1)
 
     def test_unsupported_calls_and_jumps_block_entire_function(self):
-        for token in ('EX_CallMath', 'EX_Jump', 'EX_Context', 'EX_FinalFunction'):
+        for token in ('EX_CallMath', 'EX_Context', 'EX_FinalFunction'):
             function = self.function(); function['ScriptBytecode'].insert(1, node(token))
             with self.assertRaisesRegex(BlueprintTranslationError, token): translate_function(function)
 
@@ -64,3 +64,24 @@ class BlueprintMigrationTests(unittest.TestCase):
         self.assertEqual(property_type({'SerializedType': 'EnumProperty', 'UnderlyingProp': {'SerializedType': 'ByteProperty'}}), 'ByteProperty')
         with self.assertRaises(BlueprintTranslationError): property_type({'SerializedType': 'EnumProperty'})
         with self.assertRaises(BlueprintTranslationError): property_type({'SerializedType': 'ObjectProperty'})
+
+    def test_control_flow_targets_use_exact_vm_memory_boundaries(self):
+        bytecode = [node('EX_JumpIfNot', CodeOffset=23, BooleanExpression=variable('EX_LocalVariable', 'Condition')),
+                    node('EX_Return', ReturnExpression=variable('EX_LocalVariable', 'Value')),
+                    node('EX_Return', ReturnExpression=node('EX_IntZero')), node('EX_EndOfScript')]
+        # Branch: 5 + 9; first return: 1 + 9. Target 24, not 23.
+        bytecode[0]['CodeOffset'] = 24
+        size = sum(memory_size(instruction) for instruction in bytecode)
+        function = {'ObjectName': 'Conditional', 'ScriptBytecode': bytecode, 'ScriptBytecodeSize': size}
+        result = translate_function(function)
+        self.assertEqual(result['steps'][0]['target'], 2)
+        self.assertEqual(result['memory_size_verified'], 27)
+        bytecode[0]['CodeOffset'] = 23
+        with self.assertRaisesRegex(BlueprintTranslationError, 'boundary'): translate_function(function)
+        bytecode[0]['CodeOffset'] = 24; function['ScriptBytecodeSize'] = size - 1
+        with self.assertRaisesRegex(BlueprintTranslationError, 'memory size'): translate_function(function)
+
+    def test_unsupported_memory_layout_is_never_guessed(self):
+        with self.assertRaises(BlueprintTranslationError): memory_size(node('EX_Context'))
+        self.assertEqual(memory_size(node('EX_NameConst', Value='Socket')), 13)
+        self.assertEqual(memory_size(node('EX_UnicodeStringConst', Value='😀')), 7)
