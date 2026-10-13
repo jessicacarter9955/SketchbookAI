@@ -43,9 +43,7 @@ export class UrbanPopulation {
     const inverse=template.matrixWorld.clone().invert();
     const count=this.cars.length;
     template.traverse(mesh=>{
-      // Never re-instance the now-hidden original car body: only the detailed
-      // imported body is visible; the old wheels/metadata are physics-only.
-      if(!mesh.isMesh||!mesh.geometry||!mesh.visible)return;
+      if(!mesh.isMesh||!mesh.geometry)return;
       const relative=inverse.clone().multiply(mesh.matrixWorld);
       const batch=new THREE.InstancedMesh(mesh.geometry,mesh.material,count);
       batch.name='Urban traffic GPU instancing';
