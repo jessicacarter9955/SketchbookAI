@@ -176,6 +176,31 @@ async function captureFreeRoam(){
       fallbackVisible
     };
   });
+  // Verify the REAL player display path, not only manual EffectComposer
+  // screenshots. WebGL can be alive while the actual onscreen output is black.
+  const directFrame=await page.evaluate(()=>{
+    const world=globalThis.world;
+    if(!world.useDirectUrbanRender)throw new Error('Photoreal City is not using optimized direct PBR rendering');
+    world.renderer.setRenderTarget(null);
+    world.renderer.render(world.graphicsWorld,world.camera);
+    const canvas=world.renderer.domElement,probe=document.createElement('canvas');
+    probe.width=24;probe.height=24;
+    const context=probe.getContext('2d',{willReadFrequently:true});
+    context.drawImage(canvas,0,0,24,24);
+    const bytes=context.getImageData(0,0,24,24).data;
+    let brightness=0,visible=0;
+    for(let i=0;i<bytes.length;i+=4){
+      brightness+=(bytes[i]+bytes[i+1]+bytes[i+2])/3;
+      if(bytes[i]+bytes[i+1]+bytes[i+2]>45)visible++;
+    }
+    return {brightness:brightness/(bytes.length/4),visible,drawCalls:world.renderer.info.render.calls,
+      image:canvas.toDataURL('image/png')};
+  });
+  const directBytes=await writeDataUrl(`${out}/urban-player-direct-render.png`,directFrame.image);
+  console.log('DIRECT PLAYER FRAME proof',{brightness:directFrame.brightness,visible:directFrame.visible,
+    drawCalls:directFrame.drawCalls,pngBytes:directBytes});
+  if(directFrame.brightness<14||directFrame.visible<50||directBytes<10000)
+    throw new Error('Black or incomplete actual City Player WebGL output: '+JSON.stringify({...directFrame,image:'omitted'}));
   console.log('free roam initial',initial);
   await fs.writeFile(`${out}/urban-free-roam-initial.json`,JSON.stringify(initial,null,2));
   if(!initial.playing||initial.vehicles<2||!initial.hdReady||initial.hdSectorsBuilt!==initial.hdSectorsTotal||initial.fallbackVisible!==0||initial.skyline!==null)
