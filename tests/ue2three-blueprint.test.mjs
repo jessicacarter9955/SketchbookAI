@@ -83,3 +83,28 @@ test('invalid jump destinations and loops stop without mutating caller state', (
     flow.steps = [{op: 'end'}];
     assert.throws(() => executeBlueprint(flow), /without return/);
 });
+test('nested source calls return out parameters through the original local reference', () => {
+    const callee = {schema_version: 1, status: 'translated_straight_line', source_export_index: 2, source_owner_index: 3,
+        input_fields: ['Input'], output_fields: ['Allowed'], field_types: {local: {Input: 'BoolProperty', Allowed: 'BoolProperty'}},
+        steps: [{op: 'set', field: 'Allowed', value: {op: 'get', scope: 'local', field: 'Input'}},
+            {op: 'return', value: {op: 'constant', value: null}}]};
+    const caller = {...callee, input_fields: [], output_fields: [], source_export_index: 1,
+        field_types: {local: {Result: 'BoolProperty'}}, steps: [
+            {op: 'evaluate', value: {op: 'call', function: 'Predicate', export_index: 2, bindings: [
+                {mode: 'input', parameter: 'Input', value: {op: 'constant', value: true}},
+                {mode: 'output', parameter: 'Allowed', target: {op: 'get', scope: 'local', field: 'Result'}}]}},
+            {op: 'return', value: {op: 'get', scope: 'local', field: 'Result'}}]};
+    caller.steps[0].source_index = 12;
+    const result = executeBlueprint(caller, {}, {}, {functions: {Predicate: callee}});
+    assert.equal(result.value, true);
+    assert.equal(result.trace[0].source_index, 12);
+    assert.throws(() => executeBlueprint(caller), /dependency/);
+    assert.throws(() => executeBlueprint(caller, {}, {}, {functions: {Predicate: {...callee, source_owner_index: 4}}}), /dependency/);
+});
+test('recursive source calls are bounded and cannot leak state after failure', () => {
+    const recursive = {schema_version: 1, status: 'translated_straight_line', source_export_index: 1, source_owner_index: 3,
+        output_fields: [], steps: [{op: 'evaluate', value: {op: 'call', function: 'Recursive', export_index: 1, bindings: []}}]};
+    const state = {Flag: true};
+    assert.throws(() => executeBlueprint(recursive, state, {}, {functions: {Recursive: recursive}}), /depth exceeded/);
+    assert.equal(state.Flag, true);
+});

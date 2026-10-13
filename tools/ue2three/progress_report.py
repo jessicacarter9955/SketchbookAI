@@ -116,7 +116,8 @@ def project_progress(workspace, published, character_dir=None):
     blocked = blueprint_report.get('counts', {}).get('blocked', 0)
     no_ops = blueprint_report.get('counts', {}).get('no_op_functions', 0)
     row('blueprints', 'Blueprint e moduli nativi', f"{classes['BlueprintGeneratedClass']} classi Blueprint; {translated} funzioni tradotte ({no_ops} vuote nel sorgente), {blocked} bloccate nei pacchetti letti",
-        'Tradurre chiamate, salti, eventi, timer e moduli nativi; collegare le funzioni al runtime originale', bool(translated))
+        'Completare chiamate tra oggetti, eventi, timer e moduli nativi' +
+        (f"; {len(blueprint_report.get('character_guards', {}))} vincoli sorgenti disponibili per il controller provvisorio" if blueprint_report.get('character_guards') else ''), bool(translated))
     ui = documents.get('ui', {})
     ui_layout = bool(ui.get('tree') and ui.get('project') == project)
     row('ui', 'Menu, HUD e schermate', f"{classes['WidgetBlueprintGeneratedClass']} widget sorgenti; {int(ui_layout)} gerarchia UI pubblicata",

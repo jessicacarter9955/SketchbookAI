@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { clone } from 'three/examples/jsm/utils/SkeletonUtils';
 import { applyAttachmentSocket } from './ue2three-attachment.mjs';
+import { bindBlueprintInputs, BlueprintActorRuntime } from './ue2three-blueprint-runtime.mjs';
 
 // Source: CBP_Fixers_Mover_ABP's "Weapon Poses" LayeredBoneBlend branches.
 const WEAPON_POSE_BRANCHES = ['spine_01', 'clavicle_l', 'clavicle_r'];
@@ -12,8 +13,9 @@ const LOCOMOTION_CLIPS = new Set([
 ]);
 
 export class Ue2ThreeGameplay {
-    constructor(world) {
+    constructor(world, {blueprints = null} = {}) {
         this.world = world;
+        this.blueprints = blueprints;
         this.weapon = 'rifle';
         this.aiming = false;
         this.player = null;
@@ -38,12 +40,21 @@ export class Ue2ThreeGameplay {
         hint.textContent = 'WASD muovi · Shift corri · Spazio salta · 1 fucile · 2 pistola · tasto destro mira · clic sinistro spara · R ricarica';
         document.body.append(hint);
         this.hint = hint;
+        if (this.blueprints) {
+            const status = document.createElement('div');
+            status.className = 'ue2three-source-status';
+            status.setAttribute('role', 'status');
+            status.style.cssText = 'position:fixed;left:18px;bottom:62px;z-index:1000;background:#101923e8;color:#dce9ef;padding:8px 12px;border-radius:6px;font:12px system-ui;max-width:60vw';
+            status.textContent = 'Sprint e salto: vincoli sorgenti attivi. Movimento e consumo stamina ancora in migrazione.';
+            document.body.append(status); this.sourceStatus = status;
+        }
     }
 
     syncPlayer() {
         const active = this.world.editorPlayer;
         if (this.player === active) return;
         this.cancelAction();
+        this.blueprintInputs?.dispose();
         if (this.player && this.originalSetAnimation) this.player.setAnimation = this.originalSetAnimation;
         this.weaponRoot?.removeFromParent();
         this.weaponMixer?.stopAllAction();
@@ -56,6 +67,16 @@ export class Ue2ThreeGameplay {
         this.player = active;
         this.aiming = false;
         if (!active) return;
+        if (this.blueprints) {
+            this.blueprints = new BlueprintActorRuntime(this.blueprints.report, this.blueprints.report.project);
+            active.userData.ue2threeBlueprintRuntime = this.blueprints;
+            this.blueprintInputs = bindBlueprintInputs(active, this.blueprints, result => {
+                if (this.sourceStatus) this.sourceStatus.textContent = result.error
+                    ? 'Regola sorgente non disponibile: ' + result.error
+                    : `${result.action === 'run' ? 'Sprint' : 'Salto'}: ${result.allowed ? 'consentito' : 'bloccato'} dalla regola originale. Stamina: ${this.sourceStamina()}. Movimento ancora in migrazione.`;
+            });
+            this.refreshSourceStatus();
+        }
         this.world.cameraOperator.setRadius(3.2, true);
         this.originalSetAnimation = active.setAnimation;
         const original = this.originalSetAnimation;
@@ -83,7 +104,17 @@ export class Ue2ThreeGameplay {
 
     update(timeStep = 0) {
         this.syncPlayer();
+        this.blueprintInputs?.enforceHeld();
         this.weaponMixer?.update(timeStep);
+    }
+
+    sourceStamina() {
+        const guard = this.blueprints?.report.character_guards?.run || this.blueprints?.report.character_guards?.jump;
+        return guard ? this.blueprints.states[guard.package].CurrentStamina ?? 'n/d' : 'n/d';
+    }
+
+    refreshSourceStatus() {
+        if (this.sourceStatus) this.sourceStatus.textContent = `Vincoli originali di sprint e salto attivi. Stamina: ${this.sourceStamina()}. Movimento e consumo stamina ancora in migrazione.`;
     }
 
     cancelAction() {

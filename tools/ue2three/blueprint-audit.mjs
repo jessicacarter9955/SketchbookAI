@@ -23,13 +23,13 @@ try {
                     } else self[name] = boolean || program.field_types?.self?.[name] === 'BoolProperty' ? !!(sample % 2) : sample;
                 }
                 for (const name of program.input_fields || []) inputs[name] = program.field_types?.local?.[name] === 'BoolProperty' ? !!(sample % 2) : 1;
-                const result = executeBlueprint(program, self, inputs);
+                const result = executeBlueprint(program, self, inputs, {functions: packageData.functions});
                 // Independently check each translated source assignment against
                 // the provided fixture or literal; this does not emulate native calls.
                 for (const executed of result.trace.filter(step => step.op === 'set')) {
                     const step = program.steps.find(step => step.source_index === executed.source_index);
                     if (step.value.op === 'get' && step.value.scope !== 'self') continue;
-                    if (step.value.op === 'math') continue;
+                    if (step.value.op === 'math' || step.value.op === 'call') continue;
                     const expected = step.value.op === 'get' ? self[step.value.field] : step.value.value;
                     const actual = executed.value;
                     if ((step.scope === 'self' || program.output_fields.includes(step.field)) && JSON.stringify(actual) !== JSON.stringify(expected))
@@ -55,7 +55,7 @@ try {
         for (const test of fixture.cases) {
             const program = report.packages[test.package]?.functions[test.function];
             if (!program || program.source_bytecode_sha256 !== test.source_bytecode_sha256) throw new Error(`Fixture sorgente non aggiornata: ${test.function}`);
-            const result = executeBlueprint(program, test.self, test.inputs);
+            const result = executeBlueprint(program, test.self, test.inputs, {functions: report.packages[test.package].functions});
             for (const [field, expected] of Object.entries(test.outputs))
                 if (JSON.stringify(result.outputs[field]) !== JSON.stringify(expected)) throw new Error(`Confronto sorgente fallito: ${test.function}.${field}`);
             golden++;

@@ -32,7 +32,7 @@ are not a percentage of completed gameplay.
 | Animation clips | 🟡 | 45 unique clip files published; assumed functioning to continue at the user's request. Unreal fidelity, curves, notifies, root motion and transitions are deferred |
 | Animation systems | 🔴 | Translate nine AnimBlueprints, 105 montages, 10 blendspaces, pose databases, chooser and Control Rig behavior |
 | Weapons and armed movement | 🟡 | Two accessories published; compare grip, aim, recoil, reload, hit detection and original damage rules |
-| Blueprint and native behavior | 🟡 | 30 functions translated (six empty in source); 470 blocked functions in read packages and 263 packages not cached. Local/native calls, dynamic jumps and timers remain |
+| Blueprint and native behavior | 🟡 | 33 functions translated (six empty in source); 467 blocked functions in read packages and 263 packages not cached. Same-class calls and out parameters work; cross-object/native calls, dynamic jumps and timers remain |
 | Menu, HUD and UI | 🟡 | One hierarchy published among 57 source widgets; migrate styles, assets, bindings and events |
 | Inventory, loot and saves | 🔴 | Translate original item, container, equipment and persistence rules |
 | NPC, shop, dialogue and missions | 🔴 | Translate actual source interactions, AI, prices, conditions and progression |
@@ -151,3 +151,46 @@ regression test confirms complete HTTP responses without a terminal.
 
 Batch verification: 78 Python tests and 47 JavaScript tests passed. Animation
 fidelity was not re-tested; it remains explicitly deferred and yellow.
+
+## Player input integration · 2026-10-13
+
+The converter now resolves same-source-class direct and local virtual calls,
+preserves out-parameter references, and rejects callers whose callees are not
+translated. Nested execution shares an instruction budget and a depth limit;
+failed execution does not modify the caller's actor. Virtual overrides on other
+derived classes and cross-object calls remain unsupported.
+
+`CanJump`, `CanRoll` and `CanSlide` now execute their original `HasStamina` calls.
+Total: 33 functions, 27 with behavior and six empty callbacks. 99 generic browser
+scenarios and 68 DDS-specific comparisons pass. Roll/slide are predicates at this
+stage; their movement simulation is not connected.
+
+Source input mappings and original Context calls to the typed Vitality component
+provide witnesses for the sprint/jump compatibility bindings. The generated
+`character_guards` point to original functions and Boolean outputs; required
+instance fields come from the class defaults and primitive property initialization.
+The runtime verifies project identity before mounting these bindings.
+
+The playable DDS map now applies these predicates through the actual player's
+`triggerAction` hook. Denied actions are released, including an already-held
+sprint when its prerequisite changes. Each respawn gets its own default component
+state. Pure prerequisites reuse unchanged results, avoiding repeated execution
+for unchanged state every frame.
+
+The optional live QA mode (`verify_blueprints=1&source_cases=dds-blueprints.json`)
+checks the actual action flags against source cases, restores all test state and
+includes a short movement check when sprint is permitted. It does not test
+animation fidelity. The complete Mover/input event graph, stamina drain and
+regeneration, BeginPlay, health events, inventory mutation and replication remain
+open. The HUD explicitly labels movement and stamina consumption as incomplete.
+
+Live screenshots and results are saved under
+`build/local-scenes/ue2three/verification/blueprint-live/`.
+
+Verified this batch: 80 Python tests and 52 JavaScript tests passed; the editor
+build succeeded. In the integrated browser, all 24 live action cases passed and
+the character moved 0.848 scene units during the allowed sprint check. The QA
+restored source defaults (stamina 100), and restarting the player retained a fresh
+component state. These checks establish the input prerequisites, not complete
+Unreal movement or animation fidelity. Fixed stale HUD values after fixture
+restoration/respawn and missing source instruction indices in nested-call traces.

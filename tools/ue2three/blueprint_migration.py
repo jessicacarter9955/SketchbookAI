@@ -1,4 +1,4 @@
-"""Translate cached Kismet straight-line functions; reject unsupported behavior."""
+"""Translate cached Kismet state, control flow and source-class function calls."""
 import math
 import re
 from collections import Counter
@@ -58,16 +58,51 @@ def math_call(package, reference):
     return name
 
 
-def expression(value, reads, outputs, depth=0, package=None):
+def local_call(value, package, owner, reads, outputs, depth):
+    if not package: raise BlueprintTranslationError('Source package required for Blueprint calls')
+    token = kind(value)
+    if token in ('EX_FinalFunction', 'EX_LocalFinalFunction'):
+        ref = value.get('StackNode'); callee = package.export(ref)
+        if not callee or not callee.get('ScriptBytecode'):
+            raise BlueprintTranslationError('Native or unresolved direct function call')
+    else:
+        name = value.get('VirtualFunctionName')
+        candidates = [(i, e) for i, e in enumerate(package.exports, 1)
+                      if e.get('ObjectName') == name and e.get('ScriptBytecode') and e.get('OuterIndex') == owner]
+        if len(candidates) != 1: raise BlueprintTranslationError(f'Unresolved local virtual call: {name}')
+        ref, callee = candidates[0]
+    if owner is None or callee.get('OuterIndex') != owner:
+        raise BlueprintTranslationError('Cross-instance function call requires an object adapter')
+    parameters = [p for p in callee.get('LoadedProperties', []) if 'CPF_Parm' in str(p.get('PropertyFlags'))
+                  and 'CPF_ReturnParm' not in str(p.get('PropertyFlags'))]
+    args = value.get('Parameters')
+    if not isinstance(args, list) or len(args) != len(parameters):
+        raise BlueprintTranslationError('Source function signature does not match call arguments')
+    bindings = []
+    for prop, arg in zip(parameters, args):
+        name = prop.get('Name'); field({'New': {'Path': [name]}})
+        if 'CPF_OutParm' in str(prop.get('PropertyFlags')):
+            if kind(arg) not in ('EX_LocalVariable', 'EX_LocalOutVariable', 'EX_InstanceVariable'):
+                raise BlueprintTranslationError('Unsupported output argument target')
+            target = expression(arg, reads, outputs, depth+1, package, owner)
+            bindings.append({'mode': 'output', 'parameter': name, 'target': target})
+        else:
+            bindings.append({'mode': 'input', 'parameter': name, 'value': expression(arg, reads, outputs, depth+1, package, owner)})
+    return {'op': 'call', 'function': callee['ObjectName'], 'export_index': ref, 'bindings': bindings}
+
+
+def expression(value, reads, outputs, depth=0, package=None, owner=None):
     if not isinstance(value, dict) or depth > 48:
         raise BlueprintTranslationError('Invalid or deeply nested Kismet expression')
     token = kind(value)
+    if token in ('EX_LocalVirtualFunction', 'EX_LocalFinalFunction', 'EX_FinalFunction'):
+        return local_call(value, package, owner, reads, outputs, depth)
     if token == 'EX_CallMath':
         name = math_call(package, value.get('StackNode'))
         args = value.get('Parameters')
         if not isinstance(args, list) or len(args) != MATH_CALLS[name][0]:
             raise BlueprintTranslationError('Invalid native math parameter count')
-        return {'op': 'math', 'name': name, 'args': [expression(arg, reads, outputs, depth+1, package) for arg in args]}
+        return {'op': 'math', 'name': name, 'args': [expression(arg, reads, outputs, depth+1, package, owner) for arg in args]}
     scopes = {'EX_InstanceVariable': 'self', 'EX_LocalVariable': 'local', 'EX_LocalOutVariable': 'local'}
     if token in scopes:
         name = field(value.get('Variable'))
@@ -125,10 +160,10 @@ def memory_size(value, depth=0):
     if token == 'EX_Return': return 1 + memory_size(value.get('ReturnExpression'), depth+1)
     if token == 'EX_Jump': return 5
     if token == 'EX_JumpIfNot': return 5 + memory_size(value.get('BooleanExpression'), depth+1)
-    if token == 'EX_CallMath':
+    if token in ('EX_CallMath', 'EX_LocalFinalFunction', 'EX_FinalFunction', 'EX_LocalVirtualFunction'):
         args = value.get('Parameters')
         if not isinstance(args, list): raise BlueprintTranslationError('Invalid math layout')
-        return 10 + sum(memory_size(arg, depth+1) for arg in args)
+        return (14 if token == 'EX_LocalVirtualFunction' else 10) + sum(memory_size(arg, depth+1) for arg in args)
     raise BlueprintTranslationError(f'Unsupported bytecode memory layout: {token}')
 
 
@@ -163,22 +198,25 @@ def translate_function(export, package=None):
                 raise BlueprintTranslationError('Jump target is not a Kismet instruction boundary')
             entry = {'op': 'jump' if token == 'EX_Jump' else 'branch', 'target': boundaries[target],
                      'target_offset': target, 'source_index': index}
-            if token == 'EX_JumpIfNot': entry['value'] = expression(instruction.get('BooleanExpression'), reads, outputs, package=package)
+            if token == 'EX_JumpIfNot': entry['value'] = expression(instruction.get('BooleanExpression'), reads, outputs, package=package, owner=export.get('OuterIndex'))
             steps.append(entry)
             continue
         if token in ('EX_Let', 'EX_LetBool', 'EX_LetObj'):
             variable = instruction.get('Variable' if token == 'EX_Let' else 'VariableExpression')
             if not isinstance(variable, dict) or kind(variable) not in ('EX_LocalVariable', 'EX_LocalOutVariable', 'EX_InstanceVariable'):
                 raise BlueprintTranslationError('Unsupported assignment target')
-            target = expression(variable, reads, outputs, package=package)
+            target = expression(variable, reads, outputs, package=package, owner=export.get('OuterIndex'))
             if target['scope'] == 'self': writes.add(target['field'])
             source = instruction.get('Expression' if token == 'EX_Let' else 'AssignmentExpression')
-            steps.append({'op': 'set', 'field': target['field'], 'scope': target['scope'], 'value': expression(source, reads, outputs, package=package),
+            steps.append({'op': 'set', 'field': target['field'], 'scope': target['scope'], 'value': expression(source, reads, outputs, package=package, owner=export.get('OuterIndex')),
                           'boolean': token == 'EX_LetBool', 'source_index': index})
         elif token == 'EX_Return':
-            steps.append({'op': 'return', 'value': expression(instruction.get('ReturnExpression'), reads, outputs, package=package),
+            steps.append({'op': 'return', 'value': expression(instruction.get('ReturnExpression'), reads, outputs, package=package, owner=export.get('OuterIndex')),
                           'source_index': index})
             returned = True
+        elif token in ('EX_LocalVirtualFunction', 'EX_LocalFinalFunction', 'EX_FinalFunction'):
+            steps.append({'op': 'evaluate', 'value': expression(instruction, reads, outputs, package=package, owner=export.get('OuterIndex')),
+                          'source_index': index})
         else:
             raise BlueprintTranslationError(f'Unsupported opcode: {token}')
     if not returned or not ended: raise BlueprintTranslationError('Complete return and EndOfScript are required')
@@ -187,6 +225,7 @@ def translate_function(export, package=None):
     return {'schema_version': 1, 'name': export['ObjectName'], 'status': 'translated_control_flow' if branching else 'translated_straight_line',
             'memory_size_verified': offset if branching else None,
             'source_bytecode_sha256': digest(bytecode), 'self_reads': sorted(reads),
+            'source_owner_index': export.get('OuterIndex'),
             'self_writes': sorted(writes),
             'output_fields': sorted(outputs), 'steps': steps}
 
@@ -214,6 +253,9 @@ def translate_package(package):
                     if isinstance(value, dict):
                         if value.get('scope') == 'local': used_locals.add(value['field'])
                         for arg in value.get('args', []): local_reads(arg)
+                        for binding in value.get('bindings', []):
+                            if 'value' in binding: local_reads(binding['value'])
+                            if 'target' in binding: local_reads(binding['target'])
                 if 'value' in step: local_reads(step['value'])
             program['field_types'] = {
                 'self': {name: property_type(class_properties[name]) for name in program['self_reads'] if name in class_properties},
@@ -229,12 +271,94 @@ def translate_package(package):
             functions[program['name']] = program
         except BlueprintTranslationError as error:
             blocked.append({'function': export.get('ObjectName'), 'source_export_index': index, 'reason': str(error)})
+    def calls(value):
+        if isinstance(value, dict):
+            if value.get('op') == 'call': yield value
+            for child in value.values(): yield from calls(child)
+        elif isinstance(value, list):
+            for child in value: yield from calls(child)
+    # Reject a whole caller if any required callee failed conversion. Repeat to
+    # remove transitive dependencies; no successful-looking partial paths remain.
+    while True:
+        removed = []
+        for name, program in functions.items():
+            required = list(calls(program['steps']))
+            missing = next((call['function'] for call in required if call['function'] not in functions
+                            or functions[call['function']]['source_export_index'] != call['export_index']), None)
+            if missing:
+                blocked.append({'function': name, 'source_export_index': program['source_export_index'],
+                                'reason': 'Untranslated function dependency: ' + missing})
+                removed.append(name)
+        if not removed: break
+        for name in removed: del functions[name]
+    # Include transitive state requirements so runtime instances can be created
+    # from original defaults and checked without guessing fields in the caller.
+    for _ in range(len(functions)):
+        changed = False
+        for program in functions.values():
+            reads, writes = set(program['self_reads']), set(program['self_writes'])
+            for call in calls(program['steps']):
+                callee = functions[call['function']]
+                reads.update(callee['self_reads']); writes.update(callee['self_writes'])
+                for binding in call['bindings']:
+                    if binding['mode'] == 'output' and binding['target']['scope'] == 'self':
+                        writes.add(binding['target']['field'])
+            if reads != set(program['self_reads']) or writes != set(program['self_writes']): changed = True
+            program['self_reads'], program['self_writes'] = sorted(reads), sorted(writes)
+            program['field_types']['self'] = {name: property_type(class_properties[name]) for name in reads | writes if name in class_properties}
+            program['source_defaults'] = {name: defaults[name] for name in reads | writes if name in defaults}
+        if not changed: break
+    default_state = {}
+    for name, prop in class_properties.items():
+        try: type_name = property_type(prop)
+        except BlueprintTranslationError: continue
+        if name in defaults: default_state[name] = defaults[name]
+        elif type_name in ('BoolProperty', 'ByteProperty', 'IntProperty', 'FloatProperty', 'DoubleProperty', 'StrProperty', 'NameProperty'):
+            default_state[name] = {'BoolProperty': False, 'StrProperty': '', 'NameProperty': 'None'}.get(type_name, 0)
     no_ops = sum(not program['self_reads'] and not program['output_fields'] and not program['self_writes']
                  and all(step['op'] == 'return' and step['value'] == {'op': 'constant', 'value': None}
                          for step in program['steps']) for program in functions.values())
-    return {'functions': functions, 'blocked': blocked, 'declarations': declarations,
+    return {'functions': functions, 'blocked': blocked, 'declarations': declarations, 'default_state': default_state,
             'counts': {'translated': len(functions), 'blocked': len(blocked),
                        'declarations': len(declarations), 'no_op_functions': no_ops}}
+
+
+def character_guards(controls, packages, source_package):
+    """Publish a partial compatibility binding only with original call witnesses."""
+    class_props = {p['Name']: p for e in source_package.exports if str(e.get('ObjectName', '')).endswith('_C')
+                   for p in e.get('LoadedProperties', []) if p.get('Name')}
+    def referenced_package(reference):
+        for _ in range(16):
+            if not isinstance(reference, int) or not -len(source_package.imports) <= reference < 0: return None
+            item = source_package.imports[-reference-1]
+            if item.get('ClassName') == 'Package' and str(item.get('ObjectName', '')).startswith('/Game/'):
+                return item['ObjectName']
+            reference = item.get('OuterIndex')
+        return None
+    guards = {}
+    for action, source_action, method, key in [('run', 'IA_Sprint', 'CanSprint', 'LeftShift'),
+                                             ('jump', 'IA_Jump', 'CanJump', 'SpaceBar')]:
+        mapping = [m for m in controls.get('default_key_mappings', []) if m.get('action') == source_action and m.get('key') == key]
+        events = [e for e in controls.get('blueprint_input_events', []) if e.get('action') == source_action]
+        if not mapping or not events: continue
+        for export in source_package.exports:
+            for index, instruction in enumerate(export.get('ScriptBytecode') or []):
+                if kind(instruction) != 'EX_Context': continue
+                called, obj = instruction.get('ContextExpression', {}), instruction.get('ObjectExpression', {})
+                if called.get('VirtualFunctionName') != method or kind(obj) != 'EX_InstanceVariable': continue
+                component = field(obj.get('Variable'))
+                target = referenced_package(class_props.get(component, {}).get('PropertyClass'))
+                program = packages.get(target, {}).get('functions', {}).get(method)
+                if not program or program['self_writes'] or len(program['output_fields']) != 1: continue
+                if any(name not in packages[target]['default_state'] for name in program['self_reads']): continue
+                output = program['output_fields'][0]
+                if program['field_types']['local'].get(output) != 'BoolProperty': continue
+                guards[action] = {'package': target, 'component': component, 'function': method, 'output': output,
+                                  'source_action': source_action, 'source_keys': mapping,
+                                  'witness': {'function': export['ObjectName'], 'source_index': index,
+                                              'source_expression_sha256': digest(instruction)},
+                                  'scope': 'Original prerequisite only; complete input event graph and Mover simulation not translated'}
+    return guards
 
 
 def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_packages=()):
@@ -278,7 +402,10 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
             raise BlueprintTranslationError(f'Source changed since cached inspection: {name}')
         key_inputs[name] = {'source_sha256': asset['sha256'], 'parsed_sha256': file_hash(cache)}
         cached.append((name, cache))
-    fingerprint = digest({'project': str(project), 'inputs': key_inputs, 'missing': missing, 'implementation': file_hash(Path(__file__))})
+    controls_file = output / 'character-controls.json'
+    fingerprint = digest({'project': str(project), 'inputs': key_inputs, 'missing': missing,
+                          'controls': file_hash(controls_file) if controls_file.is_file() else None,
+                          'implementation': file_hash(Path(__file__))})
     report_file = output / 'blueprint-programs.json'
     try:
         prior = read_json(report_file)
@@ -290,10 +417,18 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
         packages[name] = translate_package(Package(read_json(cache)))
         packages[name]['source'] = key_inputs[name]
         counts.update(packages[name]['counts'])
+    guards = {}
+    if controls_file.is_file():
+        controls = read_json(controls_file)
+        source = controls.get('sources', {}).get('character_blueprint', {})
+        if controls.get('project') == str(project) and key_inputs.get(source.get('package'), {}).get('source_sha256') == source.get('sha256'):
+            cache_path = dict(cached).get(source['package'])
+            guards = character_guards(controls, packages, Package(read_json(cache_path)))
     report = {'schema_version': 1, 'project': str(project), 'fingerprint': fingerprint,
               'packages': packages, 'counts': dict(counts), 'missing_cached_packages': missing,
-              'limitations': ['Locals, instance state, comparisons, Boolean math and validated static conditional jumps execute.',
-                             'Other calls, dynamic jumps, latent actions, native modules, replication and animation graphs are blocked.',
+              'character_guards': guards,
+              'limitations': ['Locals, instance state, comparisons, static jumps and same-source-class calls with out parameters execute.',
+                             'Cross-object calls, derived-class virtual overrides, dynamic jumps, latent actions and replication remain blocked.',
                              'Translated functions are not connected to the complete game runtime yet.']}
     report['content_sha256'] = digest(report)
     atomic_json(report_file, report)

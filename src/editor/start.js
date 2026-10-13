@@ -2,6 +2,7 @@ import { loadCatalog, createScene } from './scene-catalog.mjs';
 import { sceneStorageKey, loadRevisions, saveRevision, forkScene } from './scene-revisions.mjs';
 import { Ue2ThreeMapRuntime } from './Ue2ThreeMapRuntime';
 import { Ue2ThreeGameplay } from './Ue2ThreeGameplay';
+import { loadBlueprintActorRuntime } from './ue2three-blueprint-runtime.mjs';
 
 const loading = document.getElementById('loading-screen');
 const query = new URLSearchParams(location.search);
@@ -178,7 +179,11 @@ try {
     }
     sceneControls(sceneEditor);
     if(playerProfile==='dds') new DdsGame(world,{key:`${storageKey}.dds-game`});
-    if(playerProfile==='ue2three') globalThis.ue2threeGameplay = new Ue2ThreeGameplay(world);
+    if(playerProfile==='ue2three') {
+        report('Collego i vincoli originali del personaggio...');
+        const blueprintRuntime = await loadBlueprintActorRuntime(unrealMapPath, actors.playerModel.manifest.source.project);
+        globalThis.ue2threeGameplay = new Ue2ThreeGameplay(world, {blueprints: blueprintRuntime});
+    }
     loading.style.display = 'none';
     if(current.id === 'portland-grass' && sceneEditor.mapEdits.length) {
         const select=sceneEditor.surfaceTool.$('[data-layers]'); select.value=sceneEditor.mapEdits[0].id;
@@ -186,6 +191,21 @@ try {
     }
     sceneEditor.islandTool?.focus();
     if (query.get('play') === '1') sceneEditor.setActive(false);
+    if (query.get('verify_blueprints') === '1' && globalThis.ue2threeGameplay?.blueprints) {
+        const fixtureName = query.get('source_cases');
+        if (!fixtureName || !/^[A-Za-z0-9_-]+\.json$/.test(fixtureName)) throw new Error('Fixture sorgenti non valide');
+        const response = await fetch('tests/fixtures/' + fixtureName, {cache: 'no-store'});
+        if (!response.ok) throw new Error('Fixture sorgenti mancanti');
+        const { verifyLiveBlueprintInputs } = await import('./ue2three-live-verification.mjs');
+        const verification = await verifyLiveBlueprintInputs(world.editorPlayer, ue2threeGameplay.blueprints, await response.json());
+        ue2threeGameplay.refreshSourceStatus();
+        const proof = document.createElement('details');
+        proof.style.cssText = 'position:fixed;right:18px;top:76px;z-index:1100;background:#101923ed;color:#dce9ef;padding:12px;border-radius:8px;max-width:400px;font:13px system-ui';
+        const summary = document.createElement('summary'); summary.textContent = `PASS · ${verification.checked} input della scena verificati con i Blueprint originali`;
+        const text = document.createElement('pre'); text.textContent = JSON.stringify(verification, null, 2);
+        text.style.cssText = 'max-height:240px;overflow:auto;white-space:pre-wrap'; text.id = 'live-blueprint-proof';
+        proof.append(summary, text); document.body.append(proof);
+    }
     if (playerProfile === 'ue2three') world.cameraOperator.setRadius(3.2, true);
     document.title = unrealMapPath
         ? `DDS · ${unrealMapPath.split('/').pop().replace(/\.glb$/i, '')} · ue2three`

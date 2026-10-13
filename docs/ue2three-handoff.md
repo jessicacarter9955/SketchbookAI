@@ -28,8 +28,8 @@ assets. Tool code, built editor and this checkpoint are saved in Git.
 
 ## Exact current scope
 
-30 translated functions: 24 with source behavior and six empty
-callbacks. 470 functions are blocked in parsed packages; 60 delegate signatures
+33 translated functions: 27 with source behavior and six empty
+callbacks. 467 functions are blocked in parsed packages; 60 delegate signatures
 are declarations; 263 Blueprint/widget/animation packages are not parsed yet.
 Original whole-game fidelity is not established. Most gameplay logic, Motion
 Matching/Mover, latent actions, RPC/replication and native simulation remain open.
@@ -46,17 +46,36 @@ Shared socket transform: `src/editor/ue2three-attachment.mjs`.
 3. Static control flow is now implemented with validated Kismet **memory offsets**.
    Extend only known layouts. `ScriptBytecodeSize` and instruction-boundary
    checks must continue rejecting unknown layouts or malformed destinations.
-4. Add local-call/out-parameter support and native adapters incrementally, with
+4. Same-source-class calls/out parameters are implemented. Next add cross-object
+   calls, persistent-frame event dispatch and native adapters incrementally, with
    exact source ownership and explicit unsupported dependencies.
 5. Connect complete translated paths to runtime only when their required state
    and native dependencies exist; getters alone do not make a game system green.
 6. Regenerate reports, check in the integrated browser, save screenshots, push.
 
-Last browser result: 30 functions / 90 generic scenarios + 32 DDS comparisons
+Last isolated browser result: 33 functions / 99 generic scenarios + 68 DDS comparisons
 passed. Cases live in `tests/fixtures/dds-blueprints.json`; their bytecode hashes
 must match the parsed source. Open the Blueprint audit with
 `&fixtures=dds-blueprints.json` for these DDS-specific comparisons. Animation
 checks remain deferred. Native preview server supports `pythonw` without stderr.
+
+The real player now has original sprint/jump prerequisites mounted by
+`src/editor/ue2three-blueprint-runtime.mjs` and `Ue2ThreeGameplay.js`. State uses
+source class defaults; the complete input event graph/Mover and stamina drain
+remain untranslated. Live QA URL is the normal editor/map URL plus
+`&verify_blueprints=1&source_cases=dds-blueprints.json`. It checks real action flags,
+briefly moves the character and restores fixture state. Save its DOM proof
+`#live-blueprint-proof` and screenshots under verification/blueprint-live/.
+
+The editor build now also emits `build/519.editor.min.js`; commit that chunk with
+`build/editor.min.js`. Each player reset receives fresh source component state.
+
+Latest completed verification: 80 Python tests, 52 JavaScript tests, successful
+editor build, 99 generic and 68 DDS source comparisons, and 24 live player-input
+cases. The live movement check recorded 0.848 scene units; fixtures restored
+stamina 100. A player restart visibly retained defaults. Saved evidence:
+`build/local-scenes/ue2three/verification/blueprint-live/scene.jpg` and
+`live-inputs.json`. Animations remain assumed working with fidelity deferred.
 
 ## Reuse commands (for the coding agent; no user terminal work needed)
 

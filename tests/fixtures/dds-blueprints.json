@@ -433,6 +433,522 @@
       "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
       "self": {},
       "source_bytecode_sha256": "667538c0c31f34ce21f55bd9292cfc40ee6b1d6c6d8143bc03cae8a42cf8e11a"
+    },
+    {
+      "function": "CanJump",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": false
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 0,
+        "StaminaCost_Jump": 10,
+        "VitalityState": 0
+      },
+      "source_bytecode_sha256": "3c46500b9d2957d7974bb8ad78f2494e0ed30c472039cce62b14c79bdb865d93"
+    },
+    {
+      "function": "CanJump",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": false
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 9.99,
+        "StaminaCost_Jump": 10,
+        "VitalityState": 0
+      },
+      "source_bytecode_sha256": "3c46500b9d2957d7974bb8ad78f2494e0ed30c472039cce62b14c79bdb865d93"
+    },
+    {
+      "function": "CanJump",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": true
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 10,
+        "StaminaCost_Jump": 10,
+        "VitalityState": 0
+      },
+      "source_bytecode_sha256": "3c46500b9d2957d7974bb8ad78f2494e0ed30c472039cce62b14c79bdb865d93"
+    },
+    {
+      "function": "CanJump",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": true
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 10.01,
+        "StaminaCost_Jump": 10,
+        "VitalityState": 0
+      },
+      "source_bytecode_sha256": "3c46500b9d2957d7974bb8ad78f2494e0ed30c472039cce62b14c79bdb865d93"
+    },
+    {
+      "function": "CanJump",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": false
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 0,
+        "StaminaCost_Jump": 10,
+        "VitalityState": 1
+      },
+      "source_bytecode_sha256": "3c46500b9d2957d7974bb8ad78f2494e0ed30c472039cce62b14c79bdb865d93"
+    },
+    {
+      "function": "CanJump",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": false
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 9.99,
+        "StaminaCost_Jump": 10,
+        "VitalityState": 1
+      },
+      "source_bytecode_sha256": "3c46500b9d2957d7974bb8ad78f2494e0ed30c472039cce62b14c79bdb865d93"
+    },
+    {
+      "function": "CanJump",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": false
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 10,
+        "StaminaCost_Jump": 10,
+        "VitalityState": 1
+      },
+      "source_bytecode_sha256": "3c46500b9d2957d7974bb8ad78f2494e0ed30c472039cce62b14c79bdb865d93"
+    },
+    {
+      "function": "CanJump",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": false
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 10.01,
+        "StaminaCost_Jump": 10,
+        "VitalityState": 1
+      },
+      "source_bytecode_sha256": "3c46500b9d2957d7974bb8ad78f2494e0ed30c472039cce62b14c79bdb865d93"
+    },
+    {
+      "function": "CanJump",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": false
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 0,
+        "StaminaCost_Jump": 10,
+        "VitalityState": 4
+      },
+      "source_bytecode_sha256": "3c46500b9d2957d7974bb8ad78f2494e0ed30c472039cce62b14c79bdb865d93"
+    },
+    {
+      "function": "CanJump",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": false
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 9.99,
+        "StaminaCost_Jump": 10,
+        "VitalityState": 4
+      },
+      "source_bytecode_sha256": "3c46500b9d2957d7974bb8ad78f2494e0ed30c472039cce62b14c79bdb865d93"
+    },
+    {
+      "function": "CanJump",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": true
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 10,
+        "StaminaCost_Jump": 10,
+        "VitalityState": 4
+      },
+      "source_bytecode_sha256": "3c46500b9d2957d7974bb8ad78f2494e0ed30c472039cce62b14c79bdb865d93"
+    },
+    {
+      "function": "CanJump",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": true
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 10.01,
+        "StaminaCost_Jump": 10,
+        "VitalityState": 4
+      },
+      "source_bytecode_sha256": "3c46500b9d2957d7974bb8ad78f2494e0ed30c472039cce62b14c79bdb865d93"
+    },
+    {
+      "function": "CanRoll",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": false
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 0,
+        "StaminaCost_Roll": 20,
+        "VitalityState": 0
+      },
+      "source_bytecode_sha256": "8fe2b7c7e83ad7fc4b712b3887d25747793199b585633da03fe0603bfab6437a"
+    },
+    {
+      "function": "CanRoll",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": false
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 19.99,
+        "StaminaCost_Roll": 20,
+        "VitalityState": 0
+      },
+      "source_bytecode_sha256": "8fe2b7c7e83ad7fc4b712b3887d25747793199b585633da03fe0603bfab6437a"
+    },
+    {
+      "function": "CanRoll",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": true
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 20,
+        "StaminaCost_Roll": 20,
+        "VitalityState": 0
+      },
+      "source_bytecode_sha256": "8fe2b7c7e83ad7fc4b712b3887d25747793199b585633da03fe0603bfab6437a"
+    },
+    {
+      "function": "CanRoll",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": true
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 20.01,
+        "StaminaCost_Roll": 20,
+        "VitalityState": 0
+      },
+      "source_bytecode_sha256": "8fe2b7c7e83ad7fc4b712b3887d25747793199b585633da03fe0603bfab6437a"
+    },
+    {
+      "function": "CanRoll",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": false
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 0,
+        "StaminaCost_Roll": 20,
+        "VitalityState": 1
+      },
+      "source_bytecode_sha256": "8fe2b7c7e83ad7fc4b712b3887d25747793199b585633da03fe0603bfab6437a"
+    },
+    {
+      "function": "CanRoll",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": false
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 19.99,
+        "StaminaCost_Roll": 20,
+        "VitalityState": 1
+      },
+      "source_bytecode_sha256": "8fe2b7c7e83ad7fc4b712b3887d25747793199b585633da03fe0603bfab6437a"
+    },
+    {
+      "function": "CanRoll",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": false
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 20,
+        "StaminaCost_Roll": 20,
+        "VitalityState": 1
+      },
+      "source_bytecode_sha256": "8fe2b7c7e83ad7fc4b712b3887d25747793199b585633da03fe0603bfab6437a"
+    },
+    {
+      "function": "CanRoll",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": false
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 20.01,
+        "StaminaCost_Roll": 20,
+        "VitalityState": 1
+      },
+      "source_bytecode_sha256": "8fe2b7c7e83ad7fc4b712b3887d25747793199b585633da03fe0603bfab6437a"
+    },
+    {
+      "function": "CanRoll",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": false
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 0,
+        "StaminaCost_Roll": 20,
+        "VitalityState": 4
+      },
+      "source_bytecode_sha256": "8fe2b7c7e83ad7fc4b712b3887d25747793199b585633da03fe0603bfab6437a"
+    },
+    {
+      "function": "CanRoll",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": false
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 19.99,
+        "StaminaCost_Roll": 20,
+        "VitalityState": 4
+      },
+      "source_bytecode_sha256": "8fe2b7c7e83ad7fc4b712b3887d25747793199b585633da03fe0603bfab6437a"
+    },
+    {
+      "function": "CanRoll",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": true
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 20,
+        "StaminaCost_Roll": 20,
+        "VitalityState": 4
+      },
+      "source_bytecode_sha256": "8fe2b7c7e83ad7fc4b712b3887d25747793199b585633da03fe0603bfab6437a"
+    },
+    {
+      "function": "CanRoll",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": true
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 20.01,
+        "StaminaCost_Roll": 20,
+        "VitalityState": 4
+      },
+      "source_bytecode_sha256": "8fe2b7c7e83ad7fc4b712b3887d25747793199b585633da03fe0603bfab6437a"
+    },
+    {
+      "function": "CanSlide",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": false
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 0,
+        "StaminaCost_Slide": 15,
+        "VitalityState": 0,
+        "bCanSlide": true
+      },
+      "source_bytecode_sha256": "42651a8e22415c7bbf4f3b8ed620d541249367b21d4f30d43cb6df6fa7f220f5"
+    },
+    {
+      "function": "CanSlide",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": false
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 14.99,
+        "StaminaCost_Slide": 15,
+        "VitalityState": 0,
+        "bCanSlide": true
+      },
+      "source_bytecode_sha256": "42651a8e22415c7bbf4f3b8ed620d541249367b21d4f30d43cb6df6fa7f220f5"
+    },
+    {
+      "function": "CanSlide",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": true
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 15,
+        "StaminaCost_Slide": 15,
+        "VitalityState": 0,
+        "bCanSlide": true
+      },
+      "source_bytecode_sha256": "42651a8e22415c7bbf4f3b8ed620d541249367b21d4f30d43cb6df6fa7f220f5"
+    },
+    {
+      "function": "CanSlide",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": true
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 15.01,
+        "StaminaCost_Slide": 15,
+        "VitalityState": 0,
+        "bCanSlide": true
+      },
+      "source_bytecode_sha256": "42651a8e22415c7bbf4f3b8ed620d541249367b21d4f30d43cb6df6fa7f220f5"
+    },
+    {
+      "function": "CanSlide",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": false
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 0,
+        "StaminaCost_Slide": 15,
+        "VitalityState": 1,
+        "bCanSlide": true
+      },
+      "source_bytecode_sha256": "42651a8e22415c7bbf4f3b8ed620d541249367b21d4f30d43cb6df6fa7f220f5"
+    },
+    {
+      "function": "CanSlide",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": false
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 14.99,
+        "StaminaCost_Slide": 15,
+        "VitalityState": 1,
+        "bCanSlide": true
+      },
+      "source_bytecode_sha256": "42651a8e22415c7bbf4f3b8ed620d541249367b21d4f30d43cb6df6fa7f220f5"
+    },
+    {
+      "function": "CanSlide",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": false
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 15,
+        "StaminaCost_Slide": 15,
+        "VitalityState": 1,
+        "bCanSlide": true
+      },
+      "source_bytecode_sha256": "42651a8e22415c7bbf4f3b8ed620d541249367b21d4f30d43cb6df6fa7f220f5"
+    },
+    {
+      "function": "CanSlide",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": false
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 15.01,
+        "StaminaCost_Slide": 15,
+        "VitalityState": 1,
+        "bCanSlide": true
+      },
+      "source_bytecode_sha256": "42651a8e22415c7bbf4f3b8ed620d541249367b21d4f30d43cb6df6fa7f220f5"
+    },
+    {
+      "function": "CanSlide",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": false
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 0,
+        "StaminaCost_Slide": 15,
+        "VitalityState": 4,
+        "bCanSlide": true
+      },
+      "source_bytecode_sha256": "42651a8e22415c7bbf4f3b8ed620d541249367b21d4f30d43cb6df6fa7f220f5"
+    },
+    {
+      "function": "CanSlide",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": false
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 14.99,
+        "StaminaCost_Slide": 15,
+        "VitalityState": 4,
+        "bCanSlide": true
+      },
+      "source_bytecode_sha256": "42651a8e22415c7bbf4f3b8ed620d541249367b21d4f30d43cb6df6fa7f220f5"
+    },
+    {
+      "function": "CanSlide",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": true
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 15,
+        "StaminaCost_Slide": 15,
+        "VitalityState": 4,
+        "bCanSlide": true
+      },
+      "source_bytecode_sha256": "42651a8e22415c7bbf4f3b8ed620d541249367b21d4f30d43cb6df6fa7f220f5"
+    },
+    {
+      "function": "CanSlide",
+      "inputs": {},
+      "outputs": {
+        "bCanPerform": true
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 15.01,
+        "StaminaCost_Slide": 15,
+        "VitalityState": 4,
+        "bCanSlide": true
+      },
+      "source_bytecode_sha256": "42651a8e22415c7bbf4f3b8ed620d541249367b21d4f30d43cb6df6fa7f220f5"
     }
   ],
   "schema_version": 1,

@@ -2,7 +2,12 @@
 const owns = (object, key) => object != null && Object.hasOwn(object, key);
 const safeField = key => typeof key === 'string' && key.length > 0 && !['__proto__', 'constructor', 'prototype'].includes(key);
 
-export function executeBlueprint(program, self = {}, inputs = {}) {
+export function executeBlueprint(program, self = {}, inputs = {}, { functions = {} } = {}) {
+    return runBlueprint(program, self, inputs, functions, { remaining: 10000 }, 0);
+}
+
+function runBlueprint(program, self, inputs, functions, budget, depth) {
+    if (depth > 32) throw new Error('Blueprint call depth exceeded');
     if (program?.schema_version !== 1 || !['translated_straight_line', 'translated_control_flow'].includes(program.status)
         || !Array.isArray(program.steps) || program.steps.length > 10000
         || !Array.isArray(program.output_fields) || program.output_fields.some(name => !safeField(name)))
@@ -21,7 +26,9 @@ export function executeBlueprint(program, self = {}, inputs = {}) {
         if (!owns(locals, field) && owns(primitiveDefaults, type)) locals[field] = primitiveDefaults[type];
     }
     const instance = structuredClone(self);
+    if (Object.keys(instance).some(field => !safeField(field))) throw new Error('Invalid instance property');
     const trace = [];
+    let sourceIndex;
     const checkType = (scope, field, value) => {
         const type = program.field_types?.[scope]?.[field];
         const valid = !type
@@ -35,6 +42,35 @@ export function executeBlueprint(program, self = {}, inputs = {}) {
     };
     const evaluate = (expression, depth = 0) => {
         if (!expression || depth > 48) throw new Error('Invalid Blueprint expression');
+        if (expression.op === 'call') {
+            const callee = owns(functions, expression.function) ? functions[expression.function] : null;
+            if (!callee || callee.source_export_index !== expression.export_index
+                || callee.source_owner_index !== program.source_owner_index || !Array.isArray(expression.bindings))
+                throw new Error(`Untranslated or mismatched function dependency: ${expression.function}`);
+            const args = Object.create(null), targets = [];
+            for (const binding of expression.bindings) {
+                if (!safeField(binding.parameter) || owns(args, binding.parameter)) throw new Error('Invalid call parameter');
+                if (binding.mode === 'input') args[binding.parameter] = structuredClone(evaluate(binding.value, depth+1));
+                else if (binding.mode === 'output' && binding.target?.op === 'get' && safeField(binding.target.field)
+                    && ['self', 'local'].includes(binding.target.scope)) {
+                    const owner = binding.target.scope === 'self' ? instance : locals;
+                    if (owns(owner, binding.target.field)) args[binding.parameter] = structuredClone(owner[binding.target.field]);
+                    targets.push(binding);
+                } else throw new Error('Unsupported call argument');
+            }
+            const nested = runBlueprint(callee, instance, args, functions, budget, callDepth + 1);
+            for (const binding of targets) {
+                if (!owns(nested.outputs, binding.parameter)) throw new Error(`Missing call output: ${binding.parameter}`);
+                checkType(binding.target.scope, binding.target.field, nested.outputs[binding.parameter]);
+            }
+            Object.assign(instance, nested.state);
+            for (const binding of targets) {
+                const owner = binding.target.scope === 'self' ? instance : locals;
+                owner[binding.target.field] = structuredClone(nested.outputs[binding.parameter]);
+            }
+            trace.push({source_index: sourceIndex, op: 'call', function: expression.function, outputs: nested.outputs, trace: nested.trace});
+            return nested.value;
+        }
         if (expression.op === 'math' && Array.isArray(expression.args)) {
             const boolean = ['BooleanAND', 'BooleanOR', 'BooleanXOR', 'Not_PreBool'].includes(expression.name);
             const match = /^(EqualEqual|NotEqual|Greater|GreaterEqual|Less|LessEqual)_(ByteByte|IntInt|DoubleDouble)$/.exec(expression.name);
@@ -74,10 +110,12 @@ export function executeBlueprint(program, self = {}, inputs = {}) {
         }
         throw new Error(`Unsupported Blueprint expression: ${expression.op}`);
     };
-    let pc = 0, budget = 10000;
+    const callDepth = depth;
+    let pc = 0;
     while (pc < program.steps.length) {
-        if (--budget < 0) throw new Error('Blueprint instruction budget exceeded');
+        if (--budget.remaining < 0) throw new Error('Blueprint instruction budget exceeded');
         const step = program.steps[pc++];
+        sourceIndex = step.source_index;
         if (step.op === 'nop') continue;
         if (step.op === 'jump' || step.op === 'branch') {
             if (!Number.isInteger(step.target) || step.target < 0 || step.target >= program.steps.length)
@@ -93,6 +131,7 @@ export function executeBlueprint(program, self = {}, inputs = {}) {
             continue;
         }
         if (step.op === 'end') throw new Error('Blueprint reached EndOfScript without return');
+        if (step.op === 'evaluate') { evaluate(step.value); continue; }
         if (step.op === 'set' && safeField(step.field)) {
             const scope = step.scope || 'local';
             if (!['self', 'local'].includes(scope)) throw new Error('Invalid assignment scope');

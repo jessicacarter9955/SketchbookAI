@@ -26,7 +26,7 @@ class BlueprintMigrationTests(unittest.TestCase):
         self.assertEqual(result['steps'][0]['source_index'], 1)
 
     def test_unsupported_calls_and_jumps_block_entire_function(self):
-        for token in ('EX_CallMath', 'EX_Context', 'EX_FinalFunction'):
+        for token in ('EX_CallMath', 'EX_Context'):
             function = self.function(); function['ScriptBytecode'].insert(1, node(token))
             with self.assertRaisesRegex(BlueprintTranslationError, token): translate_function(function)
 
@@ -85,3 +85,33 @@ class BlueprintMigrationTests(unittest.TestCase):
         with self.assertRaises(BlueprintTranslationError): memory_size(node('EX_Context'))
         self.assertEqual(memory_size(node('EX_NameConst', Value='Socket')), 13)
         self.assertEqual(memory_size(node('EX_UnicodeStringConst', Value='😀')), 7)
+
+    def call_package(self):
+        caller = {'ObjectName': 'Caller', 'OuterIndex': 3, 'LoadedProperties': [
+            {'Name': 'Result', 'SerializedType': 'BoolProperty', 'PropertyFlags': 'CPF_None'}],
+            'ScriptBytecode': [node('EX_LocalVirtualFunction', VirtualFunctionName='Predicate', Parameters=[
+                node('EX_True'), variable('EX_LocalVariable', 'Result')]),
+                node('EX_Return', ReturnExpression=variable('EX_LocalVariable', 'Result')), node('EX_EndOfScript')]}
+        callee = {'ObjectName': 'Predicate', 'OuterIndex': 3, 'LoadedProperties': [
+            {'Name': 'Input', 'SerializedType': 'BoolProperty', 'PropertyFlags': 'CPF_Parm'},
+            {'Name': 'Allowed', 'SerializedType': 'BoolProperty', 'PropertyFlags': 'CPF_Parm, CPF_OutParm'}],
+            'ScriptBytecode': [node('EX_LetBool', VariableExpression=variable('EX_LocalOutVariable', 'Allowed'),
+                                    AssignmentExpression=variable('EX_LocalVariable', 'Input')),
+                               node('EX_Return', ReturnExpression=node('EX_Nothing')), node('EX_EndOfScript')]}
+        return Package({'Exports': [caller, callee, {'ObjectName': 'Test_C', 'LoadedProperties': []}]})
+
+    def test_local_call_preserves_signature_and_output_reference(self):
+        result = translate_package(self.call_package())
+        self.assertEqual(result['counts']['translated'], 2)
+        call = result['functions']['Caller']['steps'][0]['value']
+        self.assertEqual(call['export_index'], 2)
+        self.assertEqual(call['bindings'][1]['target']['field'], 'Result')
+        self.assertEqual(call['bindings'][1]['parameter'], 'Allowed')
+
+    def test_untranslated_callee_and_foreign_owner_block_whole_caller(self):
+        package = self.call_package(); package.exports[1]['ScriptBytecode'][0] = node('EX_Context')
+        result = translate_package(package)
+        self.assertFalse(result['functions'])
+        self.assertTrue(any('dependency' in item['reason'] for item in result['blocked']))
+        package = self.call_package(); package.exports[1]['OuterIndex'] = 4
+        self.assertNotIn('Caller', translate_package(package)['functions'])
