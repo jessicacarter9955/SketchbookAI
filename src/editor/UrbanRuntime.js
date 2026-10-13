@@ -166,6 +166,7 @@ export class UrbanRuntime {
   generate(raw){
     const config=validateUrban(raw); if(JSON.stringify(config)===JSON.stringify(this.config))return;
     const plan=generateUrbanPlan(config),group=new THREE.Group(),bodies=[];
+    this.loadingHeavy=!this.mobileLite;
     group.visible=false;
     const asphaltMap=roadForgeTexture('assets/roadforge/T_RF_Asphalt_BC.png',{color:true,repeat:[12,12]});
     const asphaltRough=roadForgeTexture('assets/roadforge/T_RF_Asphalt_R.png',{repeat:[12,12]});
@@ -372,6 +373,7 @@ export class UrbanRuntime {
         progress:{...this.visualProgress}
       };
       group.userData.photorealReady=errors.length===0;
+      this.loadingHeavy=false;
       // Never expose partially loaded geometry: callers await visualPromise.
       this.onVisualProgress?.({...this.visualProgress});
       return this.visualState;
@@ -555,6 +557,9 @@ export class UrbanRuntime {
     this.occlusionStats.buildingsHidden=hidden;
   }
   update(){
+    // Prewarming can clone thousands of PBR modules. Never compete with it by
+    // rendering or doing more distance-streaming behind an opaque loader.
+    if(this.loadingHeavy)return;
     this.world.urbanLighting?.update();
     this.streamPhotorealDetails();
     const now=performance.now();
