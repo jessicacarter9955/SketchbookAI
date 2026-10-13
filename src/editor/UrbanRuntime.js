@@ -4,6 +4,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { createStreetProps } from './UrbanProps.js';
 import { batchUrbanStaticBoxes } from './UrbanStaticBatch.js';
 import { batchUrbanPbrSurfaces } from './UrbanSurfaceBatch.js';
+import {restoreUrbanFacades,saveUrbanFacades} from './UrbanSceneCache.js';
 import { buildUrbanStreets } from './UrbanStreets.js';
 import { createVegetation } from './UrbanVegetation.js';
 import { isHiddenBehindBuildings,isOccludedSector,isOccludedTree } from './urban-visibility.mjs';
@@ -368,7 +369,7 @@ export class UrbanRuntime {
         vegetation:results[1].ok?results[1].value:null,
         lighting:results[3].ok?results[3].value:null,
         props:results[4].ok?results[4].value:null,
-        assembledBuildings:plan.buildings.length,skyline,
+        assembledBuildings:plan.buildings.length,skyline,hdCacheHit:Boolean(this.facadeStreamer?.fromCache),
         error:errors.length?errors.join(' | '):null,
         progress:{...this.visualProgress}
       };
@@ -399,30 +400,49 @@ export class UrbanRuntime {
     globalThis.cityDiagnostics?.activity('Superfici PBR originali: '+batched.drawCallsSaved+' draw call risparmiate, UV preservate');
   }
   async loadPhotorealArchitecture(group,plan,config){
-    // A failed optional industrial file must not discard working apartment facades.
+    // Query the persistent processed-HD cache FIRST. On a valid cache hit
+    // none of the hundreds of thousands of facade module clones are rebuilt.
     const names=['modular_urban_apartments_facade','modular_factory_facade'];
-    const results=await Promise.allSettled(names.map(id=>loadUrbanKit(new GLTFLoader(),id)));
-    if(group.parent!==this.root)return [];
-    const available=results.map((r,i)=>r.status==='fulfilled'?names[i]:null).filter(Boolean);
-    if(!available.length)throw new Error('Nessun kit facciate disponibile: '+results.map((r,i)=>names[i]+': '+(r.reason?.message||'errore')).join(' | '));
-    const standard=results[0].status==='fulfilled'?prepareFacadeKit(results[0].value.scene):prepareFacadeKit(results[1].value.scene);
-    const factory=results[1].status==='fulfilled'?prepareFacadeKit(results[1].value.scene):standard;
-    const size=config.blockSize, clusters=new Map(),minX=plan.bounds.minX,minZ=plan.bounds.minZ;
+    const size=config.blockSize,clusters=new Map(),minX=plan.bounds.minX,minZ=plan.bounds.minZ;
     plan.buildings.forEach((b,index)=>{
       const cx=Math.floor((b.x-minX)/size),cz=Math.floor((b.z-minZ)/size),key=cx+':'+cz;
       if(!clusters.has(key))clusters.set(key,{key,x:minX+(cx+.5)*size,z:minZ+(cz+.5)*size,size,ground:urbanGroundHeight(b.x,b.z,config),buildings:[],node:null});
       clusters.get(key).buildings.push({b,index});
     });
+    let cached=await restoreUrbanFacades(config);
+    const cachedValid=cached && cached.children.length===clusters.size &&
+      [...clusters.keys()].every(key=>cached.getObjectByName('PBR city sector '+key));
+    if(!cachedValid)cached=null;
+    let standard=null,factory=null,available=names;
+    if(!cached){
+      const results=await Promise.allSettled(names.map(id=>loadUrbanKit(new GLTFLoader(),id)));
+      if(group.parent!==this.root)return [];
+      available=results.map((r,i)=>r.status==='fulfilled'?names[i]:null).filter(Boolean);
+      if(!available.length)throw new Error('Nessun kit facciate disponibile: '+results.map((r,i)=>names[i]+': '+(r.reason?.message||'errore')).join(' | '));
+      standard=results[0].status==='fulfilled'?prepareFacadeKit(results[0].value.scene):prepareFacadeKit(results[1].value.scene);
+      factory=results[1].status==='fulfilled'?prepareFacadeKit(results[1].value.scene):standard;
+    }
     const placeholders=new Map();
     for(const node of group.children)if(node.userData.urbanBuildingVisual){
       const index=node.userData.urbanBuildingIndex;
       if(!placeholders.has(index))placeholders.set(index,[]);
       placeholders.get(index).push(node);
     }
-    this.facadeStreamer={group,config,standard,factory,clusters:[...clusters.values()],placeholders,assembled:0};
-    this.streamPhotorealDetails(true);
+    this.facadeStreamer={group,config,standard,factory,clusters:[...clusters.values()],placeholders,assembled:0,fromCache:Boolean(cached)};
+    if(cached){
+      for(const sector of this.facadeStreamer.clusters){
+        sector.node=cached.getObjectByName('PBR city sector '+sector.key);
+        group.add(sector.node);
+        this.facadeStreamer.assembled+=sector.buildings.length;
+        for(const {index} of sector.buildings)this.hdBuildingIndices.add(index);
+      }
+      group.userData.assembledBuildings=this.facadeStreamer.assembled;
+      globalThis.cityDiagnostics?.activity('HIT cache HD: '+this.facadeStreamer.clusters.length+' settori importati da IndexedDB');
+    }else{
+      this.streamPhotorealDetails(true);
+      group.userData.assembledBuildings=0;
+    }
     group.userData.photorealAssets=available;
-    group.userData.assembledBuildings=0;
     return available;
   }
   streamPhotorealDetails(force=false){
@@ -486,6 +506,14 @@ export class UrbanRuntime {
     }
     streamer.placeholders.clear();this.fallbackBuildingNodes.clear();
     this.root.getObjectByName('Distant skyline')?.removeFromParent();
+    if(!streamer.fromCache){
+      // First visit: persist the complete imported geometry, PBR materials,
+      // and GPU instance matrices. Any unavailable/quota-limited cache is an
+      // optional optimization, never a loading failure.
+      this.visualProgress.label='Salvataggio facciate HD per gli avvii successivi…';
+      this.onVisualProgress?.({...this.visualProgress});
+      await saveUrbanFacades(streamer.config,streamer.clusters);
+    }
     const layer=this.root.getObjectByName('CC0 photoreal vegetation');
     if(!layer)throw new Error('Vegetazione fotorealistica non disponibile');
     await layer.userData.prepareAll?.(text=>{
