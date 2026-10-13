@@ -61,6 +61,12 @@ def parser():
     progress.add_argument('--workspace', type=Path, required=True)
     progress.add_argument('--publish-dir', type=Path, required=True)
     progress.add_argument('--character-dir', type=Path)
+    blueprints = commands.add_parser('migrate-blueprints', help='Translate supported cached Blueprint functions without launching Unreal')
+    blueprints.add_argument('project', type=Path)
+    blueprints.add_argument('--workspace', type=Path, required=True)
+    blueprints.add_argument('--publish-dir', type=Path, required=True)
+    blueprints.add_argument('--package', help='Optional inventoried Blueprint package; otherwise inspect available caches')
+    blueprints.add_argument('--read-package', action='append', default=[], help='Read this inventoried package into the parser cache without starting Unreal; repeat for a bounded batch')
     return result
 
 
@@ -69,6 +75,11 @@ def default_workspace(project):
 
 
 def execute(args):
+    if args.command == 'migrate-blueprints':
+        from blueprint_migration import migrate_blueprints
+        report = migrate_blueprints(args.project, args.workspace, args.publish_dir, args.package, args.read_package)
+        print(f"Blueprint functions: {report['counts']}; uncached packages: {len(report['missing_cached_packages'])}")
+        return 0
     if args.command == 'progress':
         from progress_report import project_progress
         report = project_progress(args.workspace, args.publish_dir, args.character_dir)

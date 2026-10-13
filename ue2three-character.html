@@ -22,15 +22,17 @@
   <div id="view"></div>
   <header>
     <h1>Personaggio DDS · risorse migrate da Unreal</h1>
-    <p>Prova visiva della mesh, delle animazioni e dei modelli arma esportati. Trascina per ruotare la vista e usa la rotella per lo zoom.</p>
+    <p>Prova visiva della mesh e delle armi esportate. Animazioni 🟡: assunte funzionanti per proseguire; fedeltà Unreal ancora da verificare. Trascina per ruotare e usa la rotella per lo zoom.</p>
     <div class="controls">
       <label for="clip">Animazione</label><select id="clip" disabled></select>
       <label for="weapon">Arma</label><select id="weapon" disabled></select>
       <button id="play" type="button" aria-pressed="true" disabled>In riproduzione</button>
     </div>
     <small id="source"></small>
+    <p id="audit-status" role="status" hidden></p>
+    <details><summary>Risultati delle verifiche</summary><pre id="audit-result" style="max-height:150px;overflow:auto;font-size:10px;white-space:pre-wrap">Apri con verify=1 per eseguire le verifiche tecniche delle risorse.</pre></details>
   </header>
   <div id="status" role="status">Caricamento delle risorse migrate…</div>
-  <script type="module" src="/tools/ue2three/ue2three-character-viewer.js"></script>
+  <script type="module" src="/tools/ue2three/ue2three-character-viewer.js?v=source-sockets-8"></script>
 </body>
 </html>

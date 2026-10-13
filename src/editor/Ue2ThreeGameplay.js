@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { clone } from 'three/examples/jsm/utils/SkeletonUtils';
+import { applyAttachmentSocket } from './ue2three-attachment.mjs';
 
 // Source: CBP_Fixers_Mover_ABP's "Weapon Poses" LayeredBoneBlend branches.
 const WEAPON_POSE_BRANCHES = ['spine_01', 'clavicle_l', 'clavicle_r'];
@@ -186,12 +187,7 @@ export class Ue2ThreeGameplay {
         this.weaponRoot.name = `arma Unreal ${name}`;
         // Socket transforms come from the source skeleton, converted by ue2three.
         // Pose-dependent calibration would discard Unreal's authored attachment.
-        const socket = definition.socketTransform;
-        if (socket) {
-            this.weaponRoot.position.fromArray(socket.position);
-            this.weaponRoot.quaternion.fromArray(socket.quaternion);
-            this.weaponRoot.scale.fromArray(socket.scale);
-        }
+        applyAttachmentSocket(this.weaponRoot, definition);
         hand.add(this.weaponRoot);
         const asset = clone(definition.asset);
         const transform = definition.transform || {};

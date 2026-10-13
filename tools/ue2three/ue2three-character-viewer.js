@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
+import { applyAttachmentSocket } from '/src/editor/ue2three-attachment.mjs';
+import { validateCharacterManifest, validateCharacterRig } from '/src/editor/ue2three-manifest.mjs';
 
 const params = new URLSearchParams(location.search);
 const base = params.get('base') || 'build/local-scenes/ue2three/current/';
@@ -49,6 +50,7 @@ let activeAction;
 let character;
 let manifest;
 let weaponRoot;
+let equipRevision = 0;
 const loader = new GLTFLoader();
 
 function startClip(name) {
@@ -98,6 +100,7 @@ function fitCharacter() {
 }
 
 async function equipWeapon(name) {
+  const revision = ++equipRevision;
   weaponRoot?.removeFromParent();
   weaponRoot = null;
   if (!name) return;
@@ -106,24 +109,10 @@ async function equipWeapon(name) {
   const hand = character.scene.getObjectByName(definition.bone);
   if (!hand) throw new Error(`Socket esportato mancante: ${definition.bone}`);
   const asset = await loader.loadAsync(safeBase(base) + definition.file);
-  const sourcePose = character.animations.find(clip => clip.name === `${name}_aim`) ||
-    character.animations.find(clip => clip.name === `${name}_ready`);
-  if (!sourcePose) throw new Error(`Posa sorgente di impugnatura mancante per ${name}`);
-
-  // Calibrate the attachment in the weapon's original aim pose. The inverse hand
-  // rotation keeps the exported weapon basis aligned while the source clip moves
-  // the hand, matching the grip compensation already used by the DDS character rig.
-  const reference = cloneSkeleton(character.scene);
-  const referenceMixer = new THREE.AnimationMixer(reference);
-  referenceMixer.clipAction(sourcePose).play();
-  referenceMixer.update(0);
-  reference.updateMatrixWorld(true);
-  const referenceHand = reference.getObjectByName(definition.bone);
-  if (!referenceHand) throw new Error(`Bone di calibrazione mancante: ${definition.bone}`);
-  const handRotation = referenceHand.getWorldQuaternion(new THREE.Quaternion());
+  if (revision !== equipRevision) return;
   weaponRoot = new THREE.Group();
-  weaponRoot.name = `DDS ${name} calibrated grip`;
-  weaponRoot.quaternion.copy(handRotation.invert());
+  weaponRoot.name = `ue2three ${name} source socket`;
+  applyAttachmentSocket(weaponRoot, definition);
   hand.add(weaponRoot);
 
   const weapon = asset.scene;
@@ -133,17 +122,16 @@ async function equipWeapon(name) {
   weapon.scale.fromArray(transform.scale || [1, 1, 1]);
   weaponRoot.add(weapon);
   fitCharacter();
-  referenceMixer.stopAllAction();
-  referenceMixer.uncacheRoot(reference);
 }
 
 async function openCharacter() {
   const assetBase = safeBase(base);
   const response = await fetch('/' + assetBase + 'manifest.json', { cache: 'no-store' });
   if (!response.ok) throw new Error('Manifest del personaggio migrato non disponibile.');
-  manifest = await response.json();
+  manifest = validateCharacterManifest(await response.json());
   const model = await loader.loadAsync('/' + assetBase + manifest.mesh);
   character = model;
+  validateCharacterRig(model.scene, manifest);
   scene.add(model.scene);
   model.scene.updateMatrixWorld(true);
   fitCharacter();
@@ -181,6 +169,15 @@ async function openCharacter() {
   startClip(clipSelect.value);
   weaponSelect.value = '';
   status.textContent = `Risorse caricate: mesh originale esportata, ${names.length} animazioni e ${Object.keys(manifest.attachment_assets || {}).length} armi.`;
+  if (params.get('verify') === '1') {
+    const auditStatus = document.querySelector('#audit-status');
+    auditStatus.hidden = false;
+    const { auditCharacter } = await import('./character-audit.mjs');
+    const audit = await auditCharacter(character, manifest, loader, '/' + assetBase,
+      text => { auditStatus.textContent = text; });
+    auditStatus.textContent = `Verifica tecnica PASS: ${audit.clips.length} clip × 61 campioni; ${audit.sockets.length} socket originali. Fedeltà del gioco ancora da verificare.`;
+    document.querySelector('#audit-result').textContent = JSON.stringify(audit, null, 2);
+  }
 }
 
 function showError(error) {

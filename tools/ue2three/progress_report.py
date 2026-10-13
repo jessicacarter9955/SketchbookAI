@@ -11,7 +11,8 @@ def project_progress(workspace, published, character_dir=None):
     workspace, published = Path(workspace).resolve(), Path(published).resolve()
     inputs = {'inventory': workspace / 'artifacts/inventory.json',
               'registry': workspace / 'artifacts/engine_metadata.json',
-              'maps': published / 'map-manifest.json', 'ui': published / 'ui-manifest.json'}
+              'maps': published / 'map-manifest.json', 'ui': published / 'ui-manifest.json',
+              'blueprints': published / 'blueprint-programs.json'}
     if character_dir:
         inputs['character'] = Path(character_dir).resolve() / 'manifest.json'
     for path in sorted((published / 'maps').glob('*.validation.json')):
@@ -102,14 +103,20 @@ def project_progress(workspace, published, character_dir=None):
     row('characters', 'Personaggi, rig e accessori', f"{classes['SkeletalMesh']} mesh scheletriche sorgenti; profilo personaggio {'presente' if character else 'assente'}",
         'Verificare rig, skin, materiali, socket, IK e gli altri personaggi', bool(character))
     row('clips', 'Clip di animazione', f"{clips} file clip pubblicati; {classes['AnimSequence']} sequenze sorgenti (incluse pose e varianti)",
-        'Selezionare le clip usate dal gioco; migrare curve, notifies, root motion e transizioni', bool(clips))
+        'Assunte funzionanti per proseguire su richiesta; fedeltà 1:1 non verificata. Rimandati curve, notifies, root motion e transizioni', bool(clips))
     row('animation_systems', 'Sistemi di animazione',
         f"{classes['AnimBlueprintGeneratedClass']} AnimBlueprint, {classes['AnimMontage']} montage, {classes['BlendSpace'] + classes['BlendSpace1D']} blendspace, {classes['PoseSearchDatabase']} database pose",
         'Tradurre stati, blending, Motion Matching, chooser, Control Rig e IK')
     row('weapons', 'Armi e movimento armato', f'{attachments} accessori pubblicati; socket e clip nel profilo',
         'Verificare impugnature, movimento armato, mira, recoil, ricarica, hit detection e danni originali', bool(attachments))
-    row('blueprints', 'Blueprint e moduli nativi', f"{classes['BlueprintGeneratedClass']} classi Blueprint nel registry",
-        'Tradurre eventi, funzioni, variabili, timer e chiamate native; verificare le dipendenze')
+    blueprint_report = documents.get('blueprints', {})
+    if blueprint_report.get('project') != project or blueprint_report.get('content_sha256') != digest({k: v for k, v in blueprint_report.items() if k != 'content_sha256'}):
+        blueprint_report = {}
+    translated = blueprint_report.get('counts', {}).get('translated', 0)
+    blocked = blueprint_report.get('counts', {}).get('blocked', 0)
+    no_ops = blueprint_report.get('counts', {}).get('no_op_functions', 0)
+    row('blueprints', 'Blueprint e moduli nativi', f"{classes['BlueprintGeneratedClass']} classi Blueprint; {translated} funzioni lineari tradotte ({no_ops} vuote nel sorgente), {blocked} bloccate nei pacchetti letti",
+        'Tradurre chiamate, salti, eventi, timer e moduli nativi; collegare le funzioni al runtime originale', bool(translated))
     ui = documents.get('ui', {})
     ui_layout = bool(ui.get('tree') and ui.get('project') == project)
     row('ui', 'Menu, HUD e schermate', f"{classes['WidgetBlueprintGeneratedClass']} widget sorgenti; {int(ui_layout)} gerarchia UI pubblicata",

@@ -229,6 +229,14 @@ def main():
         scenes.insert(0, ("Personaggio DDS · animazioni e armi originali", character_preview_url))
         scenes.append(("Sketchbook - personaggio giocabile", character_url))
     try:
+        from blueprint_migration import migrate_blueprints
+        blueprint_report = migrate_blueprints(project, workspace, project_output)
+        if blueprint_report['counts'].get('translated'):
+            scenes.append(('Blueprint originali · verifiche di esecuzione',
+                           'http://127.0.0.1:8401/ue2three-blueprint.html?programs=' + project_output.relative_to(repo).as_posix() + '/blueprint-programs.json'))
+    except (OSError, ValueError, KeyError) as error:
+        print('NOTICE: Traduzione Blueprint non disponibile: ' + str(error), flush=True)
+    try:
         from progress_report import project_progress
         project_progress(workspace, project_output, repo / 'build/local-scenes/ue2three/current')
         scenes.append(('Avanzamento progetto · checklist completa',

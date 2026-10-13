@@ -1,4 +1,4 @@
-# DDS migration checklist · 2026-10-12
+# DDS migration checklist · 2026-10-13
 
 The tool generates `progress.json` and `progress.html` from cached source metadata
 and checksum-verified published outputs. Open **Avanzamento del progetto completo**
@@ -29,10 +29,10 @@ are not a percentage of completed gameplay.
 | Materials and textures | 🟡 | Translate six nested calls in M_Grid and original shader operations; remove eight parameter fallback materials; compare PBR channels |
 | Other maps and streaming | 🟡 | One of 10 map files published; convert remaining levels and original transitions |
 | Characters, skin and rig | 🟡 | Validate source materials, sockets, IK and remaining characters; 20 skeletal meshes in registry |
-| Animation clips | 🟡 | 45 unique clip files published; determine used sequences among 1,590 source sequences, then migrate curves, notifies and root motion |
+| Animation clips | 🟡 | 45 unique clip files published; assumed functioning to continue at the user's request. Unreal fidelity, curves, notifies, root motion and transitions are deferred |
 | Animation systems | 🔴 | Translate nine AnimBlueprints, 105 montages, 10 blendspaces, pose databases, chooser and Control Rig behavior |
 | Weapons and armed movement | 🟡 | Two accessories published; compare grip, aim, recoil, reload, hit detection and original damage rules |
-| Blueprint and native behavior | 🔴 | Translate events, functions, variables, timers and dependencies of 210 Blueprint classes |
+| Blueprint and native behavior | 🟡 | 23 straight-line functions translated (six empty in source); 477 blocked functions in read packages and 263 packages not cached. Calls, jumps, timers and native dependencies remain |
 | Menu, HUD and UI | 🟡 | One hierarchy published among 57 source widgets; migrate styles, assets, bindings and events |
 | Inventory, loot and saves | 🔴 | Translate original item, container, equipment and persistence rules |
 | NPC, shop, dialogue and missions | 🔴 | Translate actual source interactions, AI, prices, conditions and progression |
@@ -82,3 +82,44 @@ Verification: 68 Python tests and 36 JavaScript tests passed; cached DDS replay
 started no external process and preserved the raw GLB checksum. Native browser
 proof is saved locally under
 `build/local-scenes/ue2three/verification/material-graphs/` and kept outside Git.
+
+## Blueprint and character checkpoint · 2026-10-13
+
+The generic compiler and JavaScript interpreter preserve original Kismet
+assignments, input/output fields, instance state, source statement indices,
+property types, Boolean logic and whitelisted Engine.KismetMathLibrary comparisons.
+Unsupported operations reject the whole function. State updates are returned
+explicitly; an execution failure does not modify the input actor.
+
+Four additional DDS packages were parsed from isolated copies without Unreal:
+Combat, Inventory, Interactions and Vitality. Together with earlier caches there
+are 23 translated functions: 17 with source behavior and six empty callbacks.
+The empty callbacks do **not** implement replication. Sixty delegate declarations
+are recorded separately and are not counted as translated gameplay.
+
+Examples include authored socket mounting, weapon-state getters,
+`ClearJustExitedSlide`, `ClearThrowInProgress`, `ResetEmptyClick`, `SetCrouching`,
+`RestoreInteractionWidgets`, `GetCurrentWeight`, `GetMaxWeight`, `IsStorageSlot`,
+`HasStamina` and `IsAlive`. These programs execute on provided actor data; they
+are not yet connected to the complete original game simulation.
+
+The native browser audit passed 69 scenarios across these 23 functions. Browser
+artifacts live under `build/local-scenes/ue2three/verification/blueprint-runtime/`.
+Previously, 45 character clips passed finite-pose sampling and both authored
+socket matrices were checked throughout the clips. **Animations stay yellow:**
+the user explicitly deferred further animation/fidelity work.
+
+Fixed failures in this batch:
+
+- The character preview replaced authored sockets with pose compensation. It
+  now shares source socket application with the playable runtime.
+- The initial Blueprint audit rejected the menu visibility enum. The compiler
+  now retains enum metadata and uses the original underlying property type.
+- Float constants such as `+0` were emitted as strings by the package parser.
+  Finite decimal strings now decode explicitly; nonfinite values remain blocked.
+- The new Python test initially lacked its module search path; discovery now
+  imports the converter independently of test ordering.
+
+The next converter step is validated control-flow offsets and conditional
+branches, followed by local Blueprint calls and explicit native adapters.
+Use [the saved handoff](ue2three-handoff.md) to resume without new scans/exports.
