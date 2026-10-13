@@ -160,6 +160,11 @@ async function captureFreeRoam(){
     const world=globalThis.world,player=world.editorPlayer,skyline=world.levelRuntime.root.getObjectByName('Distant skyline');
     const runtime=world.levelRuntime;
     let fallbackVisible=0;runtime.root.traverse(node=>{if(node.userData?.urbanBuildingVisual&&node.visible)fallbackVisible++;});
+    let skinnedPlayerMeshes=0,playerTextureMaps=0;
+    player.modelContainer?.traverse(node=>{if(node.isSkinnedMesh)skinnedPlayerMeshes++;if(node.isMesh&&node.material?.map)playerTextureMaps++;});
+    const detailedCar=world.vehicles.find(vehicle=>vehicle.getObjectByName('City HD vehicle visual - Ferrari'));
+    let detailedCarMeshes=0;
+    detailedCar?.getObjectByName('City HD vehicle visual - Ferrari')?.traverse(node=>{if(node.isMesh&&node.visible)detailedCarMeshes++;});
     const nearest=world.vehicles.slice().sort((a,b)=>a.position.distanceTo(player.position)-b.position.distanceTo(player.position))[0];
     return {
       vehicles:world.vehicles.length,
@@ -173,7 +178,9 @@ async function captureFreeRoam(){
       hdReady:runtime.visualState.status==='ready',
       hdSectorsBuilt:runtime.facadeStreamer?.clusters?.filter(c=>c.node).length||0,
       hdSectorsTotal:runtime.facadeStreamer?.clusters?.length||0,
-      fallbackVisible
+      fallbackVisible,
+      cityActorAssets:world.cityActorAssets||null,
+      skinnedPlayerMeshes,playerTextureMaps,detailedCarMeshes
     };
   });
   // Verify the REAL player display path, not only manual EffectComposer
@@ -203,7 +210,7 @@ async function captureFreeRoam(){
     throw new Error('Black or incomplete actual City Player WebGL output: '+JSON.stringify({...directFrame,image:'omitted'}));
   console.log('free roam initial',initial);
   await fs.writeFile(`${out}/urban-free-roam-initial.json`,JSON.stringify(initial,null,2));
-  if(!initial.playing||initial.vehicles<2||!initial.hdReady||initial.hdSectorsBuilt!==initial.hdSectorsTotal||initial.fallbackVisible!==0||initial.skyline!==null)
+  if(!initial.playing||initial.vehicles<2||!initial.hdReady||initial.hdSectorsBuilt!==initial.hdSectorsTotal||initial.fallbackVisible!==0||initial.skyline!==null||!initial.cityActorAssets?.ready||initial.skinnedPlayerMeshes<1||initial.playerTextureMaps<1||initial.detailedCarMeshes<3)
     throw new Error(`Free-roam setup incomplete: ${JSON.stringify(initial)}`);
 
   const vehicleState=()=>page.evaluate(()=>({
