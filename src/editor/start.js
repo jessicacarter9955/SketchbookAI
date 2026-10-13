@@ -29,7 +29,7 @@ const stageTimer=setInterval(()=>{
  const elapsed=Math.floor((performance.now()-bootSince)/1000);
  if(loadingMessage&&elapsed>7)loadingMessage.textContent=bootStage+' · '+elapsed+'s';
  if(elapsed>25 && retryButton)retryButton.hidden=false;
- if(elapsed>18&&globalThis.sceneEditor&&skipVisualButton)skipVisualButton.disabled=false;
+ // HD scenes never unlock a premature skip into placeholder geometry.
 },1000);
 window.addEventListener('error',event=>{report('Errore JavaScript: '+event.message);if(retryButton)retryButton.hidden=false;});
 window.addEventListener('unhandledrejection',event=>{report('Errore caricamento: '+String(event.reason?.message||event.reason));if(retryButton)retryButton.hidden=false;});
@@ -40,11 +40,7 @@ const setVisualProgress=({completed=0,total=5,failed=0,label=''})=>{
     if(label)report(label);
 };
 let resolveVisualSkip=null;
-if(skipVisualButton)skipVisualButton.onclick=()=>{
-    if(!globalThis.sceneEditor)return;
-    if(resolveVisualSkip)resolveVisualSkip({status:'skipped'});
-    else {sceneEditor.setActive(false);loading.style.display='none';}
-};
+if(skipVisualButton){skipVisualButton.hidden=true;skipVisualButton.disabled=true;}
 
 
 function sceneControls(editor) {
@@ -238,7 +234,7 @@ try {
     if (world.levelRuntime) { world.cameraOperator.theta = current.playerProfile==='dds'?0:180; world.cameraOperator.phi = 12; }
     report('Preparazione controlli e editor…');
     globalThis.sceneEditor = new SceneEditor(world, { storageKey, worldId: current.world });
-    if(skipVisualButton&&current.world==='procedural-city')skipVisualButton.disabled=false;
+    if(skipVisualButton&&current.world==='procedural-city'){skipVisualButton.disabled=true;skipVisualButton.hidden=true;}
     const hadSaved = localStorage.getItem(storageKey) !== null;
     report('Caricamento della scena salvata e degli abitanti…');
     await sceneEditor.run(() => sceneEditor.restoreSaved());
@@ -294,28 +290,15 @@ try {
     if(current.world==='procedural-city'){
         const progress=world.levelRuntime.visualProgress;
         if(progress)setVisualProgress(progress);
-        if(minimalMobile){
-            if(skipVisualButton)skipVisualButton.hidden=true;
-            report('Attendo il completamento della scena 3D…');
-            // No mobile fast-forward; a failed asset must display an error,
-            // not silently reveal a black player with empty surroundings.
-            const visual=await Promise.race([
-              world.levelRuntime.visualPromise,
-              new Promise((_,reject)=>setTimeout(()=>reject(new Error('Caricamento scena oltre 90 secondi. Riprova o usa la modalità mobile leggera.')),90000))
-            ]);
-            if(visual?.status!=='ready')throw new Error('Alcuni elementi 3D non sono stati caricati: '+(visual?.error||'sconosciuto'));
-        }else{
-            if(skipVisualButton)skipVisualButton.disabled=false;
-            let watchdog;
-            // Free-roam can start immediately using full-quality procedural geometry;
-            // optional HD assets stream in after the player gains control.
-            const timed=new Promise(resolve=>{watchdog=setTimeout(()=>resolve({status:'timeout'}),query.get('play')==='1'?150:14000);});
-            const skipped=new Promise(resolve=>{resolveVisualSkip=resolve;});
-            const visual=await Promise.race([world.levelRuntime.visualPromise,timed,skipped]);
-            clearTimeout(watchdog);resolveVisualSkip=null;
-            if(visual?.status==='partial'||visual?.status==='error')
-                sceneEditor.message('Alcuni dettagli HD non disponibili: '+visual.error);
-        }
+        if(skipVisualButton){skipVisualButton.hidden=true;skipVisualButton.disabled=true;}
+        report('Preparazione fotorealistica: attendo tutti i modelli HD, la vegetazione e gli shader…');
+        // Full quality is the default on both desktop and mobile. Never replace
+        // missing HD assets with a low-poly city, and never expose an incomplete
+        // scene merely because an arbitrary 150 ms / 14 s timer expired.
+        const visual=await world.levelRuntime.visualPromise;
+        if(visual?.status!=='ready')
+            throw new Error('Scena HD incompleta: '+(visual?.error||'un asset obbligatorio non disponibile'));
+        report('Modelli e materiali HD pronti. Ultimo controllo della scena…');
     }
     if(!minimalMobile)loading.style.display='none';
     if(current.id === 'portland-grass' && sceneEditor.mapEdits.length) {
