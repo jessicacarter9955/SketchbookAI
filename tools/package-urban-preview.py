@@ -5,7 +5,7 @@ import subprocess
 root=Path(__file__).resolve().parents[1]
 out=root/'artifacts'/'urban-playable'
 out.mkdir(parents=True,exist_ok=True)
-for name in ['editor.html','urban-examples.html','urban-assets.html','urban-webgpu.html','3dPicker.js']:
+for name in ['editor.html','urban-examples.html','urban-assets.html','urban-webgpu.html','3dPicker.js','city-assets-sw.js','_headers']:
     shutil.copy2(root/name,out/name)
 for name in ['src/editor','build/assets','assets/roadforge','assets/urban-kits','node_modules/three']:
     shutil.copytree(root/name,out/name,dirs_exist_ok=True,ignore=shutil.ignore_patterns('*.part','__pycache__'))
