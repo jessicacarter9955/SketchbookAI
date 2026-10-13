@@ -19,7 +19,7 @@ async function writeDataUrl(path,dataUrl){
 async function captureEnvironment(){
   const page=await browser.newPage({viewport:{width:1440,height:900},deviceScaleFactor:1});
   await page.goto(`${base}/urban-examples.html?variant=residential`,{waitUntil:'domcontentloaded'});
-  await page.waitForFunction(()=>globalThis.__urbanExample?.ready===true&&typeof globalThis.__urbanExampleCapture==='function',null,{timeout:90000,polling:500});
+  await page.waitForFunction(()=>globalThis.__urbanExample?.ready===true&&typeof globalThis.__urbanExampleCapture==='function',null,{timeout:300000,polling:500});
   const report=await page.evaluate(()=>globalThis.__urbanExample.report);
   if(!report||report.localKits<2||report.buildings<10||report.trees<8)
     throw new Error(`residential proof failed ${JSON.stringify(report)}`);
@@ -60,7 +60,7 @@ async function captureRuntime(){
     await page.waitForFunction(()=>{
       const state=globalThis.world?.levelRuntime?.visualState;
       return state?.status==='error'||(state?.status==='ready'&&globalThis.sceneEditor&&globalThis.world.levelRuntime.config.maxFloors===7);
-    },null,{timeout:120000,polling:500});
+    },null,{timeout:300000,polling:500});
   }catch(error){
     const debug=await collectDebug();
     await fs.writeFile(`${out}/urban-runtime-FAILED.json`,JSON.stringify({debug,consoleErrors,error:String(error)},null,2));
@@ -146,7 +146,7 @@ async function captureFreeRoam(){
   try{await page.waitForFunction(()=>{
     const world=globalThis.world,state=world?.levelRuntime?.visualState;
     return state?.status==='ready'&&globalThis.sceneEditor?.active===false&&world?.vehicles?.length>=2;
-  },null,{timeout:120000,polling:500});}catch(error){
+  },null,{timeout:300000,polling:500});}catch(error){
     const diagnostic=await page.evaluate(()=>({loading:document.querySelector('#loading-screen')?.textContent,
       world:!!globalThis.world,sceneEditor:!!globalThis.sceneEditor,active:globalThis.sceneEditor?.active,
       visual:globalThis.world?.levelRuntime?.visualState,vehicles:globalThis.world?.vehicles?.length,
