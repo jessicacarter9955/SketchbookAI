@@ -3,6 +3,7 @@ import * as CANNON from 'cannon-es';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { createStreetProps } from './UrbanProps.js';
 import { batchUrbanStaticBoxes } from './UrbanStaticBatch.js';
+import { batchUrbanPbrSurfaces } from './UrbanSurfaceBatch.js';
 import { buildUrbanStreets } from './UrbanStreets.js';
 import { createVegetation } from './UrbanVegetation.js';
 import { isHiddenBehindBuildings,isOccludedSector,isOccludedTree } from './urban-visibility.mjs';
@@ -392,6 +393,8 @@ export class UrbanRuntime {
     // whiten snowy sidewalks without altering model-import or physics data.
     ['Urban asphalt','Urban pavement','Urban lawns'].forEach((name,i)=>{materials[i].name=name;});
     group.traverse(node=>{if(node.isMesh){const index=[road,pavement,grass].indexOf(node.material);if(index>=0){node.material=materials[index];metricUV(node);}}});
+    const batched=batchUrbanPbrSurfaces(group,new Set(materials),this.config?.blockSize||42);
+    globalThis.cityDiagnostics?.activity('Superfici PBR originali: '+batched.drawCallsSaved+' draw call risparmiate, UV preservate');
   }
   async loadPhotorealArchitecture(group,plan,config){
     // A failed optional industrial file must not discard working apartment facades.
