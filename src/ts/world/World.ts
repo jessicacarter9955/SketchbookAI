@@ -39,6 +39,7 @@ export class World
 	public renderer: THREE.WebGLRenderer;
 	public camera: THREE.PerspectiveCamera;
 	public composer: any;
+	public useDirectUrbanRender: boolean = false;
 	public stats: Stats;
 	public graphicsWorld: THREE.Scene;
 	public sky: Sky;
@@ -328,8 +329,8 @@ export class World
 
 		// Actual rendering with a FXAA ON/OFF switch
 		const renderStarted = fpsMonitor ? performance.now() : 0;
-		if (this.params.FXAA) this.composer.render();
-		else this.renderer.render(this.graphicsWorld, this.camera);
+		if (this.useDirectUrbanRender || !this.params.FXAA) this.renderer.render(this.graphicsWorld, this.camera);
+		else this.composer.render();
 
 		// Measuring render time
 		const renderMs = fpsMonitor ? performance.now() - renderStarted : 0;
