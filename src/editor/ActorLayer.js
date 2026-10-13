@@ -35,7 +35,8 @@ export class ActorLayer {
                 const source = Array.isArray(object.material) ? object.material : [object.material];
                 const materials = source.map(material => {
                     const next = material?.clone?.() || new THREE.MeshStandardMaterial();
-                    next.color?.set(0xbfc6c9); next.roughness = 0.48; next.metalness = 0.12;
+                    // Do NOT paint the imported skinned/UV-textured mesh flat grey.
+                    if(!this.world.levelRuntime?.plan?.roads){next.color?.set(0xbfc6c9); next.roughness=0.48;next.metalness=0.12;}
                     return next;
                 });
                 object.material = Array.isArray(object.material) ? materials : materials[0];
