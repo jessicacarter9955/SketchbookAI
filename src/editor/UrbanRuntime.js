@@ -144,7 +144,8 @@ export class UrbanRuntime {
   constructor(world){
     this.world=world;
     const url=new URLSearchParams(location.search);
-    this.mobileLite=/Android|iPhone|iPad/i.test(navigator.userAgent)&&!url.has('hd');
+    // Reduced geometry is opt-in. Mobile devices no longer silently receive placeholders.
+    this.mobileLite=url.get('quality')==='lite';
     world.sky.setPhotographic(!this.mobileLite); this.ready=false; this.config=null; this.bodies=[]; this.visualState={status:'idle',architecture:[],vegetation:null,error:null};
     this.root=new THREE.Group(); this.root.name='Città procedurale'; world.graphicsWorld.add(this.root);
     world.camera.far=1800; world.camera.updateProjectionMatrix(); world.renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
@@ -192,7 +193,9 @@ export class UrbanRuntime {
     const width=plan.bounds.maxX-plan.bounds.minX,depth=plan.bounds.maxZ-plan.bounds.minZ;
     box([width+30,.5,depth+30],[0,-.3,0],new THREE.MeshStandardMaterial({color:0x66765a,roughness:1}),true);
     const horizonGround=new THREE.Mesh(new THREE.BoxGeometry(width+760,.35,depth+760),matGrass);horizonGround.position.y=-.58;horizonGround.receiveShadow=true;group.add(horizonGround);
-    group.add(createDistantSkyline(plan,config));
+    const distantSkyline=createDistantSkyline(plan,config);
+    distantSkyline.visible=this.mobileLite; // Never expose low-detail fake buildings in HD mode.
+    group.add(distantSkyline);
 
     // Parks/lawns first, then sidewalks and roads so curbs read clearly.
     for(const p of plan.parks){
@@ -301,7 +304,7 @@ export class UrbanRuntime {
       this.visualPromise=Promise.resolve(this.visualState);
       return;
     }
-    this.visualProgress={completed:0,total:5,failed:0,label:'Città procedurale pronta'};
+    this.visualProgress={completed:0,total:7,failed:0,label:'Download e preparazione degli asset fotorealistici'};
     this.visualState={status:'loading',architecture:[],vegetation:null,error:null,progress:this.visualProgress};
     const stages=[
       ['Facciate fotorealistiche',()=>this.loadPhotorealArchitecture(group,plan,config)],
@@ -337,9 +340,25 @@ export class UrbanRuntime {
       }
     });
     this.onVisualProgress?.({...this.visualProgress});
-    this.visualPromise=Promise.all(loads).then(results=>{
+    this.visualPromise=Promise.all(loads).then(async results=>{
       if(group.parent!==this.root)return this.visualState;
       const errors=results.map((r,i)=>r.ok?null:stages[i][0]+': '+r.error).filter(Boolean);
+      if(!errors.length&&!this.mobileLite){
+        // Prefetch every original high-detail facade BEFORE allowing gameplay.
+        // Building these mesh batches at running speed created major stutters.
+        try{
+          await this.prepareAllPhotorealDetails();
+          this.visualProgress.completed++;
+          this.visualProgress.label='Edifici HD pronti, precompilazione shader…';
+          this.onVisualProgress?.({...this.visualProgress});
+          if(typeof this.world.renderer.compileAsync==='function')
+            await this.world.renderer.compileAsync(this.world.graphicsWorld,this.world.camera);
+          this.visualProgress.completed++;
+          this.visualProgress.label='Shader preparati · scena HD completa';
+          this.onVisualProgress?.({...this.visualProgress});
+        }catch(error){errors.push('Precaricamento HD: '+String(error?.message||error));
+          globalThis.cityDiagnostics?.problem(error,'Precaricamento HD');}
+      }
       const skyline=group.getObjectByName('Distant skyline')?.userData||{};
       this.visualState={
         status:errors.length?'partial':'ready',
@@ -352,8 +371,7 @@ export class UrbanRuntime {
         progress:{...this.visualProgress}
       };
       group.userData.photorealReady=errors.length===0;
-      // Cube reflection capture is costly, especially on mobile. Do not
-      // synchronously block the playable city or weather on that optional pass.
+      // Never expose partially loaded geometry: callers await visualPromise.
       this.onVisualProgress?.({...this.visualProgress});
       return this.visualState;
     });
@@ -426,6 +444,11 @@ export class UrbanRuntime {
     this.occlusionStats.sectorsHidden=occluded;
     const next=needed.find(c=>!c.node);
     if(!next)return;
+    this.assembleFacadeCluster(next);
+  }
+  assembleFacadeCluster(next){
+    if(next.node)return;
+    const streamer=this.facadeStreamer;
     const assembly=new THREE.Group();
     for(const {b,index} of next.buildings){
       assembly.add(buildModularBuilding(index%5===2?streamer.factory:streamer.standard,
@@ -438,6 +461,32 @@ export class UrbanRuntime {
     for(const {index} of next.buildings)for(const mesh of streamer.placeholders.get(index)||[])mesh.visible=false;
     streamer.assembled+=next.buildings.length;
     streamer.group.userData.assembledBuildings=streamer.assembled;
+  }
+  async prepareAllPhotorealDetails(){
+    const streamer=this.facadeStreamer;
+    if(!streamer?.clusters?.length)throw new Error('Nessun settore HD disponibile per il precaricamento');
+    for(let i=0;i<streamer.clusters.length;i++){
+      this.assembleFacadeCluster(streamer.clusters[i]);
+      if(i%2===1){
+        this.visualProgress.label=`Precaricamento facciate HD ${i+1}/${streamer.clusters.length}`;
+        this.onVisualProgress?.({...this.visualProgress});
+        await new Promise(resolve=>setTimeout(resolve,0));
+      }
+    }
+    // Remove low-detail facade placeholders permanently, rather than showing
+    // them while running and replacing them in view.
+    for(const parts of streamer.placeholders.values())for(const node of parts){
+      node.removeFromParent();
+      node.geometry?.dispose?.();
+    }
+    streamer.placeholders.clear();this.fallbackBuildingNodes.clear();
+    this.root.getObjectByName('Distant skyline')?.removeFromParent();
+    const layer=this.root.getObjectByName('CC0 photoreal vegetation');
+    if(!layer)throw new Error('Vegetazione fotorealistica non disponibile');
+    await layer.userData.prepareAll?.(text=>{
+      this.visualProgress.label=text;this.onVisualProgress?.({...this.visualProgress});
+    });
+    this.streamPhotorealDetails(true);
   }
   async loadPhotorealVegetation(group,items,config){
     globalThis.cityDiagnostics?.activity('Vegetazione LOD: attesa tree_small_02/scene-lod0.gltf e scene-lod1.gltf con .bin e texture');
@@ -453,6 +502,7 @@ export class UrbanRuntime {
         edge.position.set(t.x+(axis==='z'?side*.75:0),t.y+.21,t.z+(axis==='x'?side*.75:0));edge.receiveShadow=true;group.add(edge);
       }
     }
+    layer.userData.keepLoaded=!this.mobileLite;
     group.add(layer);
     const fallback=group.getObjectByName('Procedural vegetation fallback');if(fallback)fallback.removeFromParent();
     group.userData.photorealVegetation='tree_small_02 · Poly Haven CC0';
