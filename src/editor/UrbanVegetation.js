@@ -23,6 +23,19 @@ export async function createVegetation(items,seed=0){
     }
     layer.add(lod);loaded.set(index,lod);
   };
+  // Precreate authentic photoreal trees during the loading screen, not during
+  // sprinting through the city. Geometry and textures remain shared.
+  layer.userData.prepareAll=async onProgress=>{
+    for(let i=0;i<items.length;i++){
+      if(!loaded.has(i))addTree(i,items[i]);
+      loaded.get(i).visible=false;
+      if(i%12===11){
+        onProgress?.(`Alberi fotorealistici ${i+1}/${items.length}`);
+        await new Promise(resolve=>setTimeout(resolve,0));
+      }
+    }
+    onProgress?.(`Alberi fotorealistici ${items.length}/${items.length}`);
+  };
   // Streaming density is unchanged at the camera: the full LOD models are
   // still used, but off-screen trees are not cloned or uploaded to the GPU.
   layer.userData.stream=(camera,isVisible)=>{
@@ -45,7 +58,7 @@ export async function createVegetation(items,seed=0){
       if(wanted.has(i))continue;
       node.visible=false;
       const tree=items[i],distance=Math.hypot(tree.x-camera.position.x,tree.z-camera.position.z);
-      if(distance>270){node.removeFromParent();loaded.delete(i);}
+      if(distance>270&&!layer.userData.keepLoaded){node.removeFromParent();loaded.delete(i);}
     }
   };
   return layer;
