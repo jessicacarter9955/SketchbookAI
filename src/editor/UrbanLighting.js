@@ -38,11 +38,28 @@ export async function photographicLighting(world,preset='day') {
     globalThis.cityDiagnostics?.activity('GPU: '+(ultra?'SSAO 2x + ombre 4K':'HDR PBR + FXAA + ombre 2K, SSAO multi-pass disattivato'));
     const resize=()=>{const ratio=renderer.getPixelRatio();composer.setSize(innerWidth,innerHeight);fxaa.uniforms.resolution.value.set(1/(innerWidth*ratio),1/(innerHeight*ratio));};
     resize();addEventListener('resize',resize);world.composer.dispose();world.composer=composer;
+    // WebGLRenderer already uses MSAA, ACES tone mapping, sRGB output and the
+    // original PBR textures. Drawing directly eliminates the extra full-screen
+    // colour-copy, FXAA and gamma post-process in normal quality without
+    // reducing geometry, texture resolution or lighting fidelity.
+    world.useDirectUrbanRender=!ultra;
+    // High-resolution shadow maps are expensive when rebuilt every frame.
+    // Keep the 2048px map but refresh at controlled intervals while the
+    // photoreal scene / player is moving. Ultra preserves per-frame shadows.
+    if(!ultra)renderer.shadowMap.autoUpdate=false;
+    let lastShadowRefresh=-Infinity;
+    const lastShadowCenter=new THREE.Vector3(Infinity,0,Infinity);
     world.urbanLighting={sun,hdr,environment,fill,sunOffset:new THREE.Vector3(-50,65,55),update(){
-      const p=world.camera.position;
+      const p=world.camera.position,now=performance.now();
       sun.target.position.set(Math.round(p.x/8)*8,0,Math.round(p.z/8)*8);
       sun.position.copy(sun.target.position).add(world.urbanLighting.sunOffset);
       sun.target.updateMatrixWorld();
+      if(!ultra && renderer.shadowMap.enabled &&
+          (now-lastShadowRefresh>185 || lastShadowCenter.distanceToSquared(sun.target.position)>1)){
+        renderer.shadowMap.needsUpdate=true;
+        lastShadowCenter.copy(sun.target.position);
+        lastShadowRefresh=now;
+      }
     }};
     })();
   }
