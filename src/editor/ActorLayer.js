@@ -7,25 +7,12 @@ import { Car } from '../ts/vehicles/Car';
 import { loadDdsPlayer } from './DdsAssets';
 import { DdsCharacter } from './DdsCharacter';
 import { UrbanPopulation } from './UrbanPopulation.js';
-import {prepareUrbanPerson,prepareUrbanCar} from './UrbanActorVisuals.js';
 
 export class ActorLayer {
     constructor(world) { this.world = world; this.actors = []; this.spawn = new THREE.Vector3(0, 2, -5); }
     async initialize(profile) {
         [this.person, this.car] = await Promise.all(['boxman', 'car'].map(name => new GLTFLoader().loadAsync(`build/assets/${name}.glb`)));
         this.person.scene.animations = this.person.animations;
-        // Both city variants share one world. Never silently render the legacy
-        // white boxman and plain car when city actor geometry is mandatory.
-        if(this.world.levelRuntime?.plan?.roads){
-            const loader=new GLTFLoader();
-            const [personHD,carHD]=await Promise.all([
-                loader.loadAsync('build/assets/city-soldier.glb'),
-                loader.loadAsync('build/assets/city-ferrari.glb')
-            ]);
-            this.person=prepareUrbanPerson(personHD);
-            this.car=prepareUrbanCar(this.car,carHD);
-            this.world.cityActorAssets={person:'Soldier.glb (skinned textured)',car:'ferrari.glb (detailed body)',ready:true};
-        }
         if(profile === 'dds') this.playerModel = await loadDdsPlayer();
         else if(profile === 'mannequin') {
             const scene = clone(this.person.scene);
@@ -35,8 +22,7 @@ export class ActorLayer {
                 const source = Array.isArray(object.material) ? object.material : [object.material];
                 const materials = source.map(material => {
                     const next = material?.clone?.() || new THREE.MeshStandardMaterial();
-                    // Do NOT paint the imported skinned/UV-textured mesh flat grey.
-                    if(!this.world.levelRuntime?.plan?.roads){next.color?.set(0xbfc6c9); next.roughness=0.48;next.metalness=0.12;}
+                    next.color?.set(0xbfc6c9); next.roughness = 0.48; next.metalness = 0.12;
                     return next;
                 });
                 object.material = Array.isArray(object.material) ? materials : materials[0];
@@ -64,7 +50,7 @@ export class ActorLayer {
     start(items) {
         this.stop(false);
         const urban=Boolean(this.world.levelRuntime?.plan?.roads);
-        if(urban)this.urbanPopulation=new UrbanPopulation(this.world,this.person.scene,this.car.scene);
+        if(urban)this.urbanPopulation=new UrbanPopulation(this.world,this.playerProfile==='dds'?this.playerModel.scene:this.person.scene,this.car.scene);
         for (const item of items) {
             if(urban && item.prefab==='pedestrian')continue;
             if (!['vehicle', 'pedestrian'].includes(item.prefab)) continue;
