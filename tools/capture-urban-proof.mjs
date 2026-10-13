@@ -459,6 +459,31 @@ async function captureFreeRoam(){
     console.warn('Headless software renderer: insufficient meaningful frame intervals; real-device FPS not certified');
   await fs.writeFile(`${out}/urban-fps-ci.json`,JSON.stringify(fpsEvidence,null,2));
   console.log("Software WebGL FPS benchmark (not the user device):",fpsEvidence.metrics);
+  // Confirm the first cold HD session actually persisted the assembled
+  // photoreal sector snapshot. Subsequent visits can rehydrate this rather
+  // than rebuilding every modular wall and window.
+  const cacheProof=await page.evaluate(async()=>{
+    const db=await new Promise((resolve,reject)=>{
+      const req=indexedDB.open('sketchbook-photoreal-city',1);
+      req.onsuccess=()=>resolve(req.result);
+      req.onerror=()=>reject(req.error);
+    });
+    try{
+      if(!db.objectStoreNames.contains('scenes'))return {found:false,reason:'store missing'};
+      return await new Promise((resolve,reject)=>{
+        const tx=db.transaction('scenes','readonly');
+        const request=tx.objectStore('scenes').getAll();
+        request.onsuccess=()=>resolve({found:request.result.length>0,
+          items:request.result.map(x=>({compressed:x.compressed,bytes:x.data?.byteLength??x.data?.length,
+            version:x.version}))});
+        request.onerror=()=>reject(request.error);
+      });
+    }finally{db.close();}
+  });
+  await fs.writeFile(`${out}/urban-hd-cache-proof.json`,JSON.stringify(cacheProof,null,2));
+  if(!cacheProof.found||!cacheProof.items.some(x=>x.bytes>10000))
+    throw new Error('No persisted PBR sector assembly for warm startup: '+JSON.stringify(cacheProof));
+  console.log('Persisted photoreal PBR assembly',JSON.stringify(cacheProof));
   await fs.writeFile(`${out}/urban-free-roam.json`,JSON.stringify({initial,driving,exited,consoleErrors},null,2));
   console.log('free roam proof',{initial,driving,exited});
   await page.close();
