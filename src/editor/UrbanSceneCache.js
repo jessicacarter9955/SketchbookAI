@@ -75,10 +75,11 @@ export async function saveUrbanFacades(config,clusters){
     const root=new THREE.Group();root.name='PBR facade snapshot';
     // Reparent only while the opaque loader is showing. No new geometry or
     // material clones are created; Object3D.toJSON deduplicates shared items.
-    for(const sector of clusters)if(sector.node)root.add(sector.node);
+    const parents=new Map();
+    for(const sector of clusters)if(sector.node){parents.set(sector.node,sector.node.parent);root.add(sector.node);}
     let payload;
     try{payload=root.toJSON();}
-    finally{for(const sector of clusters)if(sector.node)sector.parent.add(sector.node);}
+    finally{for(const [node,parent] of parents)parent.add(node);}
     log('Compressione cache HD persistente…');
     const encoded=await encode(payload);
     await transact(db,urbanCacheKey(config),'readwrite',{
