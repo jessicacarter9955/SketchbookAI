@@ -3,8 +3,8 @@ import {mat,pbr,cube,rod} from './modeling';
 
 export async function makeMultiTrunkTree():Promise<THREE.Group>{
  const group=new THREE.Group();group.name='Multi-trunk ornamental tree | botanical instanced foliage';
- const bark = mat(0xd0c7ba,.96,.01), innerBark=mat(0xa3a09c,.97,.01),twig=mat(0x433f33,.96);
- const woodDetail=pbr(0x9f9382,.90,.01);
+ const bark = mat(0x968579,.96,.01), innerBark=mat(0x766e66,.97,.01),twig=mat(0x393f35,.96);
+ const woodDetail=pbr(0x776b5d,.93,.01);
  const SEED=245871;let randSeed=SEED;const rnd=()=>{randSeed=(Math.imul(1664525,randSeed)+1013904223)>>>0;return randSeed/4294967296;};
  const rndRange=(a:number,b:number)=>a+(b-a)*rnd();
  // A family of 8 interwoven trunks with physically tapered cylindrical branch segments.
