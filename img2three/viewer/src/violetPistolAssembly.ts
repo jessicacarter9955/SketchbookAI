@@ -194,15 +194,33 @@ function makeShroud(parent:THREE.Group,texture:THREE.Texture){
  };
  const frontRim=new THREE.Mesh(axisGeometry(.26,.57,7),lip);
  frontRim.name='Open muzzle annulus with actual centre aperture';tube.add(frontRim);
- const cylindricalRim=new THREE.Mesh(new THREE.CylinderGeometry(.56,.56,.57,128,1,true),lip);
- cylindricalRim.rotation.z=Math.PI/2;cylindricalRim.position.set(wx(46),wy(131),0);
- cylindricalRim.name='Independent rounded dark muzzle surround';tube.add(cylindricalRim);
+ const photographedRim=new THREE.CylinderGeometry(.56,.56,.57,128,1,true);
+ photographedRim.rotateZ(Math.PI/2);
+ photographedRim.translate(wx(46),wy(131),0);
+ const rp=photographedRim.getAttribute('position'),ru=photographedRim.getAttribute('uv');
+ for(let i=0;i<ru.count;i++){
+  ru.setXY(i,rp.getX(i)/WORLD_W+.5,rp.getY(i)/(PHOTO_H*UNIT)+.5);
+ }
+ ru.needsUpdate=true;
+ const rimPhotoMat=new THREE.MeshStandardMaterial({
+  map:texture,metalness:.19,roughness:.83,side:THREE.DoubleSide
+ });
+ const cylindricalRim=new THREE.Mesh(photographedRim,rimPhotoMat);
+ cylindricalRim.name='Photographically aligned real knurled muzzle surround';tube.add(cylindricalRim);
  const bore=new THREE.Mesh(new THREE.CylinderGeometry(.26,.26,.60,96,1,true),mat(0x090b0d,.88,.13));
  bore.rotation.z=Math.PI/2;bore.position.copy(cylindricalRim.position);
  bore.name='Recessed real hollow muzzle lining';tube.add(bore);
  const rearThread=new THREE.Mesh(new THREE.CylinderGeometry(.21,.21,.22,96,1,false),lip);
  rearThread.rotation.z=Math.PI/2;rearThread.position.set(wx(1128),wy(129),0);
  rearThread.name='Threaded rear collar, separate from painted shroud';tube.add(rearThread);
+ const rearFace=new THREE.Mesh(
+  new THREE.RingGeometry(.215,.525,128),
+  new THREE.MeshPhysicalMaterial({color:0x9b4baf,metalness:.32,roughness:.43,side:THREE.DoubleSide})
+ );
+ rearFace.rotation.y=Math.PI/2;
+ rearFace.position.set(wx(1125),wy(124),0);
+ rearFace.name='Source-aligned closed rear shroud shoulder around black collar';
+ tube.add(rearFace);
 }
 
 export async function createVioletPistolAssembly():Promise<THREE.Group>{
