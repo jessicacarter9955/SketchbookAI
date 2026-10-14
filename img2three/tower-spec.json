@@ -104,7 +104,7 @@
         "actionReadinessNeed": 2
       },
       "estimatedCounts": {
-        "macroComponents": 4,
+        "macroComponents": 5,
         "mesoComponents": 28,
         "microFeatureGroups": 12,
         "materialLayers": 3,
@@ -216,6 +216,13 @@
           "kind": "ridge",
           "mapsTo": {
             "ref": "pane-divider-18"
+          }
+        },
+        {
+          "id": "foundation-bevel",
+          "kind": "bevel",
+          "mapsTo": {
+            "ref": "ground-podium"
           }
         }
       ]
@@ -719,7 +726,7 @@
   "componentTree": [
     {
       "id": "root",
-      "name": "Structural base plinth",
+      "name": "Central skyscraper support shaft",
       "level": "macro",
       "role": "body",
       "importance": 1,
@@ -741,16 +748,16 @@
       "parent": null,
       "attachment": null,
       "dimensions": {
-        "width": 1.25,
-        "height": 0.18,
-        "depth": 0.95,
+        "width": 0.27,
+        "height": 9.35,
+        "depth": 0.28,
         "units": "relative",
-        "confidence": 0.8
+        "confidence": 0.68
       },
       "transform": {
         "position": [
           0,
-          -4.95,
+          0,
           0
         ],
         "rotation": [
@@ -799,9 +806,9 @@
             0
           ],
           "scale": [
-            1.25,
-            0.18,
-            0.95
+            0.27,
+            9.35,
+            0.28
           ],
           "isTrigger": false,
           "notes": "Replace with sphere/capsule/compound proxy when the object shape demands it."
@@ -816,9 +823,9 @@
           "debrisMaterial": "base"
         }
       },
-      "material": "base-stone",
+      "material": "curtain-wall-metal",
       "materialLayers": [
-        "base-stone"
+        "curtain-wall-metal"
       ],
       "deformations": [],
       "joints": [],
@@ -846,14 +853,13 @@
       "details": [],
       "fidelityTier": "blockout",
       "colorMaterialRecipe": {
-        "dominantAlbedo": "rgba(155, 154, 150, 1.0)",
-        "secondaryAlbedo": "rgba(155, 154, 150, 1.0)",
-        "materialClass": "stone",
+        "dominantAlbedo": "rgba(51, 70, 86, 1.0)",
+        "secondaryAlbedo": "rgba(51, 70, 86, 1.0)",
+        "materialClass": "metal",
         "materialClassConfidence": 0.75,
         "evidenceRefs": [
           "full-object"
-        ],
-        "reason": "Reference image contains this region's identifiable PBR surface"
+        ]
       }
     },
     {
@@ -7792,6 +7798,144 @@
           "full-object"
         ],
         "reason": "Reference image contains this region's identifiable PBR surface"
+      }
+    },
+    {
+      "id": "ground-podium",
+      "name": "Skyscraper foundation stone plinth",
+      "level": "macro",
+      "role": "body",
+      "importance": 0.9,
+      "confidence": 0.65,
+      "primitive": "box",
+      "topologyClass": "assembled-solid",
+      "topologyRationale": "Image shows angular continuous glass/steel clad building surfaces with planar rectangular mullions",
+      "geometryDescriptor": {
+        "topologyIntent": "flat glazed curtainwall surface with real thickness",
+        "edgeTreatment": {
+          "type": "bevel",
+          "bevelRadius": 0.008,
+          "segments": 2
+        },
+        "deformationStack": [],
+        "uvStrategy": "generated procedural coordinates",
+        "normalStrategy": "vertex normals from generated geometry"
+      },
+      "parent": "root",
+      "attachment": null,
+      "dimensions": {
+        "width": 1.22,
+        "height": 0.16,
+        "depth": 0.95,
+        "units": "relative",
+        "confidence": 0.75
+      },
+      "transform": {
+        "position": [
+          0,
+          -4.93,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      },
+      "actionProfile": {
+        "animationRole": "static",
+        "pivot": {
+          "mode": "center",
+          "localPosition": [
+            0,
+            0,
+            0
+          ],
+          "axis": [
+            0,
+            1,
+            0
+          ],
+          "confidence": 0.5
+        },
+        "transformChannels": {
+          "translate": true,
+          "rotate": true,
+          "scale": true,
+          "bend": false,
+          "twist": false,
+          "detach": false,
+          "visibility": true,
+          "materialState": true
+        },
+        "sockets": [],
+        "collider": {
+          "type": "box",
+          "offset": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1.22,
+            0.16,
+            0.95
+          ],
+          "isTrigger": false,
+          "notes": "Replace with sphere/capsule/compound proxy when the object shape demands it."
+        },
+        "constraints": [],
+        "destruction": {
+          "breakable": false,
+          "fractureGroup": "top-plate",
+          "seamRefs": [],
+          "detachableFragments": [],
+          "breakImpulse": 0,
+          "debrisMaterial": "base"
+        }
+      },
+      "material": "base-stone",
+      "materialLayers": [
+        "base-stone"
+      ],
+      "deformations": [],
+      "joints": [],
+      "seams": [],
+      "localFeatures": [
+        {
+          "id": "pedestal-edge",
+          "kind": "bevel",
+          "notes": "stone plinth bevel"
+        }
+      ],
+      "surfaceDetail": {
+        "macroRoughness": 0,
+        "microRoughness": 0,
+        "bumpAmplitude": 0,
+        "normalPattern": "",
+        "displacementPattern": "",
+        "occlusionPattern": "",
+        "edgeWearPattern": "",
+        "notes": ""
+      },
+      "evidenceRefs": [
+        "full-object"
+      ],
+      "details": [],
+      "fidelityTier": "blockout",
+      "colorMaterialRecipe": {
+        "dominantAlbedo": "rgba(155, 154, 150, 1.0)",
+        "secondaryAlbedo": "rgba(155, 154, 150, 1.0)",
+        "materialClass": "stone",
+        "materialClassConfidence": 0.75,
+        "evidenceRefs": [
+          "full-object"
+        ]
       }
     }
   ],
