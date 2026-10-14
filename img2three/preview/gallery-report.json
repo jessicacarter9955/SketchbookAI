@@ -44,8 +44,8 @@
     "ready": true,
     "stats": {
       "model": "tree",
-      "meshCount": 730,
-      "instances": 8140,
+      "meshCount": 612,
+      "instances": 17700,
       "version": "reference-photoreal-source-projection-v2"
     }
   }
