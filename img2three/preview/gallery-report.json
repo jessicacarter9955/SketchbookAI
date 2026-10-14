@@ -44,8 +44,8 @@
     "ready": true,
     "stats": {
       "model": "tree",
-      "meshCount": 612,
-      "instances": 17700,
+      "meshCount": 376,
+      "instances": 27900,
       "version": "glock-inspired-reference-loft-v4"
     }
   }
