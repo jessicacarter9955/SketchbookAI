@@ -38,7 +38,7 @@ export function makePurplePortedPistol():THREE.Group{
  // Trigger loop uses actual geometry opening.
  extrude(g,'continuous hollow trigger guard',[[-.77,.19],[.95,.19],[1.23,-.20],[1.14,-.63],[.75,-.91],[-.59,-.83],[-.94,-.47]],.38,black,
  [[[-.51,-.06],[.72,-.06],[.90,-.25],[.85,-.55],[.65,-.68],[-.37,-.62],[-.67,-.42]]],[0,0,0],.05);
- extrude(g,'black curved trigger",[[-.0,.02],[.15,-.07],[.08,-.29],[-.04,-.51],[-.19,-.48],[-.03,-.19]],.14,matte,[],[0,0,.12],.01);
+ extrude(g,'black curved trigger',[[-.0,.02],[.15,-.07],[.08,-.29],[-.04,-.51],[-.19,-.48],[-.03,-.19]],.14,matte,[],[0,0,.12],.01);
  extrude(g,'red trigger safety button',[[.07,-.27],[.20,-.25],[.17,-.53],[.04,-.59]],.14,red,[],[0,0,.19],.008);
  for(const s of [-1,1]){
    cube(g,'black upper bridge rail',[.3,.66,s*.34],[3.6,.055,.095],gunmetal,.02);
