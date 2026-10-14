@@ -110,15 +110,6 @@ jobs:
             img2three/reference_tower.jpg
             img2three/preview/
           if-no-files-found: warn
-      - name: Save source pipeline output in isolated branch
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add img2three/output
-          git add -f img2three/viewer/dist
-          git add img2three/preview
-          if ! git diff --cached --quiet; then
-            git commit -m "artifacts: publish img2threejs built browser viewer"
-            git pull --rebase
-            git push
-          fi
+      # Generated factory output remains in the repository; the separate gallery
+      # workflow publishes the bundle. This job validates WebGL and uploads
+      # screenshots as artifacts, preventing duplicate concurrent Git pushes.
