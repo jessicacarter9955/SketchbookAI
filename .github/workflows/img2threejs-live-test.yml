@@ -28,3 +28,36 @@ jobs:
           test "$(wc -c </tmp/assets.js)" -gt 500000
           echo "LIVE: $BASE/index.html" >> "$GITHUB_STEP_SUMMARY"
           echo "HTML and JS assets loaded successfully" >> "$GITHUB_STEP_SUMMARY"
+      - name: Browser test - actual WebGL model render
+        run: |
+          set -euo pipefail
+          npm --prefix /tmp/webgl-test install --no-audit --no-fund playwright pngjs
+          node /tmp/webgl-test/node_modules/playwright/cli.js install --with-deps chromium
+          node <<'NODE'
+          const {chromium} = require('/tmp/webgl-test/node_modules/playwright');
+          const {PNG} = require('/tmp/webgl-test/node_modules/pngjs');
+          (async()=>{
+            const browser=await chromium.launch({headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-webgl','--no-sandbox']});
+            const page=await browser.newPage({viewport:{width:1100,height:850},deviceScaleFactor:1});
+            const errors=[];page.on('pageerror',err=>errors.push(err.message));
+            const url='https://raw.githack.com/jessicacarter9955/SketchbookAI/img2threejs-runner/img2three/viewer/dist/index.html';
+            await page.goto(url,{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForFunction('window.__threeReady===true || !!window.__threeError',null,{timeout:55000});
+            await page.waitForTimeout(1800);
+            const result=await page.evaluate(()=>({ready:window.__threeReady,error:window.__threeError,stats:window.__threeStats,canvas:document.querySelector('canvas')?.getBoundingClientRect().toJSON()}));
+            const screenshot=await page.screenshot({path:'/tmp/actual-threejs-render.png'});
+            const png=PNG.sync.read(screenshot);
+            let varied=0;
+            for(let y=100;y<png.height;y+=11)for(let x=25;x<png.width;x+=11){const i=(png.width*y+x)*4; const [r,g,b]=[png.data[i],png.data[i+1],png.data[i+2]]; if(Math.abs(r-238)+Math.abs(g-241)+Math.abs(b-246)>50)varied++;}
+            console.log(JSON.stringify({url,result,errors,nonBackgroundSamples:varied,screenshotBytes:screenshot.length},null,2));
+            await browser.close();
+            if(!result.ready||errors.length||result.stats.meshCount<45||varied<150) process.exit(1);
+          })().catch(e=>{console.error(e);process.exit(2)});
+          NODE
+      - name: Upload live render screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: img2threejs-live-chromium-render
+          path: /tmp/actual-threejs-render.png
+          if-no-files-found: warn
