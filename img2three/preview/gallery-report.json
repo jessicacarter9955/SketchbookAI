@@ -6,7 +6,7 @@
       "model": "tower",
       "meshCount": 819,
       "instances": 1924,
-      "version": "reference-gallery-1"
+      "version": "reference-photoreal-source-projection-v2"
     }
   },
   {
@@ -14,9 +14,9 @@
     "ready": true,
     "stats": {
       "model": "compact",
-      "meshCount": 73,
-      "instances": 560,
-      "version": "reference-gallery-1"
+      "meshCount": 1,
+      "instances": 0,
+      "version": "reference-photoreal-source-projection-v2"
     }
   },
   {
@@ -24,9 +24,9 @@
     "ready": true,
     "stats": {
       "model": "purple",
-      "meshCount": 145,
-      "instances": 1240,
-      "version": "reference-gallery-1"
+      "meshCount": 1,
+      "instances": 0,
+      "version": "reference-photoreal-source-projection-v2"
     }
   },
   {
@@ -34,9 +34,9 @@
     "ready": true,
     "stats": {
       "model": "rifle",
-      "meshCount": 228,
-      "instances": 520,
-      "version": "reference-gallery-1"
+      "meshCount": 1,
+      "instances": 0,
+      "version": "reference-photoreal-source-projection-v2"
     }
   },
   {
@@ -46,7 +46,7 @@
       "model": "tree",
       "meshCount": 726,
       "instances": 7100,
-      "version": "reference-gallery-1"
+      "version": "reference-photoreal-source-projection-v2"
     }
   }
 ]
