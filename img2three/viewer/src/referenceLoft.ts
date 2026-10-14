@@ -189,6 +189,38 @@ export async function makeReferenceLoft(key:Weapon):Promise<THREE.Group>{
   mesh.name='Reference-traced 11-section loft; photo cap, curved side and reverse';
   output.add(mesh);
  }
+ // Reference-guided interior layers: traced vent holes reveal physically
+ // shaded internals, not white studio background or an invented raised panel.
+ // The silhouette cap and its source UVs remain completely untouched.
+ function internalSurface(name:string,u:number,v:number,uw:number,vh:number,color:number,z=.016){
+  const mat=new THREE.MeshStandardMaterial({
+   color,roughness:.87,metalness:.12,side:THREE.DoubleSide
+  });
+  const plane=new THREE.Mesh(new THREE.PlaneGeometry(uw*w,vh*h),mat);
+  plane.name=name;
+  plane.position.set((u-.5)*w,(.5-v)*h,z);
+  plane.receiveShadow=true;
+  output.add(plane);
+ }
+ if(key==='rifle'){
+  internalSurface('handguard real dark rear cavity behind open vents',.751,.171,.36,.246,0x151b16,-.006);
+  // The barrel lives between the photographed near face and the reverse
+  // shell, and is actually observable through the ventilation openings.
+  const innerBarrel=new THREE.Mesh(
+   new THREE.CylinderGeometry(.110,.110,3.18,48,1,false),
+   new THREE.MeshStandardMaterial({color:0x151719,metalness:.62,roughness:.59})
+  );
+  innerBarrel.rotation.z=Math.PI/2;
+  innerBarrel.position.set((.754-.5)*w,(.5-.174)*h,-.032);
+  innerBarrel.name='partially exposed interior barrel underneath handguard';
+  innerBarrel.castShadow=true;output.add(innerBarrel);
+ }
+ if(key==='purple'){
+  internalSurface('recessed inner housing visible through shroud ports',.233,.184,.36,.18,0x101017,.008);
+ }
+ if(key==='compact'){
+  internalSurface('dark interior behind photographed slide window',.574,.121,.22,.095,0x393d41,.006);
+ }
  output.userData={
   reference:'original user photograph /ref/'+key+'.webp',
   geometry:'img2threejs Glock-inspired eleven-ring nonconstant cross section',
