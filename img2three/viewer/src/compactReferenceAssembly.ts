@@ -111,11 +111,18 @@ export async function createCompactReferenceAssembly():Promise<THREE.Group>{
  ],.245,0x6a36a0,.026);
  // Grip geometry has its own rear palm swell and is treated as a part,
  // rather than extending the slide's thickness all the way through.
- part('Textured violet handle with separate gently swollen cross-section',[
+ const grip=part('Textured violet handle with separate gently swollen cross-section',[
   [170,368],[211,381],[438,467],[425,512],[397,634],
   [369,787],[359,822],[35,823],[17,794],[32,696],
   [73,567],[128,444],[151,393]
  ],[],.263,0x633699,.021,.11);
+ // The continuous original side must not be split by a raised diagonal seam:
+ // let the handle shape reinforce the REVERSE volume under the front chassis.
+ grip.position.z=-.032;
+ part('Real black curved trigger inside source-matched guard opening',[
+  [564,307],[617,309],[625,338],[642,385],[657,416],
+  [636,443],[613,453],[586,425],[563,382],[512,366],[516,341]
+ ],[],.295,0x222326,.015);
  part('Black removable magazine base and foot',[
   [66,836],[355,831],[360,849],[356,873],[339,887],
   [74,888],[53,877],[51,858]
