@@ -5,6 +5,7 @@ import {buildArchitecturalRefinement} from './architecturalRefinement.ts';
 import {makePhotoReferenceModel} from './photoReferenceVolume.ts';
 import {makeReferenceLoft} from './referenceLoft.ts';
 import {createVioletPistolAssembly} from './violetPistolAssembly.ts';
+import {createCompactReferenceAssembly} from './compactReferenceAssembly.ts';
 
 import {makeMultiTrunkTree} from './treeModel.ts';
 import './style.css';
@@ -19,7 +20,7 @@ const assets:Array<{id:AssetKey;title:string;subtitle:string;maker:()=>THREE.Gro
     factory.traverse(o=>{if(o instanceof THREE.Mesh)o.visible=false;});
     const ref=buildArchitecturalRefinement();factory.add(ref.group);factory.userData.stats=ref.stats;return factory;
  },fov:34},
- {id:'compact',title:'Compact Violet',subtitle:'Polymer + matte-black steel',maker:()=>weapon('compact'),fov:39},
+ {id:'compact',title:'Compact Violet',subtitle:'Polymer + matte-black steel',maker:()=>compareLegacy?makeReferenceLoft('compact'):createCompactReferenceAssembly(),fov:39},
  {id:'purple',title:'Violet Cylinder',subtitle:'Anodized aluminum + polymer',maker:()=>compareLegacy?makeReferenceLoft('purple'):createVioletPistolAssembly(),fov:36},
  {id:'rifle',title:'Lime Carbine',subtitle:'Green cerakote + black hardware',maker:()=>weapon('rifle'),fov:39},
  {id:'tree',title:'Multi-trunk Tree',subtitle:'15,500 leaves · 1,400 photographic foliage clusters',maker:makeMultiTrunkTree,fov:36},
