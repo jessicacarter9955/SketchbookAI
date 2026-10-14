@@ -7,6 +7,7 @@ on:
       - "img2three/input/**"
       - "img2three/*.base64"
       - "img2three/tower-spec.json"
+      - "img2three/viewer/**"
   workflow_dispatch:
 
 permissions:
@@ -51,6 +52,12 @@ jobs:
           python3 forge/stage3_build/generate_threejs_factory.py ../img2three/output/object-sculpt-spec.json --out ../img2three/output/createTowerModel.ts --blocked-report ../img2three/output/generator-blocked.json > ../img2three/output/generator-log.txt 2>&1 || true
           echo "Original img2threejs scripts executed against author-reviewed 51-component skyscraper specification." >> "$GITHUB_STEP_SUMMARY"
           cat ../img2three/output/generator-log.txt | tail -25
+      - name: Build Three.js viewer against generated original source
+        run: |
+          npm --prefix img2three/viewer install --no-audit --no-fund
+          npm --prefix img2three/viewer run build
+          test -f img2three/viewer/dist/index.html
+          echo "Vite compiled imported Three.js factory successfully." >> "$GITHUB_STEP_SUMMARY"
       - name: Upload input and pipeline artifacts
         if: always()
         uses: actions/upload-artifact@v4
