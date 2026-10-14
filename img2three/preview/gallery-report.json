@@ -6,7 +6,7 @@
       "model": "tower",
       "meshCount": 819,
       "instances": 1924,
-      "version": "geometry-upgrade-v3-real-hollow-barrel"
+      "version": "glock-inspired-reference-loft-v4"
     }
   },
   {
@@ -16,7 +16,7 @@
       "model": "compact",
       "meshCount": 1,
       "instances": 0,
-      "version": "geometry-upgrade-v3-real-hollow-barrel"
+      "version": "glock-inspired-reference-loft-v4"
     }
   },
   {
@@ -24,9 +24,9 @@
     "ready": true,
     "stats": {
       "model": "purple",
-      "meshCount": 72,
-      "instances": 1240,
-      "version": "geometry-upgrade-v3-real-hollow-barrel"
+      "meshCount": 1,
+      "instances": 0,
+      "version": "glock-inspired-reference-loft-v4"
     }
   },
   {
@@ -34,9 +34,9 @@
     "ready": true,
     "stats": {
       "model": "rifle",
-      "meshCount": 9,
+      "meshCount": 1,
       "instances": 0,
-      "version": "geometry-upgrade-v3-real-hollow-barrel"
+      "version": "glock-inspired-reference-loft-v4"
     }
   },
   {
@@ -46,7 +46,7 @@
       "model": "tree",
       "meshCount": 612,
       "instances": 17700,
-      "version": "geometry-upgrade-v3-real-hollow-barrel"
+      "version": "glock-inspired-reference-loft-v4"
     }
   }
 ]
