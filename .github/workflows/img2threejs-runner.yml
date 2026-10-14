@@ -1,0 +1,38 @@
+name: img2threejs original pipeline
+on:
+  push:
+    branches: [img2threejs-runner]
+    paths:
+      - ".github/workflows/img2threejs-runner.yml"
+      - "img2three/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  original-skill-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout isolated working branch
+        uses: actions/checkout@v4
+      - name: Checkout original img2threejs
+        uses: actions/checkout@v4
+        with:
+          repository: img2threejs/img2threejs
+          ref: main
+          path: img2three-source
+      - name: Verify original pipeline, not a substitute
+        run: |
+          cd img2three-source
+          python3 --version
+          test -f SKILL.md
+          test -f forge/stage1_intake/probe_image.py
+          test -f forge/stage2_spec/new_pre_spec_assessment.py
+          test -f forge/stage2_spec/validate_sculpt_spec.py
+          test -f forge/stage3_build/generate_threejs_factory.py
+          python3 forge/stage1_intake/probe_image.py --help
+          python3 forge/stage2_spec/new_pre_spec_assessment.py --help
+          python3 forge/stage3_build/generate_threejs_factory.py --help
+          echo "PASS: upstream img2threejs checked out and original tools executable" >> "$GITHUB_STEP_SUMMARY"
