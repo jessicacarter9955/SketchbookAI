@@ -54,6 +54,10 @@ jobs:
                 const target=new URL(openLink.href,page.url()).toString();
                 console.log('Following notice into actual viewer:',target);
                 await page.goto(target,{waitUntil:'domcontentloaded',timeout:60000});
+              } else {
+                const btn=page.getByRole('button',{name:'Open the page'});
+                console.log('Interstitial button count:',await btn.count());
+                if(await btn.count()) { await btn.click(); await page.waitForTimeout(1800); }
               }
             }
             await page.waitForFunction('window.__threeReady===true || !!window.__threeError',null,{timeout:16000}).catch(err=>console.log('Waiting failed: '+err.message));
