@@ -1,0 +1,40 @@
+name: Build and publish interactive 3D gallery
+on:
+  push:
+    branches: [img2threejs-runner]
+    paths:
+      - ".github/workflows/img2threejs-gallery-build.yml"
+      - "img2three/viewer/src/**"
+      - "img2three/viewer/package.json"
+      - "img2three/output/createTowerModel.ts"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build-gallery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bundle native img2threejs Three.js assets with Vite
+        run: |
+          mkdir -p img2three/viewer/src/generated
+          cp img2three/output/createTowerModel.ts img2three/viewer/src/generated/createTowerModel.ts
+          npm --prefix img2three/viewer install --no-audit --no-fund
+          npm --prefix img2three/viewer run build
+          test -f img2three/viewer/dist/index.html
+      - name: Publish compiled preview to this isolated branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f img2three/viewer/dist
+          if ! git diff --cached --quiet; then
+            git commit -m "gallery: publish compiled multi-model interactive Three.js viewer"
+            git pull --rebase
+            git push
+          fi
+      - name: Upload downloadable gallery build
+        uses: actions/upload-artifact@v4
+        with:
+          name: img2threejs-gallery-web
+          path: img2three/viewer/dist/
