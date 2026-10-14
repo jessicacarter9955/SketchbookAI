@@ -1,0 +1,19 @@
+{
+  "ok": false,
+  "errors": [
+    "score 'object_isolation' must be an integer from 0 to 3",
+    "score 'silhouette_readability' must be an integer from 0 to 3",
+    "score 'depth_inference' must be an integer from 0 to 3",
+    "score 'primitive_decomposition' must be an integer from 0 to 3",
+    "score 'material_procedurality' must be an integer from 0 to 3",
+    "score 'occlusion_risk' must be an integer from 0 to 3",
+    "component 'inner-core' is authored as a recessed feature (role/name/id matches 'recessed') but is topologyClass='assembled-solid' primitive='box' -- a recessed feature must be real concavity carved OUT of a volume, not this shape or relief (a convex primitive, a flat plane-card, and a surface-relief bump are all the same US-004 defect: an eye that reads as a patch, not a recess) -- reclassify as topologyClass 'implicit' with a geometryDescriptor.sdf whose operations include 'subtract' to carve the cavity out of the parent volume (see forge/_shared/sdf_primitives.py VALID_SDF_OPERATIONS)"
+  ],
+  "warnings": [],
+  "summary": {
+    "targetName": "Twisting Glass Skyscraper",
+    "suitability": "pass",
+    "components": 51,
+    "materials": 3
+  }
+}
