@@ -1,0 +1,52 @@
+[
+  {
+    "id": "tower",
+    "ready": true,
+    "stats": {
+      "model": "tower",
+      "meshCount": 819,
+      "instances": 1924,
+      "version": "reference-gallery-1"
+    }
+  },
+  {
+    "id": "compact",
+    "ready": true,
+    "stats": {
+      "model": "compact",
+      "meshCount": 73,
+      "instances": 560,
+      "version": "reference-gallery-1"
+    }
+  },
+  {
+    "id": "purple",
+    "ready": true,
+    "stats": {
+      "model": "purple",
+      "meshCount": 145,
+      "instances": 1240,
+      "version": "reference-gallery-1"
+    }
+  },
+  {
+    "id": "rifle",
+    "ready": true,
+    "stats": {
+      "model": "rifle",
+      "meshCount": 228,
+      "instances": 520,
+      "version": "reference-gallery-1"
+    }
+  },
+  {
+    "id": "tree",
+    "ready": true,
+    "stats": {
+      "model": "tree",
+      "meshCount": 726,
+      "instances": 7100,
+      "version": "reference-gallery-1"
+    }
+  }
+]
