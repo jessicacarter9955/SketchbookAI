@@ -1,55 +1,49 @@
-
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import {
-  createTwistingGlassSkyscraperModel,
-  createTwistingGlassSkyscraperLookDevLights,
-  createTwistingGlassSkyscraperEnvironment,
-  configureTwistingGlassSkyscraperRenderer,
-} from './generated/createTowerModel.ts';
+import {createTwistingGlassSkyscraperModel,createTwistingGlassSkyscraperEnvironment,configureTwistingGlassSkyscraperRenderer} from './generated/createTowerModel.ts';
+import {buildArchitecturalRefinement} from './architecturalRefinement.ts';
 import './style.css';
-
-const host = document.getElementById('app')!;
-host.innerHTML = `
-<header><h1>img2threejs / Twisting Glass Skyscraper</h1>
-<p>Original upstream Three.js factory • Generated from a reference image • Blockout review</p>
-<p id="status">Initializing WebGL...</p>
-<div class="row"><button id="front">Front</button><button id="orbit">3/4 view</button><button id="side">Side</button><button id="wire">Wireframe</button><button id="shot">Screenshot</button></div>
-</header><div class="credit">Drag to orbit · Wheel/pinch to zoom</div>`;
+const host=document.getElementById('app')!;
+host.innerHTML='<header><div class="brand">IMG2THREEJS / ARCHITECTURE</div><h1>Reference-matched Skyscraper</h1><p>Three.js procedural reconstruction · high-detail glazing · real 360° geometry</p><p id="status">Initializing detailed building…</p><div class="row"><button id="front">Front</button><button id="orbit">3/4 view</button><button id="side">Side</button><button id="back">Back</button><button id="wire">Wireframe</button><button id="shot">Screenshot</button></div></header><span class="credit">Drag to orbit · Pinch or wheel to zoom · 45 window levels</span>';
 try {
-  const scene = new THREE.Scene(); scene.background=new THREE.Color('#eef1f6');
-  const camera = new THREE.PerspectiveCamera(38,innerWidth/innerHeight,0.02,150);
-  const renderer = new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
-  renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;configureTwistingGlassSkyscraperRenderer(renderer);
-  host.appendChild(renderer.domElement);
-  scene.environment = createTwistingGlassSkyscraperEnvironment(renderer);
-  const model=createTwistingGlassSkyscraperModel({textureSize:512,textureAnisotropy:4});
-  scene.add(model);
-  scene.add(createTwistingGlassSkyscraperLookDevLights('neutral'));
-  const ground=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:'#e1e5eb',roughness:.85}));
-  ground.rotation.x=-Math.PI/2; ground.position.y=-5.03;ground.receiveShadow=true;scene.add(ground);
-  const bbox=new THREE.Box3().setFromObject(model),center=bbox.getCenter(new THREE.Vector3()),size=bbox.getSize(new THREE.Vector3());
-  const radius=Math.max(9,size.length()*1.15);
-  camera.position.set(center.x+radius*0.28,center.y+radius*0.08,center.z+radius*1.18);
-  camera.lookAt(center);
-  const controls=new OrbitControls(camera,renderer.domElement);controls.target.copy(center);controls.enableDamping=true;
-  controls.minDistance=2;controls.maxDistance=80;controls.update();
-  function cameraView(x:number,y:number,z:number){camera.position.set(center.x+x,center.y+y,center.z+z);camera.lookAt(center);controls.update()}
-  document.getElementById('front')!.onclick=()=>cameraView(0,1,radius*1.15);
-  document.getElementById('orbit')!.onclick=()=>cameraView(radius*.28,radius*.08,radius*1.18);
-  document.getElementById('side')!.onclick=()=>cameraView(radius*1.15,1,0);
-  let wire=false; document.getElementById('wire')!.onclick=()=>{
-    wire=!wire; model.traverse(o=>{if(o instanceof THREE.Mesh){const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(m=>{if(m instanceof THREE.MeshStandardMaterial)m.wireframe=wire;})}});
-  };
-  document.getElementById('shot')!.onclick=()=>{const link=document.createElement('a');link.download='img2threejs-tower.png';link.href=renderer.domElement.toDataURL('image/png');link.click()};
-  const meshCount=Object.keys(model.userData.sculptRuntime?.meshes||{}).length;
-  document.getElementById('status')!.textContent=`Loaded ${meshCount} native generated parts · ${Math.round(size.y*100)/100} units tall`;
-  (window as any).__threeReady=true; (window as any).__threeStats={meshCount,height:size.y};
-  window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
-  function tick(){requestAnimationFrame(tick);controls.update();renderer.render(scene,camera)}tick();
-} catch(error) {
-  console.error(error);
-  const el=document.createElement('div');el.className='error';el.textContent='Three.js failed: '+String(error);host.appendChild(el);
-  (window as any).__threeError=String(error);
-}
+ const scene=new THREE.Scene();scene.background=new THREE.Color('#ecf0f4');
+ const camera=new THREE.PerspectiveCamera(34,innerWidth/innerHeight,.01,180);
+ const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true,powerPreference:'high-performance'});
+ renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+ renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+ configureTwistingGlassSkyscraperRenderer(renderer);renderer.toneMappingExposure=1.12;
+ host.appendChild(renderer.domElement);
+ scene.environment=createTwistingGlassSkyscraperEnvironment(renderer);
+ const factory=createTwistingGlassSkyscraperModel({textureSize:256,textureAnisotropy:4});
+ factory.traverse(o=>{if(o instanceof THREE.Mesh)o.visible=false});
+ const detailed=buildArchitecturalRefinement();factory.add(detailed.group);scene.add(factory);
+ const ambient=new THREE.HemisphereLight(0xf5faff,0x9ba9b9,1.7);scene.add(ambient);
+ const sun=new THREE.DirectionalLight(0xffffff,3.0);sun.position.set(-8,17,15);
+ sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.bias=-.0003;sun.shadow.normalBias=.025;
+ sun.shadow.camera.left=-8;sun.shadow.camera.right=8;sun.shadow.camera.top=17;sun.shadow.camera.bottom=-9;sun.shadow.camera.near=.5;sun.shadow.camera.far=70;scene.add(sun);
+ const fill=new THREE.DirectionalLight(0xaacaff,1.3);fill.position.set(9,11,7);scene.add(fill);
+ const rim=new THREE.DirectionalLight(0xffffff,.95);rim.position.set(1,15,-9);scene.add(rim);
+ const ground=new THREE.Mesh(new THREE.PlaneGeometry(130,130),new THREE.MeshStandardMaterial({color:'#e8edf1',roughness:.88}));
+ ground.rotation.x=-Math.PI/2;ground.position.y=-.012;ground.receiveShadow=true;scene.add(ground);
+ const center=new THREE.Vector3(0,6.05,0);
+ const size=new THREE.Box3().setFromObject(detailed.group).getSize(new THREE.Vector3());
+ const aspectScale=innerWidth<700?1.25:1;
+ const controls=new OrbitControls(camera,renderer.domElement);
+ controls.target.copy(center);controls.enableDamping=true;controls.minDistance=4;controls.maxDistance=85;
+ const view=(x:number,y:number,z:number)=>{camera.position.set(x,y,z);camera.lookAt(center);controls.update();};
+ view(0,6.15,25.3*aspectScale);
+ document.getElementById('front')!.onclick=()=>view(0,6.15,25.3*aspectScale);
+ document.getElementById('orbit')!.onclick=()=>view(12,8.0,22);
+ document.getElementById('side')!.onclick=()=>view(25.3,6.15,0);
+ document.getElementById('back')!.onclick=()=>view(0,6.15,-25.3);
+ let wire=false;
+ document.getElementById('wire')!.onclick=()=>{
+  wire=!wire;detailed.group.traverse(o=>{if(o instanceof THREE.Mesh){const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(m=>{if(m instanceof THREE.MeshStandardMaterial)m.wireframe=wire;});}});
+ };
+ document.getElementById('shot')!.onclick=()=>{renderer.render(scene,camera);const a=document.createElement('a');a.download='skyscraper-threejs.png';a.href=renderer.domElement.toDataURL('image/png');a.click();};
+ document.getElementById('status')!.textContent='Detailed 3D preview · '+detailed.stats.paneInstances+' individually modeled windows · '+detailed.stats.meshCount+' meshes';
+ (window as any).__threeStats={...detailed.stats,height:size.y,realGeometry:true,version:'architectural-v2'};
+ (window as any).__threeReady=true;
+ window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+ let frames=0;function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera);if(++frames===5)(window as any).__firstRenderComplete=true;}animate();
+} catch(error){console.error(error);const el=document.createElement('div');el.className='error';el.textContent='Three.js error: '+String(error);host.appendChild(el);(window as any).__threeError=String(error);}
