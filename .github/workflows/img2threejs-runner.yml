@@ -74,7 +74,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add img2three/output
+          git add -f img2three/viewer/dist
           if ! git diff --cached --quiet; then
-            git commit -m "artifacts: img2threejs pipeline baseline"
+            git commit -m "artifacts: publish img2threejs built browser viewer"
             git push
           fi
