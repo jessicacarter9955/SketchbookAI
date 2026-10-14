@@ -1,12 +1,7 @@
 name: Publish img2threejs Interactive 3D Viewer
+# GitHub Pages is not enabled for this repository. Use isolated gallery builder
+# for public direct-viewer hosting; avoid false deployment failures on every edit.
 on:
-  push:
-    branches: [img2threejs-runner]
-    paths:
-      - ".github/workflows/img2threejs-preview.yml"
-      - "img2three/viewer/**"
-      - "img2three/output/createTowerModel.ts"
-      - "img2three/tower-spec.json"
   workflow_dispatch:
 
 permissions:
