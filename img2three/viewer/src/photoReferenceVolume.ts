@@ -31,25 +31,25 @@ export async function makePhotoReferenceModel(key:PhotoAsset):Promise<THREE.Grou
  texture.colorSpace=THREE.SRGBColorSpace;
  texture.anisotropy=8;
  texture.wrapS=texture.wrapT=THREE.ClampToEdgeWrapping;
- const material=new THREE.MeshPhysicalMaterial({
+ // Product photo is already physically lit and color-graded.
+ // Preserve exact pixels on the source-facing cap; use a separately lit PBR side.
+ const material=new THREE.MeshBasicMaterial({
    map:texture,
    color:0xffffff,
-   metalness:key==='purple'?.12:.05,
-   roughness:key==='purple'?.49:.72,
-   clearcoat:key==='purple'?.36:.17,
-   clearcoatRoughness:.33,
-   emissive:new THREE.Color(0x3c3c3c),
-   emissiveMap:texture,
-   emissiveIntensity:.45,
+   toneMapped:false,
    side:THREE.DoubleSide,
    transparent:true,
-   alphaTest:.11,
+   alphaTest:.16,
    depthWrite:true
  });
  const edgeMat=new THREE.MeshStandardMaterial({
-   color:key==='compact'?0x59416f:key==='purple'?0x343139:0x53633e,
-   roughness:key==='purple'?.52:.68,
-   metalness:key==='purple'?.28:.14,
+   map:texture,
+   color:0xc4c4c4,
+   roughness:key==='purple'?.42:.57,
+   metalness:key==='purple'?.21:.11,
+   emissive:new THREE.Color(0x1d1d1d),
+   emissiveMap:texture,
+   emissiveIntensity:.14,
    side:THREE.DoubleSide
  });
  // Outer contour and all usable transparency-derived holes.
