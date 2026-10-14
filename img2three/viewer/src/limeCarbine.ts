@@ -65,7 +65,7 @@ export function makeLimeGreenCarbine():THREE.Group{
  for(let i=0;i<3;i++)screw(g,-4.17+i*.36,.42,.416,.045);
  // Extended rail/magwell geometric recesses, knobs and clamp.
  cube(g,'black handguard securing collar',[1.01,.88,0],[.18,.88,.80],black,.03);
- cylinderX(g,'barrel locking collar',[1.17,.86,0,.20,.23,steel);
+ cylinderX(g,'barrel locking collar',1.17,.86,0,.20,.23,steel);
  screw(g,1.02,1.08,.426,.07);screw(g,1.02,.72,.426,.07);
  const microCount=520,inst=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(.012,0),rubber,microCount),dummy=new THREE.Object3D();
  for(let n=0;n<microCount;n++){const row=Math.floor(n/26),col=n%26;dummy.position.set(-1.52+col*.021,-.60-row*.043,.37);dummy.scale.set(1,1,.5);dummy.updateMatrix();inst.setMatrixAt(n,dummy.matrix);}
