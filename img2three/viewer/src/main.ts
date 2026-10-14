@@ -29,7 +29,8 @@ root.innerHTML='<div class="ui"><div class="overline">IMG2THREEJS <span>· INTER
 '<div class="asset-subtitle" id="asset-subtitle">Loading…</div>'+
 '<div class="row"><button id="front">Front</button><button id="threequarter">3/4 view</button>'+
 '<button id="side">Side</button><button id="rear">Rear</button><button id="wire">Wireframe</button>'+
-'<button id="shot">Screenshot</button></div>'+
+'<button id="shot">Screenshot</button><button id="compare">Reference</button></div>'+
+'<div class="reference-panel" id="reference-panel" hidden><img id="reference-img" alt="Original user photograph used for reconstruction"/><span>Original source photograph · master reference</span></div>'+
 '<div class="small-note" id="status">Original photo = visual priority · inferred missing depths · real geometry</div></div>'+
 '<div class="bottomhint">Drag to orbit · Wheel/pinch to zoom · Keyboard ← → cycles models</div>';
 
@@ -55,6 +56,11 @@ try {
  const ground=new THREE.Mesh(new THREE.PlaneGeometry(250,250),new THREE.MeshStandardMaterial({color:'#e7ebef',roughness:.85,metalness:0}));
  ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
  const tabs=document.getElementById('asset-tabs')!;
+ const referencePanel=document.getElementById('reference-panel') as HTMLElement;
+ const referenceImage=document.getElementById('reference-img') as HTMLImageElement;
+ const compareButton=document.getElementById('compare') as HTMLButtonElement;
+ let referenceShowing=false;
+ compareButton.onclick=()=>{referenceShowing=!referenceShowing;referencePanel.hidden=!referenceShowing || !['compact','purple','rifle'].includes(currentKey);compareButton.textContent=referenceShowing?'Hide reference':'Reference';};
  let current:THREE.Group|null=null, currentKey:AssetKey='tower',modelCenter=new THREE.Vector3(),cameraDistance=16,wire=false;
  let firstReady=false;
  const cache=new Map<AssetKey,Promise<THREE.Group>>();
@@ -94,6 +100,8 @@ try {
     if(current)scene.remove(current);currentKey=which;current=next;
     try{const url=new URL(window.location.href);url.searchParams.set('model',which);history.replaceState(null,'',url.pathname+url.search+url.hash);}catch{}
     scene.add(current);wire=false;setWire(false);fit();
+    referenceImage.src='./ref/'+which+'.webp';
+    referencePanel.hidden=!referenceShowing || !['compact','purple','rifle'].includes(which);
     const entry=assets.find(x=>x.id===which)!;
     document.getElementById('asset-title')!.textContent=entry.title;
     document.getElementById('asset-subtitle')!.textContent=entry.subtitle;
