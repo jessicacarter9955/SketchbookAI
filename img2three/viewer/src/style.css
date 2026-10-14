@@ -15,3 +15,9 @@ button.active{background:#d9e8ff;border-color:#f6fbff;color:#15253d}
 .bottomhint{position:absolute;bottom:14px;right:18px;z-index:2;padding:8px 12px;border-radius:8px;background:rgba(241,245,250,.86);color:#60778e;font-size:10px;pointer-events:none}
 .error{position:absolute;left:4%;bottom:10%;z-index:6;max-width:90%;padding:12px;color:#ffd6d6;background:#611e22;white-space:pre-wrap}
 @media(max-width:600px){.ui{top:9px;right:9px;max-width:calc(100vw - 18px);width:calc(100vw - 18px);padding:11px 12px}.overline{font-size:9px}h1{font-size:17px;margin:6px 0}.model-tab{font-size:10px;padding:5px 6px}.row{gap:4px;margin-top:7px}.row button{font-size:9px;padding:5px 7px}.asset-subtitle{font-size:10px;margin:7px 0 0}.small-note{font-size:9px;margin-top:7px}.bottomhint{right:5px;bottom:5px;font-size:9px}}
+
+.reference-panel{position:absolute;z-index:3;left:20px;bottom:30px;width:min(32vw,360px);padding:8px;background:rgba(14,19,27,.83);color:#dae3f2;border-radius:13px;border:1px solid #53657e;box-shadow:0 8px 28px #1115;backdrop-filter:blur(7px)}
+.reference-panel[hidden]{display:none}
+.reference-panel img{display:block;width:100%;max-height:190px;object-fit:contain}
+.reference-panel span{display:block;font-size:10px;margin-top:5px;text-align:center;letter-spacing:.02em}
+@media(max-width:600px){.reference-panel{left:9px;bottom:26px;width:48vw}.reference-panel img{max-height:115px}}
