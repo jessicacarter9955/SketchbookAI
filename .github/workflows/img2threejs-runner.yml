@@ -49,7 +49,7 @@ jobs:
           python3 forge/stage2_spec/new_pre_spec_assessment.py "Twisting Glass Skyscraper" --image ../img2three/reference_tower.jpg --complexity complex --out ../img2three/output/assessment.json --force
           cp ../img2three/tower-spec.json ../img2three/output/object-sculpt-spec.json
           python3 forge/stage2_spec/validate_sculpt_spec.py ../img2three/output/object-sculpt-spec.json --strict-quality --json > ../img2three/output/strict-validation.json || true
-          python3 forge/stage3_build/generate_threejs_factory.py ../img2three/output/object-sculpt-spec.json --out ../img2three/output/createTowerModel.ts --blocked-report ../img2three/output/generator-blocked.json > ../img2three/output/generator-log.txt 2>&1 || true
+          python3 forge/stage3_build/generate_threejs_factory.py ../img2three/output/object-sculpt-spec.json --force --out ../img2three/output/createTowerModel.ts --blocked-report ../img2three/output/generator-blocked.json > ../img2three/output/generator-log.txt 2>&1 || true
           echo "Original img2threejs scripts executed against author-reviewed 51-component skyscraper specification." >> "$GITHUB_STEP_SUMMARY"
           cat ../img2three/output/generator-log.txt | tail -25
       - name: Build Three.js viewer against generated original source
@@ -60,6 +60,45 @@ jobs:
           npm --prefix img2three/viewer run build
           test -f img2three/viewer/dist/index.html
           echo "Vite compiled imported Three.js factory successfully." >> "$GITHUB_STEP_SUMMARY"
+      - name: Automated WebGL preview screenshots for all five 3D models
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p img2three/preview /tmp/webgl-test
+          npm --prefix /tmp/webgl-test install --no-audit --no-fund playwright
+          node /tmp/webgl-test/node_modules/playwright/cli.js install --with-deps chromium
+          npm --prefix img2three/viewer run preview -- --host 127.0.0.1 --port 4173 > /tmp/vite-preview.log 2>&1 &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:4173/ -o /dev/null && break || sleep 1; done
+          node <<'NODE'
+          const {chromium}=require('/tmp/webgl-test/node_modules/playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-webgl','--no-sandbox']});
+            const page=await browser.newPage({viewport:{width:1180,height:850},deviceScaleFactor:1});
+            const errors=[];
+            page.on('pageerror',e=>errors.push(e.message));
+            await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForFunction('window.__threeReady===true || !!window.__threeError',null,{timeout:60000});
+            const report=[];
+            for (const id of ['tower','compact','purple','rifle','tree']) {
+              if(id!=='tower')await page.evaluate(id=>window.__chooseAsset(id),id);
+              await page.waitForFunction(id=>window.__activeModel===id && window.__firstRenderComplete===true,id,{timeout:60000});
+              await page.waitForTimeout(id==='tree'?1100:600);
+              const v=await page.evaluate(()=>({ready:window.__threeReady,error:window.__threeError,stats:window.__threeStats}));
+              await page.screenshot({path:'img2three/preview/'+id+'-front.png'});
+              await page.getByRole('button',{name:'3/4 view'}).click();
+              await page.waitForTimeout(350);
+              await page.screenshot({path:'img2three/preview/'+id+'-threequarter.png'});
+              await page.getByRole('button',{name:'Front',exact:true}).click();
+              report.push({id,...v});
+              console.log(JSON.stringify({id,stats:v.stats,error:v.error}));
+              if(!v.ready || v.error)throw Error('Model '+id+' failed to render: '+v.error);
+            }
+            if(errors.length)throw Error('Browser exceptions: '+errors.join('; '));
+            await browser.close();
+            require('fs').writeFileSync('img2three/preview/gallery-report.json',JSON.stringify(report,null,2));
+            console.log('PASS: WebGL 5/5; 10 screenshots captured');
+          })().catch(e=>{console.error(e);process.exit(2)});
+          NODE
       - name: Upload input and pipeline artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -68,6 +107,7 @@ jobs:
           path: |
             img2three/output/
             img2three/reference_tower.jpg
+            img2three/preview/
           if-no-files-found: warn
       - name: Save source pipeline output in isolated branch
         run: |
@@ -75,6 +115,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add img2three/output
           git add -f img2three/viewer/dist
+          git add img2three/preview
           if ! git diff --cached --quiet; then
             git commit -m "artifacts: publish img2threejs built browser viewer"
             git push
