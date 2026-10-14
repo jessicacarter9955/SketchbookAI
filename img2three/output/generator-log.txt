@@ -1,1 +1,5 @@
-/home/runner/work/SketchbookAI/SketchbookAI/img2three/output/createTowerModel.ts
+usage: generate_threejs_factory.py [-h] --out OUT [--pass-id PASS_ID]
+                                   [--force] [--allow-nonstrict]
+                                   [--blocked-report BLOCKED_REPORT]
+                                   spec
+generate_threejs_factory.py: error: /home/runner/work/SketchbookAI/SketchbookAI/img2three/output/createTowerModel.ts already exists; use --force to overwrite
