@@ -3,7 +3,7 @@ import {mat,pbr,cube,rod} from './modeling';
 
 export function makeMultiTrunkTree():THREE.Group{
  const group=new THREE.Group();group.name='Multi-trunk ornamental tree | botanical instanced foliage';
- const bark = mat(0x756c67,.94,.02), innerBark=mat(0x625b58,.96,.01),twig=mat(0x5d5748,.92);
+ const bark = mat(0x62534b,.96,.01), innerBark=mat(0x514740,.97,.01),twig=mat(0x433f33,.96);
  const woodDetail=pbr(0x9f9382,.90,.01);
  const SEED=245871;let randSeed=SEED;const rnd=()=>{randSeed=(Math.imul(1664525,randSeed)+1013904223)>>>0;return randSeed/4294967296;};
  const rndRange=(a:number,b:number)=>a+(b-a)*rnd();
@@ -56,7 +56,7 @@ export function makeMultiTrunkTree():THREE.Group{
  ]);
  const idx=[0,1,2,3,4,5,6,7,8];
  const leafGeom=new THREE.BufferGeometry();leafGeom.setAttribute('position',new THREE.BufferAttribute(verts,3));leafGeom.setIndex(idx);leafGeom.computeVertexNormals();
- const leafMat=new THREE.MeshPhysicalMaterial({color:0xf1f4e6,roughness:.73,metalness:0,side:THREE.DoubleSide,transmission:.035,thickness:.06,clearcoat:.15,clearcoatRoughness:.75});
+ const leafMat=new THREE.MeshPhysicalMaterial({color:0x879e7d,roughness:.80,metalness:0,side:THREE.DoubleSide,transmission:.035,thickness:.06,clearcoat:.15,clearcoatRoughness:.75});
  const leafCount=6300;const leaves=new THREE.InstancedMesh(leafGeom,leafMat,leafCount);
  leaves.name='6300 physically instanced elliptical living leaves';
  leaves.castShadow=false;leaves.receiveShadow=true;
@@ -76,7 +76,7 @@ export function makeMultiTrunkTree():THREE.Group{
    if(y<3.4)y=3.4+rnd()*.32;
    dummy.position.set(x,y,z);
    dummy.rotation.set(rndRange(-Math.PI,Math.PI),rndRange(-Math.PI,Math.PI),rndRange(-Math.PI,Math.PI));
-   const s=rndRange(.48,1.15);dummy.scale.set(s,s*rndRange(.66,1.20),s);
+   const s=rndRange(.62,1.28);dummy.scale.set(s,s*rndRange(.66,1.20),s);
    dummy.updateMatrix();leaves.setMatrixAt(i,dummy.matrix);
    const c=palette[Math.floor(rnd()*palette.length)].clone().multiplyScalar(rndRange(.7,1.24));
    leaves.setColorAt(i,c);ci++;
