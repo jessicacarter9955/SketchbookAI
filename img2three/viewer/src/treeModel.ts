@@ -9,23 +9,54 @@ export async function makeMultiTrunkTree():Promise<THREE.Group>{
  const rndRange=(a:number,b:number)=>a+(b-a)*rnd();
  // A family of 8 interwoven trunks with physically tapered cylindrical branch segments.
  let segments=0;const tips:Array<{p:THREE.Vector3,r:number}>=[];
+ // The original reference has bowed, continuous trunks; a chain of straight
+ // cylinders cannot reproduce its bark silhouette. Curve + variable-radius
+ // tubular surface is generated directly in Three.js.
+ function organicWood(branchRoot:THREE.Group,from:THREE.Vector3,to:THREE.Vector3,
+    radius:number,topRadius:number,depth:number,material:THREE.Material,seed:number){
+   const axis=to.clone().sub(from);
+   const sideways=new THREE.Vector3(axis.z,.05,-axis.x).normalize();
+   const bow=sideways.multiplyScalar(Math.min(.26,axis.length()*(depth<2?.10:.17))*Math.sin(seed*2.47));
+   const mid=from.clone().lerp(to,.52).add(bow);
+   const curve=new THREE.CatmullRomCurve3([from,from.clone().lerp(mid,.53),mid,mid.clone().lerp(to,.45),to]);
+   const tubes=depth<3?12:7,radial=depth<3?12:7;
+   const geo=new THREE.TubeGeometry(curve,tubes,radius,radial,false);
+   const pos=geo.getAttribute('position');
+   for(let i=0;i<=tubes;i++){
+     const t=i/tubes,center=curve.getPointAt(t);
+     const taper=THREE.MathUtils.lerp(1,topRadius/Math.max(radius,.00001),smoothstep(t));
+     for(let j=0;j<=radial;j++){
+       const idx=i*(radial+1)+j;
+       const vx=pos.getX(idx),vy=pos.getY(idx),vz=pos.getZ(idx);
+       pos.setXYZ(idx,center.x+(vx-center.x)*taper,center.y+(vy-center.y)*taper,center.z+(vz-center.z)*taper);
+     }
+   }
+   pos.needsUpdate=true;geo.computeVertexNormals();
+   const twig=new THREE.Mesh(geo,material);
+   twig.castShadow=depth<3;twig.receiveShadow=true;
+   twig.name=depth<2?'continuous curved trunk':'tapered living curved branch';
+   branchRoot.add(twig);
+   return twig;
+ }
+ function smoothstep(t:number){return t*t*(3-2*t);}
+
  const branches= new THREE.Group();branches.name='Individual three-dimensional bark branches';group.add(branches);
  function branch(from:THREE.Vector3,dir:THREE.Vector3,length:number,r:number,depth:number,kind:number){
    if(segments>1050)return;
    const to=from.clone().addScaledVector(dir.clone().normalize(),length);
-   rod(branches,depth<2?'thick multi-stem trunk':'living twig',from,to,r,depth<2?bark:(depth<4?innerBark:twig),depth<2?11:7,r*(depth<3?.75:.59));
+   organicWood(branches,from,to,r,r*(depth<3?.76:.61),depth,depth<2?bark:(depth<4?innerBark:twig),kind+depth*5+segments*.41);
    segments++;
    if(depth>=5 || r<.022){
      tips.push({p:to,r:.42+rnd()*.27});return;
    }
-   const n=depth<1?2:depth<3?2:2;
-   const turn=0.35+depth*.13;
+   const n=depth===0?2:depth===1?2:rnd()>.42?2:1;
+   const turn=0.30+depth*.16;
    for(let k=0;k<n;k++){
      const phi=(k/n)*2*Math.PI+rndRange(-.42,.42);
      const heading=new THREE.Vector3(
-       dir.x*.42+Math.cos(phi)*turn*rndRange(.65,1.1),
-       dir.y*(depth>1?.70:.87)+rndRange(-.11,.18),
-       dir.z*.42+Math.sin(phi)*turn*rndRange(.65,1.1)
+       dir.x*.57+Math.cos(phi)*turn*rndRange(.56,1.24),
+       dir.y*(depth>1?.77:.91)+rndRange(-.13,.23),
+       dir.z*.57+Math.sin(phi)*turn*rndRange(.56,1.24)
      ).normalize();
      const l=length*(depth<2?rndRange(.76,.97):rndRange(.67,.83));
      branch(to.clone(),heading,l,r*rndRange(.53,.75),depth+1,kind);
@@ -35,16 +66,16 @@ export async function makeMultiTrunkTree():Promise<THREE.Group>{
      branch(to.clone().lerp(from,.31),vec,length*.55,r*.49,depth+2,kind);
    }
  }
- const stems=8;
+ const stems=7;
  for(let i=0;i<stems;i++){
    const phase=i*2*Math.PI/stems;
-   const offset=new THREE.Vector3(Math.cos(phase)*.13,1.18,Math.sin(phase)*.12);
+   const offset=new THREE.Vector3(Math.cos(phase)*.13,1.00+Math.sin(phase*3)*.13,Math.sin(phase)*.12);
    const heading=new THREE.Vector3(Math.cos(phase)*.35+(.1-rnd()*.2),1.0,Math.sin(phase)*.28).normalize();
-   branch(offset,heading,rndRange(.87,1.25),rndRange(.16,.24),0,i);
+   branch(offset,heading,rndRange(.95,1.35),rndRange(.14,.21),0,i);
  }
  // Central naturally tapered stem ties the branches together close to ground.
- rod(branches,'thick continuous tree trunk',new THREE.Vector3(0,0,0),new THREE.Vector3(.09,1.62,.04),.32,bark,18,.23);
- rod(branches,'mature branching base',new THREE.Vector3(.09,1.45,.04),new THREE.Vector3(0,2.15,.03),.235,bark,16,.14);
+ organicWood(branches,new THREE.Vector3(0,0,0),new THREE.Vector3(.10,1.63,-.04),.34,.24,0,bark,65);
+ organicWood(branches,new THREE.Vector3(.10,1.49,-.04),new THREE.Vector3(-.04,2.46,.10),.255,.15,1,bark,68);
  // Bark longitudinal scars, rough cracks and realistic highlights in 3D.
  for(let i=0;i<72;i++){
    const a=rndRange(0,Math.PI*2),z=Math.sin(a)*rndRange(.07,.27);
@@ -60,8 +91,8 @@ export async function makeMultiTrunkTree():Promise<THREE.Group>{
  const idx=[0,1,2,3,4,5,6,7,8];
  const leafGeom=new THREE.BufferGeometry();leafGeom.setAttribute('position',new THREE.BufferAttribute(verts,3));leafGeom.setIndex(idx);leafGeom.computeVertexNormals();
  const leafMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.85,metalness:0,side:THREE.DoubleSide});
- const leafCount=15500;const leaves=new THREE.InstancedMesh(leafGeom,leafMat,leafCount);
- leaves.name='15500 individually instanced realistic small elliptical leaves';
+ const leafCount=24500;const leaves=new THREE.InstancedMesh(leafGeom,leafMat,leafCount);
+ leaves.name='24500 instanced botanical-scale natural leaves';
  leaves.castShadow=false;leaves.receiveShadow=true;
  const dummy=new THREE.Object3D(),palette=['#244627','#325b2b','#487437','#527e3b','#638b45','#7a994f','#3b632a','#213e27','#879b52','#4d7433'].map(c=>new THREE.Color(c));
  // Rounded asymmetrical crown mass, matching dense split canopy of user's tree.
@@ -79,7 +110,7 @@ export async function makeMultiTrunkTree():Promise<THREE.Group>{
    if(y<3.4)y=3.4+rnd()*.32;
    dummy.position.set(x,y,z);
    dummy.rotation.set(rndRange(-Math.PI,Math.PI),rndRange(-Math.PI,Math.PI),rndRange(-Math.PI,Math.PI));
-   const s=rndRange(.62,1.28);dummy.scale.set(s,s*rndRange(.66,1.20),s);
+   const s=rndRange(.62,.99);dummy.scale.set(s,s*rndRange(.66,1.20),s);
    dummy.updateMatrix();leaves.setMatrixAt(i,dummy.matrix);
    const c=palette[Math.floor(rnd()*palette.length)].clone().multiplyScalar(rndRange(.7,1.24));
    leaves.setColorAt(i,c);ci++;
@@ -105,15 +136,19 @@ export async function makeMultiTrunkTree():Promise<THREE.Group>{
  const texs=await Promise.all(['foliage_0','foliage_1','foliage_2','foliage_3','bark']
    .map(name=>loader.loadAsync('./ref/'+name+'.webp')));
  for(const tex of texs){tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=8;}
- bark.map=texs[4];innerBark.map=texs[4];bark.needsUpdate=innerBark.needsUpdate=true;
+ texs[4].wrapS=texs[4].wrapT=THREE.RepeatWrapping;texs[4].repeat.set(1,2.5);
+ // Cropped source bark contains transparent/white fringe pixels: sample it
+ // as a subtle surface bump, never as an opaque white bark albedo.
+ bark.bumpMap=texs[4];innerBark.bumpMap=texs[4];bark.bumpScale=.014;innerBark.bumpScale=.011;
+ bark.needsUpdate=innerBark.needsUpdate=true;
  let photoClusters=0;
  for(let k=0;k<4;k++){
    const matPhoto=new THREE.MeshStandardMaterial({
      map:texs[k],transparent:true,alphaTest:.13,roughness:.81,
      metalness:0,side:THREE.DoubleSide,depthWrite:true,
-     color:0xc5d7bb
+     color:0xe5ebda
    });
-   const count=350,geometry=new THREE.PlaneGeometry(.31,.33,1,1);
+   const count=650,geometry=new THREE.PlaneGeometry(.32,.34,1,1);
    const inst=new THREE.InstancedMesh(geometry,matPhoto,count);
    inst.name='reference-photographed natural leaf clusters '+k;
    inst.castShadow=false;inst.receiveShadow=true;
@@ -128,7 +163,7 @@ export async function makeMultiTrunkTree():Promise<THREE.Group>{
      if(y<3.52)y=3.52+rnd()*.25;
      d.position.set(x,y,z);
      d.rotation.set(rndRange(-.8,.8),rndRange(-Math.PI,Math.PI),rndRange(-.55,.55));
-     const scale=rndRange(.55,1.07);
+     const scale=rndRange(.57,1.05);
      d.scale.set(scale,scale*rndRange(.80,1.15),scale);
      d.updateMatrix();inst.setMatrixAt(i,d.matrix);
    }
