@@ -62,7 +62,7 @@ try {
    camera.fov=assets.find(x=>x.id===currentKey)!.fov??38;camera.updateProjectionMatrix();
    const vFOV=camera.fov*Math.PI/180,hFOV=2*Math.atan(Math.tan(vFOV/2)*camera.aspect);
    const fitY=size.y/(2*Math.tan(vFOV/2)),fitX=size.x/(2*Math.tan(hFOV/2));
-   cameraDistance=Math.max(fitY,fitX,size.z*1.6)*1.45+size.z*.5;
+   cameraDistance=Math.max(fitY,fitX,size.z*1.6)*1.08+size.z*.22;
    cameraDistance*=innerWidth<700?1.12:1;
    controls.target.copy(modelCenter);controls.minDistance=Math.max(size.length()*.08,.6);
    controls.maxDistance=cameraDistance*5;front();ground.position.y=bounds.min.y-.095;
@@ -87,6 +87,7 @@ try {
     const next=await getModel(which);
     if(seq!==sequence)return;
     if(current)scene.remove(current);currentKey=which;current=next;
+    try{const url=new URL(window.location.href);url.searchParams.set('model',which);history.replaceState(null,'',url.pathname+url.search+url.hash);}catch{}
     scene.add(current);wire=false;setWire(false);fit();
     const entry=assets.find(x=>x.id===which)!;
     document.getElementById('asset-title')!.textContent=entry.title;
@@ -121,7 +122,9 @@ try {
     }
  });
  window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);fit();});
- choose('tower');
+ const queryModel=new URLSearchParams(location.search).get('model');
+ const initialModel=(assets.find(x=>x.id===queryModel)?.id ?? 'tower') as AssetKey;
+ choose(initialModel);
  function render(){requestAnimationFrame(render);controls.update();renderer.render(scene,camera);if(!firstReady){firstReady=true;(window as any).__firstRenderComplete=true;}}
  render();
  (window as any).__chooseAsset=choose;
