@@ -1,4 +1,5 @@
 // Executes normalized source-derived instructions; never evaluates generated JS.
+import { evaluateNativeMath } from './ue2three-native-math.mjs';
 const owns = (object, key) => object != null && Object.hasOwn(object, key);
 const safeField = key => typeof key === 'string' && key.length > 0 && !['__proto__', 'constructor', 'prototype'].includes(key);
 
@@ -72,29 +73,10 @@ function runBlueprint(program, self, inputs, functions, budget, depth) {
             return nested.value;
         }
         if (expression.op === 'math' && Array.isArray(expression.args)) {
-            const boolean = ['BooleanAND', 'BooleanOR', 'BooleanXOR', 'Not_PreBool'].includes(expression.name);
-            const match = /^(EqualEqual|NotEqual|Greater|GreaterEqual|Less|LessEqual)_(ByteByte|IntInt|DoubleDouble)$/.exec(expression.name);
-            if (!boolean && !match) throw new Error(`Unsupported native math: ${expression.name}`);
             const args = expression.args.map(arg => evaluate(arg, depth+1));
-            const expected = expression.name === 'Not_PreBool' ? 1 : 2;
-            if (args.length !== expected || args.some(value => boolean ? typeof value !== 'boolean' : typeof value !== 'number' || !Number.isFinite(value)))
-                throw new Error('Invalid native math parameters');
-            if (match?.[2] === 'ByteByte' && args.some(v => !Number.isInteger(v) || v < 0 || v > 255)) throw new Error('Invalid byte math parameters');
-            if (match?.[2] === 'IntInt' && args.some(v => !Number.isInteger(v) || v < -2147483648 || v > 2147483647)) throw new Error('Invalid int math parameters');
-            const [a, b] = args;
-            const op = match?.[1] || expression.name;
-            switch (op) {
-                case 'BooleanAND': return a && b;
-                case 'BooleanOR': return a || b;
-                case 'BooleanXOR': return a !== b;
-                case 'Not_PreBool': return !a;
-                case 'EqualEqual': return a === b;
-                case 'NotEqual': return a !== b;
-                case 'Greater': return a > b;
-                case 'GreaterEqual': return a >= b;
-                case 'Less': return a < b;
-                case 'LessEqual': return a <= b;
-            }
+            const value = evaluateNativeMath(expression.name, args, message => trace.push({source_index: sourceIndex, op: 'warning', message}));
+            if (typeof value === 'number' && !Number.isFinite(value)) throw new Error('Non-finite native math result is unsupported');
+            return value;
         }
         if (expression.op === 'constant') {
             const value = expression.value;

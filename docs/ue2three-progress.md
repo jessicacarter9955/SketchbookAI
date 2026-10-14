@@ -194,3 +194,26 @@ restored source defaults (stamina 100), and restarting the player retained a fre
 component state. These checks establish the input prerequisites, not complete
 Unreal movement or animation fidelity. Fixed stale HUD values after fixture
 restoration/respawn and missing source instruction indices in nested-call traces.
+
+## Source vitality values · 2026-10-14
+
+Five original ratio getters now execute and are connected to the player's source
+component state: health, stamina, armor, shield and revive progress. Total: 38
+translated functions (32 with behavior, six source no-ops), 462 blocked in parsed
+packages. Kismet arithmetic identities are verified before translation; double
+division by zero returns zero and records the source warning, matching the local
+UE 5.7 KismetMathLibrary implementation. Integer arithmetic preserves int32 width.
+Non-finite numeric results remain unsupported.
+
+Visible browser verification: 114 generic scenarios, 103 DDS source cases, 24
+real scene-input cases and 35 runtime metric cases passed. The movement check
+recorded 0.828 scene units and fixture state restored stamina 100. Evidence is in
+`build/local-scenes/ue2three/verification/source-metrics/`. The generated progress
+page now retains these two scoped green milestones only while the program version
+and saved screenshot still match the live proof. Full vitality behavior, damage,
+stamina drain/regeneration and the original HUD remain incomplete.
+
+Verification: 82 Python and 57 JavaScript tests passed; editor build succeeded.
+An old test still expected double division to be unsupported; its expectation was
+updated for the newly supported operation and integer division stays rejected.
+The local preview server was stopped at resume and was restarted without Unreal.

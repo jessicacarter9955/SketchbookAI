@@ -55,5 +55,27 @@ class ProgressReportTests(unittest.TestCase):
         clips = next(row for row in report['rows'] if row['id'] == 'clips')
         self.assertEqual(clips['status'], 'red')
 
+    def test_live_green_evidence_expires_when_program_or_screenshot_changes(self):
+        program = {'schema_version': 1, 'project': self.project, 'packages': {}, 'counts': {},
+                   'character_guards': {'run': {'function': 'CanSprint'}},
+                   'character_metrics': [{'function': 'GetHealthPercent'}]}
+        program['content_sha256'] = digest(program)
+        atomic_json(self.published / 'blueprint-programs.json', program)
+        image = self.published / 'verification/blueprint-live.jpg'; image.parent.mkdir(); image.write_bytes(b'test-screenshot')
+        proof = {'schema_version': 1, 'project': self.project, 'status': 'passed',
+                 'programs_content_sha256': program['content_sha256'], 'screenshot_sha256': file_hash(image),
+                 'checked': 1, 'results': [{'action': 'run', 'source_function': 'CanSprint', 'allowed': True, 'expected': True}],
+                 'metrics_checked': 1, 'metric_results': [{'source_function': 'GetHealthPercent', 'value': 0.5, 'expected': 0.5}]}
+        atomic_json(self.published / 'blueprint-live-verification.json', proof)
+        report = project_progress(self.workspace, self.published, self.character)
+        self.assertTrue(any('vitalità' in m['title'] for m in report['milestones']))
+        image.write_bytes(b'different-screenshot')
+        report = project_progress(self.workspace, self.published, self.character)
+        self.assertFalse(any('vitalità' in m['title'] for m in report['milestones']))
+        proof['screenshot_sha256'] = file_hash(image); proof['programs_content_sha256'] = 'stale'
+        atomic_json(self.published / 'blueprint-live-verification.json', proof)
+        report = project_progress(self.workspace, self.published, self.character)
+        self.assertFalse(any('vitalità' in m['title'] for m in report['milestones']))
+
 
 if __name__ == '__main__': unittest.main()

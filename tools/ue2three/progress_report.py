@@ -1,5 +1,6 @@
 """Cached, evidence-bounded project checklist; never starts Unreal or rescans assets."""
 import html
+import math
 from collections import Counter
 from pathlib import Path
 
@@ -12,7 +13,8 @@ def project_progress(workspace, published, character_dir=None):
     inputs = {'inventory': workspace / 'artifacts/inventory.json',
               'registry': workspace / 'artifacts/engine_metadata.json',
               'maps': published / 'map-manifest.json', 'ui': published / 'ui-manifest.json',
-              'blueprints': published / 'blueprint-programs.json'}
+              'blueprints': published / 'blueprint-programs.json',
+              'live_blueprints': published / 'blueprint-live-verification.json'}
     if character_dir:
         inputs['character'] = Path(character_dir).resolve() / 'manifest.json'
     for path in sorted((published / 'maps').glob('*.validation.json')):
@@ -66,6 +68,8 @@ def project_progress(workspace, published, character_dir=None):
     attachments = sum(bool(sha) for sha in attachment_outputs.values())
     outputs['character_files'] = character_outputs
     outputs['attachment_files'] = attachment_outputs
+    live_image = published / 'verification/blueprint-live.jpg'
+    outputs['live_blueprint_screenshot'] = file_hash(live_image) if live_image.is_file() else None
     fingerprint = digest({'manifest_key': fingerprint, 'outputs': outputs})
     report_path = published / 'progress.json'
     try:
@@ -156,6 +160,26 @@ def project_progress(workspace, published, character_dir=None):
     if connections:
         milestones.append({'title': 'Lettura dei collegamenti diretti degli shader', 'status': 'green',
                            'evidence': f'{connections} collegamenti recuperati; funzioni interne ed esecuzione escluse'})
+    live = documents.get('live_blueprints', {})
+    live_valid = (bool(blueprint_report) and live.get('schema_version') == 1 and live.get('status') == 'passed'
+                  and live.get('project') == project
+                  and live.get('programs_content_sha256') == blueprint_report.get('content_sha256')
+                  and bool(outputs['live_blueprint_screenshot'])
+                  and live.get('screenshot_sha256') == outputs['live_blueprint_screenshot'])
+    results = live.get('results', [])
+    if (live_valid and results and live.get('checked') == len(results)
+            and all(r.get('action') in blueprint_report.get('character_guards', {})
+                    and r.get('source_function') == blueprint_report['character_guards'][r['action']]['function']
+                    and isinstance(r.get('allowed'), bool) and r.get('allowed') == r.get('expected') for r in results)):
+        milestones.append({'title': 'Vincoli sorgenti sugli input del personaggio', 'status': 'green',
+                           'evidence': f"{len(results)} casi nella scena; screenshot legato alla versione dei programmi"})
+    metrics = live.get('metric_results', [])
+    source_metrics = {m['function'] for m in blueprint_report.get('character_metrics', [])}
+    if (live_valid and metrics and source_metrics and live.get('metrics_checked') == len(metrics)
+            and {r.get('source_function') for r in metrics} == source_metrics
+            and all(type(r.get('value')) in (int, float) and math.isfinite(r['value']) and r['value'] == r.get('expected') for r in metrics)):
+        milestones.append({'title': 'Lettura dei valori originali di vitalità', 'status': 'green',
+                           'evidence': f"{len(source_metrics)} getter e {len(metrics)} casi; consumo, danni e rigenerazione esclusi"})
     report = {'schema_version': 1, 'project': project, 'fingerprint': fingerprint,
               'scope': 'cached registry and published outputs; no full-game percentage inferred',
               'source_classes': dict(classes), 'rows': rows, 'milestones': milestones,

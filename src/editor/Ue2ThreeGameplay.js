@@ -47,6 +47,10 @@ export class Ue2ThreeGameplay {
             status.style.cssText = 'position:fixed;left:18px;bottom:62px;z-index:1000;background:#101923e8;color:#dce9ef;padding:8px 12px;border-radius:6px;font:12px system-ui;max-width:60vw';
             status.textContent = 'Sprint e salto: vincoli sorgenti attivi. Movimento e consumo stamina ancora in migrazione.';
             document.body.append(status); this.sourceStatus = status;
+            const metrics = document.createElement('div');
+            metrics.className = 'ue2three-source-metrics';
+            metrics.style.cssText = 'position:fixed;left:18px;bottom:102px;z-index:1000;background:#101923e8;color:#dce9ef;padding:8px 12px;border-radius:6px;font:12px system-ui;max-width:60vw';
+            document.body.append(metrics); this.sourceMetrics = metrics;
         }
     }
 
@@ -105,6 +109,7 @@ export class Ue2ThreeGameplay {
     update(timeStep = 0) {
         this.syncPlayer();
         this.blueprintInputs?.enforceHeld();
+        this.refreshSourceMetrics();
         this.weaponMixer?.update(timeStep);
     }
 
@@ -115,6 +120,17 @@ export class Ue2ThreeGameplay {
 
     refreshSourceStatus() {
         if (this.sourceStatus) this.sourceStatus.textContent = `Vincoli originali di sprint e salto attivi. Stamina: ${this.sourceStamina()}. Movimento e consumo stamina ancora in migrazione.`;
+        this.refreshSourceMetrics();
+    }
+
+    refreshSourceMetrics() {
+        if (!this.sourceMetrics) return;
+        try {
+            const values = this.blueprints.readMetrics();
+            const text = values.map(value => `${value.current.replace(/^Current/, '')}: ${Math.round(value.value * 100)}%`).join(' · ');
+            if (this.sourceMetrics.textContent !== text) this.sourceMetrics.textContent = text;
+            this.sourceMetrics.hidden = !text;
+        } catch (error) { this.sourceMetrics.textContent = 'Valori sorgenti non disponibili: ' + error.message; }
     }
 
     cancelAction() {

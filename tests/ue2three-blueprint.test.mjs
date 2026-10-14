@@ -60,7 +60,8 @@ test('original comparison and Boolean math do not coerce their arguments', () =>
     assert.equal(evaluate('BooleanAND', [true, false]), false);
     assert.throws(() => evaluate('BooleanAND', [1, true]), /Invalid native math/);
     assert.throws(() => evaluate('Greater_DoubleDouble', ['1', 0]), /Invalid native math/);
-    assert.throws(() => evaluate('Divide_DoubleDouble', [1, 0]), /Unsupported native math/);
+    assert.equal(evaluate('Divide_DoubleDouble', [1, 0]), 0);
+    assert.throws(() => evaluate('Divide_IntInt', [1, 0]), /Unsupported native math/);
 });
 test('conditional jumps take the original false branch and keep output defaults', () => {
     const conditional = {schema_version: 1, status: 'translated_control_flow', output_fields: ['Result'],

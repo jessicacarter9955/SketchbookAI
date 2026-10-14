@@ -1,7 +1,7 @@
 // Explicit QA fixtures act on the actual player input hook and are restored.
 // They are not gameplay rules or permanent changes to source defaults.
 export async function verifyLiveBlueprintInputs(player, runtime, fixture) {
-    const snapshot = runtime.snapshot(), results = [];
+    const snapshot = runtime.snapshot(), results = [], metricResults = [];
     const guards = runtime.report.character_guards || {};
     const priorActions = Object.fromEntries([...Object.keys(guards), 'up'].map(action => [action, !!player.actions[action]?.isPressed]));
     let movementDistance = null;
@@ -32,7 +32,18 @@ export async function verifyLiveBlueprintInputs(player, runtime, fixture) {
             await new Promise(requestAnimationFrame);
         }
         if (!results.length) throw new Error('No applicable live source fixtures');
-        return {schema_version: 1, checked: results.length, status: 'passed', movement_distance: movementDistance, results,
+        for (const test of fixture.cases) {
+            const metric = (runtime.report.character_metrics || []).find(metric => metric.package === test.package && metric.function === test.function);
+            if (!metric) continue;
+            const program = runtime.report.packages[metric.package].functions[metric.function];
+            if (program.source_bytecode_sha256 !== test.source_bytecode_sha256) throw new Error('Metric source differs from fixture');
+            runtime.restore(snapshot); Object.assign(runtime.states[metric.package], test.self);
+            const actual = runtime.readMetrics().find(result => result.function === metric.function).value;
+            if (actual !== test.outputs[metric.output]) throw new Error('Original runtime metric differs from source fixture');
+            metricResults.push({source_function: metric.function, value: actual, expected: test.outputs[metric.output]});
+        }
+        return {schema_version: 1, project: runtime.report.project, programs_content_sha256: runtime.report.content_sha256,
+                checked: results.length, metrics_checked: metricResults.length, status: 'passed', movement_distance: movementDistance, results, metric_results: metricResults,
                 scope: 'Original sprint/jump prerequisites applied to the real scene input; excludes complete Mover, timers, stamina consumption and replication'};
     } finally {
         runtime.restore(snapshot);

@@ -8,6 +8,7 @@ export class BlueprintActorRuntime {
         for (const [name, data] of Object.entries(report.packages)) this.states[name] = structuredClone(data.default_state || {});
         this.last = null;
         this.guardCache = new Map();
+        this.metricCache = new Map();
     }
     call(packageName, functionName, inputs = {}) {
         const data = this.report.packages[packageName], program = data?.functions[functionName];
@@ -30,8 +31,21 @@ export class BlueprintActorRuntime {
         this.guardCache.set(action, {key, result: this.last});
         return allowed;
     }
+    readMetrics() {
+        return (this.report.character_metrics || []).map(metric => {
+            const program = this.report.packages[metric.package].functions[metric.function];
+            const state = this.states[metric.package];
+            const key = JSON.stringify(program.self_reads.map(field => state[field]));
+            const cacheId = JSON.stringify([metric.package, metric.function]);
+            const cached = this.metricCache.get(cacheId);
+            const value = cached?.key === key ? cached.value : this.call(metric.package, metric.function).outputs[metric.output];
+            if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error('Original metric did not return a finite number');
+            this.metricCache.set(cacheId, {key, value});
+            return {...metric, value, current_value: state[metric.current], maximum_value: state[metric.maximum]};
+        });
+    }
     snapshot() { return structuredClone(this.states); }
-    restore(snapshot) { this.states = structuredClone(snapshot); this.guardCache.clear(); this.last = null; }
+    restore(snapshot) { this.states = structuredClone(snapshot); this.guardCache.clear(); this.metricCache.clear(); this.last = null; }
 }
 
 export function bindBlueprintInputs(player, runtime, onResult = () => {}) {

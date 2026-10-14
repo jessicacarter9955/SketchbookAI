@@ -949,6 +949,461 @@
         "bCanSlide": true
       },
       "source_bytecode_sha256": "42651a8e22415c7bbf4f3b8ed620d541249367b21d4f30d43cb6df6fa7f220f5"
+    },
+    {
+      "function": "GetHealthPercent",
+      "inputs": {},
+      "outputs": {
+        "HealthPercent": 0
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentHealth": 0,
+        "MaxHealth": 100
+      },
+      "source_bytecode_sha256": "d26c1b8deee63f60df6bf9ec40be42f2ff759dfdd07b6d67b6a4a1a189a6bd98"
+    },
+    {
+      "function": "GetHealthPercent",
+      "inputs": {},
+      "outputs": {
+        "HealthPercent": 0.25
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentHealth": 25,
+        "MaxHealth": 100
+      },
+      "source_bytecode_sha256": "d26c1b8deee63f60df6bf9ec40be42f2ff759dfdd07b6d67b6a4a1a189a6bd98"
+    },
+    {
+      "function": "GetHealthPercent",
+      "inputs": {},
+      "outputs": {
+        "HealthPercent": 1
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentHealth": 100,
+        "MaxHealth": 100
+      },
+      "source_bytecode_sha256": "d26c1b8deee63f60df6bf9ec40be42f2ff759dfdd07b6d67b6a4a1a189a6bd98"
+    },
+    {
+      "function": "GetHealthPercent",
+      "inputs": {},
+      "outputs": {
+        "HealthPercent": 1.5
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentHealth": 150,
+        "MaxHealth": 100
+      },
+      "source_bytecode_sha256": "d26c1b8deee63f60df6bf9ec40be42f2ff759dfdd07b6d67b6a4a1a189a6bd98"
+    },
+    {
+      "function": "GetHealthPercent",
+      "inputs": {},
+      "outputs": {
+        "HealthPercent": -0.25
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentHealth": -25,
+        "MaxHealth": 100
+      },
+      "source_bytecode_sha256": "d26c1b8deee63f60df6bf9ec40be42f2ff759dfdd07b6d67b6a4a1a189a6bd98"
+    },
+    {
+      "function": "GetHealthPercent",
+      "inputs": {},
+      "outputs": {
+        "HealthPercent": 0
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentHealth": 10,
+        "MaxHealth": 0
+      },
+      "source_bytecode_sha256": "d26c1b8deee63f60df6bf9ec40be42f2ff759dfdd07b6d67b6a4a1a189a6bd98"
+    },
+    {
+      "function": "GetHealthPercent",
+      "inputs": {},
+      "outputs": {
+        "HealthPercent": 0
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentHealth": 0,
+        "MaxHealth": 0
+      },
+      "source_bytecode_sha256": "d26c1b8deee63f60df6bf9ec40be42f2ff759dfdd07b6d67b6a4a1a189a6bd98"
+    },
+    {
+      "function": "GetStaminaPercent",
+      "inputs": {},
+      "outputs": {
+        "StaminaPercent ": 0
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 0,
+        "MaxStamina": 100
+      },
+      "source_bytecode_sha256": "4501cf2423d7f596c0560d022492e85b0b99e6f8b809249c424405bbe58f051f"
+    },
+    {
+      "function": "GetStaminaPercent",
+      "inputs": {},
+      "outputs": {
+        "StaminaPercent ": 0.25
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 25,
+        "MaxStamina": 100
+      },
+      "source_bytecode_sha256": "4501cf2423d7f596c0560d022492e85b0b99e6f8b809249c424405bbe58f051f"
+    },
+    {
+      "function": "GetStaminaPercent",
+      "inputs": {},
+      "outputs": {
+        "StaminaPercent ": 1
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 100,
+        "MaxStamina": 100
+      },
+      "source_bytecode_sha256": "4501cf2423d7f596c0560d022492e85b0b99e6f8b809249c424405bbe58f051f"
+    },
+    {
+      "function": "GetStaminaPercent",
+      "inputs": {},
+      "outputs": {
+        "StaminaPercent ": 1.5
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 150,
+        "MaxStamina": 100
+      },
+      "source_bytecode_sha256": "4501cf2423d7f596c0560d022492e85b0b99e6f8b809249c424405bbe58f051f"
+    },
+    {
+      "function": "GetStaminaPercent",
+      "inputs": {},
+      "outputs": {
+        "StaminaPercent ": -0.25
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": -25,
+        "MaxStamina": 100
+      },
+      "source_bytecode_sha256": "4501cf2423d7f596c0560d022492e85b0b99e6f8b809249c424405bbe58f051f"
+    },
+    {
+      "function": "GetStaminaPercent",
+      "inputs": {},
+      "outputs": {
+        "StaminaPercent ": 0
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 10,
+        "MaxStamina": 0
+      },
+      "source_bytecode_sha256": "4501cf2423d7f596c0560d022492e85b0b99e6f8b809249c424405bbe58f051f"
+    },
+    {
+      "function": "GetStaminaPercent",
+      "inputs": {},
+      "outputs": {
+        "StaminaPercent ": 0
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentStamina": 0,
+        "MaxStamina": 0
+      },
+      "source_bytecode_sha256": "4501cf2423d7f596c0560d022492e85b0b99e6f8b809249c424405bbe58f051f"
+    },
+    {
+      "function": "GetArmorPercent",
+      "inputs": {},
+      "outputs": {
+        "ArmorPercent ": 0
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentArmor": 0,
+        "MaxArmor": 100
+      },
+      "source_bytecode_sha256": "f7265f56a9c7140b9f4d97af1c44bf8cc9efc158a67ccd80804bb9a223870178"
+    },
+    {
+      "function": "GetArmorPercent",
+      "inputs": {},
+      "outputs": {
+        "ArmorPercent ": 0.25
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentArmor": 25,
+        "MaxArmor": 100
+      },
+      "source_bytecode_sha256": "f7265f56a9c7140b9f4d97af1c44bf8cc9efc158a67ccd80804bb9a223870178"
+    },
+    {
+      "function": "GetArmorPercent",
+      "inputs": {},
+      "outputs": {
+        "ArmorPercent ": 1
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentArmor": 100,
+        "MaxArmor": 100
+      },
+      "source_bytecode_sha256": "f7265f56a9c7140b9f4d97af1c44bf8cc9efc158a67ccd80804bb9a223870178"
+    },
+    {
+      "function": "GetArmorPercent",
+      "inputs": {},
+      "outputs": {
+        "ArmorPercent ": 1.5
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentArmor": 150,
+        "MaxArmor": 100
+      },
+      "source_bytecode_sha256": "f7265f56a9c7140b9f4d97af1c44bf8cc9efc158a67ccd80804bb9a223870178"
+    },
+    {
+      "function": "GetArmorPercent",
+      "inputs": {},
+      "outputs": {
+        "ArmorPercent ": -0.25
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentArmor": -25,
+        "MaxArmor": 100
+      },
+      "source_bytecode_sha256": "f7265f56a9c7140b9f4d97af1c44bf8cc9efc158a67ccd80804bb9a223870178"
+    },
+    {
+      "function": "GetArmorPercent",
+      "inputs": {},
+      "outputs": {
+        "ArmorPercent ": 0
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentArmor": 10,
+        "MaxArmor": 0
+      },
+      "source_bytecode_sha256": "f7265f56a9c7140b9f4d97af1c44bf8cc9efc158a67ccd80804bb9a223870178"
+    },
+    {
+      "function": "GetArmorPercent",
+      "inputs": {},
+      "outputs": {
+        "ArmorPercent ": 0
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentArmor": 0,
+        "MaxArmor": 0
+      },
+      "source_bytecode_sha256": "f7265f56a9c7140b9f4d97af1c44bf8cc9efc158a67ccd80804bb9a223870178"
+    },
+    {
+      "function": "GetShieldPercent",
+      "inputs": {},
+      "outputs": {
+        "ShieldPercent": 0
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentShield": 0,
+        "MaxShield": 100
+      },
+      "source_bytecode_sha256": "6816b47c3341bc80f878e2994ed0a1584b4eb72d8c81b9f6553ea84d656979b5"
+    },
+    {
+      "function": "GetShieldPercent",
+      "inputs": {},
+      "outputs": {
+        "ShieldPercent": 0.25
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentShield": 25,
+        "MaxShield": 100
+      },
+      "source_bytecode_sha256": "6816b47c3341bc80f878e2994ed0a1584b4eb72d8c81b9f6553ea84d656979b5"
+    },
+    {
+      "function": "GetShieldPercent",
+      "inputs": {},
+      "outputs": {
+        "ShieldPercent": 1
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentShield": 100,
+        "MaxShield": 100
+      },
+      "source_bytecode_sha256": "6816b47c3341bc80f878e2994ed0a1584b4eb72d8c81b9f6553ea84d656979b5"
+    },
+    {
+      "function": "GetShieldPercent",
+      "inputs": {},
+      "outputs": {
+        "ShieldPercent": 1.5
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentShield": 150,
+        "MaxShield": 100
+      },
+      "source_bytecode_sha256": "6816b47c3341bc80f878e2994ed0a1584b4eb72d8c81b9f6553ea84d656979b5"
+    },
+    {
+      "function": "GetShieldPercent",
+      "inputs": {},
+      "outputs": {
+        "ShieldPercent": -0.25
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentShield": -25,
+        "MaxShield": 100
+      },
+      "source_bytecode_sha256": "6816b47c3341bc80f878e2994ed0a1584b4eb72d8c81b9f6553ea84d656979b5"
+    },
+    {
+      "function": "GetShieldPercent",
+      "inputs": {},
+      "outputs": {
+        "ShieldPercent": 0
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentShield": 10,
+        "MaxShield": 0
+      },
+      "source_bytecode_sha256": "6816b47c3341bc80f878e2994ed0a1584b4eb72d8c81b9f6553ea84d656979b5"
+    },
+    {
+      "function": "GetShieldPercent",
+      "inputs": {},
+      "outputs": {
+        "ShieldPercent": 0
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "CurrentShield": 0,
+        "MaxShield": 0
+      },
+      "source_bytecode_sha256": "6816b47c3341bc80f878e2994ed0a1584b4eb72d8c81b9f6553ea84d656979b5"
+    },
+    {
+      "function": "GetRevivePercent",
+      "inputs": {},
+      "outputs": {
+        "RevivePercent ": 0
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "ReviveDuration": 100,
+        "ReviveProgress": 0
+      },
+      "source_bytecode_sha256": "2191b9756420a5947d5e5decf9cf11ed2867fdd050f630b996387d82ada00e39"
+    },
+    {
+      "function": "GetRevivePercent",
+      "inputs": {},
+      "outputs": {
+        "RevivePercent ": 0.25
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "ReviveDuration": 100,
+        "ReviveProgress": 25
+      },
+      "source_bytecode_sha256": "2191b9756420a5947d5e5decf9cf11ed2867fdd050f630b996387d82ada00e39"
+    },
+    {
+      "function": "GetRevivePercent",
+      "inputs": {},
+      "outputs": {
+        "RevivePercent ": 1
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "ReviveDuration": 100,
+        "ReviveProgress": 100
+      },
+      "source_bytecode_sha256": "2191b9756420a5947d5e5decf9cf11ed2867fdd050f630b996387d82ada00e39"
+    },
+    {
+      "function": "GetRevivePercent",
+      "inputs": {},
+      "outputs": {
+        "RevivePercent ": 1.5
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "ReviveDuration": 100,
+        "ReviveProgress": 150
+      },
+      "source_bytecode_sha256": "2191b9756420a5947d5e5decf9cf11ed2867fdd050f630b996387d82ada00e39"
+    },
+    {
+      "function": "GetRevivePercent",
+      "inputs": {},
+      "outputs": {
+        "RevivePercent ": -0.25
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "ReviveDuration": 100,
+        "ReviveProgress": -25
+      },
+      "source_bytecode_sha256": "2191b9756420a5947d5e5decf9cf11ed2867fdd050f630b996387d82ada00e39"
+    },
+    {
+      "function": "GetRevivePercent",
+      "inputs": {},
+      "outputs": {
+        "RevivePercent ": 0
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "ReviveDuration": 0,
+        "ReviveProgress": 10
+      },
+      "source_bytecode_sha256": "2191b9756420a5947d5e5decf9cf11ed2867fdd050f630b996387d82ada00e39"
+    },
+    {
+      "function": "GetRevivePercent",
+      "inputs": {},
+      "outputs": {
+        "RevivePercent ": 0
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {
+        "ReviveDuration": 0,
+        "ReviveProgress": 0
+      },
+      "source_bytecode_sha256": "2191b9756420a5947d5e5decf9cf11ed2867fdd050f630b996387d82ada00e39"
     }
   ],
   "schema_version": 1,

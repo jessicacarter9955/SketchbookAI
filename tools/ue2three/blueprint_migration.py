@@ -38,6 +38,12 @@ MATH_CALLS = {'BooleanAND': (2, 'bool'), 'BooleanOR': (2, 'bool'), 'BooleanXOR':
 for _type in ('ByteByte', 'IntInt', 'DoubleDouble'):
     for _operation in ('EqualEqual', 'NotEqual', 'Greater', 'GreaterEqual', 'Less', 'LessEqual'):
         MATH_CALLS[_operation + '_' + _type] = (2, _type)
+for _type in ('IntInt', 'DoubleDouble'):
+    for _operation in ('Add', 'Subtract', 'Multiply'):
+        MATH_CALLS[_operation + '_' + _type] = (2, _type)
+MATH_CALLS.update({'Divide_DoubleDouble': (2, 'DoubleDouble'),
+                   'EqualEqual_BoolBool': (2, 'bool'), 'NotEqual_BoolBool': (2, 'bool'),
+                   'FClamp': (3, 'DoubleDouble'), 'Clamp': (3, 'IntInt')})
 
 
 def math_call(package, reference):
@@ -361,6 +367,24 @@ def character_guards(controls, packages, source_package):
     return guards
 
 
+def character_metrics(guards, packages):
+    """Find pure source ratio getters on components already witnessed on the character."""
+    metrics = []
+    for package_name in sorted({guard['package'] for guard in guards.values()}):
+        data = packages[package_name]
+        for name, program in data['functions'].items():
+            if program['self_writes'] or program['input_fields'] or len(program['output_fields']) != 1: continue
+            ratio = next((step['value'] for step in program['steps'] if step['op'] == 'set'
+                          and step['value'].get('op') == 'math' and step['value'].get('name') == 'Divide_DoubleDouble'), None)
+            if not ratio or any(arg.get('op') != 'get' or arg.get('scope') != 'self' for arg in ratio['args']): continue
+            if any(field not in data['default_state'] for field in program['self_reads']): continue
+            output = program['output_fields'][0]
+            if program['field_types']['local'].get(output) not in ('DoubleProperty', 'FloatProperty'): continue
+            metrics.append({'package': package_name, 'function': name, 'output': output,
+                            'current': ratio['args'][0]['field'], 'maximum': ratio['args'][1]['field']})
+    return metrics
+
+
 def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_packages=()):
     """Reuse parsed packages only; no Unreal launch, parser process or scan."""
     project, workspace, output = Path(project).resolve(strict=True), Path(workspace).resolve(strict=True), Path(publish_dir).resolve()
@@ -426,7 +450,7 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
             guards = character_guards(controls, packages, Package(read_json(cache_path)))
     report = {'schema_version': 1, 'project': str(project), 'fingerprint': fingerprint,
               'packages': packages, 'counts': dict(counts), 'missing_cached_packages': missing,
-              'character_guards': guards,
+              'character_guards': guards, 'character_metrics': character_metrics(guards, packages),
               'limitations': ['Locals, instance state, comparisons, static jumps and same-source-class calls with out parameters execute.',
                              'Cross-object calls, derived-class virtual overrides, dynamic jumps, latent actions and replication remain blocked.',
                              'Translated functions are not connected to the complete game runtime yet.']}

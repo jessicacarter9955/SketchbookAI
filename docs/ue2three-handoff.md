@@ -28,8 +28,8 @@ assets. Tool code, built editor and this checkpoint are saved in Git.
 
 ## Exact current scope
 
-33 translated functions: 27 with source behavior and six empty
-callbacks. 467 functions are blocked in parsed packages; 60 delegate signatures
+38 translated functions: 32 with source behavior and six empty
+callbacks. 462 functions are blocked in parsed packages; 60 delegate signatures
 are declarations; 263 Blueprint/widget/animation packages are not parsed yet.
 Original whole-game fidelity is not established. Most gameplay logic, Motion
 Matching/Mover, latent actions, RPC/replication and native simulation remain open.
@@ -53,7 +53,7 @@ Shared socket transform: `src/editor/ue2three-attachment.mjs`.
    and native dependencies exist; getters alone do not make a game system green.
 6. Regenerate reports, check in the integrated browser, save screenshots, push.
 
-Last isolated browser result: 33 functions / 99 generic scenarios + 68 DDS comparisons
+Last isolated browser result: 38 functions / 114 generic scenarios + 103 DDS comparisons
 passed. Cases live in `tests/fixtures/dds-blueprints.json`; their bytecode hashes
 must match the parsed source. Open the Blueprint audit with
 `&fixtures=dds-blueprints.json` for these DDS-specific comparisons. Animation
@@ -70,12 +70,17 @@ briefly moves the character and restores fixture state. Save its DOM proof
 The editor build now also emits `build/519.editor.min.js`; commit that chunk with
 `build/editor.min.js`. Each player reset receives fresh source component state.
 
-Latest completed verification: 80 Python tests, 52 JavaScript tests, successful
-editor build, 99 generic and 68 DDS source comparisons, and 24 live player-input
-cases. The live movement check recorded 0.848 scene units; fixtures restored
+Latest completed verification: 82 Python tests, 57 JavaScript tests, successful
+editor build, 114 generic and 103 DDS source comparisons, and 24 live player-input
+plus 35 metric cases. The live movement check recorded 0.828 scene units; fixtures restored
 stamina 100. A player restart visibly retained defaults. Saved evidence:
-`build/local-scenes/ue2three/verification/blueprint-live/scene.jpg` and
+`build/local-scenes/ue2three/verification/source-metrics/scene.jpg` and
 `live-inputs.json`. Animations remain assumed working with fidelity deferred.
+
+`ue2three-native-math.mjs` implements supported Kismet primitives. Ratio getters
+are detected from source expressions and appear in `character_metrics`; runtime
+metric caching uses package/function identity and source state. Progress greens
+are tied to `blueprint-live-verification.json` and its screenshot/program hashes.
 
 ## Reuse commands (for the coding agent; no user terminal work needed)
 

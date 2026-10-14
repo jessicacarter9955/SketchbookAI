@@ -38,3 +38,21 @@ test('failed source predicate denies the input; state snapshots restore exactly'
     runtime.restore(snapshot); assert.equal(runtime.states['/Game/Vitals'].Stamina, 100);
     assert.equal(player.triggerAction('run', true), true);
 });
+
+test('source metric getters use actor state and invalidate cached values', () => {
+    const {report, runtime} = fixture();
+    report.packages['/Game/Vitals'].functions.Ratio = {schema_version: 1, status: 'translated_straight_line',
+        input_fields: [], output_fields: [], self_reads: ['Stamina'], self_writes: [],
+        steps: [{op: 'return', value: {op: 'math', name: 'Divide_DoubleDouble', args: [
+            {op: 'get', scope: 'self', field: 'Stamina'}, {op: 'constant', value: 100}]}}]};
+    // Test fixture returns a named ratio just as the original percent functions do.
+    const program = report.packages['/Game/Vitals'].functions.Ratio;
+    program.output_fields = ['Ratio'];
+    program.steps.unshift({op: 'set', field: 'Ratio', value: program.steps[0].value});
+    report.character_metrics = [{package: '/Game/Vitals', function: 'Ratio', output: 'Ratio', current: 'Stamina'}];
+    assert.equal(runtime.readMetrics()[0].value, 1);
+    runtime.states['/Game/Vitals'].Stamina = 25;
+    assert.equal(runtime.readMetrics()[0].value, 0.25);
+    const snapshot = runtime.snapshot(); runtime.states['/Game/Vitals'].Stamina = 0;
+    runtime.restore(snapshot); assert.equal(runtime.readMetrics()[0].value, 0.25);
+});

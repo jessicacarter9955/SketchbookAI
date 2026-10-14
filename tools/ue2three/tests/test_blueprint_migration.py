@@ -48,6 +48,15 @@ class BlueprintMigrationTests(unittest.TestCase):
         imports[2]['ObjectName'] = '/Game/Fake'
         with self.assertRaises(BlueprintTranslationError): translate_function(function, Package({'Imports': imports}))
 
+    def test_source_ratio_math_keeps_original_native_identity(self):
+        imports = [{'ObjectName': 'Divide_DoubleDouble', 'ClassName': 'Function', 'OuterIndex': -2},
+                   {'ObjectName': 'KismetMathLibrary', 'OuterIndex': -3}, {'ObjectName': '/Script/Engine'}]
+        function = self.function()
+        function['ScriptBytecode'][1]['Expression'] = node('EX_CallMath', StackNode=-1,
+                Parameters=[node('EX_DoubleConst', Value='25'), node('EX_DoubleConst', Value='100')])
+        result = translate_function(function, Package({'Imports': imports}))
+        self.assertEqual(result['steps'][0]['value']['name'], 'Divide_DoubleDouble')
+
     def test_incomplete_scripts_and_unsafe_fields_are_rejected(self):
         function = self.function(); function['ScriptBytecode'].pop()
         with self.assertRaises(BlueprintTranslationError): translate_function(function)
