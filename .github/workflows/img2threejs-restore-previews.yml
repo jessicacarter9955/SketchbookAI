@@ -16,7 +16,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh run download 38577546026 --repo jessicacarter9955/SketchbookAI -n img2threejs-original-run -D /tmp/img2three-run
+          gh run download 38578793915 --repo jessicacarter9955/SketchbookAI -n img2threejs-original-run -D /tmp/img2three-run
           find /tmp/img2three-run -maxdepth 3 -type f | head -30
           mkdir -p img2three/preview
           cp -v /tmp/img2three-run/preview/* img2three/preview/
