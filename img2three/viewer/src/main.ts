@@ -3,20 +3,24 @@ import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 import {createTwistingGlassSkyscraperModel,createTwistingGlassSkyscraperEnvironment,configureTwistingGlassSkyscraperRenderer} from './generated/createTowerModel.ts';
 import {buildArchitecturalRefinement} from './architecturalRefinement.ts';
 import {makePhotoReferenceModel} from './photoReferenceVolume.ts';
-import {makePurplePortedPistol} from './purplePortedPistol.ts';
+import {makeReferenceLoft} from './referenceLoft.ts';
+
 import {makeMultiTrunkTree} from './treeModel.ts';
 import './style.css';
 
 type AssetKey='tower'|'compact'|'purple'|'rifle'|'tree';
+// An immutable legacy query is retained for direct reference-quality comparison.
+const compareLegacy=new URLSearchParams(location.search).get('legacy')==='1';
+const weapon=(id:'compact'|'purple'|'rifle')=>compareLegacy?makePhotoReferenceModel(id):makeReferenceLoft(id);
 const assets:Array<{id:AssetKey;title:string;subtitle:string;maker:()=>THREE.Group|Promise<THREE.Group>;fov?:number}>= [
  {id:'tower',title:'Glass Tower',subtitle:'45 floors · glass + limestone',maker:()=>{
     const factory=createTwistingGlassSkyscraperModel({textureSize:256,textureAnisotropy:4});
     factory.traverse(o=>{if(o instanceof THREE.Mesh)o.visible=false;});
     const ref=buildArchitecturalRefinement();factory.add(ref.group);factory.userData.stats=ref.stats;return factory;
  },fov:34},
- {id:'compact',title:'Compact Violet',subtitle:'Polymer + matte-black steel',maker:()=>makePhotoReferenceModel('compact'),fov:39},
- {id:'purple',title:'Violet Cylinder',subtitle:'Anodized aluminum + polymer',maker:makePurplePortedPistol,fov:36},
- {id:'rifle',title:'Lime Carbine',subtitle:'Green cerakote + black hardware',maker:()=>makePhotoReferenceModel('rifle'),fov:39},
+ {id:'compact',title:'Compact Violet',subtitle:'Polymer + matte-black steel',maker:()=>weapon('compact'),fov:39},
+ {id:'purple',title:'Violet Cylinder',subtitle:'Anodized aluminum + polymer',maker:()=>weapon('purple'),fov:36},
+ {id:'rifle',title:'Lime Carbine',subtitle:'Green cerakote + black hardware',maker:()=>weapon('rifle'),fov:39},
  {id:'tree',title:'Multi-trunk Tree',subtitle:'15,500 leaves · 1,400 photographic foliage clusters',maker:makeMultiTrunkTree,fov:36},
 ];
 const root=document.getElementById('app')!;
@@ -93,9 +97,9 @@ try {
     const entry=assets.find(x=>x.id===which)!;
     document.getElementById('asset-title')!.textContent=entry.title;
     document.getElementById('asset-subtitle')!.textContent=entry.subtitle;
-    document.getElementById('status')!.textContent='True geometry · reference view prioritized · unseen sides estimated';
+    document.getElementById('status')!.textContent='Source-locked photo UVs · eleven-ring curved loft · unseen sides inferred';
     [...tabs.children].forEach(n=>(n as HTMLElement).classList.toggle('active',(n as HTMLElement).dataset.id===which));
-    (window as any).__threeStats={model:which,meshCount:countMeshes(current),instances:countInstances(current),version:'geometry-upgrade-v3-real-hollow-barrel'};
+    (window as any).__threeStats={model:which,meshCount:countMeshes(current),instances:countInstances(current),version:compareLegacy?'reference-legacy-v3':'glock-inspired-reference-loft-v4'};
     (window as any).__threeReady=true;(window as any).__activeModel=which;firstReady=false;
  }
  function countMeshes(group:THREE.Object3D){let n=0;group.traverse(o=>{if(o instanceof THREE.Mesh && o.visible)n++});return n;}
