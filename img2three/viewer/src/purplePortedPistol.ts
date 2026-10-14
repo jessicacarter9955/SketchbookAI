@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {mat,pbr,cube,extrude,rod,cylinderX,screw,disc} from './modeling';
+import {buildPortedShroud} from './portedShroud';
 
 export function makePurplePortedPistol():THREE.Group{
  const g=new THREE.Group();g.name='Purple anodized long-barrel pistol | volumetric reconstruction';
@@ -7,27 +8,14 @@ export function makePurplePortedPistol():THREE.Group{
  const black=pbr(0x181b1e,.65,.09),matte=mat(0x272a2c,.82,.06);
  const steel=pbr(0x62676c,.29,.76),red=pbr(0xd62124,.49,.18);
  const gunmetal=pbr(0x0d1013,.41,.68);
- // True round tube, with rings and physically shaded aluminum outer shell.
- cylinderX(g,'anodized purple aluminum barrel',-.51,1.04,0,6.3,.465,violet,80);
- cylinderX(g,'inner black barrel bore behind shroud',-3.55,1.04,0,.12,.281,gunmetal,44);
- cylinderX(g,'black knurled muzzle thread collar',-3.68,1.04,0,.33,.447,black,64);
- cylinderX(g,'muzzle dark hole',-3.88,1.04,0,.025,.28,mat(0x060709,.62),32);
- cylinderX(g,'far rear threaded endcap',2.7,1.04,0,.29,.23,gunmetal,35);
- // Hundreds of visible machined grooves on the end cap.
- for(let i=0;i<24;i++){
-  const ang=2*Math.PI*i/24,y=1.04+Math.cos(ang)*.456,z=Math.sin(ang)*.456;
-  const rib=cube(g,'knurled black steel barrel collar',[-3.70,y,z],[.245,.02,.034],gunmetal);rib.rotation.x=ang;
- }
- // Port-hole illusion is deliberately recessed 3D slot cavity rather than a picture.
- for(let side of [-1,1]){
-  for(let row=0;row<2;row++)for(let i=0;i<3;i++){
-   const len=i===1?.73:.27,px=-2.69+i*.73;
-   const py=1.04+(row===0?.185:-.18),pz=side*.432;
-   cube(g,'black recessed ventilation port',[px,py,pz],[len,.14,.06],gunmetal,.067);
-   cube(g,'metal port inner reflected chamfer',[px,py,pz+side*.036],[len*.82,.085,.009],black,.033);
-   for(let tip of [-1,1])disc(g,px+tip*len*.41,py,pz+side*.043,.015,highlight);
-  }
- }
+ // A *physically hollow* barrel and radial vent holes; no closed planar cap.
+ const shroudMat=new THREE.MeshPhysicalMaterial({color:0x9a3fb1,metalness:.74,roughness:.29,clearcoat:.19,side:THREE.DoubleSide});
+ const interiorMat=new THREE.MeshStandardMaterial({color:0x16161e,metalness:.46,roughness:.61,side:THREE.DoubleSide});
+ buildPortedShroud(g,shroudMat,interiorMat);
+ // True barrel is recessed behind the shroud rim, not a filled muzzle cap.
+ cylinderX(g,'recessed barrel core',-.12,1.04,0,5.45,.244,gunmetal,96);
+ // Rear collar remains independently machined.
+ cylinderX(g,'rear thread housing',2.64,1.04,0,.18,.438,black,96);
  // Fore section rail and black molded receiver.
  cube(g,'black receiver upper chassis',[.55,.48,0],[4.72,.43,.77],black,.08);
  extrude(g,'one-piece molded black lower body',[[-1.25,.55],[-1.15,.04],[-.72,-.05],[1.76,-.06],[2.45,.35],[2.50,.70],[-.94,.70]],.78,matte,[],[0,0,0],.055);
