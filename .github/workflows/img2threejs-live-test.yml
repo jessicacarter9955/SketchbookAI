@@ -1,4 +1,4 @@
-name: Validate img2threejs high-fidelity viewer
+name: Validate img2threejs photoreal materials on pinned commit
 on:
   push:
     branches: [img2threejs-runner]
@@ -18,7 +18,7 @@ jobs:
       - name: Check raw.githack static host returns HTML and JavaScript
         run: |
           set -euo pipefail
-          BASE="https://raw.githack.com/jessicacarter9955/SketchbookAI/img2threejs-runner/img2three/viewer/dist"
+          BASE="https://raw.githack.com/jessicacarter9955/SketchbookAI/859a2e671d0442df13b6100deda2af07878416d6/img2three/viewer/dist"
           curl --retry 3 --retry-delay 3 --max-time 45 -fsSL -D /tmp/html.headers "$BASE/index.html" -o /tmp/index.html
           cat /tmp/html.headers | head -20
           cat /tmp/index.html
@@ -45,7 +45,7 @@ jobs:
             page.on('console',msg=>consoles.push(msg.type()+': '+msg.text()));
             page.on('requestfailed',req=>requests.push(req.url()+': '+req.failure()?.errorText));
             page.on('response',res=>{if(res.status()>=400)requests.push(res.status()+' '+res.url())});
-            const url='https://raw.githack.com/jessicacarter9955/SketchbookAI/img2threejs-runner/img2three/viewer/dist/index.html';
+            const url='https://raw.githack.com/jessicacarter9955/SketchbookAI/859a2e671d0442df13b6100deda2af07878416d6/img2three/viewer/dist/index.html';
             await page.goto(url,{waitUntil:'domcontentloaded',timeout:60000});
             if((await page.title()).includes('External Content Notice')){
               const links=await page.locator('a').evaluateAll(els=>els.map(e=>({text:e.textContent?.trim(),href:e.getAttribute('href'),target:e.getAttribute('target')})));
