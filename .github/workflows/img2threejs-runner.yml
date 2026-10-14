@@ -119,5 +119,6 @@ jobs:
           git add img2three/preview
           if ! git diff --cached --quiet; then
             git commit -m "artifacts: publish img2threejs built browser viewer"
+            git pull --rebase
             git push
           fi

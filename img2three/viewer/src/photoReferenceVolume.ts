@@ -68,10 +68,12 @@ export async function makePhotoReferenceModel(key:PhotoAsset):Promise<THREE.Grou
  };
  const edgeMat=new THREE.MeshPhysicalMaterial({
    vertexColors:true,
-   roughness:key==='purple'?.42:.58,
-   metalness:key==='purple'?.22:.13,
-   clearcoat:.20,
-   clearcoatRoughness:.42,
+   color:0x9a9a9a,
+   roughness:key==='purple'?.74:.84,
+   metalness:key==='purple'?.08:.025,
+   clearcoat:.045,
+   clearcoatRoughness:.82,
+   envMapIntensity:.38,
    side:THREE.DoubleSide
  });
  // Outer contour and all usable transparency-derived holes.
