@@ -106,17 +106,17 @@ function photoPart(target:THREE.Group,name:string,polygon:Point[],holes:Point[][
 }
 type Cut={x0:number;x1:number;y0:number;y1:number};
 const CUTS:Cut[]=[
- {x0:127,x1:184,y0:87,y1:121},
- {x0:200,x1:329,y0:85,y1:124},
- {x0:336,x1:398,y0:85,y1:126},
- {x0:127,x1:184,y0:150,y1:185},
- {x0:200,x1:329,y0:149,y1:189},
- {x0:336,x1:398,y0:149,y1:189}
+ {x0:136,x1:179,y0:94,y1:112},
+ {x0:211,x1:318,y0:93,y1:113},
+ {x0:350,x1:382,y0:94,y1:114},
+ {x0:135,x1:179,y0:162,y1:177},
+ {x0:211,x1:316,y0:160,y1:179},
+ {x0:348,x1:384,y0:162,y1:178}
 ];
 function isOpen(x:number,y:number,z:number):boolean{
  if(z<=0)return false; // photograph shows openings on near-facing side only
  return CUTS.some(h=>{
-  const margin=Math.min(11,(h.x1-h.x0)*.22),r=Math.min(10,(h.y1-h.y0)*.27);
+  const margin=Math.min(8,(h.x1-h.x0)*.33),r=Math.min(8,(h.y1-h.y0)*.46);
   const cx=(h.x0+h.x1)/2,cy=(h.y0+h.y1)/2;
   const dx=Math.abs(x-cx),dy=Math.abs(y-cy);
   if(dx>(h.x1-h.x0)/2||dy>(h.y1-h.y0)/2)return false;
@@ -128,7 +128,7 @@ function isOpen(x:number,y:number,z:number):boolean{
 }
 function makeShroud(parent:THREE.Group,texture:THREE.Texture){
  const tube=new THREE.Group();tube.name='Independent variable-radius purple shroud';parent.add(tube);
- const start=78,end=1125,nx=160,nt=96;
+ const start=78,end=1125,nx=284,nt=160;
  const p:number[]=[],uv:number[]=[],idx:number[]=[];
  const innerPos:number[]=[],innerIdx:number[]=[];
  const add=(arr:number[],point:THREE.Vector3)=>{arr.push(point.x,point.y,point.z);return arr.length/3-1;};
@@ -237,6 +237,13 @@ export async function createVioletPistolAssembly():Promise<THREE.Group>{
   [778,374],[909,371],[950,421],[979,521],[1007,600],
   [1026,645],[993,667],[857,653],[817,567],[796,482]
  ],[],()=>.375,texture,0x17191b);
+ // The black/red articulated trigger is part of the original photograph,
+ // but it disappeared when the guard became a real through-hole. Rebuild
+ // it as its OWN 3D part with the exact same source-albedo projection.
+ photoPart(group,'Independent source-photographed articulated trigger',[
+   [595,285],[636,286],[650,306],[650,331],[626,365],
+   [612,379],[584,381],[570,361],[585,332]
+ ],[],()=>.296,texture,0x242125);
  makeShroud(group,texture);
  // Sights are disconnected hard-surface components, not shadows on the tube.
  photoPart(group,'Front dovetail sight component',[
