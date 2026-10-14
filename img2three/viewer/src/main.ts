@@ -2,22 +2,20 @@ import * as THREE from 'three';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 import {createTwistingGlassSkyscraperModel,createTwistingGlassSkyscraperEnvironment,configureTwistingGlassSkyscraperRenderer} from './generated/createTowerModel.ts';
 import {buildArchitecturalRefinement} from './architecturalRefinement.ts';
-import {makeCompactPistol} from './compactPistol.ts';
-import {makePurplePortedPistol} from './purplePortedPistol.ts';
-import {makeLimeGreenCarbine} from './limeCarbine.ts';
+import {makePhotoReferenceModel} from './photoReferenceVolume.ts';
 import {makeMultiTrunkTree} from './treeModel.ts';
 import './style.css';
 
 type AssetKey='tower'|'compact'|'purple'|'rifle'|'tree';
-const assets:Array<{id:AssetKey;title:string;subtitle:string;maker:()=>THREE.Group;fov?:number}>= [
+const assets:Array<{id:AssetKey;title:string;subtitle:string;maker:()=>THREE.Group|Promise<THREE.Group>;fov?:number}>= [
  {id:'tower',title:'Glass Tower',subtitle:'45 floors · glass + limestone',maker:()=>{
     const factory=createTwistingGlassSkyscraperModel({textureSize:256,textureAnisotropy:4});
     factory.traverse(o=>{if(o instanceof THREE.Mesh)o.visible=false;});
     const ref=buildArchitecturalRefinement();factory.add(ref.group);factory.userData.stats=ref.stats;return factory;
  },fov:34},
- {id:'compact',title:'Compact Violet',subtitle:'Polymer + matte-black steel',maker:makeCompactPistol,fov:39},
- {id:'purple',title:'Violet Cylinder',subtitle:'Anodized aluminum + polymer',maker:makePurplePortedPistol,fov:36},
- {id:'rifle',title:'Lime Carbine',subtitle:'Green cerakote + black hardware',maker:makeLimeGreenCarbine,fov:39},
+ {id:'compact',title:'Compact Violet',subtitle:'Polymer + matte-black steel',maker:()=>makePhotoReferenceModel('compact'),fov:39},
+ {id:'purple',title:'Violet Cylinder',subtitle:'Anodized aluminum + polymer',maker:()=>makePhotoReferenceModel('purple'),fov:36},
+ {id:'rifle',title:'Lime Carbine',subtitle:'Green cerakote + black hardware',maker:()=>makePhotoReferenceModel('rifle'),fov:39},
  {id:'tree',title:'Multi-trunk Tree',subtitle:'6,300 leaves · 800 grass blades',maker:makeMultiTrunkTree,fov:36},
 ];
 const root=document.getElementById('app')!;
@@ -54,8 +52,8 @@ try {
  const tabs=document.getElementById('asset-tabs')!;
  let current:THREE.Group|null=null, currentKey:AssetKey='tower',modelCenter=new THREE.Vector3(),cameraDistance=16,wire=false;
  let firstReady=false;
- const cache=new Map<AssetKey,THREE.Group>();
- function getModel(which:AssetKey){if(!cache.has(which)){const entry=assets.find(x=>x.id===which)!;cache.set(which,entry.maker());}return cache.get(which)!;}
+ const cache=new Map<AssetKey,Promise<THREE.Group>>();
+ function getModel(which:AssetKey):Promise<THREE.Group>{if(!cache.has(which)){const entry=assets.find(x=>x.id===which)!;cache.set(which,Promise.resolve(entry.maker()));}return cache.get(which)!;}
  function front(){placeView('front')}
  function fit(){
    if(!current)return;
@@ -80,15 +78,22 @@ try {
    if(type==='back')camera.position.copy(modelCenter).add(new THREE.Vector3(0,Math.max(.07,d*.025),-d));
    camera.lookAt(modelCenter);controls.update();
  }
- function choose(which:AssetKey){
-    if(current)scene.remove(current);currentKey=which;current=getModel(which);
+ let sequence=0;
+ async function choose(which:AssetKey){
+    const seq=++sequence;
+    (window as any).__threeReady=false;
+    (window as any).__firstRenderComplete=false;
+    document.getElementById('status')!.textContent='Loading photographed surfaces and 3D geometry…';
+    const next=await getModel(which);
+    if(seq!==sequence)return;
+    if(current)scene.remove(current);currentKey=which;current=next;
     scene.add(current);wire=false;setWire(false);fit();
     const entry=assets.find(x=>x.id===which)!;
     document.getElementById('asset-title')!.textContent=entry.title;
     document.getElementById('asset-subtitle')!.textContent=entry.subtitle;
     document.getElementById('status')!.textContent='True geometry · reference view prioritized · unseen sides estimated';
     [...tabs.children].forEach(n=>(n as HTMLElement).classList.toggle('active',(n as HTMLElement).dataset.id===which));
-    (window as any).__threeStats={model:which,meshCount:countMeshes(current),instances:countInstances(current),version:'reference-gallery-1'};
+    (window as any).__threeStats={model:which,meshCount:countMeshes(current),instances:countInstances(current),version:'reference-photoreal-source-projection-v2'};
     (window as any).__threeReady=true;(window as any).__activeModel=which;firstReady=false;
  }
  function countMeshes(group:THREE.Object3D){let n=0;group.traverse(o=>{if(o instanceof THREE.Mesh && o.visible)n++});return n;}
