@@ -203,7 +203,11 @@ export async function makeReferenceLoft(key:Weapon):Promise<THREE.Group>{
   output.add(plane);
  }
  if(key==='rifle'){
-  internalSurface('handguard real dark rear cavity behind open vents',.751,.171,.36,.246,0x151b16,-.006);
+  // An interior backing for each aperture avoids a black rectangular slab
+  // sticking out past the silhouette at oblique camera angles.
+  for(const [u,v,wu,hv] of [[.805,.093,.052,.02],[.652,.244,.054,.024],[.730,.244,.054,.024],[.810,.244,.054,.024],[.680,.104,.061,.022],[.755,.104,.064,.022]]){
+   internalSurface('shadowed internal wall confined to traced ventilation port',u,v,wu*.94,hv*.94,0x101813,-.018);
+  }
   // The barrel lives between the photographed near face and the reverse
   // shell, and is actually observable through the ventilation openings.
   const innerBarrel=new THREE.Mesh(
@@ -216,7 +220,9 @@ export async function makeReferenceLoft(key:Weapon):Promise<THREE.Group>{
   innerBarrel.castShadow=true;output.add(innerBarrel);
  }
  if(key==='purple'){
-  internalSurface('recessed inner housing visible through shroud ports',.233,.184,.36,.18,0x101017,.008);
+  for(const u of [.137,.23,.324])for(const v of [.13,.212]){
+   internalSurface('local dark housing beneath genuine port',u,v,.047,.030,0x111017,-.006);
+  }
  }
  if(key==='compact'){
   internalSurface('dark interior behind photographed slide window',.574,.121,.22,.095,0x393d41,.006);
