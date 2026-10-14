@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import {mat,pbr,cube,rod} from './modeling';
 
-export function makeMultiTrunkTree():THREE.Group{
+export async function makeMultiTrunkTree():Promise<THREE.Group>{
  const group=new THREE.Group();group.name='Multi-trunk ornamental tree | botanical instanced foliage';
- const bark = mat(0x62534b,.96,.01), innerBark=mat(0x514740,.97,.01),twig=mat(0x433f33,.96);
+ const bark = mat(0xd0c7ba,.96,.01), innerBark=mat(0xa3a09c,.97,.01),twig=mat(0x433f33,.96);
  const woodDetail=pbr(0x9f9382,.90,.01);
  const SEED=245871;let randSeed=SEED;const rnd=()=>{randSeed=(Math.imul(1664525,randSeed)+1013904223)>>>0;return randSeed/4294967296;};
  const rndRange=(a:number,b:number)=>a+(b-a)*rnd();
@@ -95,6 +95,43 @@ export function makeMultiTrunkTree():THREE.Group{
     m.rotation.y=ang;m.rotation.z=rndRange(-.28,.28);m.scale.set(1,rndRange(.7,1.9),1);m.updateMatrix();grass.setMatrixAt(i,m.matrix);
  }
  grass.instanceMatrix.needsUpdate=true;grass.name='1900 individual grass blades';group.add(grass);
- group.userData.botanicalStats={trunks:stems,branchSegments:segments,leaves:leafCount,grass:800};
+ // Photographed foliage from the user reference, instanced on fully 3D cards.
+ // These are scattered throughout the same real 3D branch volume, NOT a
+ // single camera-facing plane with the photo pasted onto it.
+ const loader=new THREE.TextureLoader();
+ const texs=await Promise.all(['foliage_0','foliage_1','foliage_2','foliage_3','bark']
+   .map(name=>loader.loadAsync('./ref/'+name+'.webp')));
+ for(const tex of texs){tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=8;}
+ bark.map=texs[4];innerBark.map=texs[4];bark.needsUpdate=innerBark.needsUpdate=true;
+ let photoClusters=0;
+ for(let k=0;k<4;k++){
+   const matPhoto=new THREE.MeshStandardMaterial({
+     map:texs[k],transparent:true,alphaTest:.13,roughness:.81,
+     metalness:0,side:THREE.DoubleSide,depthWrite:true,
+     color:0xf8f8f8
+   });
+   const count=260,geometry=new THREE.PlaneGeometry(.5,.50,1,1);
+   const inst=new THREE.InstancedMesh(geometry,matPhoto,count);
+   inst.name='reference-photographed natural leaf clusters '+k;
+   inst.castShadow=false;inst.receiveShadow=true;
+   const d=new THREE.Object3D();
+   for(let i=0;i<count;i++){
+     const cl=clusters[Math.floor(rnd()*clusters.length)];
+     const theta=rndRange(-Math.PI,Math.PI),u=rndRange(-.96,.96),rad=Math.cbrt(rnd())*cl[3]*1.07;
+     const fac=Math.sqrt(1-u*u);
+     let x=cl[0]+Math.cos(theta)*fac*rad*1.13,
+         y=cl[1]+u*rad*.83,
+         z=cl[2]+Math.sin(theta)*fac*rad*1.06;
+     if(y<3.52)y=3.52+rnd()*.25;
+     d.position.set(x,y,z);
+     d.rotation.set(rndRange(-.8,.8),rndRange(-Math.PI,Math.PI),rndRange(-.55,.55));
+     const scale=rndRange(.60,1.35);
+     d.scale.set(scale,scale*rndRange(.80,1.15),scale);
+     d.updateMatrix();inst.setMatrixAt(i,d.matrix);
+   }
+   inst.instanceMatrix.needsUpdate=true;group.add(inst);photoClusters+=count;
+ }
+ group.userData.photoFoliageClusters=photoClusters;
+ group.userData.botanicalStats={trunks:stems,branchSegments:segments,leaves:leafCount,grass:800,photoFoliageClusters};
  return group;
 }
