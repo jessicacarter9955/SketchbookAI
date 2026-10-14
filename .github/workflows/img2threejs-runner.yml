@@ -52,6 +52,21 @@ jobs:
           python3 forge/stage3_build/generate_threejs_factory.py ../img2three/output/object-sculpt-spec.json --force --out ../img2three/output/createTowerModel.ts --blocked-report ../img2three/output/generator-blocked.json > ../img2three/output/generator-log.txt 2>&1 || true
           echo "Original img2threejs scripts executed against author-reviewed 51-component skyscraper specification." >> "$GITHUB_STEP_SUMMARY"
           cat ../img2three/output/generator-log.txt | tail -25
+      - name: Probe source-locked lime carbine and apply superprompt to original assessment
+        run: |
+          set -euo pipefail
+          test -s img2three/rifle-superprompt.md
+          test -s img2three/viewer/public/ref/rifle.webp
+          mkdir -p img2three/output
+          cp img2three/rifle-superprompt.md img2three/output/rifle-superprompt-applied.md
+          cd img2three-source
+          python3 forge/stage1_intake/probe_image.py ../img2three/viewer/public/ref/rifle.webp > ../img2three/output/rifle-image-probe.json
+          python3 forge/stage2_spec/new_pre_spec_assessment.py "Lime Green Reference Carbine" \
+            --image ../img2three/viewer/public/ref/rifle.webp \
+            --complexity ultra-complex \
+            --spec-query "$(sed -n '4,9p' ../img2three/rifle-superprompt.md | tr '\n' ' ' | cut -c1-280)" \
+            --out ../img2three/output/rifle-pre-spec-assessment.json --force
+          echo "Image-driven ultra-complex carbine assessment saved beside verbatim quality superprompt." >> "$GITHUB_STEP_SUMMARY"
       - name: Build Three.js viewer against generated original source
         run: |
           mkdir -p img2three/viewer/src/generated
@@ -108,6 +123,8 @@ jobs:
           path: |
             img2three/output/
             img2three/reference_tower.jpg
+            img2three/rifle-superprompt.md
+            img2three/viewer/public/ref/rifle.webp
             img2three/preview/
           if-no-files-found: warn
       # Generated factory output remains in the repository; the separate gallery
