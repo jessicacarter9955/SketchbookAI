@@ -42,14 +42,36 @@ export async function makePhotoReferenceModel(key:PhotoAsset):Promise<THREE.Grou
    alphaTest:.16,
    depthWrite:true
  });
- const edgeMat=new THREE.MeshStandardMaterial({
-   map:texture,
-   color:0xc4c4c4,
-   roughness:key==='purple'?.42:.57,
-   metalness:key==='purple'?.21:.11,
-   emissive:new THREE.Color(0x1d1d1d),
-   emissiveMap:texture,
-   emissiveIntensity:.14,
+ // The original image guides the side colour; it must NOT tile horizontally
+ // around the extruded edge (which creates metallic zebra stripes).
+ const canvas=document.createElement('canvas');
+ const image=texture.image as HTMLImageElement;
+ canvas.width=image.naturalWidth||image.width;canvas.height=image.naturalHeight||image.height;
+ const ctx=canvas.getContext('2d',{willReadFrequently:true})!;
+ ctx.drawImage(image,0,0);
+ const pixels=ctx.getImageData(0,0,canvas.width,canvas.height).data;
+ const samplePhoto=(x:number,y:number):THREE.Color=>{
+   const ix=Math.max(0,Math.min(canvas.width-1,Math.round((x/width+.5)*(canvas.width-1))));
+   const iy=Math.max(0,Math.min(canvas.height-1,Math.round((.5-y/height)*(canvas.height-1))));
+   let chosen=-1;
+   for(let rad=0;rad<=9&&chosen<0;rad++){
+     for(let n=0;n<8;n++){
+       const dx=rad*Math.cos(n*Math.PI/4),dy=rad*Math.sin(n*Math.PI/4);
+       const xx=Math.max(0,Math.min(canvas.width-1,Math.round(ix+dx)));
+       const yy=Math.max(0,Math.min(canvas.height-1,Math.round(iy+dy)));
+       const j=(yy*canvas.width+xx)*4;
+       if(pixels[j+3]>170){chosen=j;break;}
+     }
+   }
+   if(chosen<0)return new THREE.Color(key==='compact'?0x3e3544:key==='purple'?0x493a4c:0x475044);
+   return new THREE.Color().setRGB(pixels[chosen]/255,pixels[chosen+1]/255,pixels[chosen+2]/255,THREE.SRGBColorSpace);
+ };
+ const edgeMat=new THREE.MeshPhysicalMaterial({
+   vertexColors:true,
+   roughness:key==='purple'?.42:.58,
+   metalness:key==='purple'?.22:.13,
+   clearcoat:.20,
+   clearcoatRoughness:.42,
    side:THREE.DoubleSide
  });
  // Outer contour and all usable transparency-derived holes.
@@ -80,10 +102,14 @@ export async function makePhotoReferenceModel(key:PhotoAsset):Promise<THREE.Grou
    // Center extrusion through Z=0, prepare accurate planar photo UVs for caps.
    geom.translate(0,0,-thickness*.5);
    const pos=geom.getAttribute('position'),uv=geom.getAttribute('uv');
-   for(let i=0;i<uv.count;i++){
+   const colors=new Float32Array(pos.count*3);
+   for(let i=0;i<pos.count;i++){
      const x=pos.getX(i),y=pos.getY(i);
      uv.setXY(i,x/width+.5,y/height+.5);
+     const col=samplePhoto(x,y);
+     colors[i*3]=col.r;colors[i*3+1]=col.g;colors[i*3+2]=col.b;
    }
+   geom.setAttribute('color',new THREE.BufferAttribute(colors,3));
    uv.needsUpdate=true;
    geom.computeVertexNormals();
    const mesh=new THREE.Mesh(geom,[material,edgeMat]);

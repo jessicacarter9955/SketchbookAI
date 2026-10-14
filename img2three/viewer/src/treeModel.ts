@@ -11,14 +11,14 @@ export async function makeMultiTrunkTree():Promise<THREE.Group>{
  let segments=0;const tips:Array<{p:THREE.Vector3,r:number}>=[];
  const branches= new THREE.Group();branches.name='Individual three-dimensional bark branches';group.add(branches);
  function branch(from:THREE.Vector3,dir:THREE.Vector3,length:number,r:number,depth:number,kind:number){
-   if(segments>650)return;
+   if(segments>1050)return;
    const to=from.clone().addScaledVector(dir.clone().normalize(),length);
    rod(branches,depth<2?'thick multi-stem trunk':'living twig',from,to,r,depth<2?bark:(depth<4?innerBark:twig),depth<2?11:7,r*(depth<3?.75:.59));
    segments++;
    if(depth>=5 || r<.022){
      tips.push({p:to,r:.42+rnd()*.27});return;
    }
-   const n=depth<1?3:depth<3?2+Math.floor(rnd()*2):2;
+   const n=depth<1?2:depth<3?2:2;
    const turn=0.35+depth*.13;
    for(let k=0;k<n;k++){
      const phi=(k/n)*2*Math.PI+rndRange(-.42,.42);
@@ -38,27 +38,30 @@ export async function makeMultiTrunkTree():Promise<THREE.Group>{
  const stems=8;
  for(let i=0;i<stems;i++){
    const phase=i*2*Math.PI/stems;
-   const offset=new THREE.Vector3(Math.cos(phase)*.18,0,Math.sin(phase)*.15);
+   const offset=new THREE.Vector3(Math.cos(phase)*.13,1.18,Math.sin(phase)*.12);
    const heading=new THREE.Vector3(Math.cos(phase)*.35+(.1-rnd()*.2),1.0,Math.sin(phase)*.28).normalize();
    branch(offset,heading,rndRange(.87,1.25),rndRange(.16,.24),0,i);
  }
+ // Central naturally tapered stem ties the branches together close to ground.
+ rod(branches,'thick continuous tree trunk',new THREE.Vector3(0,0,0),new THREE.Vector3(.09,1.62,.04),.32,bark,18,.23);
+ rod(branches,'mature branching base',new THREE.Vector3(.09,1.45,.04),new THREE.Vector3(0,2.15,.03),.235,bark,16,.14);
  // Bark longitudinal scars, rough cracks and realistic highlights in 3D.
  for(let i=0;i<72;i++){
    const a=rndRange(0,Math.PI*2),z=Math.sin(a)*rndRange(.07,.27);
-   const x=Math.cos(a)*rndRange(.10,.27),y=rndRange(.05,1.15);
+   const x=Math.cos(a)*rndRange(.10,.29),y=rndRange(.05,1.65);
    rod(branches,'narrow irregular bark scar',new THREE.Vector3(x,y,z),new THREE.Vector3(x+rndRange(-.065,.065),y+rndRange(.13,.25),z+rndRange(-.04,.04)),rndRange(.003,.007),i%4===0?woodDetail:innerBark,5);
  }
  // Curved leaf surface; thousands of independent leaves have true orientation/depth.
  const verts=new Float32Array([
-     0,0,0,     -.085,.14,-.013, 0,.30,.014,
-     0,0,0,     0,.30,.014, .085,.14,-.013,
-     0,0,0,     0,.30,.014, 0,.14,.033
+     0,0,0,     -.038,.07,-.008, 0,.145,.008,
+     0,0,0,     0,.145,.008, .038,.07,-.008,
+     0,0,0,     0,.145,.008, 0,.07,.016
  ]);
  const idx=[0,1,2,3,4,5,6,7,8];
  const leafGeom=new THREE.BufferGeometry();leafGeom.setAttribute('position',new THREE.BufferAttribute(verts,3));leafGeom.setIndex(idx);leafGeom.computeVertexNormals();
- const leafMat=new THREE.MeshPhysicalMaterial({color:0x879e7d,roughness:.80,metalness:0,side:THREE.DoubleSide,transmission:.035,thickness:.06,clearcoat:.15,clearcoatRoughness:.75});
- const leafCount=6300;const leaves=new THREE.InstancedMesh(leafGeom,leafMat,leafCount);
- leaves.name='6300 physically instanced elliptical living leaves';
+ const leafMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.85,metalness:0,side:THREE.DoubleSide});
+ const leafCount=15500;const leaves=new THREE.InstancedMesh(leafGeom,leafMat,leafCount);
+ leaves.name='15500 individually instanced realistic small elliptical leaves';
  leaves.castShadow=false;leaves.receiveShadow=true;
  const dummy=new THREE.Object3D(),palette=['#244627','#325b2b','#487437','#527e3b','#638b45','#7a994f','#3b632a','#213e27','#879b52','#4d7433'].map(c=>new THREE.Color(c));
  // Rounded asymmetrical crown mass, matching dense split canopy of user's tree.
@@ -94,7 +97,7 @@ export async function makeMultiTrunkTree():Promise<THREE.Group>{
     m.position.set(Math.cos(ang)*rad,.02,Math.sin(ang)*rad);
     m.rotation.y=ang;m.rotation.z=rndRange(-.28,.28);m.scale.set(1,rndRange(.7,1.9),1);m.updateMatrix();grass.setMatrixAt(i,m.matrix);
  }
- grass.instanceMatrix.needsUpdate=true;grass.name='1900 individual grass blades';group.add(grass);
+ grass.instanceMatrix.needsUpdate=true;grass.name='800 instanced grass blades';group.add(grass);
  // Photographed foliage from the user reference, instanced on fully 3D cards.
  // These are scattered throughout the same real 3D branch volume, NOT a
  // single camera-facing plane with the photo pasted onto it.
@@ -108,9 +111,9 @@ export async function makeMultiTrunkTree():Promise<THREE.Group>{
    const matPhoto=new THREE.MeshStandardMaterial({
      map:texs[k],transparent:true,alphaTest:.13,roughness:.81,
      metalness:0,side:THREE.DoubleSide,depthWrite:true,
-     color:0xf8f8f8
+     color:0xc5d7bb
    });
-   const count=260,geometry=new THREE.PlaneGeometry(.5,.50,1,1);
+   const count=350,geometry=new THREE.PlaneGeometry(.31,.33,1,1);
    const inst=new THREE.InstancedMesh(geometry,matPhoto,count);
    inst.name='reference-photographed natural leaf clusters '+k;
    inst.castShadow=false;inst.receiveShadow=true;
@@ -125,7 +128,7 @@ export async function makeMultiTrunkTree():Promise<THREE.Group>{
      if(y<3.52)y=3.52+rnd()*.25;
      d.position.set(x,y,z);
      d.rotation.set(rndRange(-.8,.8),rndRange(-Math.PI,Math.PI),rndRange(-.55,.55));
-     const scale=rndRange(.60,1.35);
+     const scale=rndRange(.55,1.07);
      d.scale.set(scale,scale*rndRange(.80,1.15),scale);
      d.updateMatrix();inst.setMatrixAt(i,d.matrix);
    }

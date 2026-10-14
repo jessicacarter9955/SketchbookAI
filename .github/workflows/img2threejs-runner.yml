@@ -84,11 +84,12 @@ jobs:
               await page.waitForFunction(id=>window.__activeModel===id && window.__firstRenderComplete===true,id,{timeout:60000});
               await page.waitForTimeout(id==='tree'?1100:600);
               const v=await page.evaluate(()=>({ready:window.__threeReady,error:window.__threeError,stats:window.__threeStats}));
+              await page.evaluate(()=>{document.querySelector('.ui').style.visibility='hidden';document.querySelector('.bottomhint').style.visibility='hidden'});
               await page.screenshot({path:'img2three/preview/'+id+'-front.png',timeout:90000});
-              await page.getByRole('button',{name:'3/4 view'}).click();
+              await page.evaluate(()=>window.__setPreviewView('angle'));
               await page.waitForTimeout(350);
               await page.screenshot({path:'img2three/preview/'+id+'-threequarter.png',timeout:90000});
-              await page.getByRole('button',{name:'Front',exact:true}).click();
+              await page.evaluate(()=>{window.__setPreviewView('front');document.querySelector('.ui').style.visibility='visible';document.querySelector('.bottomhint').style.visibility='visible'});
               report.push({id,...v});
               console.log(JSON.stringify({id,stats:v.stats,error:v.error}));
               if(!v.ready || v.error)throw Error('Model '+id+' failed to render: '+v.error);

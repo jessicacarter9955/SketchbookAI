@@ -16,7 +16,7 @@ const assets:Array<{id:AssetKey;title:string;subtitle:string;maker:()=>THREE.Gro
  {id:'compact',title:'Compact Violet',subtitle:'Polymer + matte-black steel',maker:()=>makePhotoReferenceModel('compact'),fov:39},
  {id:'purple',title:'Violet Cylinder',subtitle:'Anodized aluminum + polymer',maker:()=>makePhotoReferenceModel('purple'),fov:36},
  {id:'rifle',title:'Lime Carbine',subtitle:'Green cerakote + black hardware',maker:()=>makePhotoReferenceModel('rifle'),fov:39},
- {id:'tree',title:'Multi-trunk Tree',subtitle:'6,300 leaves · 800 grass blades',maker:makeMultiTrunkTree,fov:36},
+ {id:'tree',title:'Multi-trunk Tree',subtitle:'15,500 leaves · 1,400 photographic foliage clusters',maker:makeMultiTrunkTree,fov:36},
 ];
 const root=document.getElementById('app')!;
 root.innerHTML='<div class="ui"><div class="overline">IMG2THREEJS <span>· INTERACTIVE GALLERY</span></div>'+
@@ -125,4 +125,5 @@ try {
  function render(){requestAnimationFrame(render);controls.update();renderer.render(scene,camera);if(!firstReady){firstReady=true;(window as any).__firstRenderComplete=true;}}
  render();
  (window as any).__chooseAsset=choose;
+ (window as any).__setPreviewView=placeView;
 } catch(e){console.error(e);const div=document.createElement('pre');div.className='error';div.textContent='3D rendering error: '+String(e);root.append(div);(window as any).__threeError=String(e);}
