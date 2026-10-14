@@ -3,8 +3,8 @@ import {mat,pbr,cube,rod} from './modeling';
 
 export async function makeMultiTrunkTree():Promise<THREE.Group>{
  const group=new THREE.Group();group.name='Multi-trunk ornamental tree | botanical instanced foliage';
- const bark = mat(0x968579,.96,.01), innerBark=mat(0x766e66,.97,.01),twig=mat(0x393f35,.96);
- const woodDetail=pbr(0x776b5d,.93,.01);
+ const bark = mat(0x4a4140,.98,0), innerBark=mat(0x514947,.98,0),twig=mat(0x33362e,.98,0);
+ const woodDetail=pbr(0x382e2d,.97,.00);
  const SEED=245871;let randSeed=SEED;const rnd=()=>{randSeed=(Math.imul(1664525,randSeed)+1013904223)>>>0;return randSeed/4294967296;};
  const rndRange=(a:number,b:number)=>a+(b-a)*rnd();
  // A family of 8 interwoven trunks with physically tapered cylindrical branch segments.
@@ -96,7 +96,7 @@ export async function makeMultiTrunkTree():Promise<THREE.Group>{
  leaves.castShadow=false;leaves.receiveShadow=true;
  const dummy=new THREE.Object3D(),palette=['#244627','#325b2b','#487437','#527e3b','#638b45','#7a994f','#3b632a','#213e27','#879b52','#4d7433'].map(c=>new THREE.Color(c));
  // Rounded asymmetrical crown mass, matching dense split canopy of user's tree.
- const clusters=[[-1.85,5.32,.25,.98],[-.85,5.99,-.25,1.12],[.18,6.28,-.09,1.2],[1.15,6.02,.26,1.28],[2.14,5.51,-.15,.85],[-1.65,4.65,0,.84],[1.64,4.61,.0,.97],[.27,5.06,.3,1.38]];
+ const clusters=[[-1.85,4.80,.25,1.16],[-.85,5.55,-.25,1.46],[.18,5.94,-.09,1.48],[1.15,5.52,.26,1.59],[2.14,5.17,-.15,1.15],[-1.65,4.10,0,1.01],[1.64,4.25,.0,1.19],[.27,4.72,.3,1.65],[-.42,4.12,.20,1.05],[1.06,4.00,.19,1.07]];
  let ci=0;
  for(let i=0;i<leafCount;i++){
    let cl=clusters[Math.floor(rnd()*clusters.length)];
@@ -107,7 +107,7 @@ export async function makeMultiTrunkTree():Promise<THREE.Group>{
        y=cl[1]+u*rad*.83,
        z=cl[2]+Math.sin(theta)*fac*rad*1.1;
    // Clip low leaves near exposed branching area.
-   if(y<3.4)y=3.4+rnd()*.32;
+   if(y<2.95)y=2.95+rnd()*.42;
    dummy.position.set(x,y,z);
    dummy.rotation.set(rndRange(-Math.PI,Math.PI),rndRange(-Math.PI,Math.PI),rndRange(-Math.PI,Math.PI));
    const s=rndRange(.62,.99);dummy.scale.set(s,s*rndRange(.66,1.20),s);
@@ -118,10 +118,10 @@ export async function makeMultiTrunkTree():Promise<THREE.Group>{
  leaves.instanceMatrix.needsUpdate=true;if(leaves.instanceColor)leaves.instanceColor.needsUpdate=true;
  group.add(leaves);
  // Natural circular turf base with thousands of efficient instanced blades.
- const turf=new THREE.Mesh(new THREE.CylinderGeometry(.83,.89,.12,40),mat(0x415a2b,.89));
+ const turf=new THREE.Mesh(new THREE.CylinderGeometry(.83,.89,.12,40),mat(0x344926,.93));
  turf.position.y=-.045;turf.receiveShadow=true;group.add(turf);
  const grassGeom=new THREE.ConeGeometry(.012,.12,3);
- const grassMat=mat(0x8ea94d,.8);
+ const grassMat=mat(0x658849,.85);
  const grass=new THREE.InstancedMesh(grassGeom,grassMat,800);const m=new THREE.Object3D();
  for(let i=0;i<800;i++){
     const ang=rndRange(0,2*Math.PI),rad=Math.sqrt(rnd())*.85;
@@ -146,9 +146,9 @@ export async function makeMultiTrunkTree():Promise<THREE.Group>{
    const matPhoto=new THREE.MeshStandardMaterial({
      map:texs[k],transparent:true,alphaTest:.13,roughness:.81,
      metalness:0,side:THREE.DoubleSide,depthWrite:true,
-     color:0xe5ebda
+     color:0xdce9d0
    });
-   const count=650,geometry=new THREE.PlaneGeometry(.32,.34,1,1);
+   const count=680,geometry=new THREE.PlaneGeometry(.23,.26,1,1);
    const inst=new THREE.InstancedMesh(geometry,matPhoto,count);
    inst.name='reference-photographed natural leaf clusters '+k;
    inst.castShadow=false;inst.receiveShadow=true;
@@ -160,7 +160,7 @@ export async function makeMultiTrunkTree():Promise<THREE.Group>{
      let x=cl[0]+Math.cos(theta)*fac*rad*1.13,
          y=cl[1]+u*rad*.83,
          z=cl[2]+Math.sin(theta)*fac*rad*1.06;
-     if(y<3.52)y=3.52+rnd()*.25;
+     if(y<2.99)y=2.99+rnd()*.34;
      d.position.set(x,y,z);
      d.rotation.set(rndRange(-.8,.8),rndRange(-Math.PI,Math.PI),rndRange(-.55,.55));
      const scale=rndRange(.57,1.05);
