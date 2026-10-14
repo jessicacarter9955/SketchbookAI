@@ -54,6 +54,8 @@ jobs:
           cat ../img2three/output/generator-log.txt | tail -25
       - name: Build Three.js viewer against generated original source
         run: |
+          mkdir -p img2three/viewer/src/generated
+          cp img2three/output/createTowerModel.ts img2three/viewer/src/generated/createTowerModel.ts
           npm --prefix img2three/viewer install --no-audit --no-fund
           npm --prefix img2three/viewer run build
           test -f img2three/viewer/dist/index.html
