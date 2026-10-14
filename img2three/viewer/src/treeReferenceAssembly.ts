@@ -25,7 +25,7 @@ async function woodMaterial(loader:THREE.TextureLoader){
    ctx.drawImage(img,sx,0,sw,img.height,0,y,512,194);
  }
  const map=new THREE.CanvasTexture(canvas);map.colorSpace=THREE.SRGBColorSpace;
- map.wrapS=map.wrapT=THREE.RepeatWrapping;map.repeat.set(1,2);
+ map.wrapS=map.wrapT=THREE.RepeatWrapping;map.repeat.set(1,1.2);
  const grain=document.createElement('canvas');grain.width=256;grain.height=512;
  const g=grain.getContext('2d')!,rnd=randomGenerator(17089);
  g.fillStyle='#888';g.fillRect(0,0,256,512);
@@ -38,7 +38,7 @@ async function woodMaterial(loader:THREE.TextureLoader){
  const bump=new THREE.CanvasTexture(grain);
  bump.wrapS=bump.wrapT=THREE.RepeatWrapping;bump.repeat.set(1,3.2);
  return new THREE.MeshStandardMaterial({
-  map,roughness:.96,metalness:0,bumpMap:bump,bumpScale:.017,color:0xbcb8b6,side:THREE.DoubleSide
+  map,roughness:.96,metalness:0,bumpMap:bump,bumpScale:.017,color:0x615452,side:THREE.DoubleSide
  });
 }
 function livingTube(parent:THREE.Object3D,points:PhotoPoint[],rStart:number,rEnd:number,
@@ -108,23 +108,27 @@ export async function createSourceTreeAssembly():Promise<THREE.Group>{
   {name:'far-left fork',pts:[[522,826,-.16],[465,738,-.14],[422,648,-.20],[386,591,-.21],[339,504,-.19]],r0:.073,r1:.016},
   {name:'far-right fork',pts:[[674,817,-.18],[727,755,-.22],[788,681,-.22],[856,605,-.25],[892,491,-.28]],r0:.068,r1:.017}
  ];
- for(const b of sourceBranches) {
+ // The photo has 3 main roots rather than a radial basket of 9 trunks.
+ // Upper forks start only after those first three have naturally bifurcated.
+ for(const b of sourceBranches.filter(b=>![
+  'slim inside center stem','right flexible separate trunk','left lateral low bough'
+ ].includes(b.name))) {
   const thing=livingTube(trunks,b.pts,b.r0,b.r1,bark,b.name);
   stems.push({tip:thing.curve.getPointAt(1),curve:thing.curve});
  }
  // Smaller curved twigs follow the actual broad-crown direction but vary in
  // depth and angle. Their roots attach to authored splines, not random space.
- for(let i=0;i<390;i++){
+ for(let i=0;i<68;i++){
   const s=stems[Math.floor(rnd()*stems.length)];
-  const t=.45+rnd()*.51,where=s.curve.getPointAt(t);
+  const t=.82+rnd()*.15,where=s.curve.getPointAt(t);
   const x=where.x+(rnd()-.5)*.12,y=where.y,z=where.z+(rnd()-.5)*.11;
   const c=CROWN[Math.floor(rnd()*CROWN.length)];
   const dest=V([c[0]+(rnd()-.5)*c[2],c[1]+(rnd()-.5)*c[2]*.67,(c[3]??0)+(rnd()-.5)*1.3]);
-  if(dest.y<where.y+.10)dest.y=where.y+.15+rnd()*.5;
+  if(dest.y<where.y+.28)dest.y=where.y+.28+rnd()*.48;
   const from=new THREE.Vector3(x,y,z),a=from.clone().lerp(dest,.54);
   a.y+=.10+rnd()*.2;
   const cr=new THREE.CatmullRomCurve3([from,a,dest]);
-  const radius=.010+rnd()*.025,g=new THREE.TubeGeometry(cr,6,radius,5,false);
+  const radius=.005+rnd()*.011,g=new THREE.TubeGeometry(cr,8,radius,5,false);
   const mesh=new THREE.Mesh(g,bark);mesh.receiveShadow=true;
   mesh.name='fine naturally bending branch attached to a measured trunk';trunks.add(mesh);
  }
@@ -135,9 +139,9 @@ export async function createSourceTreeAssembly():Promise<THREE.Group>{
  for(let k=0;k<4;k++){
    const mat=new THREE.MeshStandardMaterial({
     map:leafTex[k],roughness:.9,metalness:0,alphaTest:.29,
-    transparent:true,depthWrite:true,side:THREE.DoubleSide,color:0xe5eddd
+    transparent:true,depthWrite:true,side:THREE.DoubleSide,color:0xd0dec8
    });
-   const count=1700,plane=new THREE.PlaneGeometry(.25,.28,1,1);
+   const count=850,plane=new THREE.PlaneGeometry(.21,.23,1,1);
    const mesh=new THREE.InstancedMesh(plane,mat,count);
    mesh.name='photographed branch-leaf clusters '+k;
    mesh.castShadow=false;mesh.receiveShadow=true;
@@ -149,13 +153,13 @@ export async function createSourceTreeAssembly():Promise<THREE.Group>{
     const center=V([c[0],c[1],c[3]??0]);
     o.position.set(center.x+r*q*Math.cos(t),center.y+r*zr*.70,center.z+r*q*Math.sin(t)*.87);
     o.rotation.set((rnd()-.5)*1.2,rnd()*Math.PI*2,(rnd()-.5)*1.0);
-    const scale=.59+rnd()*.75;o.scale.setScalar(scale);
+    const scale=.43+rnd()*.62;o.scale.setScalar(scale);
     o.updateMatrix();mesh.setMatrixAt(i,o.matrix);
    }
    mesh.instanceMatrix.needsUpdate=true;foliage.add(mesh);cards+=count;
  }
  const leafPalette=['#314d36','#385b3b','#4a6b44','#65825b','#293e2e','#728d68','#476343','#93a486','#26372a','#405e3d'].map(rgb);
- const individual=28500,geometry=leafGeometry();
+ const individual=38000,geometry=leafGeometry();
  const leafMat=new THREE.MeshPhysicalMaterial({
   color:0xffffff,roughness:.83,metalness:0,side:THREE.DoubleSide,clearcoat:.03
  });
@@ -174,7 +178,7 @@ export async function createSourceTreeAssembly():Promise<THREE.Group>{
    leaves.setColorAt(i,color);
  }
  leaves.instanceMatrix.needsUpdate=true;if(leaves.instanceColor)leaves.instanceColor.needsUpdate=true;
- foliage.add(leaves);
+ leaves.castShadow=false;leaves.receiveShadow=true;foliage.add(leaves);
  const ground=new THREE.Mesh(
   new THREE.CylinderGeometry(.73,.78,.055,54),
   new THREE.MeshStandardMaterial({color:0x506644,roughness:.96})
