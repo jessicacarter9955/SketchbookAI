@@ -45,7 +45,7 @@ jobs:
           set -o pipefail
           cd img2three-source
           python3 forge/stage1_intake/probe_image.py ../img2three/reference_tower.jpg > ../img2three/output/image-probe.json
-          python3 forge/stage2_spec/new_pre_spec_assessment.py "Twisting Glass Skyscraper" --image ../img2three/reference_tower.jpg --complexity complex --out ../img2three/output/assessment.json
+          python3 forge/stage2_spec/new_pre_spec_assessment.py "Twisting Glass Skyscraper" --image ../img2three/reference_tower.jpg --complexity complex --out ../img2three/output/assessment.json --force
           cp ../img2three/tower-spec.json ../img2three/output/object-sculpt-spec.json
           python3 forge/stage2_spec/validate_sculpt_spec.py ../img2three/output/object-sculpt-spec.json --strict-quality --json > ../img2three/output/strict-validation.json || true
           python3 forge/stage3_build/generate_threejs_factory.py ../img2three/output/object-sculpt-spec.json --out ../img2three/output/createTowerModel.ts --blocked-report ../img2three/output/generator-blocked.json > ../img2three/output/generator-log.txt 2>&1 || true
