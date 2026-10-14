@@ -24,7 +24,7 @@
     "ready": true,
     "stats": {
       "model": "purple",
-      "meshCount": 2,
+      "meshCount": 7,
       "instances": 0,
       "version": "glock-inspired-reference-loft-v4"
     }
@@ -34,7 +34,7 @@
     "ready": true,
     "stats": {
       "model": "rifle",
-      "meshCount": 3,
+      "meshCount": 8,
       "instances": 0,
       "version": "glock-inspired-reference-loft-v4"
     }
