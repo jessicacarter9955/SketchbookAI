@@ -6,7 +6,7 @@
       "model": "tower",
       "meshCount": 819,
       "instances": 1924,
-      "version": "reference-photoreal-source-projection-v2"
+      "version": "geometry-upgrade-v3-real-hollow-barrel"
     }
   },
   {
@@ -16,7 +16,7 @@
       "model": "compact",
       "meshCount": 1,
       "instances": 0,
-      "version": "reference-photoreal-source-projection-v2"
+      "version": "geometry-upgrade-v3-real-hollow-barrel"
     }
   },
   {
@@ -24,9 +24,9 @@
     "ready": true,
     "stats": {
       "model": "purple",
-      "meshCount": 1,
-      "instances": 0,
-      "version": "reference-photoreal-source-projection-v2"
+      "meshCount": 72,
+      "instances": 1240,
+      "version": "geometry-upgrade-v3-real-hollow-barrel"
     }
   },
   {
@@ -34,9 +34,9 @@
     "ready": true,
     "stats": {
       "model": "rifle",
-      "meshCount": 1,
+      "meshCount": 9,
       "instances": 0,
-      "version": "reference-photoreal-source-projection-v2"
+      "version": "geometry-upgrade-v3-real-hollow-barrel"
     }
   },
   {
@@ -46,7 +46,7 @@
       "model": "tree",
       "meshCount": 612,
       "instances": 17700,
-      "version": "reference-photoreal-source-projection-v2"
+      "version": "geometry-upgrade-v3-real-hollow-barrel"
     }
   }
 ]
