@@ -1,0 +1,42 @@
+name: Publish img2threejs Interactive 3D Viewer
+on:
+  push:
+    branches: [img2threejs-runner]
+    paths:
+      - ".github/workflows/img2threejs-preview.yml"
+      - "img2three/viewer/**"
+      - "img2three/output/createTowerModel.ts"
+      - "img2three/tower-spec.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-img2threejs-preview
+  cancel-in-progress: true
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - name: Build from original generated Three.js source
+        run: |
+          set -eu
+          mkdir -p img2three/viewer/src/generated
+          cp img2three/output/createTowerModel.ts img2three/viewer/src/generated/createTowerModel.ts
+          npm --prefix img2three/viewer install --no-audit --no-fund
+          GITHUB_PAGES=true npm --prefix img2three/viewer run build
+          test -f img2three/viewer/dist/index.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: img2three/viewer/dist
+      - id: deployment
+        uses: actions/deploy-pages@v4
