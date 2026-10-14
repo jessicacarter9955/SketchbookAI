@@ -8,6 +8,7 @@ import {createVioletPistolAssembly} from './violetPistolAssembly.ts';
 import {createCompactReferenceAssembly} from './compactReferenceAssembly.ts';
 
 import {makeMultiTrunkTree} from './treeModel.ts';
+import {createSourceTreeAssembly} from './treeReferenceAssembly.ts';
 import './style.css';
 
 type AssetKey='tower'|'compact'|'purple'|'rifle'|'tree';
@@ -23,7 +24,7 @@ const assets:Array<{id:AssetKey;title:string;subtitle:string;maker:()=>THREE.Gro
  {id:'compact',title:'Compact Violet',subtitle:'Polymer + matte-black steel',maker:()=>compareLegacy?makeReferenceLoft('compact'):createCompactReferenceAssembly(),fov:39},
  {id:'purple',title:'Violet Cylinder',subtitle:'Anodized aluminum + polymer',maker:()=>compareLegacy?makeReferenceLoft('purple'):createVioletPistolAssembly(),fov:36},
  {id:'rifle',title:'Lime Carbine',subtitle:'Green cerakote + black hardware',maker:()=>weapon('rifle'),fov:39},
- {id:'tree',title:'Multi-trunk Tree',subtitle:'15,500 leaves · 1,400 photographic foliage clusters',maker:makeMultiTrunkTree,fov:36},
+ {id:'tree',title:'Multi-trunk Tree',subtitle:'Reference-traced curved trunks · photographic bark + dense 3D foliage',maker:()=>compareLegacy?makeMultiTrunkTree():createSourceTreeAssembly(),fov:36},
 ];
 const root=document.getElementById('app')!;
 root.innerHTML='<div class="ui"><div class="overline">IMG2THREEJS <span>· INTERACTIVE GALLERY</span></div>'+
