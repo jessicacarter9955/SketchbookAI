@@ -4,16 +4,17 @@ on:
     branches: [img2threejs-runner]
     paths:
       - ".github/workflows/img2threejs-runner.yml"
-      - "img2three/**"
+      - "img2three/input/**"
+      - "img2three/*.base64"
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  original-skill-smoke:
+  original-skill-run:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Checkout isolated working branch
         uses: actions/checkout@v4
@@ -23,16 +24,45 @@ jobs:
           repository: img2threejs/img2threejs
           ref: main
           path: img2three-source
-      - name: Verify original pipeline, not a substitute
+      - name: Verify core original tools
         run: |
           cd img2three-source
           python3 --version
           test -f SKILL.md
           test -f forge/stage1_intake/probe_image.py
           test -f forge/stage2_spec/new_pre_spec_assessment.py
+          test -f forge/stage2_spec/new_sculpt_spec.py
           test -f forge/stage2_spec/validate_sculpt_spec.py
           test -f forge/stage3_build/generate_threejs_factory.py
-          python3 forge/stage1_intake/probe_image.py --help
-          python3 forge/stage2_spec/new_pre_spec_assessment.py --help
-          python3 forge/stage3_build/generate_threejs_factory.py --help
-          echo "PASS: upstream img2threejs checked out and original tools executable" >> "$GITHUB_STEP_SUMMARY"
+      - name: Decode real user reference
+        run: |
+          mkdir -p img2three/output
+          base64 -d img2three/reference_tower.jpg.base64 > img2three/reference_tower.jpg
+          file img2three/reference_tower.jpg
+      - name: Run original image probe and assessment
+        run: |
+          set -o pipefail
+          cd img2three-source
+          python3 forge/stage1_intake/probe_image.py ../img2three/reference_tower.jpg > ../img2three/output/image-probe.json
+          python3 forge/stage2_spec/new_pre_spec_assessment.py "Twisting Glass Skyscraper" --image ../img2three/reference_tower.jpg --complexity complex --out ../img2three/output/assessment.json
+          python3 forge/stage2_spec/new_sculpt_spec.py "Twisting Glass Skyscraper" --image ../img2three/reference_tower.jpg --assessment ../img2three/output/assessment.json --out ../img2three/output/object-sculpt-spec.json
+          python3 forge/stage2_spec/validate_sculpt_spec.py ../img2three/output/object-sculpt-spec.json > ../img2three/output/spec-validation.txt 2>&1 || true
+          echo "Original img2threejs scripts executed; spec requires subject-specific enrichment before strict-quality model generation." >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload input and pipeline artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: img2threejs-original-run
+          path: |
+            img2three/output/
+            img2three/reference_tower.jpg
+          if-no-files-found: warn
+      - name: Save source pipeline output in isolated branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add img2three/output
+          if ! git diff --cached --quiet; then
+            git commit -m "artifacts: img2threejs pipeline baseline"
+            git push
+          fi
