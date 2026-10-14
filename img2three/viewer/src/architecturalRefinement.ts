@@ -13,11 +13,33 @@ export function buildArchitecturalRefinement() {
   const shadowstone=new THREE.MeshStandardMaterial({color:0xa2aeb9,roughness:.72});
   const steel=new THREE.MeshStandardMaterial({color:0x526978,roughness:.31,metalness:.64});
   const dark=new THREE.MeshStandardMaterial({color:0x1b3447,roughness:.4,metalness:.34});
-  const topGlass=new THREE.MeshPhysicalMaterial({color:0x90b5c8,roughness:.17,metalness:.34,clearcoat:.9,clearcoatRoughness:.11,envMapIntensity:1.8});
+  const topGlass=new THREE.MeshPhysicalMaterial({color:0x52778f,roughness:.14,metalness:.28,clearcoat:.9,clearcoatRoughness:.11,envMapIntensity:1.25});
   function glass(color:number){
     return new THREE.MeshPhysicalMaterial({color,roughness:.135,metalness:.13,clearcoat:.89,clearcoatRoughness:.14,envMapIntensity:2});
   }
-  const windowMats=[glass(0xabc4d5),glass(0x83a8c3),glass(0x6487a2),glass(0xc7d6e0),glass(0x456980),glass(0x93bfd7)];
+  const windowMats=[glass(0x98b3c5),glass(0x7199b7),glass(0x446987),glass(0xb8d0df),glass(0x365570),glass(0x82adc4)];
+  // Procedural albedo/reflection variation, NOT the source image pasted onto a flat facade.
+  // Independent panes still occupy 3D and respond to dynamic Three.js lighting.
+  const canvas=document.createElement('canvas');canvas.width=256;canvas.height=512;
+  const ctx=canvas.getContext('2d')!;
+  const linear=ctx.createLinearGradient(0,0,256,0);
+  linear.addColorStop(0,'#4b6f85');linear.addColorStop(.11,'#87abc0');
+  linear.addColorStop(.22,'#bedce9');linear.addColorStop(.36,'#577c96');
+  linear.addColorStop(.49,'#88b2cd');linear.addColorStop(.68,'#b3d1df');
+  linear.addColorStop(.82,'#6b90ad');linear.addColorStop(1,'#365771');
+  ctx.fillStyle=linear;ctx.fillRect(0,0,256,512);
+  for(let n=0;n<15;n++){
+    const y=(n*117+29)%512,x=(n*67+19)%256;
+    ctx.fillStyle=n%2===0?'rgba(245,252,255,0.11)':'rgba(25,48,69,0.17)';
+    ctx.fillRect(x,y,1+(n%4),36+(n*41)%280);
+  }
+  const fade=ctx.createLinearGradient(0,0,0,512);
+  fade.addColorStop(0,'rgba(255,255,255,0.11)');
+  fade.addColorStop(.46,'rgba(255,255,255,0.02)');
+  fade.addColorStop(1,'rgba(3,27,48,0.18)');
+  ctx.fillStyle=fade;ctx.fillRect(0,0,256,512);
+  const glassMap=new THREE.CanvasTexture(canvas);glassMap.colorSpace=THREE.SRGBColorSpace;glassMap.anisotropy=8;
+  windowMats.forEach(m=>{m.map=glassMap;m.needsUpdate=true;});
   const unit=new THREE.Object3D();let meshCount=0,paneCount=0;
   function box(g:THREE.Group,label:string,x:number,y:number,z:number,w:number,h:number,d:number,mat:THREE.Material,cast=false) {
     const m=new THREE.Mesh(cube,mat);m.name=label;m.position.set(x,y,z);m.scale.set(w,h,d);
