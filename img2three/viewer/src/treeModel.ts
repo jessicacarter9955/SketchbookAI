@@ -132,6 +132,6 @@ export async function makeMultiTrunkTree():Promise<THREE.Group>{
    inst.instanceMatrix.needsUpdate=true;group.add(inst);photoClusters+=count;
  }
  group.userData.photoFoliageClusters=photoClusters;
- group.userData.botanicalStats={trunks:stems,branchSegments:segments,leaves:leafCount,grass:800,photoFoliageClusters};
+ group.userData.botanicalStats={trunks:stems,branchSegments:segments,leaves:leafCount,grass:800,photoFoliageClusters:photoClusters};
  return group;
 }
