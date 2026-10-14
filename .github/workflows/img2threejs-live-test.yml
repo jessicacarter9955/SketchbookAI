@@ -1,0 +1,30 @@
+name: Validate externally hosted img2threejs 3D viewer
+on:
+  push:
+    branches: [img2threejs-runner]
+    paths:
+      - ".github/workflows/img2threejs-live-test.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-host:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - name: Check raw.githack static host returns HTML and JavaScript
+        run: |
+          set -euo pipefail
+          BASE="https://raw.githack.com/jessicacarter9955/SketchbookAI/img2threejs-runner/img2three/viewer/dist"
+          curl --retry 3 --retry-delay 3 --max-time 45 -fsSL -D /tmp/html.headers "$BASE/index.html" -o /tmp/index.html
+          cat /tmp/html.headers | head -20
+          cat /tmp/index.html
+          ASSET="$(grep -oE './assets/index-[^"]+\.js' /tmp/index.html | head -1)"
+          test -n "$ASSET"
+          curl --retry 3 --retry-delay 3 --max-time 45 -fsSL -D /tmp/js.headers "$BASE/${ASSET#./}" -o /tmp/assets.js
+          cat /tmp/js.headers | head -20
+          test "$(wc -c </tmp/assets.js)" -gt 500000
+          echo "LIVE: $BASE/index.html" >> "$GITHUB_STEP_SUMMARY"
+          echo "HTML and JS assets loaded successfully" >> "$GITHUB_STEP_SUMMARY"
