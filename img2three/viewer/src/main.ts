@@ -6,7 +6,7 @@ import {
   createTwistingGlassSkyscraperLookDevLights,
   createTwistingGlassSkyscraperEnvironment,
   configureTwistingGlassSkyscraperRenderer,
-} from '../../output/createTowerModel.ts';
+} from './generated/createTowerModel.ts';
 import './style.css';
 
 const host = document.getElementById('app')!;
@@ -28,7 +28,7 @@ try {
   scene.add(model);
   scene.add(createTwistingGlassSkyscraperLookDevLights('neutral'));
   const ground=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.MeshStandardMaterial({color:'#e1e5eb',roughness:.85}));
-  ground.rotation.x=-Math.PI/2; ground.position.y=-5.1;ground.receiveShadow=true;scene.add(ground);
+  ground.rotation.x=-Math.PI/2; ground.position.y=-5.03;ground.receiveShadow=true;scene.add(ground);
   const bbox=new THREE.Box3().setFromObject(model),center=bbox.getCenter(new THREE.Vector3()),size=bbox.getSize(new THREE.Vector3());
   const radius=Math.max(9,size.length()*1.15);
   camera.position.set(center.x+radius*0.28,center.y+radius*0.08,center.z+radius*1.18);
