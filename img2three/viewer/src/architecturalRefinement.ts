@@ -145,6 +145,6 @@ export function buildArchitecturalRefinement() {
   box(root,'real 3D grey stone foundation',0,.028,0,2.67,.055,2.10,stone);
   const stats={paneInstances:paneCount,meshCount,floors:45,facadeFaces:4};
   root.userData.architectureStats=stats;
-  root.userData.evidence='Primary source: user's frontal tower image. Synthetic side views are inferred, not measured.';
+  root.userData.evidence="Primary source: user's frontal tower image. Synthetic side views are inferred, not measured.";
   return {group:root,stats};
 }
