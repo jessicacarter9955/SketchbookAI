@@ -25,7 +25,8 @@ export async function verifyLiveBlueprintInputs(player, runtime, fixture) {
                 player.triggerAction('up', true);
                 for (let frame = 0; frame < 30; frame++) await new Promise(requestAnimationFrame);
                 player.triggerAction('up', false);
-                movementDistance = player.position.distanceTo(position);
+                // Vertical falling/jumping must not count as successful walking.
+                movementDistance = Math.hypot(player.position.x - position.x, player.position.z - position.z);
                 if (!Number.isFinite(movementDistance) || movementDistance < 0.05) throw new Error('Player did not move during permitted source sprint');
             }
             player.triggerAction(action, false);
@@ -43,7 +44,8 @@ export async function verifyLiveBlueprintInputs(player, runtime, fixture) {
             metricResults.push({source_function: metric.function, value: actual, expected: test.outputs[metric.output]});
         }
         return {schema_version: 1, project: runtime.report.project, programs_content_sha256: runtime.report.content_sha256,
-                checked: results.length, metrics_checked: metricResults.length, status: 'passed', movement_distance: movementDistance, results, metric_results: metricResults,
+                checked: results.length, metrics_checked: metricResults.length, status: 'passed', movement_distance: movementDistance,
+                movement_axis: 'horizontal_xz', results, metric_results: metricResults,
                 scope: 'Original sprint/jump prerequisites applied to the real scene input; excludes complete Mover, timers, stamina consumption and replication'};
     } finally {
         runtime.restore(snapshot);

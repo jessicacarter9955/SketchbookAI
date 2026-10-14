@@ -7,7 +7,7 @@ complete game fidelity.
 
 ## Measured local scope
 
-The current cache has 13 parsed Blueprint/widget packages, about 167 MiB of raw
+The first measured snapshot had 13 parsed Blueprint/widget packages, about 167 MiB of raw
 JSON, 38 translated functions and 462 blocked functions. Parsing that JSON alone
 took 1.787 seconds in one local observation. Translation semantics and native
 runtime dependencies are the current engineering bottleneck.
@@ -22,6 +22,9 @@ runtime dependencies are the current engineering bottleneck.
 50% of the blocked functions in the parsed subset. Candidate counts overlap,
 and removing one blocker can expose another. These are neither guaranteed unlock
 counts nor a percentage of the complete game. Another 263 packages are uncached.
+The subsequent struct/name batch reached 39 translated / 461 blocked functions.
+Struct member reads are supported; constructors and container mutations remain
+open. The planner refreshes its counts as later blockers become visible.
 
 ## Best next operations
 

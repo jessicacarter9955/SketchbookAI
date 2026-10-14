@@ -109,3 +109,14 @@ test('recursive source calls are bounded and cannot leak state after failure', (
     assert.throws(() => executeBlueprint(recursive, state, {}, {functions: {Recursive: recursive}}), /depth exceeded/);
     assert.equal(state.Flag, true);
 });
+test('nested source struct reads require existing members and preserve caller data', () => {
+    const read = {schema_version: 1, status: 'translated_straight_line', input_fields: ['Data'], output_fields: [],
+        field_types: {local: {Data: 'StructProperty'}}, steps: [{op: 'return', value: {op: 'member', field: 'Inner',
+            value: {op: 'get', scope: 'local', field: 'Data'}}}]};
+    const input = {Data: {Inner: {Quantity: 4}}};
+    const result = executeBlueprint(read, {}, input); result.value.Quantity = 1;
+    assert.equal(input.Data.Inner.Quantity, 4);
+    assert.throws(() => executeBlueprint(read, {}, {Data: {}}), /Missing source struct member/);
+    read.steps[0].value.field = '__proto__';
+    assert.throws(() => executeBlueprint(read, {}, input), /Unsupported/);
+});

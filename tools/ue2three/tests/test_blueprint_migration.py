@@ -57,6 +57,15 @@ class BlueprintMigrationTests(unittest.TestCase):
         result = translate_function(function, Package({'Imports': imports}))
         self.assertEqual(result['steps'][0]['value']['name'], 'Divide_DoubleDouble')
 
+    def test_unsupported_unicode_name_constant_blocks_the_source_comparison(self):
+        imports = [{'ObjectName': 'EqualEqual_NameName', 'ClassName': 'Function', 'OuterIndex': -2},
+                   {'ObjectName': 'KismetMathLibrary', 'OuterIndex': -3}, {'ObjectName': '/Script/Engine'}]
+        function = self.function()
+        function['ScriptBytecode'][1]['Expression'] = node('EX_CallMath', StackNode=-1,
+                Parameters=[node('EX_NameConst', Value='café'), node('EX_NameConst', Value='CAFÉ')])
+        with self.assertRaisesRegex(BlueprintTranslationError, 'non-ASCII'):
+            translate_function(function, Package({'Imports': imports}))
+
     def test_incomplete_scripts_and_unsafe_fields_are_rejected(self):
         function = self.function(); function['ScriptBytecode'].pop()
         with self.assertRaises(BlueprintTranslationError): translate_function(function)
@@ -94,6 +103,20 @@ class BlueprintMigrationTests(unittest.TestCase):
         with self.assertRaises(BlueprintTranslationError): memory_size(node('EX_Context'))
         self.assertEqual(memory_size(node('EX_NameConst', Value='Socket')), 13)
         self.assertEqual(memory_size(node('EX_UnicodeStringConst', Value='😀')), 7)
+
+    def test_struct_member_reads_preserve_fields_and_vm_layout_without_writes(self):
+        member = node('EX_StructMemberContext', StructMemberExpression={'New': {'Path': ['Quantity']}},
+                      StructExpression=variable('EX_LocalVariable', 'InputData'))
+        function = self.function(); function['ScriptBytecode'][1]['Expression'] = member
+        function['LoadedProperties'] = [{'Name': 'InputData', 'SerializedType': 'StructProperty', 'PropertyFlags': 'CPF_Parm'},
+                                        {'Name': 'ReturnValue', 'SerializedType': 'IntProperty', 'PropertyFlags': 'CPF_Parm, CPF_OutParm'}]
+        result = translate_package(Package({'Exports': [function]}))['functions']['GetState']
+        self.assertEqual(result['steps'][0]['value']['field'], 'Quantity')
+        self.assertEqual(result['input_fields'], ['InputData'])
+        self.assertEqual(result['field_types']['local']['InputData'], 'StructProperty')
+        self.assertEqual(memory_size(member), 18)
+        function['ScriptBytecode'][1]['Variable'] = member
+        with self.assertRaisesRegex(BlueprintTranslationError, 'assignment target'): translate_function(function)
 
     def call_package(self):
         caller = {'ObjectName': 'Caller', 'OuterIndex': 3, 'LoadedProperties': [

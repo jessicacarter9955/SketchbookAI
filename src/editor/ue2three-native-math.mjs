@@ -1,5 +1,11 @@
 // Mirrors the supported UE 5.7 KismetMathLibrary primitives. No game rules.
 export function evaluateNativeMath(name, args, warning = () => {}) {
+    if (name === 'EqualEqual_NameName' || name === 'NotEqual_NameName') {
+        if (args.length !== 2 || args.some(value => typeof value !== 'string' || !value || /[^\x01-\x7f]/.test(value)))
+            throw new Error('Unsupported or invalid source FName comparison');
+        const equal = args[0].toUpperCase() === args[1].toUpperCase();
+        return name === 'EqualEqual_NameName' ? equal : !equal;
+    }
     const boolean = /^(BooleanAND|BooleanOR|BooleanXOR|Not_PreBool|EqualEqual_BoolBool|NotEqual_BoolBool)$/.test(name);
     const match = /^(EqualEqual|NotEqual|Greater|GreaterEqual|Less|LessEqual|Add|Subtract|Multiply|Divide)_(ByteByte|IntInt|DoubleDouble)$/.exec(name);
     const clamp = name === 'FClamp' || name === 'Clamp';

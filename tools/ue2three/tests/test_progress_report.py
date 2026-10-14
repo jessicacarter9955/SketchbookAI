@@ -77,5 +77,23 @@ class ProgressReportTests(unittest.TestCase):
         report = project_progress(self.workspace, self.published, self.character)
         self.assertFalse(any('vitalità' in m['title'] for m in report['milestones']))
 
+    def test_source_audit_requires_exact_outputs_and_matching_programs(self):
+        program = {'project': self.project, 'packages': {'/Game/A': {'functions': {'Probe': {'source_bytecode_sha256': 'bytecode'}}}}}
+        program['content_sha256'] = digest(program); atomic_json(self.published / 'blueprint-programs.json', program)
+        image = self.published / 'verification/blueprint-audit.jpg'; image.parent.mkdir(); image.write_bytes(b'audit-image')
+        sample = {'outputs': {'Result': 1}, 'expected': {'Result': True}}
+        audit = {'project': self.project, 'status': 'passed', 'programs_content_sha256': program['content_sha256'],
+                 'screenshot_sha256': file_hash(image), 'golden_source_cases': 1,
+                 'evidence': [{'package': '/Game/A', 'function': 'Probe', 'source_bytecode_sha256': 'bytecode', 'source_cases': [sample]}]}
+        path = self.published / 'blueprint-audit-verification.json'; atomic_json(path, audit)
+        report = project_progress(self.workspace, self.published, self.character)
+        self.assertFalse(any('confronti sorgenti' in m['title'] for m in report['milestones']))
+        sample['expected']['Result'] = 1; atomic_json(path, audit)
+        report = project_progress(self.workspace, self.published, self.character)
+        self.assertTrue(any('confronti sorgenti' in m['title'] for m in report['milestones']))
+        audit['programs_content_sha256'] = 'stale'; atomic_json(path, audit)
+        report = project_progress(self.workspace, self.published, self.character)
+        self.assertFalse(any('confronti sorgenti' in m['title'] for m in report['milestones']))
+
 
 if __name__ == '__main__': unittest.main()

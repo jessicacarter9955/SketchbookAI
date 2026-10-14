@@ -84,6 +84,12 @@ function runBlueprint(program, self, inputs, functions, budget, depth) {
                 || typeof value === 'number' && !Number.isFinite(value)) throw new Error('Invalid Blueprint constant');
             return value;
         }
+        if (expression.op === 'member' && safeField(expression.field)) {
+            const structure = evaluate(expression.value, depth+1);
+            if (!structure || typeof structure !== 'object' || Array.isArray(structure) || !owns(structure, expression.field))
+                throw new Error(`Missing source struct member: ${expression.field}`);
+            return structuredClone(structure[expression.field]);
+        }
         if (expression.op === 'get' && safeField(expression.field) && ['self', 'local'].includes(expression.scope)) {
             const owner = expression.scope === 'self' ? instance : locals;
             if (!owns(owner, expression.field)) throw new Error(`Missing ${expression.scope} property: ${expression.field}`);

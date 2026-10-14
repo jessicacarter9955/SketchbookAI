@@ -14,7 +14,8 @@ def project_progress(workspace, published, character_dir=None):
               'registry': workspace / 'artifacts/engine_metadata.json',
               'maps': published / 'map-manifest.json', 'ui': published / 'ui-manifest.json',
               'blueprints': published / 'blueprint-programs.json',
-              'live_blueprints': published / 'blueprint-live-verification.json'}
+              'live_blueprints': published / 'blueprint-live-verification.json',
+              'audit_blueprints': published / 'blueprint-audit-verification.json'}
     if character_dir:
         inputs['character'] = Path(character_dir).resolve() / 'manifest.json'
     for path in sorted((published / 'maps').glob('*.validation.json')):
@@ -70,6 +71,8 @@ def project_progress(workspace, published, character_dir=None):
     outputs['attachment_files'] = attachment_outputs
     live_image = published / 'verification/blueprint-live.jpg'
     outputs['live_blueprint_screenshot'] = file_hash(live_image) if live_image.is_file() else None
+    audit_image = published / 'verification/blueprint-audit.jpg'
+    outputs['audit_blueprint_screenshot'] = file_hash(audit_image) if audit_image.is_file() else None
     fingerprint = digest({'manifest_key': fingerprint, 'outputs': outputs})
     report_path = published / 'progress.json'
     try:
@@ -180,6 +183,21 @@ def project_progress(workspace, published, character_dir=None):
             and all(type(r.get('value')) in (int, float) and math.isfinite(r['value']) and r['value'] == r.get('expected') for r in metrics)):
         milestones.append({'title': 'Lettura dei valori originali di vitalità', 'status': 'green',
                            'evidence': f"{len(source_metrics)} getter e {len(metrics)} casi; consumo, danni e rigenerazione esclusi"})
+    audit = documents.get('audit_blueprints', {})
+    if (blueprint_report and audit.get('status') == 'passed' and audit.get('project') == project
+            and audit.get('programs_content_sha256') == blueprint_report.get('content_sha256')
+            and outputs['audit_blueprint_screenshot'] and audit.get('screenshot_sha256') == outputs['audit_blueprint_screenshot']):
+        verified, cases = [], 0
+        for entry in audit.get('evidence', []):
+            program = blueprint_report.get('packages', {}).get(entry.get('package'), {}).get('functions', {}).get(entry.get('function'), {})
+            samples = entry.get('source_cases', [])
+            if (program and samples and program.get('source_bytecode_sha256') == entry.get('source_bytecode_sha256')
+                    and all(sample.get('expected') and all(key in sample.get('outputs', {})
+                            and digest(sample['outputs'][key]) == digest(value) for key, value in sample['expected'].items()) for sample in samples)):
+                verified.append(entry['function']); cases += len(samples)
+        if verified and cases == audit.get('golden_source_cases'):
+            milestones.append({'title': 'Funzioni con confronti sorgenti verificati', 'status': 'green',
+                               'evidence': f"{len(verified)} funzioni, {cases} casi; incluse {', '.join(sorted(set(verified)))}; non prova i sistemi completi"})
     report = {'schema_version': 1, 'project': project, 'fingerprint': fingerprint,
               'scope': 'cached registry and published outputs; no full-game percentage inferred',
               'source_classes': dict(classes), 'rows': rows, 'milestones': milestones,

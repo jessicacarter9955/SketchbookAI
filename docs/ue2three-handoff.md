@@ -28,8 +28,8 @@ assets. Tool code, built editor and this checkpoint are saved in Git.
 
 ## Exact current scope
 
-38 translated functions: 32 with source behavior and six empty
-callbacks. 462 functions are blocked in parsed packages; 60 delegate signatures
+39 translated functions: 33 with source behavior and six empty
+callbacks. 461 functions are blocked in parsed packages; 60 delegate signatures
 are declarations; 263 Blueprint/widget/animation packages are not parsed yet.
 Original whole-game fidelity is not established. Most gameplay logic, Motion
 Matching/Mover, latent actions, RPC/replication and native simulation remain open.
@@ -53,7 +53,7 @@ Shared socket transform: `src/editor/ue2three-attachment.mjs`.
    and native dependencies exist; getters alone do not make a game system green.
 6. Regenerate reports, check in the integrated browser, save screenshots, push.
 
-Last isolated browser result: 38 functions / 114 generic scenarios + 103 DDS comparisons
+Last isolated browser result: 39 functions / 117 generic scenarios + 131 DDS comparisons
 passed. Cases live in `tests/fixtures/dds-blueprints.json`; their bytecode hashes
 must match the parsed source. Open the Blueprint audit with
 `&fixtures=dds-blueprints.json` for these DDS-specific comparisons. Animation
@@ -70,11 +70,11 @@ briefly moves the character and restores fixture state. Save its DOM proof
 The editor build now also emits `build/519.editor.min.js`; commit that chunk with
 `build/editor.min.js`. Each player reset receives fresh source component state.
 
-Latest completed verification: 82 Python tests, 57 JavaScript tests, successful
-editor build, 114 generic and 103 DDS source comparisons, and 24 live player-input
-plus 35 metric cases. The live movement check recorded 0.828 scene units; fixtures restored
+Latest completed verification: 87 Python tests, 59 JavaScript tests, successful
+editor build, 117 generic and 131 DDS source comparisons, and 24 live player-input
+plus 35 metric cases. The live movement check recorded 0.456 horizontal scene units; fixtures restored
 stamina 100. A player restart visibly retained defaults. Saved evidence:
-`build/local-scenes/ue2three/verification/source-metrics/scene.jpg` and
+`build/local-scenes/ue2three/verification/source-structs/scene.jpg` and
 `live-inputs.json`. Animations remain assumed working with fidelity deferred.
 
 `ue2three-native-math.mjs` implements supported Kismet primitives. Ratio getters
@@ -88,6 +88,11 @@ Blueprint migration and reuses checksummed artifacts. It publishes
 collaboration. Current first blocker counts: events 173, objects 69, structs 23;
 232 wrappers call shared event graphs. Candidate family counts overlap. See
 `docs/ue2three-acceleration.md` for the measured scope and parallel work contracts.
+
+Struct member reads and ASCII FName comparisons are implemented. Original
+MapBoneToRegion is verified on 28 source cases; hit detection/damage are still
+unconnected. Audit UI can filter functions and expand actual source comparison
+results. Its DOM evidence is in #blocked and includes program identity/hashes.
 
 ## Reuse commands (for the coding agent; no user terminal work needed)
 

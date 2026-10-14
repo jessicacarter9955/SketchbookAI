@@ -43,6 +43,7 @@ for _type in ('IntInt', 'DoubleDouble'):
         MATH_CALLS[_operation + '_' + _type] = (2, _type)
 MATH_CALLS.update({'Divide_DoubleDouble': (2, 'DoubleDouble'),
                    'EqualEqual_BoolBool': (2, 'bool'), 'NotEqual_BoolBool': (2, 'bool'),
+                   'EqualEqual_NameName': (2, 'name'), 'NotEqual_NameName': (2, 'name'),
                    'FClamp': (3, 'DoubleDouble'), 'Clamp': (3, 'IntInt')})
 
 
@@ -103,11 +104,19 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
     token = kind(value)
     if token in ('EX_LocalVirtualFunction', 'EX_LocalFinalFunction', 'EX_FinalFunction'):
         return local_call(value, package, owner, reads, outputs, depth)
+    if token == 'EX_StructMemberContext':
+        return {'op': 'member', 'field': field(value.get('StructMemberExpression')),
+                'value': expression(value.get('StructExpression'), reads, outputs, depth+1, package, owner)}
     if token == 'EX_CallMath':
         name = math_call(package, value.get('StackNode'))
         args = value.get('Parameters')
         if not isinstance(args, list) or len(args) != MATH_CALLS[name][0]:
             raise BlueprintTranslationError('Invalid native math parameter count')
+        if name in ('EqualEqual_NameName', 'NotEqual_NameName'):
+            for arg in args:
+                if kind(arg) == 'EX_NameConst' and (not isinstance(arg.get('Value'), str)
+                        or not arg['Value'] or not re.fullmatch(r'[\x01-\x7f]+', arg['Value'])):
+                    raise BlueprintTranslationError('Unsupported non-ASCII FName comparison constant')
         return {'op': 'math', 'name': name, 'args': [expression(arg, reads, outputs, depth+1, package, owner) for arg in args]}
     scopes = {'EX_InstanceVariable': 'self', 'EX_LocalVariable': 'local', 'EX_LocalOutVariable': 'local'}
     if token in scopes:
@@ -148,6 +157,7 @@ def memory_size(value, depth=0):
     if token in ('EX_Tracepoint', 'EX_WireTracepoint', 'EX_Nothing', 'EX_EndOfScript',
                  'EX_True', 'EX_False', 'EX_IntZero', 'EX_IntOne'): return 1
     if token in ('EX_InstanceVariable', 'EX_LocalVariable', 'EX_LocalOutVariable'): return 9
+    if token == 'EX_StructMemberContext': return 9 + memory_size(value.get('StructExpression'), depth+1)
     if token in ('EX_ByteConst', 'EX_IntConstByte'): return 2
     if token in ('EX_IntConst', 'EX_FloatConst'): return 5
     if token == 'EX_DoubleConst': return 9
@@ -258,10 +268,9 @@ def translate_package(package):
                 def local_reads(value):
                     if isinstance(value, dict):
                         if value.get('scope') == 'local': used_locals.add(value['field'])
-                        for arg in value.get('args', []): local_reads(arg)
-                        for binding in value.get('bindings', []):
-                            if 'value' in binding: local_reads(binding['value'])
-                            if 'target' in binding: local_reads(binding['target'])
+                        for child in value.values(): local_reads(child)
+                    elif isinstance(value, list):
+                        for child in value: local_reads(child)
                 if 'value' in step: local_reads(step['value'])
             program['field_types'] = {
                 'self': {name: property_type(class_properties[name]) for name in program['self_reads'] if name in class_properties},
@@ -452,6 +461,7 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
               'packages': packages, 'counts': dict(counts), 'missing_cached_packages': missing,
               'character_guards': guards, 'character_metrics': character_metrics(guards, packages),
               'limitations': ['Locals, instance state, comparisons, static jumps and same-source-class calls with out parameters execute.',
+                             'Struct member reads and ASCII FName equality execute; struct writes, constructors and Unicode FName comparisons remain unsupported.',
                              'Cross-object calls, derived-class virtual overrides, dynamic jumps, latent actions and replication remain blocked.',
                              'Translated functions are not connected to the complete game runtime yet.']}
     report['content_sha256'] = digest(report)

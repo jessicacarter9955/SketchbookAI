@@ -16,7 +16,7 @@ MODULES = {
     'objects': ('Riferimenti e chiamate tra oggetti', 'EX_Context',
                 'Design typed source object references, Context evaluation, null handling and calls between original components. Preserve class/package ownership, out parameters and transactional failure. Native dependencies must remain explicit; never replace game logic with guessed behavior.'),
     'data': ('Strutture e contenitori', 'EX_StructMemberContext',
-             'Design source struct member access and container operations. Preserve property types, identity, array indexing, copy/reference semantics and original mutation order. Use original fields and defaults. Reject unsupported struct constructors and native dependencies.'),
+             'Extend source containers and struct mutation. Read-only struct members are already supported. Preserve property types, identity, array indexing, copy/reference semantics and original mutation order. Use original fields and defaults. Reject unsupported struct constructors and native dependencies.'),
 }
 
 
@@ -145,7 +145,9 @@ damage, inventory or movement rules from memory. Do not mark game systems comple
 Current compiler: tools/ue2three/blueprint_migration.py (expression, memory_size,
 translate_function, translate_package). Runtime: src/editor/ue2three-blueprint.mjs
 (executeBlueprint). These currently support locals/self state, strict types,
-static branches, same-source-class calls/out parameters and selected Kismet math.
+static branches, same-source-class calls/out parameters, read-only struct members,
+ASCII FName comparisons and selected Kismet math. Unicode FName comparison and
+struct writes/constructors are still unsupported.
 Suggested new module: ue2three-{key}; avoid rewriting the shared dispatcher.
 
 Use the public UAssetAPI expression implementations to establish layouts:

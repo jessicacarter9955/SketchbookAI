@@ -29,3 +29,10 @@ test('Boolean equality is typed and unknown math is rejected', () => {
     assert.throws(() => evaluateNativeMath('Add_IntInt', [0.5, 1]), /Invalid/);
     assert.throws(() => evaluateNativeMath('Divide_IntInt', [2, 1]), /Unsupported/);
 });
+test('source FName comparisons preserve case-insensitivity and instance suffixes', () => {
+    assert.equal(evaluateNativeMath('EqualEqual_NameName', ['Head', 'HEAD']), true);
+    assert.equal(evaluateNativeMath('NotEqual_NameName', ['head_0', 'head']), true);
+    assert.equal(evaluateNativeMath('EqualEqual_NameName', ['head_01', 'head_1']), false);
+    assert.throws(() => evaluateNativeMath('EqualEqual_NameName', ['café', 'CAFÉ']), /Unsupported/);
+    assert.throws(() => evaluateNativeMath('EqualEqual_NameName', [0, 'None']), /invalid/);
+});

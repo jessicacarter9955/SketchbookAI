@@ -1404,6 +1404,342 @@
         "ReviveProgress": 0
       },
       "source_bytecode_sha256": "2191b9756420a5947d5e5decf9cf11ed2867fdd050f630b996387d82ada00e39"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "head"
+      },
+      "outputs": {
+        "RegionName": "Head"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "neck_01"
+      },
+      "outputs": {
+        "RegionName": "Head"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "neck_02"
+      },
+      "outputs": {
+        "RegionName": "Head"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "spine_01"
+      },
+      "outputs": {
+        "RegionName": "Spine"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "spine_02"
+      },
+      "outputs": {
+        "RegionName": "Spine"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "spine_03"
+      },
+      "outputs": {
+        "RegionName": "Spine"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "spine_04"
+      },
+      "outputs": {
+        "RegionName": "Spine"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "spine_05"
+      },
+      "outputs": {
+        "RegionName": "Spine"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "pelvis"
+      },
+      "outputs": {
+        "RegionName": "Spine"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "clavicle_l"
+      },
+      "outputs": {
+        "RegionName": "LeftArm"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "upperarm_l"
+      },
+      "outputs": {
+        "RegionName": "LeftArm"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "lowerarm_l"
+      },
+      "outputs": {
+        "RegionName": "LeftArm"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "hand_l"
+      },
+      "outputs": {
+        "RegionName": "LeftArm"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "clavicle_r"
+      },
+      "outputs": {
+        "RegionName": "RightArm"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "upperarm_r"
+      },
+      "outputs": {
+        "RegionName": "RightArm"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "lowerarm_r"
+      },
+      "outputs": {
+        "RegionName": "RightArm"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "hand_r"
+      },
+      "outputs": {
+        "RegionName": "RightArm"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "thigh_l"
+      },
+      "outputs": {
+        "RegionName": "Legs"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "thigh_r"
+      },
+      "outputs": {
+        "RegionName": "Legs"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "calf_l"
+      },
+      "outputs": {
+        "RegionName": "Legs"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "calf_r"
+      },
+      "outputs": {
+        "RegionName": "Legs"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "foot_l"
+      },
+      "outputs": {
+        "RegionName": "Legs"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "foot_r"
+      },
+      "outputs": {
+        "RegionName": "Legs"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "HEAD"
+      },
+      "outputs": {
+        "RegionName": "Head"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "SpInE_01"
+      },
+      "outputs": {
+        "RegionName": "Spine"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "None"
+      },
+      "outputs": {
+        "RegionName": "None"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "unknown_bone"
+      },
+      "outputs": {
+        "RegionName": "None"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "function": "MapBoneToRegion",
+      "inputs": {
+        "BoneName": "hand_l_01"
+      },
+      "outputs": {
+        "RegionName": "None"
+      },
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "self": {},
+      "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
     }
   ],
   "schema_version": 1,

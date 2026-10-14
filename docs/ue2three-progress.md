@@ -217,3 +217,32 @@ Verification: 82 Python and 57 JavaScript tests passed; editor build succeeded.
 An old test still expected double division to be unsupported; its expectation was
 updated for the newly supported operation and integer division stays rejected.
 The local preview server was stopped at resume and was restarted without Unreal.
+
+## Source structures and body regions · 2026-10-14
+
+The converter/runtime now supports read-only struct member expressions and their
+verified VM memory layout. Member reads preserve original hashed field names and
+return isolated values; missing members, unsafe fields and struct writes remain
+rejected. Struct constructors, arrays and complete inventory transactions remain
+open. ASCII FName comparisons preserve case-insensitive equality and instance
+suffixes; unsupported Unicode comparison constants are rejected at translation.
+
+The original MapBoneToRegion function now executes: 23 source bone names map to
+Head, Spine, LeftArm, RightArm or Legs; case variants and unknown-name behavior are
+included in 28 source comparisons. This does not implement collision hit detection
+or apply original damage yet. Total: 39 translated (33 with behavior, six source
+no-ops), 461 blocked in parsed packages. 117 generic and 131 source comparisons
+passed in the integrated browser.
+
+87 Python tests and 59 JavaScript tests passed; editor build succeeded. The live scene again
+passed 24 input and 35 metric cases. Movement QA now requires horizontal X/Z
+displacement, so falling cannot masquerade as walking; observed displacement was
+0.456 scene units. Screenshots and live proof are under
+`build/local-scenes/ue2three/verification/source-structs/`.
+
+The cached blocker planner and optional chat packets are documented in
+`docs/ue2three-acceleration.md`; it does not change complete-game status.
+Source audit evidence and its screenshot now also persist as a scoped milestone,
+with exact typed outputs and source/program hashes checked by the progress tool.
+A misplaced stale-proof assertion briefly caused a test-fixture NameError; it was
+moved back to its original test and the complete suite passed after the fix.
