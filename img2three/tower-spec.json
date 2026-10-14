@@ -57,13 +57,13 @@
   },
   "suitability": "pass",
   "scores": {
-    "object_isolation": 0.95,
-    "silhouette_readability": 0.9,
-    "depth_inference": 0.65,
-    "primitive_decomposition": 0.9,
-    "material_procedurality": 0.8,
-    "occlusion_risk": 0.5,
-    "interaction_fit": 1
+    "object_isolation": 3,
+    "silhouette_readability": 3,
+    "depth_inference": 2,
+    "primitive_decomposition": 3,
+    "material_procedurality": 3,
+    "occlusion_risk": 2,
+    "interaction_fit": 3
   },
   "preSpecAssessment": {
     "objectClass": {
@@ -4327,7 +4327,7 @@
     },
     {
       "id": "inner-core",
-      "name": "Dark recessed elevator-core glazing",
+      "name": "Dark internal elevator-core structural mass",
       "level": "macro",
       "role": "body",
       "importance": 0.9,
