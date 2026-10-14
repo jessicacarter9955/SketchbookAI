@@ -18,7 +18,7 @@ const assets:Array<{id:AssetKey;title:string;subtitle:string;maker:()=>THREE.Gro
  {id:'compact',title:'Compact Violet',subtitle:'Polymer + matte-black steel',maker:makeCompactPistol,fov:39},
  {id:'purple',title:'Violet Cylinder',subtitle:'Anodized aluminum + polymer',maker:makePurplePortedPistol,fov:36},
  {id:'rifle',title:'Lime Carbine',subtitle:'Green cerakote + black hardware',maker:makeLimeGreenCarbine,fov:39},
- {id:'tree',title:'Multi-trunk Tree',subtitle:'14,000 leaves · 1,900 grass blades',maker:makeMultiTrunkTree,fov:36},
+ {id:'tree',title:'Multi-trunk Tree',subtitle:'6,300 leaves · 800 grass blades',maker:makeMultiTrunkTree,fov:36},
 ];
 const root=document.getElementById('app')!;
 root.innerHTML='<div class="ui"><div class="overline">IMG2THREEJS <span>· INTERACTIVE GALLERY</span></div>'+
