@@ -82,6 +82,13 @@ are detected from source expressions and appear in `character_metrics`; runtime
 metric caching uses package/function identity and source state. Progress greens
 are tied to `blueprint-live-verification.json` and its screenshot/program hashes.
 
+The blocker planner (`blueprint_planning.py`) automatically runs after the CLI
+Blueprint migration and reuses checksummed artifacts. It publishes
+`blueprint-plan.html` and three `work-packets/*.md` files for optional GLM/ChatGPT
+collaboration. Current first blocker counts: events 173, objects 69, structs 23;
+232 wrappers call shared event graphs. Candidate family counts overlap. See
+`docs/ue2three-acceleration.md` for the measured scope and parallel work contracts.
+
 ## Reuse commands (for the coding agent; no user terminal work needed)
 
 ```powershell

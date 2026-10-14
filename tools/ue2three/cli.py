@@ -67,6 +67,9 @@ def parser():
     blueprints.add_argument('--publish-dir', type=Path, required=True)
     blueprints.add_argument('--package', help='Optional inventoried Blueprint package; otherwise inspect available caches')
     blueprints.add_argument('--read-package', action='append', default=[], help='Read this inventoried package into the parser cache without starting Unreal; repeat for a bounded batch')
+    plan = commands.add_parser('plan-blueprints', help='Rank shared cached Blueprint blockers and prepare local work packets')
+    plan.add_argument('--workspace', type=Path, required=True)
+    plan.add_argument('--publish-dir', type=Path, required=True)
     return result
 
 
@@ -79,6 +82,14 @@ def execute(args):
         from blueprint_migration import migrate_blueprints
         report = migrate_blueprints(args.project, args.workspace, args.publish_dir, args.package, args.read_package)
         print(f"Blueprint functions: {report['counts']}; uncached packages: {len(report['missing_cached_packages'])}")
+        from blueprint_planning import build_blueprint_plan
+        build_blueprint_plan(args.workspace, args.publish_dir)
+        print(f"Shared blocker plan: {args.publish_dir / 'blueprint-plan.html'}")
+        return 0
+    if args.command == 'plan-blueprints':
+        from blueprint_planning import build_blueprint_plan
+        report = build_blueprint_plan(args.workspace, args.publish_dir)
+        print(f"Blueprint plan: {report['blocked_functions']} blocked functions; {report['event_entry_wrappers']} event wrappers")
         return 0
     if args.command == 'progress':
         from progress_report import project_progress
