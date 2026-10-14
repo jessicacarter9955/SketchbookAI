@@ -1,4 +1,4 @@
-name: Validate externally hosted img2threejs 3D viewer
+name: Validate img2threejs high-fidelity viewer
 on:
   push:
     branches: [img2threejs-runner]
