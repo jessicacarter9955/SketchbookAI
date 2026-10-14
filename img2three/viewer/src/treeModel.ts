@@ -11,7 +11,7 @@ export function makeMultiTrunkTree():THREE.Group{
  let segments=0;const tips:Array<{p:THREE.Vector3,r:number}>=[];
  const branches= new THREE.Group();branches.name='Individual three-dimensional bark branches';group.add(branches);
  function branch(from:THREE.Vector3,dir:THREE.Vector3,length:number,r:number,depth:number,kind:number){
-   if(segments>1450)return;
+   if(segments>650)return;
    const to=from.clone().addScaledVector(dir.clone().normalize(),length);
    rod(branches,depth<2?'thick multi-stem trunk':'living twig',from,to,r,depth<2?bark:(depth<4?innerBark:twig),depth<2?11:7,r*(depth<3?.75:.59));
    segments++;
@@ -57,8 +57,8 @@ export function makeMultiTrunkTree():THREE.Group{
  const idx=[0,1,2,3,4,5,6,7,8];
  const leafGeom=new THREE.BufferGeometry();leafGeom.setAttribute('position',new THREE.BufferAttribute(verts,3));leafGeom.setIndex(idx);leafGeom.computeVertexNormals();
  const leafMat=new THREE.MeshPhysicalMaterial({color:0xf1f4e6,roughness:.73,metalness:0,side:THREE.DoubleSide,transmission:.035,thickness:.06,clearcoat:.15,clearcoatRoughness:.75});
- const leafCount=14000;const leaves=new THREE.InstancedMesh(leafGeom,leafMat,leafCount);
- leaves.name='14K physically instanced elliptical living leaves';
+ const leafCount=6300;const leaves=new THREE.InstancedMesh(leafGeom,leafMat,leafCount);
+ leaves.name='6300 physically instanced elliptical living leaves';
  leaves.castShadow=false;leaves.receiveShadow=true;
  const dummy=new THREE.Object3D(),palette=['#244627','#325b2b','#487437','#527e3b','#638b45','#7a994f','#3b632a','#213e27','#879b52','#4d7433'].map(c=>new THREE.Color(c));
  // Rounded asymmetrical crown mass, matching dense split canopy of user's tree.
@@ -88,13 +88,13 @@ export function makeMultiTrunkTree():THREE.Group{
  turf.position.y=-.045;turf.receiveShadow=true;group.add(turf);
  const grassGeom=new THREE.ConeGeometry(.012,.12,3);
  const grassMat=mat(0x8ea94d,.8);
- const grass=new THREE.InstancedMesh(grassGeom,grassMat,1900);const m=new THREE.Object3D();
- for(let i=0;i<1900;i++){
+ const grass=new THREE.InstancedMesh(grassGeom,grassMat,800);const m=new THREE.Object3D();
+ for(let i=0;i<800;i++){
     const ang=rndRange(0,2*Math.PI),rad=Math.sqrt(rnd())*.85;
     m.position.set(Math.cos(ang)*rad,.02,Math.sin(ang)*rad);
     m.rotation.y=ang;m.rotation.z=rndRange(-.28,.28);m.scale.set(1,rndRange(.7,1.9),1);m.updateMatrix();grass.setMatrixAt(i,m.matrix);
  }
  grass.instanceMatrix.needsUpdate=true;grass.name='1900 individual grass blades';group.add(grass);
- group.userData.botanicalStats={trunks:stems,branchSegments:segments,leaves:leafCount,grass:1900};
+ group.userData.botanicalStats={trunks:stems,branchSegments:segments,leaves:leafCount,grass:800};
  return group;
 }
