@@ -1,9 +1,10 @@
 import { executeBlueprint } from '/src/editor/ue2three-blueprint.mjs';
 const status = document.querySelector('#status');
-document.querySelector('#function-filter')?.addEventListener('input', event => {
-    const term = event.target.value.toLowerCase();
+const applyFilter = () => {
+    const term = document.querySelector('#function-filter').value.toLowerCase();
     for (const row of document.querySelector('#results').rows) row.hidden = !row.cells[0].textContent.toLowerCase().includes(term);
-});
+};
+document.querySelector('#function-filter')?.addEventListener('input', applyFilter);
 try {
     const path = new URLSearchParams(location.search).get('programs');
     if (!path || !/^build\/local-scenes\/ue2three\/projects\/[A-Za-z0-9_-]+\/blueprint-programs\.json$/.test(path))
@@ -28,13 +29,14 @@ try {
                     else self[name] = boolean || program.field_types?.self?.[name] === 'BoolProperty' ? !!(sample % 2) : sample;
                 }
                 for (const name of program.input_fields || []) inputs[name] = program.field_types?.local?.[name] === 'BoolProperty' ? !!(sample % 2)
+                    : program.field_types?.local?.[name] === 'StructProperty' ? {}
                     : ['NameProperty', 'StrProperty'].includes(program.field_types?.local?.[name]) ? sample ? 'Fixture_' + sample : 'None' : 1;
-                const result = executeBlueprint(program, self, inputs, {functions: packageData.functions});
+                const result = executeBlueprint(program, self, inputs, {functions: {...packageData.functions, ...packageData.event_programs}});
                 // Independently check each translated source assignment against
                 // the provided fixture or literal; this does not emulate native calls.
                 for (const executed of result.trace.filter(step => step.op === 'set')) {
                     const step = program.steps.find(step => step.source_index === executed.source_index);
-                    if (step.value.op === 'get' && step.value.scope !== 'self') continue;
+                    if (executed.scope === 'persistent' || step.value.op === 'get' && step.value.scope !== 'self') continue;
                     if (step.value.op === 'math' || step.value.op === 'call' || step.value.op === 'member') continue;
                     const expected = step.value.op === 'get' ? self[step.value.field] : step.value.value;
                     const actual = executed.value;
@@ -62,10 +64,16 @@ try {
         for (const test of fixture.cases) {
             const program = report.packages[test.package]?.functions[test.function];
             if (!program || program.source_bytecode_sha256 !== test.source_bytecode_sha256) throw new Error(`Fixture sorgente non aggiornata: ${test.function}`);
-            const result = executeBlueprint(program, test.self, test.inputs, {functions: report.packages[test.package].functions});
+            const library = {...report.packages[test.package].functions, ...report.packages[test.package].event_programs};
+            for (const [name, hash] of Object.entries(test.dependencies || {}))
+                if (library[name]?.source_bytecode_sha256 !== hash) throw new Error(`Dipendenza sorgente non aggiornata: ${name}`);
+            const result = executeBlueprint(program, test.self, test.inputs, {functions: {...report.packages[test.package].functions, ...report.packages[test.package].event_programs}});
             for (const [field, expected] of Object.entries(test.outputs))
                 if (JSON.stringify(result.outputs[field]) !== JSON.stringify(expected)) throw new Error(`Confronto sorgente fallito: ${test.function}.${field}`);
-            rowsByFunction.get(JSON.stringify([test.package, test.function])).samples.push({inputs: test.inputs, state: test.self, outputs: result.outputs, expected: test.outputs});
+            for (const [field, expected] of Object.entries(test.state || {}))
+                if (JSON.stringify(result.state[field]) !== JSON.stringify(expected)) throw new Error(`Stato sorgente differente: ${test.function}.${field}`);
+            rowsByFunction.get(JSON.stringify([test.package, test.function])).samples.push({inputs: test.inputs, state: test.self, outputs: result.outputs,
+                expected: test.outputs, resulting_state: result.state, expected_state: test.state || {}, trace: test.state ? result.trace : undefined});
             golden++;
         }
     }
@@ -78,8 +86,9 @@ try {
         details.append(summary, pre); row.children[2].append(details);
     }
     for (const entry of evidence) entry.source_cases = rowsByFunction.get(JSON.stringify([entry.package, entry.function])).samples;
-    status.textContent = `PASS: ${passed} funzioni sorgenti eseguite (${report.counts.no_op_functions || 0} vuote nel sorgente), ${scenarios} scenari generici e ${golden} confronti sorgenti specifici. ${report.counts.blocked || 0} funzioni bloccate; ${report.counts.declarations || 0} sole dichiarazioni; ${report.missing_cached_packages.length} pacchetti senza bytecode in cache. Questo non verifica il gioco completo.`;
+    status.textContent = `PASS: ${passed} funzioni sorgenti eseguite (${report.counts.no_op_functions || 0} vuote; ${report.counts.empty_event_functions || 0} callback senza effetti di gioco), ${scenarios} scenari generici e ${golden} confronti sorgenti specifici. ${report.counts.blocked || 0} funzioni bloccate; ${report.counts.declarations || 0} sole dichiarazioni; ${report.missing_cached_packages.length} pacchetti senza bytecode in cache. Questo non verifica il gioco completo.`;
     status.className = 'pass';
+    applyFilter();
     const reasons = Object.entries(report.packages).flatMap(([name, data]) => data.blocked.map(row => ({package: name, ...row})));
     document.querySelector('#blocked').textContent = JSON.stringify({project: report.project, programs_content_sha256: report.content_sha256,
         status: 'passed', fingerprint: report.fingerprint, golden_source_cases: golden, reasons, missing_cached_packages: report.missing_cached_packages, evidence}, null, 2);

@@ -246,3 +246,33 @@ Source audit evidence and its screenshot now also persist as a scoped milestone,
 with exact typed outputs and source/program hashes checked by the progress tool.
 A misplaced stale-proof assertion briefly caused a test-fixture NameError; it was
 moved back to its original test and the complete suite passed after the fix.
+# 2026-10-15 · Constant event entries and persistent source frames
+
+- Extended the generic converter/interpreter with constant Ubergraph entry
+  specialization, exact memory boundaries, bounded flow-stack reachability and
+  per-instance persistent field storage. Unknown reachable effects still block
+  the entire caller. Layout support alone does not execute native operations.
+- Reused the 13 cached packages, without starting Unreal or rescanning assets.
+  Result: **97 functions, 403 blocked**, 60 declarations, 263 uncached packages.
+  The 58 new functions comprise **56 callbacks with no game effects** and two
+  useful state paths: `Set_CharacterInputState`, `ResetSlideCooldown`. Complete
+  animation dispatch, slide timers, Mover and replication remain untranslated.
+- 58 entry programs contain **515 reachable IR instructions**, compared with
+  165,633 source instructions across their complete graphs. Source instruction
+  indices, offsets and whole-graph bytecode hashes are retained. Layouts are
+  computed once per graph during one conversion; no quality reduction occurs.
+- Added state comparison cases, dependency bytecode hashes, live event checks,
+  full state/frame snapshot restoration and visible per-case traces. Scoped green
+  evidence expires with the program/screenshot hash.
+- Fixed three verification issues: an old test expected standalone math calls
+  to fail before native resolution; a synthetic test had incorrect hand-counted
+  offsets; the browser filter could run before asynchronous rows were inserted.
+  The production offset calculator never accepted the incorrect fixture offsets.
+- Verification: **94 Python tests, 60 JavaScript tests**, editor build succeeds;
+  browser audit **97 functions / 291 generic / 135 source comparisons**; actual
+  scene **24 inputs / 35 metrics / 4 source event state checks**. Animation 1:1
+  fidelity is still deferred. Screenshots and DOM evidence saved locally under
+  `build/local-scenes/ue2three/verification/source-events/`.
+- Next: original inventory struct defaults/writes and container operations;
+  typed cross-object/native adapters for remaining character/combat event paths.
+

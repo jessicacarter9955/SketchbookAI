@@ -2,6 +2,34 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { executeBlueprint } from '../src/editor/ue2three-blueprint.mjs';
 
+test('event calls retain typed per-instance frames and execute the original flow stack', () => {
+    const event = {schema_version: 1, status: 'translated_control_flow', source_export_index: 2, source_owner_index: 3,
+        input_fields: [], output_fields: [], persistent_types: {'2': {Value: 'BoolProperty'}},
+        field_types: {self: {Enabled: 'BoolProperty'}}, steps: [
+            {op: 'push_flow', target: 4}, {op: 'jump', target: 2},
+            {op: 'set', scope: 'self', field: 'Enabled', value: {op: 'get', scope: 'persistent', frame: 2, field: 'Value'}},
+            {op: 'pop_flow'}, {op: 'return', value: {op: 'constant', value: null}}]};
+    const wrapper = {schema_version: 1, status: 'translated_straight_line', source_owner_index: 3, output_fields: [],
+        input_fields: ['Input'], field_types: {local: {Input: 'BoolProperty'}}, persistent_types: event.persistent_types,
+        steps: [{op: 'set', scope: 'persistent', frame: 2, field: 'Value', value: {op: 'get', scope: 'local', field: 'Input'}},
+            {op: 'evaluate', value: {op: 'call', function: 'Graph@15', export_index: 2, bindings: []}},
+            {op: 'return', value: {op: 'constant', value: null}}]};
+    const actor = {Enabled: false}, frames = {};
+    const result = executeBlueprint(wrapper, actor, {Input: true}, {functions: {'Graph@15': event}, frames});
+    assert.equal(result.state.Enabled, true); assert.equal(result.frames['2'].Value, true);
+    assert.deepEqual(actor, {Enabled: false}); assert.deepEqual(frames, {});
+    assert.equal(executeBlueprint(event, actor, {}, {frames: result.frames}).state.Enabled, true);
+    assert.equal(executeBlueprint(event, actor).state.Enabled, false);
+    assert.throws(() => executeBlueprint(wrapper, actor, {Input: 1}, {functions: {'Graph@15': event}, frames}), /BoolProperty/);
+    assert.deepEqual(frames, {});
+    assert.throws(() => executeBlueprint({...event, steps: [{op: 'pop_flow'}]}, actor), /empty flow stack/);
+    const conditional = {...event, steps: [{op: 'push_flow', target: 3},
+        {op: 'pop_flow', value: {op: 'constant', value: false}}, {op: 'invalid'}, event.steps[4]]};
+    assert.equal(executeBlueprint(conditional, actor).value, null);
+    assert.throws(() => executeBlueprint({...conditional, steps: [conditional.steps[0],
+        {...conditional.steps[1], value: {op: 'constant', value: 0}}, ...conditional.steps.slice(2)]}, actor), /Boolean/);
+});
+
 const program = {schema_version: 1, status: 'translated_straight_line', output_fields: ['State'], steps: [
     {op: 'set', field: 'State', value: {op: 'get', scope: 'self', field: 'WeaponState'}, source_index: 3},
     {op: 'return', value: {op: 'get', scope: 'local', field: 'State'}, source_index: 5}

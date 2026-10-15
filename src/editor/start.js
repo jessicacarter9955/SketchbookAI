@@ -201,7 +201,7 @@ try {
         ue2threeGameplay.refreshSourceStatus();
         const proof = document.createElement('details');
         proof.style.cssText = 'position:fixed;right:18px;top:76px;z-index:1100;background:#101923ed;color:#dce9ef;padding:12px;border-radius:8px;max-width:400px;font:13px system-ui';
-        const summary = document.createElement('summary'); summary.textContent = `PASS · ${verification.checked} input · ${verification.metrics_checked} valori dai Blueprint originali`;
+        const summary = document.createElement('summary'); summary.textContent = `PASS · ${verification.checked} input · ${verification.metrics_checked} valori · ${verification.events_checked || 0} eventi dai Blueprint originali`;
         const text = document.createElement('pre'); text.textContent = JSON.stringify(verification, null, 2);
         text.style.cssText = 'max-height:240px;overflow:auto;white-space:pre-wrap'; text.id = 'live-blueprint-proof';
         proof.append(summary, text); document.body.append(proof);

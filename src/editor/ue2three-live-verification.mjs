@@ -1,7 +1,7 @@
 // Explicit QA fixtures act on the actual player input hook and are restored.
 // They are not gameplay rules or permanent changes to source defaults.
 export async function verifyLiveBlueprintInputs(player, runtime, fixture) {
-    const snapshot = runtime.snapshot(), results = [], metricResults = [];
+    const snapshot = runtime.snapshot(), results = [], metricResults = [], eventResults = [];
     const guards = runtime.report.character_guards || {};
     const priorActions = Object.fromEntries([...Object.keys(guards), 'up'].map(action => [action, !!player.actions[action]?.isPressed]));
     let movementDistance = null;
@@ -43,9 +43,24 @@ export async function verifyLiveBlueprintInputs(player, runtime, fixture) {
             if (actual !== test.outputs[metric.output]) throw new Error('Original runtime metric differs from source fixture');
             metricResults.push({source_function: metric.function, value: actual, expected: test.outputs[metric.output]});
         }
+        for (const test of fixture.cases) {
+            if (!test.state) continue;
+            const program = runtime.report.packages[test.package]?.functions[test.function];
+            if (!program || program.source_bytecode_sha256 !== test.source_bytecode_sha256) throw new Error('Event fixture source differs from program');
+            const data = runtime.report.packages[test.package], library = {...data.functions, ...data.event_programs};
+            for (const [name, hash] of Object.entries(test.dependencies || {}))
+                if (library[name]?.source_bytecode_sha256 !== hash) throw new Error('Event dependency source differs from fixture');
+            runtime.restore(snapshot); Object.assign(runtime.states[test.package], structuredClone(test.self));
+            const result = runtime.call(test.package, test.function, test.inputs);
+            for (const [field, expected] of Object.entries(test.state))
+                if (JSON.stringify(result.state[field]) !== JSON.stringify(expected)) throw new Error('Source event state differs: ' + test.function);
+            eventResults.push({source_function: test.function, package: test.package, state: result.state,
+                expected: test.state, trace: result.trace});
+            await new Promise(requestAnimationFrame);
+        }
         return {schema_version: 1, project: runtime.report.project, programs_content_sha256: runtime.report.content_sha256,
                 checked: results.length, metrics_checked: metricResults.length, status: 'passed', movement_distance: movementDistance,
-                movement_axis: 'horizontal_xz', results, metric_results: metricResults,
+                movement_axis: 'horizontal_xz', results, metric_results: metricResults, events_checked: eventResults.length, event_results: eventResults,
                 scope: 'Original sprint/jump prerequisites applied to the real scene input; excludes complete Mover, timers, stamina consumption and replication'};
     } finally {
         runtime.restore(snapshot);

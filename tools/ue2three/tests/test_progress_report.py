@@ -95,5 +95,18 @@ class ProgressReportTests(unittest.TestCase):
         report = project_progress(self.workspace, self.published, self.character)
         self.assertFalse(any('confronti sorgenti' in m['title'] for m in report['milestones']))
 
+    def test_source_event_evidence_checks_state_when_outputs_are_void(self):
+        program = {'project': self.project, 'packages': {'/Game/A': {'functions': {'Event': {'source_bytecode_sha256': 'event'}}}}}
+        program['content_sha256'] = digest(program); atomic_json(self.published / 'blueprint-programs.json', program)
+        image = self.published / 'verification/blueprint-audit.jpg'; image.parent.mkdir(); image.write_bytes(b'event-image')
+        sample = {'outputs': {}, 'expected': {}, 'resulting_state': {'Enabled': False}, 'expected_state': {'Enabled': True}}
+        audit = {'project': self.project, 'status': 'passed', 'programs_content_sha256': program['content_sha256'],
+                 'screenshot_sha256': file_hash(image), 'golden_source_cases': 1,
+                 'evidence': [{'package': '/Game/A', 'function': 'Event', 'source_bytecode_sha256': 'event', 'source_cases': [sample]}]}
+        path = self.published / 'blueprint-audit-verification.json'; atomic_json(path, audit)
+        self.assertFalse(any('confronti sorgenti' in m['title'] for m in project_progress(self.workspace, self.published, self.character)['milestones']))
+        sample['resulting_state']['Enabled'] = True; atomic_json(path, audit)
+        self.assertTrue(any('confronti sorgenti' in m['title'] for m in project_progress(self.workspace, self.published, self.character)['milestones']))
+
 
 if __name__ == '__main__': unittest.main()

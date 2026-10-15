@@ -1,4 +1,19 @@
-# ue2three saved handoff · 2026-10-13
+# ue2three saved handoff · 2026-10-15
+
+Latest batch: constant source event entry specialization and per-instance
+persistent frames are implemented. Current result: **97 translated / 403 blocked**,
+including six directly empty callbacks and **56 event callbacks without game
+effects**. Two new useful state paths: Set_CharacterInputState and
+ResetSlideCooldown. Do not claim full animation/gameplay from the callback count.
+58 internal entry helpers have 515 compact instructions; source graph indices,
+offsets and hashes are preserved. Helpers are not counted again as functions.
+94 Python and 60 JS tests pass; browser audit 291 generic +135 source cases;
+live scene 24 input +35 metric +4 event state cases. Evidence is in
+`build/local-scenes/ue2three/verification/source-events/`. Editor revision12.
+Runtime snapshots now include `{states, frames}`. Event compilation lives in
+`blueprint_events.py`; compiler cache keys include that module. Unknown reachable
+effects, native calls/timers/cross-object calls/replication still block callers.
+The older numerical snapshot below documents the previous batch.
 
 Branch: `chatgpt/ue2three-dds`. Workspace/repo:
 `C:/Users/jessi/Documents/Codex/2026-10-01/cl/SketchbookAI`.

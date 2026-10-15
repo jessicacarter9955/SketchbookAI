@@ -6,6 +6,7 @@ from pathlib import Path
 
 from core import atomic_json, digest, file_hash, read_json
 from umg_migration import Package, _tool, _asset_document
+from blueprint_events import reachable_event
 
 
 class BlueprintTranslationError(ValueError):
@@ -95,7 +96,16 @@ def local_call(value, package, owner, reads, outputs, depth):
             bindings.append({'mode': 'output', 'parameter': name, 'target': target})
         else:
             bindings.append({'mode': 'input', 'parameter': name, 'value': expression(arg, reads, outputs, depth+1, package, owner)})
-    return {'op': 'call', 'function': callee['ObjectName'], 'export_index': ref, 'bindings': bindings}
+    result = {'op': 'call', 'function': callee['ObjectName'], 'export_index': ref, 'bindings': bindings}
+    if callee['ObjectName'].startswith('ExecuteUbergraph_'):
+        if (len(parameters) != 1 or parameters[0].get('Name') != 'EntryPoint'
+                or property_type(parameters[0]) != 'IntProperty' or bindings[0]['mode'] != 'input'
+                or bindings[0]['value'].get('op') != 'constant'
+                or type(bindings[0]['value'].get('value')) is not int):
+            raise BlueprintTranslationError('Event graph requires an original constant EntryPoint')
+        result['entry_offset'] = bindings[0]['value']['value']
+        result['function'] += '@' + str(result['entry_offset'])
+    return result
 
 
 def expression(value, reads, outputs, depth=0, package=None, owner=None):
@@ -121,6 +131,12 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
     scopes = {'EX_InstanceVariable': 'self', 'EX_LocalVariable': 'local', 'EX_LocalOutVariable': 'local'}
     if token in scopes:
         name = field(value.get('Variable'))
+        reference = value.get('Variable', {}).get('New', {}).get('ResolvedOwner')
+        frame = package.export(reference) if package else None
+        if token != 'EX_InstanceVariable' and frame and str(frame.get('ObjectName', '')).startswith('ExecuteUbergraph_'):
+            if frame.get('OuterIndex') != owner:
+                raise BlueprintTranslationError('Persistent read belongs to a different source class')
+            return {'op': 'get', 'scope': 'persistent', 'frame': reference, 'field': name}
         if token == 'EX_InstanceVariable': reads.add(name)
         if token == 'EX_LocalOutVariable': outputs.add(name)
         return {'op': 'get', 'scope': scopes[token], 'field': name}
@@ -145,7 +161,7 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
     raise BlueprintTranslationError(f'Unsupported opcode: {token}')
 
 
-def memory_size(value, depth=0):
+def memory_size(value, depth=0, package=None):
     """Kismet VM offsets (64-bit pointers), not serialized package byte sizes.
 
     Layouts follow UAssetAPI expression Visit implementations. Unknown layouts
@@ -154,10 +170,44 @@ def memory_size(value, depth=0):
     if not isinstance(value, dict) or depth > 48:
         raise BlueprintTranslationError('Invalid bytecode size expression')
     token = kind(value)
+    size = lambda child: memory_size(child, depth+1, package)
     if token in ('EX_Tracepoint', 'EX_WireTracepoint', 'EX_Nothing', 'EX_EndOfScript',
-                 'EX_True', 'EX_False', 'EX_IntZero', 'EX_IntOne'): return 1
+                 'EX_True', 'EX_False', 'EX_IntZero', 'EX_IntOne', 'EX_Self',
+                 'EX_NoObject', 'EX_PopExecutionFlow'): return 1
     if token in ('EX_InstanceVariable', 'EX_LocalVariable', 'EX_LocalOutVariable'): return 9
-    if token == 'EX_StructMemberContext': return 9 + memory_size(value.get('StructExpression'), depth+1)
+    if token == 'EX_StructMemberContext': return 9 + size(value.get('StructExpression'))
+    if token == 'EX_LetValueOnPersistentFrame': return 9 + size(value.get('AssignmentExpression'))
+    if token == 'EX_PushExecutionFlow': return 5
+    if token == 'EX_ComputedJump': return 1 + size(value.get('CodeOffsetExpression'))
+    if token == 'EX_PopExecutionFlowIfNot': return 1 + size(value.get('BooleanExpression'))
+    if token == 'EX_Context': return 13 + size(value.get('ObjectExpression')) + size(value.get('ContextExpression'))
+    if token in ('EX_DynamicCast', 'EX_ObjToInterfaceCast'): return 9 + size(value.get('Target'))
+    if token == 'EX_PrimitiveCast':
+        if value.get('ConversionType') == 'ObjectToInterface':
+            raise BlueprintTranslationError('ObjectToInterface cast layout requires explicit version support')
+        return 2 + size(value.get('Target'))
+    if token == 'EX_InterfaceContext': return 1 + size(value.get('InterfaceValue'))
+    if token == 'EX_ObjectConst': return 9
+    if token == 'EX_SkipOffsetConst': return 5
+    if token == 'EX_BitFieldConst': return 10
+    if token in ('EX_VectorConst', 'EX_RotationConst'):
+        # The parsed UE5 enum is checked explicitly; older/unknown package
+        # versions must not silently acquire the LWC 24-byte layout.
+        if not package or package.document.get('ObjectVersionUE5') != 'IMPORT_TYPE_HIERARCHIES':
+            raise BlueprintTranslationError('Unverified vector constant version')
+        return 25
+    if token == 'EX_StructConst':
+        if not isinstance(value.get('Value'), list): raise BlueprintTranslationError('Invalid struct layout')
+        return 14 + sum(size(child) for child in value['Value'])
+    if token == 'EX_BindDelegate': return 13 + size(value.get('Delegate')) + size(value.get('ObjectTerm'))
+    if token == 'EX_AddMulticastDelegate': return 1 + size(value.get('Delegate')) + size(value.get('DelegateToAdd'))
+    if token == 'EX_TextConst':
+        text = value.get('Value', {}); literal = text.get('TextLiteralType')
+        fields = {'Empty': (), 'LocalizedText': ('LocalizedSource', 'LocalizedKey', 'LocalizedNamespace'),
+                  'InvariantText': ('InvariantLiteralString',), 'LiteralString': ('LiteralString',),
+                  'StringTableEntry': ('StringTableId', 'StringTableKey')}.get(literal)
+        if fields is None: raise BlueprintTranslationError('Unknown text literal layout')
+        return 2 + (8 if literal == 'StringTableEntry' else 0) + sum(size(text.get(key)) for key in fields)
     if token in ('EX_ByteConst', 'EX_IntConstByte'): return 2
     if token in ('EX_IntConst', 'EX_FloatConst'): return 5
     if token == 'EX_DoubleConst': return 9
@@ -172,33 +222,38 @@ def memory_size(value, depth=0):
     if token in ('EX_Let', 'EX_LetBool', 'EX_LetObj'):
         left = value.get('Variable' if token == 'EX_Let' else 'VariableExpression')
         right = value.get('Expression' if token == 'EX_Let' else 'AssignmentExpression')
-        return (9 if token == 'EX_Let' else 1) + memory_size(left, depth+1) + memory_size(right, depth+1)
-    if token == 'EX_Return': return 1 + memory_size(value.get('ReturnExpression'), depth+1)
+        return (9 if token == 'EX_Let' else 1) + size(left) + size(right)
+    if token == 'EX_Return': return 1 + size(value.get('ReturnExpression'))
     if token == 'EX_Jump': return 5
-    if token == 'EX_JumpIfNot': return 5 + memory_size(value.get('BooleanExpression'), depth+1)
-    if token in ('EX_CallMath', 'EX_LocalFinalFunction', 'EX_FinalFunction', 'EX_LocalVirtualFunction'):
+    if token == 'EX_JumpIfNot': return 5 + size(value.get('BooleanExpression'))
+    if token in ('EX_CallMath', 'EX_LocalFinalFunction', 'EX_FinalFunction', 'EX_LocalVirtualFunction', 'EX_VirtualFunction', 'EX_CallMulticastDelegate'):
         args = value.get('Parameters')
         if not isinstance(args, list): raise BlueprintTranslationError('Invalid math layout')
-        return (14 if token == 'EX_LocalVirtualFunction' else 10) + sum(memory_size(arg, depth+1) for arg in args)
+        return (14 if token in ('EX_LocalVirtualFunction', 'EX_VirtualFunction') else 10) + sum(size(arg) for arg in args) + (size(value.get('Delegate')) if token == 'EX_CallMulticastDelegate' else 0)
     raise BlueprintTranslationError(f'Unsupported bytecode memory layout: {token}')
 
 
-def translate_function(export, package=None):
+def translate_function(export, package=None, entry_offset=None):
     bytecode = export.get('ScriptBytecode')
     if not isinstance(bytecode, list) or not bytecode or len(bytecode) > 100000:
         raise BlueprintTranslationError('Parsed source bytecode is required')
     reads, outputs, writes, steps = set(), set(), set(), []
-    branching = any(kind(instruction) in ('EX_Jump', 'EX_JumpIfNot') for instruction in bytecode)
+    branching = entry_offset is not None or any(kind(instruction) in ('EX_Jump', 'EX_JumpIfNot', 'EX_PushExecutionFlow', 'EX_PopExecutionFlow', 'EX_PopExecutionFlowIfNot') for instruction in bytecode)
     offsets, boundaries, offset = {}, {}, 0
-    if branching:
+    reachable, prologue = None, None
+    if entry_offset is not None:
+        offsets, boundaries, offset, reachable, prologue = reachable_event(export, entry_offset, package, kind, memory_size, BlueprintTranslationError)
+    elif branching:
         for index, instruction in enumerate(bytecode):
             offsets[index] = offset; boundaries[offset] = index
-            offset += memory_size(instruction)
+            offset += memory_size(instruction, package=package)
         if not isinstance(export.get('ScriptBytecodeSize'), int) or export['ScriptBytecodeSize'] != offset:
             raise BlueprintTranslationError('Computed Kismet memory size differs from ScriptBytecodeSize')
     returned = ended = False
     for index, instruction in enumerate(bytecode):
         token = kind(instruction)
+        if reachable is not None and index not in reachable:
+            continue
         if ended: raise BlueprintTranslationError('Bytecode after EndOfScript')
         if token in ('EX_Tracepoint', 'EX_WireTracepoint', 'EX_Nothing'):
             if branching: steps.append({'op': 'nop', 'source_index': index})
@@ -208,6 +263,19 @@ def translate_function(export, package=None):
             if branching: steps.append({'op': 'end', 'source_index': index})
             continue
         if returned and not branching: raise BlueprintTranslationError('Instructions after return require control-flow translation')
+        if token == 'EX_ComputedJump' and index == prologue:
+            steps.append({'op': 'jump', 'target': boundaries[entry_offset], 'target_offset': entry_offset, 'source_index': index})
+            continue
+        if token in ('EX_PushExecutionFlow', 'EX_PopExecutionFlow', 'EX_PopExecutionFlowIfNot'):
+            step = {'op': 'push_flow' if token == 'EX_PushExecutionFlow' else 'pop_flow', 'source_index': index}
+            if token == 'EX_PushExecutionFlow':
+                address = instruction.get('PushingAddress')
+                if type(address) is not int or address not in boundaries: raise BlueprintTranslationError('Invalid flow stack target')
+                step.update(target=boundaries[address], target_offset=address)
+            elif token == 'EX_PopExecutionFlowIfNot':
+                step['value'] = expression(instruction.get('BooleanExpression'), reads, outputs, package=package, owner=export.get('OuterIndex'))
+            steps.append(step)
+            continue
         if token in ('EX_Jump', 'EX_JumpIfNot'):
             target = instruction.get('CodeOffset')
             if not isinstance(target, int) or isinstance(target, bool) or target not in boundaries:
@@ -217,7 +285,16 @@ def translate_function(export, package=None):
             if token == 'EX_JumpIfNot': entry['value'] = expression(instruction.get('BooleanExpression'), reads, outputs, package=package, owner=export.get('OuterIndex'))
             steps.append(entry)
             continue
-        if token in ('EX_Let', 'EX_LetBool', 'EX_LetObj'):
+        if token == 'EX_LetValueOnPersistentFrame':
+            pointer = instruction.get('DestinationProperty', {})
+            frame_index = pointer.get('New', {}).get('ResolvedOwner')
+            frame = package.export(frame_index) if package else None
+            if (not frame or not str(frame.get('ObjectName', '')).startswith('ExecuteUbergraph_')
+                    or frame.get('OuterIndex') != export.get('OuterIndex')):
+                raise BlueprintTranslationError('Persistent destination belongs to an unresolved source frame')
+            steps.append({'op': 'set', 'scope': 'persistent', 'frame': frame_index, 'field': field(pointer),
+                          'value': expression(instruction.get('AssignmentExpression'), reads, outputs, package=package, owner=export.get('OuterIndex')), 'source_index': index})
+        elif token in ('EX_Let', 'EX_LetBool', 'EX_LetObj'):
             variable = instruction.get('Variable' if token == 'EX_Let' else 'VariableExpression')
             if not isinstance(variable, dict) or kind(variable) not in ('EX_LocalVariable', 'EX_LocalOutVariable', 'EX_InstanceVariable'):
                 raise BlueprintTranslationError('Unsupported assignment target')
@@ -226,19 +303,27 @@ def translate_function(export, package=None):
             source = instruction.get('Expression' if token == 'EX_Let' else 'AssignmentExpression')
             steps.append({'op': 'set', 'field': target['field'], 'scope': target['scope'], 'value': expression(source, reads, outputs, package=package, owner=export.get('OuterIndex')),
                           'boolean': token == 'EX_LetBool', 'source_index': index})
+            if target.get('frame') is not None: steps[-1]['frame'] = target['frame']
         elif token == 'EX_Return':
             steps.append({'op': 'return', 'value': expression(instruction.get('ReturnExpression'), reads, outputs, package=package, owner=export.get('OuterIndex')),
                           'source_index': index})
             returned = True
-        elif token in ('EX_LocalVirtualFunction', 'EX_LocalFinalFunction', 'EX_FinalFunction'):
+        elif token in ('EX_LocalVirtualFunction', 'EX_LocalFinalFunction', 'EX_FinalFunction', 'EX_CallMath'):
             steps.append({'op': 'evaluate', 'value': expression(instruction, reads, outputs, package=package, owner=export.get('OuterIndex')),
                           'source_index': index})
         else:
             raise BlueprintTranslationError(f'Unsupported opcode: {token}')
+    if reachable is not None:
+        ended = kind(bytecode[-1]) == 'EX_EndOfScript'
     if not returned or not ended: raise BlueprintTranslationError('Complete return and EndOfScript are required')
     if branching:
         for step in steps: step['source_offset'] = offsets[step['source_index']]
-    return {'schema_version': 1, 'name': export['ObjectName'], 'status': 'translated_control_flow' if branching else 'translated_straight_line',
+    if reachable is not None:
+        compact = {step['source_index']: index for index, step in enumerate(steps)}
+        for step in steps:
+            if 'target' in step: step['target'] = compact[step['target']]
+    return {'schema_version': 1, 'name': export['ObjectName'] + ('@' + str(entry_offset) if entry_offset is not None else ''), 'status': 'translated_control_flow' if branching else 'translated_straight_line',
+            'internal_event_entry': entry_offset is not None, 'event_entry_offset': entry_offset,
             'memory_size_verified': offset if branching else None,
             'source_bytecode_sha256': digest(bytecode), 'self_reads': sorted(reads),
             'source_owner_index': export.get('OuterIndex'),
@@ -247,7 +332,8 @@ def translate_function(export, package=None):
 
 
 def translate_package(package):
-    functions, blocked, declarations = {}, [], []
+    functions, blocked, declarations, event_blocked = {}, [], [], []
+    package._event_layouts = {}
     class_properties = {prop['Name']: prop for export in package.exports
                         if str(export.get('ObjectName', '')).endswith('_C')
                         for prop in export.get('LoadedProperties', []) if prop.get('Name')}
@@ -255,27 +341,44 @@ def translate_package(package):
     for export in package.exports:
         if str(export.get('ObjectName', '')).startswith('Default__'):
             defaults.update(package.props(export))
-    for index, export in enumerate(package.exports, 1):
+    pending = [(index, export, None) for index, export in enumerate(package.exports, 1)]
+    requested = set()
+    for index, export, entry_offset in pending:
         if not export.get('ScriptBytecode'): continue
         if str(export.get('ObjectName', '')).endswith('__DelegateSignature'):
             declarations.append(export['ObjectName'])
             continue
         try:
-            program = translate_function(export, package)
+            program = translate_function(export, package, entry_offset)
             used_locals = set(program['output_fields'])
+            persistent = {}
             for step in program['steps']:
                 if step['op'] == 'set' and step.get('scope') == 'local': used_locals.add(step['field'])
                 def local_reads(value):
                     if isinstance(value, dict):
                         if value.get('scope') == 'local': used_locals.add(value['field'])
+                        if value.get('scope') == 'persistent':
+                            frame_index, field_name = value['frame'], value['field']
+                            frame = package.export(frame_index)
+                            if not frame or frame.get('OuterIndex') != export.get('OuterIndex'):
+                                raise BlueprintTranslationError('Persistent property belongs to another source class')
+                            props = [p for p in frame.get('LoadedProperties', []) if p.get('Name') == field_name]
+                            if len(props) != 1: raise BlueprintTranslationError('Unresolved persistent source property: ' + field_name)
+                            persistent.setdefault(str(frame_index), {})[field_name] = property_type(props[0])
+                        if value.get('op') == 'call' and 'entry_offset' in value:
+                            request = (value['export_index'], value['entry_offset'])
+                            if request not in requested:
+                                requested.add(request)
+                                pending.append((request[0], package.export(request[0]), request[1]))
                         for child in value.values(): local_reads(child)
                     elif isinstance(value, list):
                         for child in value: local_reads(child)
-                if 'value' in step: local_reads(step['value'])
+                local_reads(step)
             program['field_types'] = {
                 'self': {name: property_type(class_properties[name]) for name in program['self_reads'] if name in class_properties},
                 'local': {prop['Name']: property_type(prop) for prop in export.get('LoadedProperties', []) if prop.get('Name') in used_locals}}
             program['source_property_types'] = {prop['Name']: prop for prop in export.get('LoadedProperties', []) if prop.get('Name')}
+            program['persistent_types'] = persistent
             program['input_fields'] = [prop['Name'] for prop in export.get('LoadedProperties', [])
                                        if prop.get('Name') in used_locals and 'CPF_Parm' in str(prop.get('PropertyFlags'))
                                        and 'CPF_OutParm' not in str(prop.get('PropertyFlags'))
@@ -285,7 +388,10 @@ def translate_package(package):
             if program['name'] in functions: raise BlueprintTranslationError('Duplicate function name')
             functions[program['name']] = program
         except BlueprintTranslationError as error:
-            blocked.append({'function': export.get('ObjectName'), 'source_export_index': index, 'reason': str(error)})
+            row = {'function': export.get('ObjectName'), 'source_export_index': index, 'reason': str(error)}
+            if entry_offset is not None:
+                row['entry_offset'] = entry_offset; event_blocked.append(row)
+            else: blocked.append(row)
     def calls(value):
         if isinstance(value, dict):
             if value.get('op') == 'call': yield value
@@ -301,8 +407,9 @@ def translate_package(package):
             missing = next((call['function'] for call in required if call['function'] not in functions
                             or functions[call['function']]['source_export_index'] != call['export_index']), None)
             if missing:
-                blocked.append({'function': name, 'source_export_index': program['source_export_index'],
-                                'reason': 'Untranslated function dependency: ' + missing})
+                row = {'function': name, 'source_export_index': program['source_export_index'],
+                       'reason': 'Untranslated function dependency: ' + missing}
+                (event_blocked if program.get('internal_event_entry') else blocked).append(row)
                 removed.append(name)
         if not removed: break
         for name in removed: del functions[name]
@@ -330,12 +437,18 @@ def translate_package(package):
         if name in defaults: default_state[name] = defaults[name]
         elif type_name in ('BoolProperty', 'ByteProperty', 'IntProperty', 'FloatProperty', 'DoubleProperty', 'StrProperty', 'NameProperty'):
             default_state[name] = {'BoolProperty': False, 'StrProperty': '', 'NameProperty': 'None'}.get(type_name, 0)
-    no_ops = sum(not program['self_reads'] and not program['output_fields'] and not program['self_writes']
+    no_ops = sum(not program.get('internal_event_entry') and not program['self_reads'] and not program['output_fields'] and not program['self_writes']
                  and all(step['op'] == 'return' and step['value'] == {'op': 'constant', 'value': None}
                          for step in program['steps']) for program in functions.values())
-    return {'functions': functions, 'blocked': blocked, 'declarations': declarations, 'default_state': default_state,
-            'counts': {'translated': len(functions), 'blocked': len(blocked),
-                       'declarations': len(declarations), 'no_op_functions': no_ops}}
+    events = {name: program for name, program in functions.items() if program.get('internal_event_entry')}
+    functions = {name: program for name, program in functions.items() if not program.get('internal_event_entry')}
+    empty_events = sum(any('entry_offset' in call for call in calls(program['steps'])) and not program['self_writes']
+                       and not program['output_fields'] for program in functions.values())
+    counts = {'translated': len(functions), 'blocked': len(blocked), 'declarations': len(declarations), 'no_op_functions': no_ops}
+    if events: counts.update(event_entries=len(events), empty_event_functions=empty_events)
+    return {'functions': functions, 'event_programs': events, 'event_blocked': event_blocked,
+            'blocked': blocked, 'declarations': declarations, 'default_state': default_state,
+            'counts': counts}
 
 
 def character_guards(controls, packages, source_package):
@@ -438,7 +551,8 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
     controls_file = output / 'character-controls.json'
     fingerprint = digest({'project': str(project), 'inputs': key_inputs, 'missing': missing,
                           'controls': file_hash(controls_file) if controls_file.is_file() else None,
-                          'implementation': file_hash(Path(__file__))})
+                          'implementation': file_hash(Path(__file__)),
+                          'events_implementation': file_hash(Path(__file__).with_name('blueprint_events.py'))})
     report_file = output / 'blueprint-programs.json'
     try:
         prior = read_json(report_file)
@@ -462,7 +576,9 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
               'character_guards': guards, 'character_metrics': character_metrics(guards, packages),
               'limitations': ['Locals, instance state, comparisons, static jumps and same-source-class calls with out parameters execute.',
                              'Struct member reads and ASCII FName equality execute; struct writes, constructors and Unicode FName comparisons remain unsupported.',
-                             'Cross-object calls, derived-class virtual overrides, dynamic jumps, latent actions and replication remain blocked.',
+                             'Constant source event entries, flow stacks and per-instance persistent primitive fields execute on fully translated reachable paths.',
+                             'Event callbacks with no source effects are counted separately; animation dispatch, native effects and complete game events are not implied.',
+                             'Cross-object calls, derived-class virtual overrides, arbitrary dynamic jumps, latent actions and replication remain blocked.',
                              'Translated functions are not connected to the complete game runtime yet.']}
     report['content_sha256'] = digest(report)
     atomic_json(report_file, report)

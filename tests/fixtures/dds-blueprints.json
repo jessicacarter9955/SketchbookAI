@@ -1740,6 +1740,86 @@
       "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
       "self": {},
       "source_bytecode_sha256": "5fdf2969d229904dd2f0d90a1aaaa7ff1e981f968549ac433a205083b7709006"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+      "function": "Set_CharacterInputState",
+      "source_bytecode_sha256": "e6108b4a3a62dd79547621066b3aa9d4d7872ae44d72cb5951784e313a427a78",
+      "self": {
+        "PlayerInputState": {
+          "WantsToStrafe_5_64E842184F7691CD179DFCBA7158A4D9": true
+        }
+      },
+      "inputs": {
+        "Desired Input State": {
+          "WantsToStrafe_5_64E842184F7691CD179DFCBA7158A4D9": false
+        }
+      },
+      "outputs": {},
+      "state": {
+        "PlayerInputState": {
+          "WantsToStrafe_5_64E842184F7691CD179DFCBA7158A4D9": false
+        }
+      },
+      "dependencies": {
+        "ExecuteUbergraph_CBP_Fixers_Mover@8731": "dc94a47eabc12399e016688956c8c9a24d62f80c12a64ed3b780fb72b3b76559"
+      }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+      "function": "Set_CharacterInputState",
+      "source_bytecode_sha256": "e6108b4a3a62dd79547621066b3aa9d4d7872ae44d72cb5951784e313a427a78",
+      "self": {
+        "PlayerInputState": {
+          "WantsToStrafe_5_64E842184F7691CD179DFCBA7158A4D9": true
+        }
+      },
+      "inputs": {
+        "Desired Input State": {
+          "WantsToStrafe_5_64E842184F7691CD179DFCBA7158A4D9": true
+        }
+      },
+      "outputs": {},
+      "state": {
+        "PlayerInputState": {
+          "WantsToStrafe_5_64E842184F7691CD179DFCBA7158A4D9": true
+        }
+      },
+      "dependencies": {
+        "ExecuteUbergraph_CBP_Fixers_Mover@8731": "dc94a47eabc12399e016688956c8c9a24d62f80c12a64ed3b780fb72b3b76559"
+      }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "function": "ResetSlideCooldown",
+      "source_bytecode_sha256": "fac44312fa58e8dc83cddec26ffbf736df3c13a92dbd3258ecdf0fc6c8da88ba",
+      "self": {
+        "bCanSlide": false
+      },
+      "inputs": {},
+      "outputs": {},
+      "state": {
+        "bCanSlide": true
+      },
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Vitality_Fixers@10456": "6584c98e45cc573431cd1a3b5437f6326ea304becbf00c0f8c16471842f3cce2"
+      }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "function": "ResetSlideCooldown",
+      "source_bytecode_sha256": "fac44312fa58e8dc83cddec26ffbf736df3c13a92dbd3258ecdf0fc6c8da88ba",
+      "self": {
+        "bCanSlide": true
+      },
+      "inputs": {},
+      "outputs": {},
+      "state": {
+        "bCanSlide": true
+      },
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Vitality_Fixers@10456": "6584c98e45cc573431cd1a3b5437f6326ea304becbf00c0f8c16471842f3cce2"
+      }
     }
   ],
   "schema_version": 1,

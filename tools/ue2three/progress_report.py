@@ -122,7 +122,8 @@ def project_progress(workspace, published, character_dir=None):
     translated = blueprint_report.get('counts', {}).get('translated', 0)
     blocked = blueprint_report.get('counts', {}).get('blocked', 0)
     no_ops = blueprint_report.get('counts', {}).get('no_op_functions', 0)
-    row('blueprints', 'Blueprint e moduli nativi', f"{classes['BlueprintGeneratedClass']} classi Blueprint; {translated} funzioni tradotte ({no_ops} vuote nel sorgente), {blocked} bloccate nei pacchetti letti",
+    empty_events = blueprint_report.get('counts', {}).get('empty_event_functions', 0)
+    row('blueprints', 'Blueprint e moduli nativi', f"{classes['BlueprintGeneratedClass']} classi Blueprint; {translated} funzioni tradotte ({no_ops} vuote, {empty_events} callback senza effetti di gioco), {blocked} bloccate nei pacchetti letti",
         'Completare chiamate tra oggetti, eventi, timer e moduli nativi' +
         (f"; {len(blueprint_report.get('character_guards', {}))} vincoli sorgenti disponibili per il controller provvisorio" if blueprint_report.get('character_guards') else ''), bool(translated))
     ui = documents.get('ui', {})
@@ -187,17 +188,25 @@ def project_progress(workspace, published, character_dir=None):
     if (blueprint_report and audit.get('status') == 'passed' and audit.get('project') == project
             and audit.get('programs_content_sha256') == blueprint_report.get('content_sha256')
             and outputs['audit_blueprint_screenshot'] and audit.get('screenshot_sha256') == outputs['audit_blueprint_screenshot']):
-        verified, cases = [], 0
+        verified, cases, event_verified, event_cases = [], 0, [], 0
         for entry in audit.get('evidence', []):
             program = blueprint_report.get('packages', {}).get(entry.get('package'), {}).get('functions', {}).get(entry.get('function'), {})
             samples = entry.get('source_cases', [])
             if (program and samples and program.get('source_bytecode_sha256') == entry.get('source_bytecode_sha256')
-                    and all(sample.get('expected') and all(key in sample.get('outputs', {})
-                            and digest(sample['outputs'][key]) == digest(value) for key, value in sample['expected'].items()) for sample in samples)):
+                    and all((sample.get('expected') or sample.get('expected_state'))
+                            and all(key in sample.get('outputs', {}) and digest(sample['outputs'][key]) == digest(value)
+                                    for key, value in sample.get('expected', {}).items())
+                            and all(key in sample.get('resulting_state', {}) and digest(sample['resulting_state'][key]) == digest(value)
+                                    for key, value in sample.get('expected_state', {}).items()) for sample in samples)):
                 verified.append(entry['function']); cases += len(samples)
+                if all(sample.get('expected_state') for sample in samples):
+                    event_verified.append(entry['function']); event_cases += len(samples)
         if verified and cases == audit.get('golden_source_cases'):
             milestones.append({'title': 'Funzioni con confronti sorgenti verificati', 'status': 'green',
                                'evidence': f"{len(verified)} funzioni, {cases} casi; incluse {', '.join(sorted(set(verified)))}; non prova i sistemi completi"})
+            if event_verified:
+                milestones.append({'title': 'Percorsi di evento con stato verificato', 'status': 'green',
+                                   'evidence': f"{len(event_verified)} percorsi, {event_cases} casi: {', '.join(event_verified)}; timer, Mover e replica esclusi"})
     report = {'schema_version': 1, 'project': project, 'fingerprint': fingerprint,
               'scope': 'cached registry and published outputs; no full-game percentage inferred',
               'source_classes': dict(classes), 'rows': rows, 'milestones': milestones,

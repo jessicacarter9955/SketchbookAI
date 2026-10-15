@@ -3,11 +3,11 @@ import { evaluateNativeMath } from './ue2three-native-math.mjs';
 const owns = (object, key) => object != null && Object.hasOwn(object, key);
 const safeField = key => typeof key === 'string' && key.length > 0 && !['__proto__', 'constructor', 'prototype'].includes(key);
 
-export function executeBlueprint(program, self = {}, inputs = {}, { functions = {} } = {}) {
-    return runBlueprint(program, self, inputs, functions, { remaining: 10000 }, 0);
+export function executeBlueprint(program, self = {}, inputs = {}, { functions = {}, frames = {} } = {}) {
+    return runBlueprint(program, self, inputs, functions, { remaining: 10000 }, 0, structuredClone(frames));
 }
 
-function runBlueprint(program, self, inputs, functions, budget, depth) {
+function runBlueprint(program, self, inputs, functions, budget, depth, frames) {
     if (depth > 32) throw new Error('Blueprint call depth exceeded');
     if (program?.schema_version !== 1 || !['translated_straight_line', 'translated_control_flow'].includes(program.status)
         || !Array.isArray(program.steps) || program.steps.length > 10000
@@ -26,12 +26,21 @@ function runBlueprint(program, self, inputs, functions, budget, depth) {
         if (!safeField(field)) throw new Error('Invalid local field');
         if (!owns(locals, field) && owns(primitiveDefaults, type)) locals[field] = primitiveDefaults[type];
     }
+    for (const [frame, types] of Object.entries(program.persistent_types || {})) {
+        if (!/^[1-9][0-9]*$/.test(frame)) throw new Error('Invalid persistent frame identity');
+        if (!owns(frames, frame)) frames[frame] = Object.create(null);
+        for (const [field, type] of Object.entries(types)) {
+            if (!safeField(field)) throw new Error('Invalid persistent frame field');
+            if (!owns(frames[frame], field) && owns(primitiveDefaults, type)) frames[frame][field] = primitiveDefaults[type];
+        }
+    }
     const instance = structuredClone(self);
     if (Object.keys(instance).some(field => !safeField(field))) throw new Error('Invalid instance property');
     const trace = [];
     let sourceIndex;
-    const checkType = (scope, field, value) => {
-        const type = program.field_types?.[scope]?.[field];
+    const checkType = (scope, field, value, frame) => {
+        const type = scope === 'persistent' ? program.persistent_types?.[frame]?.[field] : program.field_types?.[scope]?.[field];
+        if (scope === 'persistent' && !type) throw new Error('Unresolved persistent property type');
         const valid = !type
             || type === 'BoolProperty' && typeof value === 'boolean'
             || type === 'ByteProperty' && Number.isInteger(value) && value >= 0 && value <= 255
@@ -53,20 +62,20 @@ function runBlueprint(program, self, inputs, functions, budget, depth) {
                 if (!safeField(binding.parameter) || owns(args, binding.parameter)) throw new Error('Invalid call parameter');
                 if (binding.mode === 'input') args[binding.parameter] = structuredClone(evaluate(binding.value, depth+1));
                 else if (binding.mode === 'output' && binding.target?.op === 'get' && safeField(binding.target.field)
-                    && ['self', 'local'].includes(binding.target.scope)) {
-                    const owner = binding.target.scope === 'self' ? instance : locals;
+                    && ['self', 'local', 'persistent'].includes(binding.target.scope)) {
+                    const owner = ownerFor(binding.target.scope, binding.target.frame);
                     if (owns(owner, binding.target.field)) args[binding.parameter] = structuredClone(owner[binding.target.field]);
                     targets.push(binding);
                 } else throw new Error('Unsupported call argument');
             }
-            const nested = runBlueprint(callee, instance, args, functions, budget, callDepth + 1);
+            const nested = runBlueprint(callee, instance, args, functions, budget, callDepth + 1, frames);
             for (const binding of targets) {
                 if (!owns(nested.outputs, binding.parameter)) throw new Error(`Missing call output: ${binding.parameter}`);
-                checkType(binding.target.scope, binding.target.field, nested.outputs[binding.parameter]);
+                checkType(binding.target.scope, binding.target.field, nested.outputs[binding.parameter], binding.target.frame);
             }
             Object.assign(instance, nested.state);
             for (const binding of targets) {
-                const owner = binding.target.scope === 'self' ? instance : locals;
+                const owner = ownerFor(binding.target.scope, binding.target.frame);
                 owner[binding.target.field] = structuredClone(nested.outputs[binding.parameter]);
             }
             trace.push({source_index: sourceIndex, op: 'call', function: expression.function, outputs: nested.outputs, trace: nested.trace});
@@ -90,21 +99,53 @@ function runBlueprint(program, self, inputs, functions, budget, depth) {
                 throw new Error(`Missing source struct member: ${expression.field}`);
             return structuredClone(structure[expression.field]);
         }
-        if (expression.op === 'get' && safeField(expression.field) && ['self', 'local'].includes(expression.scope)) {
-            const owner = expression.scope === 'self' ? instance : locals;
+        if (expression.op === 'get' && safeField(expression.field) && ['self', 'local', 'persistent'].includes(expression.scope)) {
+            const owner = ownerFor(expression.scope, expression.frame);
             if (!owns(owner, expression.field)) throw new Error(`Missing ${expression.scope} property: ${expression.field}`);
-            checkType(expression.scope, expression.field, owner[expression.field]);
+            checkType(expression.scope, expression.field, owner[expression.field], expression.frame);
             return owner[expression.field];
         }
         throw new Error(`Unsupported Blueprint expression: ${expression.op}`);
     };
+    const ownerFor = (scope, frame) => {
+        if (scope === 'self') return instance;
+        if (scope === 'local') return locals;
+        if (scope !== 'persistent' || !owns(program.persistent_types || {}, frame) || !owns(frames, frame))
+            throw new Error('Unresolved persistent frame');
+        return frames[frame];
+    };
     const callDepth = depth;
+    const flow = [];
+    const jumpTarget = target => {
+        if (!Number.isInteger(target) || target < 0 || target >= program.steps.length) throw new Error('Invalid Blueprint jump target');
+        return target;
+    };
     let pc = 0;
     while (pc < program.steps.length) {
         if (--budget.remaining < 0) throw new Error('Blueprint instruction budget exceeded');
         const step = program.steps[pc++];
         sourceIndex = step.source_index;
         if (step.op === 'nop') continue;
+        if (step.op === 'push_flow') {
+            if (flow.length >= 32) throw new Error('Blueprint flow stack exceeded');
+            flow.push(jumpTarget(step.target));
+            trace.push({source_index: sourceIndex, op: step.op, target: step.target});
+            continue;
+        }
+        if (step.op === 'pop_flow') {
+            let take = true;
+            if (step.value) {
+                const condition = evaluate(step.value);
+                if (typeof condition !== 'boolean') throw new Error('Blueprint flow condition requires Boolean');
+                take = !condition;
+            }
+            if (take) {
+                if (!flow.length) throw new Error('Blueprint empty flow stack');
+                pc = jumpTarget(flow.pop());
+            }
+            trace.push({source_index: sourceIndex, op: step.op, taken: take, target: take ? pc : null});
+            continue;
+        }
         if (step.op === 'jump' || step.op === 'branch') {
             if (!Number.isInteger(step.target) || step.target < 0 || step.target >= program.steps.length)
                 throw new Error('Invalid Blueprint jump target');
@@ -122,14 +163,14 @@ function runBlueprint(program, self, inputs, functions, budget, depth) {
         if (step.op === 'evaluate') { evaluate(step.value); continue; }
         if (step.op === 'set' && safeField(step.field)) {
             const scope = step.scope || 'local';
-            if (!['self', 'local'].includes(scope)) throw new Error('Invalid assignment scope');
+            if (!['self', 'local', 'persistent'].includes(scope)) throw new Error('Invalid assignment scope');
             const value = evaluate(step.value);
             if (step.boolean && typeof value !== 'boolean') throw new Error(`Expected Boolean: ${step.field}`);
-            checkType(scope, step.field, value);
+            checkType(scope, step.field, value, step.frame);
             if (scope === 'self') {
                 if (!owns(instance, step.field)) throw new Error(`Missing self property: ${step.field}`);
                 instance[step.field] = structuredClone(value);
-            } else locals[step.field] = structuredClone(value);
+            } else ownerFor(scope, step.frame)[step.field] = structuredClone(value);
             trace.push({source_index: step.source_index, op: 'set', scope, field: step.field, value: structuredClone(value)});
         } else if (step.op === 'return') {
             const value = evaluate(step.value);
@@ -139,7 +180,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth) {
                 outputs[field] = structuredClone(locals[field]);
             }
             trace.push({source_index: step.source_index, op: 'return', value: structuredClone(value)});
-            return {value: structuredClone(value), outputs, state: instance, trace};
+            return {value: structuredClone(value), outputs, state: instance, frames, trace};
         } else throw new Error(`Unsupported Blueprint instruction: ${step.op}`);
     }
     throw new Error('Blueprint returned no result');

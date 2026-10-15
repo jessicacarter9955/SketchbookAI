@@ -5,6 +5,7 @@ export class BlueprintActorRuntime {
         if (report?.schema_version !== 1 || report.project !== project) throw new Error('Blueprint project does not match the character');
         this.report = report;
         this.states = Object.create(null);
+        this.frames = Object.create(null);
         for (const [name, data] of Object.entries(report.packages)) this.states[name] = structuredClone(data.default_state || {});
         this.last = null;
         this.guardCache = new Map();
@@ -13,8 +14,10 @@ export class BlueprintActorRuntime {
     call(packageName, functionName, inputs = {}) {
         const data = this.report.packages[packageName], program = data?.functions[functionName];
         if (!program || !Object.hasOwn(this.states, packageName)) throw new Error(`Untranslated source function: ${functionName}`);
-        const result = executeBlueprint(program, this.states[packageName], inputs, {functions: data.functions});
+        const result = executeBlueprint(program, this.states[packageName], inputs,
+            {functions: {...data.functions, ...data.event_programs}, frames: this.frames[packageName] || {}});
         this.states[packageName] = result.state;
+        this.frames[packageName] = result.frames;
         return result;
     }
     checkAction(action) {
@@ -44,8 +47,8 @@ export class BlueprintActorRuntime {
             return {...metric, value, current_value: state[metric.current], maximum_value: state[metric.maximum]};
         });
     }
-    snapshot() { return structuredClone(this.states); }
-    restore(snapshot) { this.states = structuredClone(snapshot); this.guardCache.clear(); this.metricCache.clear(); this.last = null; }
+    snapshot() { return {states: structuredClone(this.states), frames: structuredClone(this.frames)}; }
+    restore(snapshot) { this.states = structuredClone(snapshot.states); this.frames = structuredClone(snapshot.frames); this.guardCache.clear(); this.metricCache.clear(); this.last = null; }
 }
 
 export function bindBlueprintInputs(player, runtime, onResult = () => {}) {

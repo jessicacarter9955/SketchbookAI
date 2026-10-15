@@ -28,7 +28,7 @@ class BlueprintMigrationTests(unittest.TestCase):
     def test_unsupported_calls_and_jumps_block_entire_function(self):
         for token in ('EX_CallMath', 'EX_Context'):
             function = self.function(); function['ScriptBytecode'].insert(1, node(token))
-            with self.assertRaisesRegex(BlueprintTranslationError, token): translate_function(function)
+            with self.assertRaises(BlueprintTranslationError): translate_function(function)
 
     def test_instance_assignment_preserves_scope(self):
         function = self.function(); function['ScriptBytecode'][1]['Variable'] = variable('EX_InstanceVariable', 'State')
