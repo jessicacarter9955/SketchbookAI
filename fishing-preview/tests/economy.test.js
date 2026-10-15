@@ -5,6 +5,9 @@ test('first backpack step is a real cash constraint',()=>{const s=freshState();a
 test('fish cannot exceed backpack and selling empties it',()=>{const s=freshState();for(let i=0;i<10;i++)addCatch(s);assert.equal(s.bag.length,2);const amount=sell(s);assert.ok(amount>0);assert.equal(s.bag.length,0);assert.equal(s.coins,amount);});
 test('stack catches fit into available capacity',()=>{const s=freshState();s.levels.stack=5;s.levels.bag=1;assert.equal(addCatch(s),5);assert.equal(addCatch(s),0);});
 test('sailing requires logs, persists wallet and upgrades',()=>{const s=freshState();s.coins=152;s.levels.lure=2;assert.equal(canSail(s),false);s.logs=BIOMES[0].goal;assert.equal(sail(s),true);assert.equal(s.biome,1);assert.equal(s.levels.lure,2);assert.equal(s.coins,152);assert.equal(s.logs,0);});
-test('save loader handles invalid save and clamps biome',()=>{assert.equal(loadSave('bad').biome,0);assert.equal(loadSave('{"biome":999}').biome,3);});
+test('save loader handles invalid save and clamps biome',()=>{assert.equal(loadSave('bad').biome,0);assert.equal(loadSave('{"biome":999}').biome,BIOMES.length-1);});
 test('progression prices grow and modifiers apply',()=>{const s=freshState();const p=price(s,'lure');s.coins=1000;assert.equal(buy(s,'lure'),true);assert.ok(price(s,'lure')>p);assert.ok(attraction(s)>2.1);});
 test('money format works at large totals',()=>{assert.equal(formatMoney(1500),'$1.50K');assert.equal(formatMoney(2000000),'$2.00M');});
+
+test('full twelve-island progression persists upgrades without softlocks',()=>{const s=freshState();assert.equal(BIOMES.length,12);s.levels.bag=8;s.levels.stack=3;for(let i=0;i<BIOMES.length-1;i++){s.logs=BIOMES[s.biome].goal;assert.equal(sail(s),true);}assert.equal(s.biome,BIOMES.length-1);assert.equal(canSail(s),false);assert.ok(capacity(s)>100);});
+test('double-value fishing zones multiply fish values',()=>{const a=freshState(),b=freshState();const random=Math.random;try{Math.random=()=>.5;addCatch(a,undefined,1,'manual',1);addCatch(b,undefined,1,'manual',2);}finally{Math.random=random;}assert.ok(Math.abs(b.bag[0].value-a.bag[0].value*2)<=1);});
