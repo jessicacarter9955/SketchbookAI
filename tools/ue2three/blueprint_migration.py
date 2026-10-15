@@ -7,6 +7,7 @@ from pathlib import Path
 from core import atomic_json, digest, file_hash, read_json
 from umg_migration import Package, _tool, _asset_document
 from blueprint_events import reachable_event
+from blueprint_types import source_structs, property_schema, import_path
 
 
 class BlueprintTranslationError(ValueError):
@@ -30,7 +31,7 @@ def property_type(prop):
     if result == 'EnumProperty':
         result = prop.get('UnderlyingProp', {}).get('SerializedType')
     if result not in ('BoolProperty', 'ByteProperty', 'IntProperty', 'FloatProperty',
-                      'DoubleProperty', 'StrProperty', 'NameProperty', 'StructProperty'):
+                      'DoubleProperty', 'StrProperty', 'NameProperty', 'StructProperty', 'ArrayProperty'):
         raise BlueprintTranslationError(f'Unsupported source property type: {result}')
     return result
 
@@ -112,6 +113,29 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
     if not isinstance(value, dict) or depth > 48:
         raise BlueprintTranslationError('Invalid or deeply nested Kismet expression')
     token = kind(value)
+    if token == 'EX_Context' and package:
+        obj, call = value.get('ObjectExpression', {}), value.get('ContextExpression', {})
+        if (kind(obj) == 'EX_ObjectConst' and import_path(package, obj.get('Value')) == ('/Script/Engine', 'Default__KismetArrayLibrary')
+                and kind(call) == 'EX_FinalFunction'
+                and import_path(package, call.get('StackNode')) == ('/Script/Engine', 'KismetArrayLibrary', 'Array_Get')):
+            args = call.get('Parameters', [])
+            if len(args) != 3 or kind(args[0]) != 'EX_InstanceVariable' or kind(args[2]) not in ('EX_LocalVariable', 'EX_LocalOutVariable'):
+                raise BlueprintTranslationError('Unsupported Array_Get source arguments')
+            name = field(args[0].get('Variable'))
+            cls = package.export(owner)
+            prop = next((p for p in (cls or {}).get('LoadedProperties', []) if p.get('Name') == name), {})
+            schema = property_schema(package, prop)
+            if not schema or schema['type'] != 'ArrayProperty': raise BlueprintTranslationError('Unresolved original array element type')
+            output_owner = package.export(args[2].get('Variable', {}).get('New', {}).get('ResolvedOwner'))
+            output_prop = next((p for p in (output_owner or {}).get('LoadedProperties', []) if p.get('Name') == field(args[2].get('Variable'))), {})
+            if (not output_owner or output_owner is not getattr(package, '_active_function', None) or output_owner.get('OuterIndex') != owner
+                    or property_schema(package, output_prop) != schema['element']
+                    or value.get('Offset') != memory_size(call, package=package)):
+                raise BlueprintTranslationError('Array_Get output type or source context offset differs')
+            return {'op': 'array_get', 'array': expression(args[0], reads, outputs, depth+1, package, owner),
+                    'index': expression(args[1], reads, outputs, depth+1, package, owner),
+                    'target': expression(args[2], reads, outputs, depth+1, package, owner), 'element': schema['element']}
+        raise BlueprintTranslationError('Unsupported opcode: EX_Context')
     if token in ('EX_LocalVirtualFunction', 'EX_LocalFinalFunction', 'EX_FinalFunction'):
         return local_call(value, package, owner, reads, outputs, depth)
     if token == 'EX_StructMemberContext':
@@ -234,6 +258,7 @@ def memory_size(value, depth=0, package=None):
 
 
 def translate_function(export, package=None, entry_offset=None):
+    if package: package._active_function = export
     bytecode = export.get('ScriptBytecode')
     if not isinstance(bytecode, list) or not bytecode or len(bytecode) > 100000:
         raise BlueprintTranslationError('Parsed source bytecode is required')
@@ -296,6 +321,24 @@ def translate_function(export, package=None, entry_offset=None):
                           'value': expression(instruction.get('AssignmentExpression'), reads, outputs, package=package, owner=export.get('OuterIndex')), 'source_index': index})
         elif token in ('EX_Let', 'EX_LetBool', 'EX_LetObj'):
             variable = instruction.get('Variable' if token == 'EX_Let' else 'VariableExpression')
+            if isinstance(variable, dict) and kind(variable) == 'EX_StructMemberContext':
+                pointer = variable.get('StructMemberExpression', {})
+                schema = getattr(package, 'source_structs', {}).get(import_path(package, pointer.get('New', {}).get('ResolvedOwner'))) if package else None
+                name = field(pointer)
+                if not schema or name not in schema['fields']: raise BlueprintTranslationError('Unsupported assignment target: unresolved source struct')
+                target = expression(variable.get('StructExpression'), reads, outputs, package=package, owner=export.get('OuterIndex'))
+                if target.get('op') != 'get' or target.get('scope') not in ('local', 'self'):
+                    raise BlueprintTranslationError('Unsupported nested/persistent struct assignment target')
+                root_pointer = variable.get('StructExpression', {}).get('Variable', {}).get('New', {})
+                root_owner = package.export(root_pointer.get('ResolvedOwner'))
+                root_prop = next((p for p in (root_owner or {}).get('LoadedProperties', []) if p.get('Name') == target['field']), {})
+                if root_owner is not (export if target['scope'] == 'local' else package.export(export.get('OuterIndex'))) or property_schema(package, root_prop) != schema:
+                    raise BlueprintTranslationError('Struct assignment target type differs from source member owner')
+                if target['scope'] == 'self': writes.add(target['field'])
+                steps.append({'op': 'set_member', 'target': target, 'field': name, 'member_type': schema['fields'][name]['type'],
+                              'value': expression(instruction.get('Expression' if token == 'EX_Let' else 'AssignmentExpression'), reads, outputs,
+                                                  package=package, owner=export.get('OuterIndex')), 'source_index': index})
+                continue
             if not isinstance(variable, dict) or kind(variable) not in ('EX_LocalVariable', 'EX_LocalOutVariable', 'EX_InstanceVariable'):
                 raise BlueprintTranslationError('Unsupported assignment target')
             target = expression(variable, reads, outputs, package=package, owner=export.get('OuterIndex'))
@@ -308,7 +351,7 @@ def translate_function(export, package=None, entry_offset=None):
             steps.append({'op': 'return', 'value': expression(instruction.get('ReturnExpression'), reads, outputs, package=package, owner=export.get('OuterIndex')),
                           'source_index': index})
             returned = True
-        elif token in ('EX_LocalVirtualFunction', 'EX_LocalFinalFunction', 'EX_FinalFunction', 'EX_CallMath'):
+        elif token in ('EX_LocalVirtualFunction', 'EX_LocalFinalFunction', 'EX_FinalFunction', 'EX_CallMath', 'EX_Context'):
             steps.append({'op': 'evaluate', 'value': expression(instruction, reads, outputs, package=package, owner=export.get('OuterIndex')),
                           'source_index': index})
         else:
@@ -331,9 +374,10 @@ def translate_function(export, package=None, entry_offset=None):
             'output_fields': sorted(outputs), 'steps': steps}
 
 
-def translate_package(package):
+def translate_package(package, structs=None):
     functions, blocked, declarations, event_blocked = {}, [], [], []
     package._event_layouts = {}
+    package.source_structs = structs or {}
     class_properties = {prop['Name']: prop for export in package.exports
                         if str(export.get('ObjectName', '')).endswith('_C')
                         for prop in export.get('LoadedProperties', []) if prop.get('Name')}
@@ -377,7 +421,14 @@ def translate_package(package):
             program['field_types'] = {
                 'self': {name: property_type(class_properties[name]) for name in program['self_reads'] if name in class_properties},
                 'local': {prop['Name']: property_type(prop) for prop in export.get('LoadedProperties', []) if prop.get('Name') in used_locals}}
-            program['source_property_types'] = {prop['Name']: prop for prop in export.get('LoadedProperties', []) if prop.get('Name')}
+            program['source_property_types'] = {prop['Name']: prop for prop in export.get('LoadedProperties', []) if prop.get('Name') in used_locals}
+            program['schemas'] = {'local': {name: schema for name, prop in program['source_property_types'].items()
+                                           if (schema := property_schema(package, prop)) and schema['type'] in ('StructProperty', 'ArrayProperty')},
+                                  'self': {name: schema for name in program['self_reads'] if name in class_properties
+                                           and (schema := property_schema(package, class_properties[name])) and schema['type'] in ('StructProperty', 'ArrayProperty')}}
+            for scope, types in program['field_types'].items():
+                if any(type_name == 'ArrayProperty' and name not in program['schemas'][scope] for name, type_name in types.items()):
+                    raise BlueprintTranslationError('Unresolved array element schema')
             program['persistent_types'] = persistent
             program['input_fields'] = [prop['Name'] for prop in export.get('LoadedProperties', [])
                                        if prop.get('Name') in used_locals and 'CPF_Parm' in str(prop.get('PropertyFlags'))
@@ -434,13 +485,19 @@ def translate_package(package):
     for name, prop in class_properties.items():
         try: type_name = property_type(prop)
         except BlueprintTranslationError: continue
-        if name in defaults: default_state[name] = defaults[name]
+        schema = property_schema(package, prop)
+        if schema and schema['type'] == 'StructProperty' and (name not in defaults or isinstance(defaults[name], dict)):
+            default_state[name] = {**schema['default'], **defaults.get(name, {})}
+        elif name in defaults: default_state[name] = defaults[name]
+        elif schema and schema['type'] == 'ArrayProperty': default_state[name] = []
         elif type_name in ('BoolProperty', 'ByteProperty', 'IntProperty', 'FloatProperty', 'DoubleProperty', 'StrProperty', 'NameProperty'):
             default_state[name] = {'BoolProperty': False, 'StrProperty': '', 'NameProperty': 'None'}.get(type_name, 0)
     no_ops = sum(not program.get('internal_event_entry') and not program['self_reads'] and not program['output_fields'] and not program['self_writes']
                  and all(step['op'] == 'return' and step['value'] == {'op': 'constant', 'value': None}
                          for step in program['steps']) for program in functions.values())
     events = {name: program for name, program in functions.items() if program.get('internal_event_entry')}
+    for program in functions.values():
+        program['source_defaults'] = {name: default_state[name] for name in program['self_reads'] if name in default_state}
     functions = {name: program for name, program in functions.items() if not program.get('internal_event_entry')}
     empty_events = sum(any('entry_offset' in call for call in calls(program['steps'])) and not program['self_writes']
                        and not program['output_fields'] for program in functions.values())
@@ -529,8 +586,9 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
         version = str(read_json(workspace / 'artifacts/engine.json')['version']).split('-')[0]
         tool = _tool(workspace / 'tool-cache')
         for name in dict.fromkeys(read_packages):
-            if name not in candidates or name not in assets:
-                raise BlueprintTranslationError(f'Requested parser input is not an inventoried Blueprint: {name}')
+            source_type_packages = {a['package'] for a in registry['assets'] if a.get('class') in ('UserDefinedStruct', 'UserDefinedEnum')}
+            if (name not in candidates and name not in source_type_packages) or name not in assets:
+                raise BlueprintTranslationError(f'Requested parser input is not an inventoried Blueprint or source struct: {name}')
             asset = assets[name]; source = (project.parent / asset['path']).resolve()
             if project.parent not in source.parents or file_hash(source) != asset['sha256']:
                 raise BlueprintTranslationError(f'Source changed since cached inspection: {name}')
@@ -548,11 +606,24 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
             raise BlueprintTranslationError(f'Source changed since cached inspection: {name}')
         key_inputs[name] = {'source_sha256': asset['sha256'], 'parsed_sha256': file_hash(cache)}
         cached.append((name, cache))
+    type_documents, type_inputs = {}, {}
+    for row in registry['assets']:
+        name = row['package']
+        if row.get('class') not in ('UserDefinedStruct', 'UserDefinedEnum') or name not in assets: continue
+        asset = assets[name]; path = workspace / 'artifacts/uasset-json' / (asset['sha256'] + '.json')
+        if not path.is_file(): continue
+        source = (project.parent / asset['path']).resolve()
+        if project.parent not in source.parents or file_hash(source) != asset['sha256']:
+            raise BlueprintTranslationError('Source type changed since cached inspection: ' + name)
+        type_inputs[name] = {'source_sha256': asset['sha256'], 'parsed_sha256': file_hash(path)}
+        type_documents[name] = read_json(path)
+    structs = source_structs(type_documents, BlueprintTranslationError)
     controls_file = output / 'character-controls.json'
-    fingerprint = digest({'project': str(project), 'inputs': key_inputs, 'missing': missing,
+    fingerprint = digest({'project': str(project), 'inputs': key_inputs, 'missing': missing, 'types': type_inputs,
                           'controls': file_hash(controls_file) if controls_file.is_file() else None,
                           'implementation': file_hash(Path(__file__)),
-                          'events_implementation': file_hash(Path(__file__).with_name('blueprint_events.py'))})
+                          'events_implementation': file_hash(Path(__file__).with_name('blueprint_events.py')),
+                          'types_implementation': file_hash(Path(__file__).with_name('blueprint_types.py'))})
     report_file = output / 'blueprint-programs.json'
     try:
         prior = read_json(report_file)
@@ -561,7 +632,7 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
     except (OSError, ValueError): pass
     packages, counts = {}, Counter()
     for name, cache in cached:
-        packages[name] = translate_package(Package(read_json(cache)))
+        packages[name] = translate_package(Package(read_json(cache)), structs)
         packages[name]['source'] = key_inputs[name]
         counts.update(packages[name]['counts'])
     guards = {}
@@ -573,9 +644,11 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
             guards = character_guards(controls, packages, Package(read_json(cache_path)))
     report = {'schema_version': 1, 'project': str(project), 'fingerprint': fingerprint,
               'packages': packages, 'counts': dict(counts), 'missing_cached_packages': missing,
+              'source_types': [{'package': name[0], 'object': name[1], **schema} for name, schema in structs.items()], 'type_sources': type_inputs,
               'character_guards': guards, 'character_metrics': character_metrics(guards, packages),
               'limitations': ['Locals, instance state, comparisons, static jumps and same-source-class calls with out parameters execute.',
-                             'Struct member reads and ASCII FName equality execute; struct writes, constructors and Unicode FName comparisons remain unsupported.',
+                             'Struct member reads, typed source-struct field writes/defaults, typed Array_Get copies and ASCII FName equality execute.',
+                             'Struct constants, nested struct writes, other array operations and Unicode FName comparisons remain unsupported.',
                              'Constant source event entries, flow stacks and per-instance persistent primitive fields execute on fully translated reachable paths.',
                              'Event callbacks with no source effects are counted separately; animation dispatch, native effects and complete game events are not implied.',
                              'Cross-object calls, derived-class virtual overrides, arbitrary dynamic jumps, latent actions and replication remain blocked.',

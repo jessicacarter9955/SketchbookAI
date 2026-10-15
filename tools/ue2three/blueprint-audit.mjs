@@ -1,4 +1,5 @@
 import { executeBlueprint } from '/src/editor/ue2three-blueprint.mjs';
+import { blueprintFixtureState } from '/src/editor/ue2three-fixtures.mjs';
 const status = document.querySelector('#status');
 const applyFilter = () => {
     const term = document.querySelector('#function-filter').value.toLowerCase();
@@ -22,13 +23,14 @@ try {
                 const inputs = Object.create(null);
                 for (const name of program.self_reads) {
                     const boolean = program.steps.some(step => step.boolean && step.value.op === 'get' && step.value.scope === 'self' && step.value.field === name);
-                    if (program.field_types?.self?.[name] === 'StructProperty') {
+                    if (['StructProperty', 'ArrayProperty'].includes(program.field_types?.self?.[name])) {
                         if (!Object.hasOwn(program.source_defaults || {}, name)) throw new Error(`Default struct sorgente assente: ${name}`);
                         self[name] = structuredClone(program.source_defaults[name]);
                     } else if (['NameProperty', 'StrProperty'].includes(program.field_types?.self?.[name])) self[name] = sample ? 'Fixture_' + sample : 'None';
                     else self[name] = boolean || program.field_types?.self?.[name] === 'BoolProperty' ? !!(sample % 2) : sample;
                 }
                 for (const name of program.input_fields || []) inputs[name] = program.field_types?.local?.[name] === 'BoolProperty' ? !!(sample % 2)
+                    : program.schemas?.local?.[name] ? structuredClone(program.schemas.local[name].default)
                     : program.field_types?.local?.[name] === 'StructProperty' ? {}
                     : ['NameProperty', 'StrProperty'].includes(program.field_types?.local?.[name]) ? sample ? 'Fixture_' + sample : 'None' : 1;
                 const result = executeBlueprint(program, self, inputs, {functions: {...packageData.functions, ...packageData.event_programs}});
@@ -43,7 +45,7 @@ try {
                     if ((step.scope === 'self' || program.output_fields.includes(step.field)) && JSON.stringify(actual) !== JSON.stringify(expected))
                         throw new Error(`Output differente: ${program.name}.${step.field}`);
                 }
-                outputs.push({self, inputs, result}); scenarios++;
+                outputs.push({self, inputs, result: {value: result.value, outputs: result.outputs}}); scenarios++;
             }
             const row = document.createElement('tr');
             for (const text of [program.name, '🟢 PASS · 3 scenari', JSON.stringify(outputs.at(-1).result.outputs)]) {
@@ -67,13 +69,17 @@ try {
             const library = {...report.packages[test.package].functions, ...report.packages[test.package].event_programs};
             for (const [name, hash] of Object.entries(test.dependencies || {}))
                 if (library[name]?.source_bytecode_sha256 !== hash) throw new Error(`Dipendenza sorgente non aggiornata: ${name}`);
-            const result = executeBlueprint(program, test.self, test.inputs, {functions: {...report.packages[test.package].functions, ...report.packages[test.package].event_programs}});
+            for (const [name, hash] of Object.entries(test.types || {}))
+                if (report.type_sources?.[name]?.source_sha256 !== hash) throw new Error(`Tipo sorgente non aggiornato: ${name}`);
+            const self = blueprintFixtureState(fixture, test, report);
+            const result = executeBlueprint(program, self, test.inputs, {functions: {...report.packages[test.package].functions, ...report.packages[test.package].event_programs}});
             for (const [field, expected] of Object.entries(test.outputs))
                 if (JSON.stringify(result.outputs[field]) !== JSON.stringify(expected)) throw new Error(`Confronto sorgente fallito: ${test.function}.${field}`);
             for (const [field, expected] of Object.entries(test.state || {}))
                 if (JSON.stringify(result.state[field]) !== JSON.stringify(expected)) throw new Error(`Stato sorgente differente: ${test.function}.${field}`);
-            rowsByFunction.get(JSON.stringify([test.package, test.function])).samples.push({inputs: test.inputs, state: test.self, outputs: result.outputs,
-                expected: test.outputs, resulting_state: result.state, expected_state: test.state || {}, trace: test.state ? result.trace : undefined});
+            rowsByFunction.get(JSON.stringify([test.package, test.function])).samples.push({inputs: test.inputs, state: test.self,
+                base_state: test.base_state, outputs: result.outputs, expected: test.outputs,
+                resulting_state: test.state ? result.state : undefined, expected_state: test.state || {}, trace: test.state ? result.trace : undefined});
             golden++;
         }
     }
@@ -82,7 +88,9 @@ try {
         row.children[1].textContent = `🟢 PASS · 3 generici · ${samples.length} confronti`;
         const details = document.createElement('details'), summary = document.createElement('summary'), pre = document.createElement('pre');
         summary.textContent = `${samples.length} casi sorgenti verificati`;
-        pre.textContent = JSON.stringify(samples, null, 2); pre.style.cssText = 'max-height:260px;overflow:auto';
+        pre.textContent = JSON.stringify(samples.map(sample => ({inputs: sample.inputs, outputs: sample.outputs, expected: sample.expected,
+            ...(Object.keys(sample.expected_state).length ? {resulting_state: sample.resulting_state, expected_state: sample.expected_state} : {}),
+            base_state: sample.base_state, state: sample.state, ...(sample.trace ? {trace: sample.trace} : {})})), null, 2); pre.style.cssText = 'max-height:260px;overflow:auto';
         details.append(summary, pre); row.children[2].append(details);
     }
     for (const entry of evidence) entry.source_cases = rowsByFunction.get(JSON.stringify([entry.package, entry.function])).samples;

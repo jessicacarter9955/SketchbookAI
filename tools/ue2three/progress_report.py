@@ -188,7 +188,7 @@ def project_progress(workspace, published, character_dir=None):
     if (blueprint_report and audit.get('status') == 'passed' and audit.get('project') == project
             and audit.get('programs_content_sha256') == blueprint_report.get('content_sha256')
             and outputs['audit_blueprint_screenshot'] and audit.get('screenshot_sha256') == outputs['audit_blueprint_screenshot']):
-        verified, cases, event_verified, event_cases = [], 0, [], 0
+        verified, cases, event_verified, event_cases, container_verified, container_cases = [], 0, [], 0, [], 0
         for entry in audit.get('evidence', []):
             program = blueprint_report.get('packages', {}).get(entry.get('package'), {}).get('functions', {}).get(entry.get('function'), {})
             samples = entry.get('source_cases', [])
@@ -201,12 +201,18 @@ def project_progress(workspace, published, character_dir=None):
                 verified.append(entry['function']); cases += len(samples)
                 if all(sample.get('expected_state') for sample in samples):
                     event_verified.append(entry['function']); event_cases += len(samples)
+                if (not program.get('self_writes') and program.get('output_fields')
+                        and 'ArrayProperty' in program.get('field_types', {}).get('self', {}).values()):
+                    container_verified.append(entry['function']); container_cases += len(samples)
         if verified and cases == audit.get('golden_source_cases'):
             milestones.append({'title': 'Funzioni con confronti sorgenti verificati', 'status': 'green',
                                'evidence': f"{len(verified)} funzioni, {cases} casi; incluse {', '.join(sorted(set(verified)))}; non prova i sistemi completi"})
             if event_verified:
                 milestones.append({'title': 'Percorsi di evento con stato verificato', 'status': 'green',
                                    'evidence': f"{len(event_verified)} percorsi, {event_cases} casi: {', '.join(event_verified)}; timer, Mover e replica esclusi"})
+            if container_verified:
+                milestones.append({'title': 'Letture di contenitori tipizzati', 'status': 'green',
+                                   'evidence': f"{len(container_verified)} funzioni, {container_cases} casi: {', '.join(container_verified)}; scritture, UI e persistenza escluse"})
     report = {'schema_version': 1, 'project': project, 'fingerprint': fingerprint,
               'scope': 'cached registry and published outputs; no full-game percentage inferred',
               'source_classes': dict(classes), 'rows': rows, 'milestones': milestones,

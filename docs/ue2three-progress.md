@@ -276,3 +276,36 @@ moved back to its original test and the complete suite passed after the fix.
 - Next: original inventory struct defaults/writes and container operations;
   typed cross-object/native adapters for remaining character/combat event paths.
 
+## 2026-10-15 · Original inventory data reads and smaller cached programs
+
+- Extended generic source type extraction to cached UserDefinedStruct/UserDefinedEnum
+  assets. Read two original inventory dependency files (23,738 bytes total), using
+  the existing parser, without launching Unreal or scanning again. Numeric enum
+  mappings come from the source enum, not digits guessed from its names.
+- Added typed struct initialization/member writes and a strictly identified
+  Engine.KismetArrayLibrary.Array_Get copy adapter. Wrong library, context offset,
+  destination owner or element type block conversion. Index overflow and invalid
+  members fail; out-of-range indices warn and restore original type defaults,
+  following UE5.7 KismetArrayLibrary.cpp and BlueprintPropertyHelpers.cpp.
+- Unlocked GetSlotData, IsSlotEmpty, GetEquippedWeapon and GetWeaponModData.
+  **101 translated /399 blocked**, 60 declarations, 263 packages uncached. Six
+  empty functions and 56 no-effect event callbacks remain separately identified.
+- Added **124 source comparisons** with manual expectations from the original slot
+  and mod switches: 54 slot reads, 54 emptiness checks, six equipped-weapon reads,
+  ten mod reads. Preserved the source's enum6 quirk (Found checks Grip while the
+  returned identifier reads Muzzle); did not change the Unreal game rules.
+- Reduced programs from 25,416,759 to **1,172,793 bytes** (95.4% fewer) by retaining
+  only referenced property descriptors. Shared source fixture baselines reduced
+  2,006,308 to **293,181 bytes** (85.4% fewer), preserving all cases and checksums.
+  Removed redundant audit state/trace copies that slowed accessibility inspection.
+- Fixed a source-type import shadowed by a local variable; corrected a standalone
+  test invocation to use unittest discovery. The earlier full suite had passed;
+  the invocation error was a missing test-module import path, not a game failure.
+- **99 Python /62 JavaScript tests pass**, editor build succeeds. Native browser:
+  **101 functions /303 generic /259 source comparisons** pass. Actual scene:
+  **24 input /35 metric /4 event /124 inventory read** cases pass; horizontal
+  movement 0.757 units. Runtime states/frames are restored after fixtures.
+  Source screenshots and DOM proofs saved under verification/source-inventory/.
+- Inventory writes, equip/unequip gameplay, persistence, UI and notifications are
+  still incomplete. Animations retain deferred 1:1 validation; lighting remains
+  last priority. Broader systems do not become green from these read-only checks.

@@ -1,6 +1,43 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { executeBlueprint } from '../src/editor/ue2three-blueprint.mjs';
+import { blueprintFixtureState } from '../src/editor/ue2three-fixtures.mjs';
+
+test('shared source fixtures reject changed packages and types and remain isolated', () => {
+    const fixture={shared_states:{base:{package:'/Game/A',source_sha256:'source',types:{'/Game/Type':'type'},state:{Items:[{Count:1}],Flag:false}}}};
+    const report={packages:{'/Game/A':{source:{source_sha256:'source'}}},type_sources:{'/Game/Type':{source_sha256:'type'}}};
+    const test={package:'/Game/A',base_state:'base',self:{Flag:true}};
+    const state=blueprintFixtureState(fixture,test,report);state.Items[0].Count=7;
+    assert.equal(fixture.shared_states.base.state.Items[0].Count,1);assert.equal(state.Flag,true);
+    assert.throws(()=>blueprintFixtureState(fixture,test,{...report,type_sources:{}}),/fixture type/);
+    assert.throws(()=>blueprintFixtureState(fixture,test,{...report,packages:{}}),/original source package/);
+    assert.throws(()=>blueprintFixtureState(fixture,{...test,base_state:'constructor'},report),/original source package/);
+});
+
+test('typed array copies and struct writes retain original nonzero defaults without aliasing', () => {
+    const schema = {type: 'StructProperty', fields: {Item: {type:'NameProperty'}, Health: {type:'DoubleProperty'}}, default: {Item:'None', Health:-1}};
+    const get = {schema_version:1, status:'translated_straight_line', output_fields:['Item'], input_fields:['Index'],
+        field_types:{self:{Items:'ArrayProperty'},local:{Index:'IntProperty',Item:'StructProperty'}},
+        schemas:{self:{Items:{type:'ArrayProperty',element:schema}},local:{Item:schema}}, steps:[
+            {op:'evaluate',value:{op:'array_get',array:{op:'get',scope:'self',field:'Items'},index:{op:'get',scope:'local',field:'Index'},
+                target:{op:'get',scope:'local',field:'Item'},element:schema}},
+            {op:'set_member',target:{op:'get',scope:'local',field:'Item'},field:'Health',member_type:'DoubleProperty',value:{op:'constant',value:50}},
+            {op:'return',value:{op:'constant',value:null}}]};
+    const state={Items:[{Item:'Source_Item',Health:90}]};
+    const valid=executeBlueprint(get,state,{Index:0});
+    assert.deepEqual(valid.outputs.Item,{Item:'Source_Item',Health:50});
+    assert.equal(state.Items[0].Health,90); assert.equal(valid.state.Items[0].Health,90);
+    const outOfBounds={...get,steps:[get.steps[0],get.steps[2]]};
+    for(const Index of [-1,1,2147483647]) {
+        const result=executeBlueprint(outOfBounds,state,{Index});
+        assert.deepEqual(result.outputs.Item,{Item:'None',Health:-1});
+        assert.equal(result.trace.some(step=>step.op==='warning'),true);
+    }
+    assert.throws(()=>executeBlueprint(get,state,{Index:0.5}),/IntProperty/);
+    assert.throws(()=>executeBlueprint(get,{Items:[{Item:'Bad'}]},{Index:0}),/Missing typed/);
+    assert.throws(()=>executeBlueprint({...get,steps:[{...get.steps[1],member_type:'IntProperty'},get.steps[2]]},state,{Index:0}),/assignment type/);
+    assert.throws(()=>executeBlueprint({...get,steps:[{...get.steps[1],value:{op:'constant',value:true}},get.steps[2]]},state,{Index:0}),/typed source member/);
+});
 
 test('event calls retain typed per-instance frames and execute the original flow stack', () => {
     const event = {schema_version: 1, status: 'translated_control_flow', source_export_index: 2, source_owner_index: 3,

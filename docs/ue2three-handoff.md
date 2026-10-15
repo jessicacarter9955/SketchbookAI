@@ -1,5 +1,30 @@
 # ue2three saved handoff · 2026-10-15
 
+Newest batch supersedes counts below: **101 translated /399 blocked**, six empty
+functions and 56 event callbacks without game effects. Added original
+GetSlotData, IsSlotEmpty, GetEquippedWeapon, GetWeaponModData: **124 independent
+source cases** cover fixed slots, four arrays, negative/out-of-range indices,
+empty/nonempty items, equipped slots and mod selection. These are source data
+reads, not complete inventory UI, equip mutations, saves or combat bindings.
+99 Python/62 JS tests and editor build pass. Browser: 303 generic +259 source
+cases; real scene: 24 input +35 metrics +4 event +124 inventory read checks, with
+0.757 horizontal displacement. Screenshots/DOM proofs:
+`build/local-scenes/ue2three/verification/source-inventory/`. Editor revision13.
+The optional live verification chunk is now **build/421.editor.min.js**; ship it
+with editor.min.js. Older 519 remains the previous compatible asset.
+`blueprint_types.py` reads original primitive UserDefinedStruct defaults and enum
+numeric mappings. Only S_InventorySlot (15,937 bytes) and E_InventorySlot_Fixers
+(7,801 bytes) were parsed additionally, using the existing bounded parser.
+Arrays are copied via the exact Engine.KismetArrayLibrary.Array_Get context;
+invalid indices restore original defaults (e.g. CurrentHP=-1) and emit warnings.
+Other contexts, nested structs, unsupported types and array mutation stay blocked.
+Program file shrank from 25,416,759 to 1,172,793 bytes despite four added functions;
+shared fixture baselines reduced 2,006,308 to 293,181 bytes without dropping cases.
+`ue2three-fixtures.mjs` verifies baseline package/type hashes before reusing them.
+Source quirk preserved: mod enum6 checks Grip for Found but returns Muzzle. No
+Unreal asset/game rule was changed. Next: Array_Set/Add/remove/length, inventory
+mutations/notifications, typed native/object adapters and source event scheduling.
+
 Latest batch: constant source event entry specialization and per-instance
 persistent frames are implemented. Current result: **97 translated / 403 blocked**,
 including six directly empty callbacks and **56 event callbacks without game

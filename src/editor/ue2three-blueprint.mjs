@@ -2,6 +2,24 @@
 import { evaluateNativeMath } from './ue2three-native-math.mjs';
 const owns = (object, key) => object != null && Object.hasOwn(object, key);
 const safeField = key => typeof key === 'string' && key.length > 0 && !['__proto__', 'constructor', 'prototype'].includes(key);
+const validPrimitive = (type, value) => type === 'BoolProperty' && typeof value === 'boolean'
+    || type === 'ByteProperty' && Number.isInteger(value) && value >= 0 && value <= 255
+    || type === 'IntProperty' && Number.isInteger(value) && value >= -2147483648 && value <= 2147483647
+    || ['FloatProperty', 'DoubleProperty'].includes(type) && typeof value === 'number' && Number.isFinite(value)
+    || ['StrProperty', 'NameProperty'].includes(type) && typeof value === 'string';
+function validateSchema(schema, value, depth = 0) {
+    if (!schema || depth > 16) throw new Error('Invalid source value schema');
+    if (schema.type === 'ArrayProperty') {
+        if (!Array.isArray(value) || value.length > 100000) throw new Error('Invalid typed source array');
+        for (const item of value) validateSchema(schema.element, item, depth+1);
+    } else if (schema.type === 'StructProperty') {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid typed source struct');
+        for (const [field, child] of Object.entries(schema.fields || {})) {
+            if (!safeField(field) || !owns(value, field)) throw new Error('Missing typed source struct field: ' + field);
+            validateSchema(child, value[field], depth+1);
+        }
+    } else if (!validPrimitive(schema.type, value)) throw new Error('Invalid typed source member: ' + schema.type);
+}
 
 export function executeBlueprint(program, self = {}, inputs = {}, { functions = {}, frames = {} } = {}) {
     return runBlueprint(program, self, inputs, functions, { remaining: 10000 }, 0, structuredClone(frames));
@@ -26,6 +44,10 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames) {
         if (!safeField(field)) throw new Error('Invalid local field');
         if (!owns(locals, field) && owns(primitiveDefaults, type)) locals[field] = primitiveDefaults[type];
     }
+    for (const [field, schema] of Object.entries(program.schemas?.local || {})) {
+        if (!safeField(field)) throw new Error('Invalid local schema field');
+        if (!owns(locals, field)) { validateSchema(schema, schema.default); locals[field] = structuredClone(schema.default); }
+    }
     for (const [frame, types] of Object.entries(program.persistent_types || {})) {
         if (!/^[1-9][0-9]*$/.test(frame)) throw new Error('Invalid persistent frame identity');
         if (!owns(frames, frame)) frames[frame] = Object.create(null);
@@ -47,11 +69,26 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames) {
             || type === 'IntProperty' && Number.isInteger(value) && value >= -2147483648 && value <= 2147483647
             || ['FloatProperty', 'DoubleProperty'].includes(type) && typeof value === 'number' && Number.isFinite(value)
             || ['StrProperty', 'NameProperty'].includes(type) && typeof value === 'string'
+            || type === 'ArrayProperty' && Array.isArray(value)
             || type === 'StructProperty' && value !== null && typeof value === 'object' && !Array.isArray(value);
         if (!valid) throw new Error(`Unsupported or invalid ${type}: ${scope}.${field}`);
+        const schema = program.schemas?.[scope]?.[field];
+        if (schema) validateSchema(schema, value);
     };
     const evaluate = (expression, depth = 0) => {
         if (!expression || depth > 48) throw new Error('Invalid Blueprint expression');
+        if (expression.op === 'array_get') {
+            const array = evaluate(expression.array, depth+1), index = evaluate(expression.index, depth+1), target = expression.target;
+            if (!Array.isArray(array) || !validPrimitive('IntProperty', index) || target?.op !== 'get'
+                || !safeField(target.field) || !['local', 'self', 'persistent'].includes(target.scope)) throw new Error('Invalid source Array_Get');
+            const inBounds = index >= 0 && index < array.length;
+            const value = inBounds ? array[index] : expression.element?.default;
+            validateSchema(expression.element, value); checkType(target.scope, target.field, value, target.frame);
+            ownerFor(target.scope, target.frame)[target.field] = structuredClone(value);
+            if (!inBounds) trace.push({source_index: sourceIndex, op: 'warning', message: 'Array_Get index out of bounds; original source type default restored'});
+            trace.push({source_index: sourceIndex, op: 'array_get', index, in_bounds: inBounds, value: structuredClone(value)});
+            return null;
+        }
         if (expression.op === 'call') {
             const callee = owns(functions, expression.function) ? functions[expression.function] : null;
             if (!callee || callee.source_export_index !== expression.export_index
@@ -161,6 +198,17 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames) {
         }
         if (step.op === 'end') throw new Error('Blueprint reached EndOfScript without return');
         if (step.op === 'evaluate') { evaluate(step.value); continue; }
+        if (step.op === 'set_member') {
+            const target = step.target;
+            if (target?.op !== 'get' || !safeField(step.field)) throw new Error('Invalid source struct assignment');
+            const structure = evaluate(target), schema = program.schemas?.[target.scope]?.[target.field];
+            if (!schema || schema.type !== 'StructProperty' || !owns(schema.fields, step.field)
+                || schema.fields[step.field].type !== step.member_type) throw new Error('Unresolved source struct assignment type');
+            const value = evaluate(step.value); validateSchema(schema.fields[step.field], value);
+            structure[step.field] = structuredClone(value);
+            trace.push({source_index: sourceIndex, op: 'set_member', scope: target.scope, field: target.field, member: step.field, value: structuredClone(value)});
+            continue;
+        }
         if (step.op === 'set' && safeField(step.field)) {
             const scope = step.scope || 'local';
             if (!['self', 'local', 'persistent'].includes(scope)) throw new Error('Invalid assignment scope');

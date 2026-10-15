@@ -1,7 +1,8 @@
 // Explicit QA fixtures act on the actual player input hook and are restored.
 // They are not gameplay rules or permanent changes to source defaults.
+import { blueprintFixtureState } from './ue2three-fixtures.mjs';
 export async function verifyLiveBlueprintInputs(player, runtime, fixture) {
-    const snapshot = runtime.snapshot(), results = [], metricResults = [], eventResults = [];
+    const snapshot = runtime.snapshot(), results = [], metricResults = [], eventResults = [], inventoryResults = [];
     const guards = runtime.report.character_guards || {};
     const priorActions = Object.fromEntries([...Object.keys(guards), 'up'].map(action => [action, !!player.actions[action]?.isPressed]));
     let movementDistance = null;
@@ -50,7 +51,7 @@ export async function verifyLiveBlueprintInputs(player, runtime, fixture) {
             const data = runtime.report.packages[test.package], library = {...data.functions, ...data.event_programs};
             for (const [name, hash] of Object.entries(test.dependencies || {}))
                 if (library[name]?.source_bytecode_sha256 !== hash) throw new Error('Event dependency source differs from fixture');
-            runtime.restore(snapshot); Object.assign(runtime.states[test.package], structuredClone(test.self));
+            runtime.restore(snapshot); Object.assign(runtime.states[test.package], blueprintFixtureState(fixture, test, runtime.report));
             const result = runtime.call(test.package, test.function, test.inputs);
             for (const [field, expected] of Object.entries(test.state))
                 if (JSON.stringify(result.state[field]) !== JSON.stringify(expected)) throw new Error('Source event state differs: ' + test.function);
@@ -58,9 +59,24 @@ export async function verifyLiveBlueprintInputs(player, runtime, fixture) {
                 expected: test.state, trace: result.trace});
             await new Promise(requestAnimationFrame);
         }
+        for (const test of fixture.cases) {
+            if (test.runtime !== 'inventory') continue;
+            const data = runtime.report.packages[test.package], program = data?.functions[test.function];
+            if (!program || program.source_bytecode_sha256 !== test.source_bytecode_sha256) throw new Error('Inventory fixture source differs from program');
+            for (const [name, hash] of Object.entries(test.dependencies || {}))
+                if (data.functions[name]?.source_bytecode_sha256 !== hash) throw new Error('Inventory dependency source differs');
+            for (const [name, hash] of Object.entries(test.types || {}))
+                if (runtime.report.type_sources?.[name]?.source_sha256 !== hash) throw new Error('Inventory source type differs');
+            runtime.restore(snapshot); Object.assign(runtime.states[test.package], blueprintFixtureState(fixture, test, runtime.report));
+            const result = runtime.call(test.package, test.function, test.inputs);
+            for (const [field, expected] of Object.entries(test.outputs))
+                if (JSON.stringify(result.outputs[field]) !== JSON.stringify(expected)) throw new Error('Inventory source differs: ' + test.function + '.' + field);
+            inventoryResults.push({source_function: test.function, outputs: result.outputs, expected: test.outputs});
+        }
         return {schema_version: 1, project: runtime.report.project, programs_content_sha256: runtime.report.content_sha256,
                 checked: results.length, metrics_checked: metricResults.length, status: 'passed', movement_distance: movementDistance,
                 movement_axis: 'horizontal_xz', results, metric_results: metricResults, events_checked: eventResults.length, event_results: eventResults,
+                inventory_checked: inventoryResults.length, inventory_results: inventoryResults,
                 scope: 'Original sprint/jump prerequisites applied to the real scene input; excludes complete Mover, timers, stamina consumption and replication'};
     } finally {
         runtime.restore(snapshot);
