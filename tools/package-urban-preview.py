@@ -5,7 +5,7 @@ import subprocess
 root=Path(__file__).resolve().parents[1]
 out=root/'artifacts'/'urban-playable'
 out.mkdir(parents=True,exist_ok=True)
-for name in ['editor.html','urban-examples.html','urban-assets.html','urban-webgpu.html','3dPicker.js','city-assets-sw.js','_headers']:
+for name in ['editor.html','sa-navigation.html','urban-examples.html','urban-assets.html','urban-webgpu.html','3dPicker.js','city-assets-sw.js','_headers']:
     shutil.copy2(root/name,out/name)
 for name in ['src/editor','build/assets','assets/roadforge','assets/urban-kits','node_modules/three']:
     shutil.copytree(root/name,out/name,dirs_exist_ok=True,ignore=shutil.ignore_patterns('*.part','__pycache__'))
@@ -35,6 +35,9 @@ shutil.copy2(root/'build/sketchbook.min.js',out/'build/sketchbook.min.js')
 bundle=root/'build/editor.bundle.js'
 if not bundle.is_file(): raise RuntimeError('Editor bundle missing. Run npm run build.')
 shutil.copy2(bundle,out/'build/editor.bundle.js')
+sa_bundle=root/'build/sa-viewer.bundle.js'
+if not sa_bundle.is_file(): raise RuntimeError('San Andreas viewer bundle missing.')
+shutil.copy2(sa_bundle,out/'build/sa-viewer.bundle.js')
 html=(out/'editor.html').read_text(encoding='utf-8')
 old='<script type="module" src="src/editor/start.js"></script>'
 if old not in html: raise RuntimeError('editor.html module script missing')

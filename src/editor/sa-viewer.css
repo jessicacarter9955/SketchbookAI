@@ -1,0 +1,11 @@
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#101d27;color:#e5f0f6;font:14px/1.5 system-ui}
+#sa-shell{display:flex;width:100%;height:100dvh;overflow:hidden}#sa-panel{width:350px;max-width:42%;min-width:300px;padding:18px;background:#192c3a;overflow:auto;border-right:1px solid #476273;z-index:1}
+#sa-panel h1{font-size:22px;margin:0 0 6px}#sa-panel h2{font-size:15px;margin:0 0 8px}#sa-panel p{color:#b9d5e2;margin:6px 0 12px}#sa-panel section{padding:12px 0;border-top:1px solid #3e5361}
+#sa-panel label:not(.sa-toggle){display:block;background:#254558;border:1px solid #63869b;padding:10px;border-radius:8px;font-weight:600;cursor:pointer}
+#sa-panel input[type=file]{max-width:100%;display:block;margin-top:10px;font-size:12px}#sa-panel .sa-toggle{display:block;padding:6px 0;cursor:pointer}
+#sa-panel button{cursor:pointer;padding:10px;border-radius:6px;background:#39718a;border:1px solid #8dc7d3;color:#fff;font-weight:650;min-height:43px}
+.sa-buttons{display:flex;flex-wrap:wrap;gap:8px}#sa-panel a{color:#96d1ff}#sa-viewport{flex:1;position:relative;min-width:0;height:100%}
+#sa-viewport canvas{display:block;width:100%!important;height:100%!important;touch-action:none}
+#sa-log{background:#0a151d;padding:9px;border-radius:7px;border:1px solid #49697f;max-height:180px;min-height:80px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;user-select:text;-webkit-user-select:text;touch-action:pan-y}
+#sa-stats{white-space:pre-wrap;overflow-wrap:anywhere}#sa-panel .sa-instructions{font-size:12px}
+@media(max-width:720px){#sa-shell{flex-direction:column-reverse}#sa-panel{width:100%;max-width:100%;min-width:0;height:48%;border:0;border-top:1px solid #476273}#sa-viewport{height:52%;flex:none}}

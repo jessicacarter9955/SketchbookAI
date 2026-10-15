@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>San Andreas · Visualizzatore mappe autentiche</title>
+<link rel="stylesheet" href="src/editor/sa-viewer.css">
+</head>
+<body>
+<main id="sa-shell">
+<aside id="sa-panel">
+<header><h1>San Andreas → Three.js</h1><p>Visualizzatore di file autentici. Nessuna mappa ricreata o asset di gioco inclusi.</p></header>
+<section><h2>1. Navigazione originale</h2>
+<label>Seleziona <code>nodes0.dat</code> … <code>nodes63.dat</code>
+<input id="sa-nodes" type="file" accept=".dat" multiple></label>
+<p>Legge gli stessi record binari di SanAndreasUnity; le linee blu rappresentano percorsi veicolari, le verdi marciapiedi e collegamenti pedonali.</p>
+</section>
+<section><h2>2. Geometria della mappa</h2>
+<label>Seleziona settori GLB ottenuti dai tuoi asset GTA SA
+<input id="sa-meshes" type="file" accept=".glb" multiple></label>
+<p>I GLB devono essere esportati con coordinate mondiali conservate e texture incorporate. Non vengono generati edifici o texture sostitutivi.</p>
+</section>
+<section><h2>3. Esplora</h2>
+<label class="sa-toggle"><input id="sa-vehicle-lines" type="checkbox" checked> Mostra corsie veicoli</label>
+<label class="sa-toggle"><input id="sa-ped-lines" type="checkbox" checked> Mostra nodi pedonali</label>
+<div class="sa-buttons"><button type="button" id="sa-focus">Inquadra import</button><button type="button" id="sa-clear">Pulisci sessione</button></div>
+<p class="sa-instructions">Mouse: trascina per ruotare, tasto destro per spostarti, rotella per zoom. Su telefono trascina con un dito, pizzica con due.</p></section>
+<section class="sa-diagnostics">
+<h2>Stato importazione</h2>
+<div id="sa-stats" aria-live="polite">Nessun dato originale caricato.</div>
+<pre id="sa-log" tabindex="0" aria-label="Log importazione selezionabile"></pre>
+<div class="sa-buttons"><button type="button" id="sa-copy">Copia log</button><button type="button" id="sa-download">Salva log .txt</button></div>
+</section>
+<p><a href="editor.html?scene=urban-photoreal&amp;play=1">Torna a City Player</a> · <a href="https://github.com/jessicacarter9955/SketchbookAI/blob/codex/sa-navigation-port/docs/sa-navigation-port.md" target="_blank" rel="noopener noreferrer">Guida e limiti</a></p>
+</aside>
+<div id="sa-viewport" role="img" aria-label="Vista 3D interattiva degli asset San Andreas importati"></div>
+</main>
+<script defer src="build/sa-viewer.bundle.js"></script>
+</body></html>
