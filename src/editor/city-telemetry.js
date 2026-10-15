@@ -11,9 +11,58 @@
   const panel=document.getElementById('loading-screen');
   const details=document.createElement('details');
   details.className='city-telemetry';details.open=true;
-  details.innerHTML='<summary>Diagnostica in tempo reale · ogni 2,5 secondi</summary><div id="city-debug-summary">Preparazione monitor…</div><pre id="city-debug-log" aria-live="off"></pre>';
+  details.innerHTML='<summary>Diagnostica in tempo reale · ogni 2,5 secondi</summary>'+
+    '<div class="city-log-actions" role="group" aria-label="Azioni sul log">'+
+    '<button type="button" data-city-copy>Copia log</button>'+
+    '<button type="button" data-city-select>Seleziona testo</button>'+
+    '<button type="button" data-city-download>Salva .txt</button></div>'+
+    '<p data-copy-feedback class="city-copy-feedback" role="status" aria-live="polite">Puoi anche selezionare il testo manualmente.</p>'+
+    '<textarea class="city-copy-text" readonly hidden aria-label="Log completo selezionabile"></textarea>'+
+    '<div id="city-debug-summary">Preparazione monitor…</div>'+
+    '<pre id="city-debug-log" tabindex="0" aria-label="Log in tempo reale, selezionabile" aria-live="off"></pre>';
   panel?.querySelector('.city-loading-panel')?.append(details);
   const summary=details.querySelector('#city-debug-summary'),logEl=details.querySelector('#city-debug-log');
+  const logText=details.querySelector('.city-copy-text'),feedback=details.querySelector('[data-copy-feedback]');
+  const logReport=()=>[
+    'Sketchbook City · Diagnostica avvio',
+    'Scena: '+(new URLSearchParams(location.search).get('scene')||'predefinita'),
+    'Fase: '+lastStage,
+    'Messaggio: '+(document.getElementById('city-load-message')?.textContent||''),
+    'Contatore: '+(document.getElementById('city-load-counter')?.textContent||''),
+    'Stato: '+(summary?.textContent||''),
+    'Snapshot: '+JSON.stringify(globalThis.cityDiagnostics?.snapshot()||{},null,2),
+    'Eventi in ordine cronologico:',
+    ...history
+  ].join('\n');
+  function selectReport(){
+    details.open=true;logText.hidden=false;logText.value=logReport();
+    logText.focus({preventScroll:true});logText.select();
+    feedback.textContent='Testo selezionato. Puoi copiare con Ctrl+C o dal menu del telefono.';
+    return logText.value;
+  }
+  details.querySelector('[data-city-select]').onclick=selectReport;
+  details.querySelector('[data-city-copy]').onclick=async()=>{
+    const text=selectReport();
+    try {
+      if(navigator.clipboard?.writeText)await navigator.clipboard.writeText(text);
+      else if(!document.execCommand('copy'))throw new Error('Copia non supportata');
+      feedback.textContent='Log copiato negli appunti.';
+    }catch(error){feedback.textContent='Selezione pronta: usa Ctrl+C o la voce Copia del telefono.';}
+  };
+  details.querySelector('[data-city-download]').onclick=()=>{
+    const blob=new Blob([logReport()],{type:'text/plain;charset=utf-8'});
+    const url=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=url;a.download='sketchbook-city-log.txt';document.body.append(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1500);
+    feedback.textContent='Log .txt preparato per il salvataggio.';
+  };
+  if(new URLSearchParams(location.search).get('scene')==='urban-photoreal-dds'){
+    const alternate=document.createElement('a');
+    alternate.className='city-dds-alternate';
+    alternate.href='editor.html?scene=urban-photoreal&play=1';
+    alternate.textContent='Apri la città senza DDS (se gli asset armati mancano)';
+    panel?.querySelector('.city-load-actions')?.append(alternate);
+  }
   function line(s,type='',activity=true){
     const txt='['+new Date().toLocaleTimeString()+'] '+s;
     history.push(txt);if(history.length>100)history.shift();

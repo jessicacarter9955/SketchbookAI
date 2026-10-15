@@ -1,1 +1,23 @@
 .city-telemetry{margin:12px 0 0;text-align:left;color:#d5e5ee;font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;max-width:min(720px,90vw)}.city-telemetry summary{cursor:pointer;color:#ade8df;font:600 13px system-ui}.city-telemetry #city-debug-summary{white-space:pre-wrap;overflow-wrap:anywhere;background:#0b1723;padding:9px;border:1px solid #344a59;border-radius:6px;margin-top:8px}.city-telemetry #city-debug-log{height:190px;overflow-y:auto;white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0 0;padding:8px;background:#09131c;color:#aaccdf;border:1px solid #344a59;border-radius:6px;font:11px/1.55 ui-monospace,monospace}.city-telemetry .log-error{color:#ff9d93}.city-telemetry .log-warn{color:#ffe39d}.city-debug-always #loading-screen .city-telemetry{position:fixed;bottom:12px;left:12px;z-index:10020;background:#142433ef;box-shadow:0 8px 28px #0008;padding:10px;max-height:65vh;width:min(690px,92vw);border-radius:8px;pointer-events:auto}.city-debug-always #loading-screen{pointer-events:none!important;background:transparent!important}.city-debug-always #loading-screen>.city-loading-panel{pointer-events:none!important}.city-debug-always #loading-screen .city-telemetry{pointer-events:auto!important}#loading-screen[style*="display: none"] .city-telemetry{display:none!important}
+/* Loading-screen logs must remain selectable even if gameplay disables touch selection. */
+#loading-screen,#loading-screen .city-loading-panel{touch-action:pan-y!important;overscroll-behavior:contain}
+#loading-screen .city-telemetry,#loading-screen .city-telemetry #city-debug-summary,
+#loading-screen .city-telemetry #city-debug-log,
+#loading-screen .city-telemetry #city-debug-log *{
+  -webkit-user-select:text!important;user-select:text!important;
+  touch-action:pan-y!important;pointer-events:auto!important;
+}
+.city-telemetry #city-debug-log{cursor:text;overflow:auto}
+.city-telemetry .city-log-actions{display:flex;flex-wrap:wrap;gap:7px;margin:9px 0}
+.city-telemetry .city-log-actions button{min-height:44px;padding:9px 12px;background:#b5efd3;color:#0d2635;border:1px solid #78c4a3;border-radius:7px;cursor:pointer;touch-action:manipulation}
+.city-telemetry .city-copy-feedback{font:12px/1.4 system-ui;color:#dff2ff}
+.city-telemetry .city-copy-text{
+  display:block;box-sizing:border-box;width:100%;height:180px;resize:vertical;
+  color:#ecf5fd;background:#0a1621;border:1px solid #84acc4;border-radius:8px;
+  padding:9px;white-space:pre;overflow:auto;touch-action:pan-y!important;
+  -webkit-user-select:text!important;user-select:text!important;pointer-events:auto!important;
+  font:12px/1.45 ui-monospace,Consolas,monospace;
+}
+.city-telemetry .city-copy-text[hidden]{display:none!important}
+.city-load-actions .city-dds-alternate{display:inline-flex;align-items:center;min-height:42px;border:1px solid #7db3d3;border-radius:7px;padding:7px 12px;color:#e5f8ff;font:600 12px system-ui;text-decoration:none}
+@media(max-width:600px){.city-telemetry .city-log-actions button{flex:1 1 120px}}
