@@ -9,7 +9,7 @@ if (request.sourceGithubRepo) {
   const repoUrl = new URL(request.sourceGithubRepo);
   if (repoUrl.protocol !== "https:" || repoUrl.hostname !== "github.com" ||
       repoUrl.username || repoUrl.password || repoUrl.search || repoUrl.hash ||
-      !/^\\/[A-Za-z0-9_.-]+\\/[A-Za-z0-9_.-]+(?:\\.git)?\\/?$/.test(repoUrl.pathname)) {
+      repoUrl.pathname.split('/').filter(Boolean).length !== 2) {
     throw new Error("Only simple public https://github.com/owner/repository URLs are supported");
   }
   const targetRoot = mkdtempSync(join(tmpdir(), "rea-target-"));
