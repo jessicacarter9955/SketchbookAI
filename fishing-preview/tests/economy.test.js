@@ -1,0 +1,10 @@
+import {test} from 'node:test';import {strict as assert} from 'node:assert';
+import {freshState,capacity,price,buy,addCatch,sell,canSail,sail,BIOMES,formatMoney,loadSave,attraction,rodCount,fishPerCatch} from '../src/systems.js';
+test('new player has two capacity and one rod',()=>{const s=freshState();assert.equal(capacity(s),2);assert.equal(rodCount(s),1);assert.equal(fishPerCatch(s),1);});
+test('first backpack step is a real cash constraint',()=>{const s=freshState();assert.equal(buy(s,'bag'),false);s.coins=price(s,'bag');assert.equal(buy(s,'bag'),true);assert.equal(capacity(s),5);assert.equal(s.coins,0);});
+test('fish cannot exceed backpack and selling empties it',()=>{const s=freshState();for(let i=0;i<10;i++)addCatch(s);assert.equal(s.bag.length,2);const amount=sell(s);assert.ok(amount>0);assert.equal(s.bag.length,0);assert.equal(s.coins,amount);});
+test('stack catches fit into available capacity',()=>{const s=freshState();s.levels.stack=5;s.levels.bag=1;assert.equal(addCatch(s),5);assert.equal(addCatch(s),0);});
+test('sailing requires logs, persists wallet and upgrades',()=>{const s=freshState();s.coins=152;s.levels.lure=2;assert.equal(canSail(s),false);s.logs=BIOMES[0].goal;assert.equal(sail(s),true);assert.equal(s.biome,1);assert.equal(s.levels.lure,2);assert.equal(s.coins,152);assert.equal(s.logs,0);});
+test('save loader handles invalid save and clamps biome',()=>{assert.equal(loadSave('bad').biome,0);assert.equal(loadSave('{"biome":999}').biome,3);});
+test('progression prices grow and modifiers apply',()=>{const s=freshState();const p=price(s,'lure');s.coins=1000;assert.equal(buy(s,'lure'),true);assert.ok(price(s,'lure')>p);assert.ok(attraction(s)>2.1);});
+test('money format works at large totals',()=>{assert.equal(formatMoney(1500),'$1.50K');assert.equal(formatMoney(2000000),'$2.00M');});
