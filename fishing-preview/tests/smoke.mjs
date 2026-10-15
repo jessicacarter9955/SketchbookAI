@@ -16,6 +16,21 @@ assert.equal(await page.locator('#toasts .toast').count(),0,'A routine cast must
 
 const economy=await page.evaluate(()=>{const d=window.__FISHING_DEBUG__;d.grantCoins(1000);const bought=d.buy('bag');d.addFish();d.addFish();const cash=d.sell();return {bought,cash,bag:d.getState().bag.length,lv:d.getState().levels.bag}});
 assert(economy.bought);assert(economy.lv>=1);assert(economy.cash>0);assert.equal(economy.bag,0);
+const rods=await page.evaluate(()=>{
+ const d=window.__FISHING_DEBUG__;
+ d.grantCoins(200000);
+ const extra1=d.buy('rods'),extra2=d.buy('rods');
+ const before=d.getBobbers().filter(b=>b.status!=='ready').length;
+ d.cast(10,-3);
+ const afterFirst=d.getBobbers().filter(b=>b.status!=='ready').length;
+ d.cast(11,3);
+ const afterSecond=d.getBobbers().filter(b=>b.status!=='ready').length;
+ return {extra1,extra2,before,afterFirst,afterSecond,bobbers:d.getBobbers()};
+});
+assert(rods.extra1&&rods.extra2);
+assert.equal(rods.afterFirst-rods.before,1,'one click must cast only one extra rod');
+assert.equal(rods.afterSecond-rods.afterFirst,1,'another click must cast only one rod');
+
 await page.locator('#skillsButton').click();await page.getByText('SKILL TREE').first().waitFor();await page.screenshot({path:'smoke-upgrades.png'});
 await page.locator('#closePanel').click();
 await page.locator('#editorButton').click();await page.getByText('ISLAND EDITOR').first().waitFor();await page.screenshot({path:'smoke-editor.png'});

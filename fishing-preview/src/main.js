@@ -90,13 +90,36 @@ function advanceBobbers(dt){let bite=null;for(let i=0;i<bobVisuals.length;i++){c
  if(bite){const p=bite.group.position.clone().project(camera);if(p.z>-1&&p.z<1){exclam.style.display='grid';exclam.style.left=`${(p.x*.5+.5)*innerWidth}px`;exclam.style.top=`${(-p.y*.5+.5)*innerHeight-23}px`; }else exclam.style.display='none'; }else exclam.style.display='none';
  drawLines();$('fishButton').querySelector('b').textContent=bite?'HOOK FISH!':'CAST LINE';$('fishButton').querySelector('small').textContent=bite?'BEFORE IT ESCAPES':'HOLD TO THROW';
 }
-function doCast(target=null){if(paused)return;const bitten=bobVisuals.find(b=>b.status==='bite');if(bitten){bitten.status='reeling';bitten.timer=0;bitten.target.copy(bitten.group.position);state.stats.casts+=0;return;}
- const active=bobVisuals.filter(b=>b.status==='ready');if(!active.length){notify('🎣 Your lines are already fishing!');return;}
- const reach=range(state),charge=target?.charge||.7;const nearX=fox.position.x,nearZ=fox.position.z;
- // Rods can cast together: spread the cast points around the same target.
- let aim=target?.point||new THREE.Vector3(nearX+reach*.82,.1,nearZ);const dx=aim.x-nearX,dz=aim.z-nearZ,len=Math.hypot(dx,dz)||1;const dist=Math.min(reach,Math.max(4.0,len*lerp(.65,1.0,charge)));const ax=dx/len,az=dz/len;
- for(let i=0;i<active.length;i++){const b=active[i],off=(i-(active.length-1)/2)*.67;b.status='casting';b.timer=0;b.flight=0;b.fish=null;b.start.set(nearX,1.85,nearZ);b.target.set(nearX+ax*dist-az*off,.08,nearZ+az*dist+ax*off);if(b.target.x<2.8)b.target.x=2.8+i*.36;b.group.position.copy(b.start);b.group.visible=true;state.stats.casts++;}
- if(soundOn)beep(350,.10,.045);notify(`🎣 ${active.length} line${active.length>1?'s':''} cast!`);}
+// Every purchased rod owns an independent cast. A click on a biting float hooks
+// that float; a click elsewhere casts exactly one ready line at the aimed point.
+function doCast(target=null){
+ if(paused)return;
+ const biting=bobVisuals.filter(b=>b.status==='bite');
+ const point=target?.point;
+ let hooked=null;
+ if(biting.length){
+   if(target?.forceHook||!point)hooked=biting[0];
+   else{
+     const nearest=biting.reduce((a,b)=>!a||b.group.position.distanceToSquared(point)<a.group.position.distanceToSquared(point)?b:a,null);
+     if(nearest&&Math.hypot(nearest.group.position.x-point.x,nearest.group.position.z-point.z)<Math.max(1,Math.min(2.8,attraction(state)*.4)))hooked=nearest;
+   }
+ }
+ if(hooked){hooked.status='reeling';hooked.timer=0;hooked.target.copy(hooked.group.position);return;}
+ const b=bobVisuals.find(x=>x.status==='ready');
+ if(!b){notify('All your lines are currently fishing. Wait for a bite or buy more rods.');return;}
+ const reach=range(state),charge=target?.charge??.7,nearX=fox.position.x,nearZ=fox.position.z;
+ const aim=point||new THREE.Vector3(nearX+reach*.82,.1,nearZ);
+ const dx=aim.x-nearX,dz=aim.z-nearZ,len=Math.hypot(dx,dz)||1;
+ const dist=Math.min(reach,Math.max(4.0,len*lerp(.65,1.0,charge)));
+ const ax=dx/len,az=dz/len;
+ b.status='casting';b.timer=0;b.flight=0;b.fish=null;
+ b.start.set(nearX,1.85,nearZ);
+ b.target.set(Math.max(2.8,nearX+ax*dist),.08,nearZ+az*dist);
+ b.group.position.copy(b.start);b.group.visible=true;
+ state.stats.casts++;
+ if(soundOn)beep(350,.10,.045);
+ notify('🎣 Line cast!');
+}
 function spawnSplash(p,color){for(let i=0;i<9;i++){const v=mesh(new THREE.SphereGeometry(.08,5,4),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.92}),scene,p.x,.18,p.z,rnd(.5,1.2),rnd(.3,1),rnd(.4,.9),false);fx.push({mesh:v,life:rnd(.32,.75),vel:new THREE.Vector3(rnd(-1.4,1.4),rnd(1.2,3.1),rnd(-1.4,1.4))});}}
 function updateFx(dt){for(let i=fx.length-1;i>=0;i--){const f=fx[i];f.life-=dt;f.vel.y-=8*dt;f.mesh.position.addScaledVector(f.vel,dt);f.mesh.material.opacity=Math.max(0,f.life*1.4);if(f.life<=0){scene.remove(f.mesh);f.mesh.geometry.dispose();f.mesh.material.dispose();fx.splice(i,1);}}}
 function beep(hz,dur=.1,vol=.05){if(!soundOn)return;try{if(!window.audioCtx)window.audioCtx=new(window.AudioContext||window.webkitAudioContext)();const ctx=window.audioCtx,o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.setValueAtTime(hz,ctx.currentTime);o.frequency.exponentialRampToValueAtTime(hz*.7,ctx.currentTime+dur);g.gain.setValueAtTime(vol,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+dur);o.connect(g);g.connect(ctx.destination);o.start();o.stop(ctx.currentTime+dur);}catch{}}
@@ -150,7 +173,7 @@ function getWaterPoint(e){const rect=renderer.domElement.getBoundingClientRect()
 function toggleSkills(){if(!$('panelOverlay').classList.contains('hidden'))closePanel();else openPanel('skills');}
 window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k)&&!e.target.matches('input,textarea,select'))e.preventDefault();if(e.target.matches('input,textarea,select'))return;keys[k]=true;if(e.repeat)return;if(k==='e')interact();if(k===' ')toggleSkills();if(k==='escape')closePanel();if(k==='f')doCast();if(k==='r')save();});window.addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
 renderer.domElement.addEventListener('pointerdown',e=>{if(paused||e.button!==0)return;pointerDown={time:performance.now(),point:getWaterPoint(e)};});renderer.domElement.addEventListener('pointerup',e=>{if(!pointerDown||paused||e.button!==0)return;const charge=clamp((performance.now()-pointerDown.time)/650,.24,1);const target=pointerDown.point;pointerDown=null;doCast({point:target,charge});});
-$('fishButton').addEventListener('pointerdown',e=>{pointerDown={time:performance.now(),point:new THREE.Vector3(fox.position.x+range(state),.1,fox.position.z+.4)};e.stopPropagation();});$('fishButton').addEventListener('pointerup',e=>{const charge=pointerDown?clamp((performance.now()-pointerDown.time)/650,.25,1):.7;const point=pointerDown?.point;pointerDown=null;doCast({point,charge});});$('sellButton').onclick=sellAtBarrel;$('skillsButton').onclick=()=>openPanel('skills');$('closePanel').onclick=closePanel;$('panelOverlay').onclick=e=>{if(e.target===$('panelOverlay'))closePanel();};$('editorButton').onclick=()=>openPanel('editor');$('saveButton').onclick=()=>{save();notify('☁ Progress saved on this device');};$('soundToggle').onclick=()=>{soundOn=!soundOn;$('soundToggle').textContent=soundOn?'♫ ON':'♫ OFF';};$('sailButton').onclick=doSail;
+$('fishButton').addEventListener('pointerdown',e=>{pointerDown={time:performance.now(),point:new THREE.Vector3(fox.position.x+range(state),.1,fox.position.z+.4)};e.stopPropagation();});$('fishButton').addEventListener('pointerup',e=>{const charge=pointerDown?clamp((performance.now()-pointerDown.time)/650,.25,1):.7;const point=pointerDown?.point;pointerDown=null;doCast({point,charge,forceHook:bobVisuals.some(b=>b.status==='bite')});});$('sellButton').onclick=sellAtBarrel;$('skillsButton').onclick=()=>openPanel('skills');$('closePanel').onclick=closePanel;$('panelOverlay').onclick=e=>{if(e.target===$('panelOverlay'))closePanel();};$('editorButton').onclick=()=>openPanel('editor');$('saveButton').onclick=()=>{save();notify('☁ Progress saved on this device');};$('soundToggle').onclick=()=>{soundOn=!soundOn;$('soundToggle').textContent=soundOn?'♫ ON':'♫ OFF';};$('sailButton').onclick=doSail;
 window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
 function automation(dt){autoClock+=dt;deliveryClock+=dt;
  const active=level(state,'angler'),drones=level(state,'drone');const autoRate=active*.3+drones*.55;
@@ -162,4 +185,4 @@ function animate(){requestAnimationFrame(animate);const dt=Math.min(.05,clock.ge
 const clock=new THREE.Clock();
 $('canvas-wrap').prepend(renderer.domElement);renderer.setSize(innerWidth,innerHeight);syncBobbers();rebuildWorld();initJoystick();$('loading').remove();$('app').classList.remove('hidden');hud();animate();
 // An explicit debug contract for in-browser smoke tests and local preview automation.
-window.__FISHING_DEBUG__={getState:()=>clone(state),getMap:()=>clone(map),cast:()=>doCast(),buy:id=>{const ok=buy(state,id);if(ok){syncBobbers();hud();save();}return ok;},grantCoins:n=>{awardCoins(state,Math.max(0,Math.min(1e15,n)));hud();save();},addFish:()=>{const r=addCatch(state);hud();return r;},sell:()=>{const r=sell(state);hud();return r;},nextIsland:()=>{state.logs=BIOMES[state.biome].goal;return doSail();},reloadWorld:()=>rebuildWorld()};
+window.__FISHING_DEBUG__={getState:()=>clone(state),getMap:()=>clone(map),getBobbers:()=>bobVisuals.map(b=>({status:b.status,x:b.group.position.x,z:b.group.position.z})),cast:(x,z)=>doCast(x==null?null:{point:new THREE.Vector3(x,.1,z),charge:1}),buy:id=>{const ok=buy(state,id);if(ok){syncBobbers();hud();save();}return ok;},grantCoins:n=>{awardCoins(state,Math.max(0,Math.min(1e15,n)));hud();save();},addFish:()=>{const r=addCatch(state);hud();return r;},sell:()=>{const r=sell(state);hud();return r;},nextIsland:()=>{state.logs=BIOMES[state.biome].goal;return doSail();},reloadWorld:()=>rebuildWorld()};
