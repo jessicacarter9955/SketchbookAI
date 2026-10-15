@@ -1,0 +1,61 @@
+name: REA source clone and smoke test
+
+on:
+  push:
+    branches:
+      - tools/rea-sandbox
+    paths:
+      - .github/workflows/rea-sandbox.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  clone-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out sandbox branch
+        uses: actions/checkout@v4
+
+      - name: Prepare supported Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Clone REA official repository
+        run: |
+          git clone --depth 1 https://github.com/morluto/rea.git /tmp/rea-source
+          git -C /tmp/rea-source rev-parse HEAD | tee rea-source-commit.txt
+          git -C /tmp/rea-source remote -v
+
+      - name: Pack cloned source for reuse
+        run: |
+          tar --exclude=.git -czf rea-source.tar.gz -C /tmp/rea-source .
+
+      - name: Install released REA CLI
+        run: |
+          npm install --global rea-agents@6.5.0
+          rea --help > rea-help.txt
+          sed -n '1,80p' rea-help.txt
+
+      - name: Analyze small JavaScript fixture
+        run: |
+          mkdir -p /tmp/rea-fixture
+          printf 'export function double(value) { return value * 2; }\n' > /tmp/rea-fixture/example.js
+          rea analyze-javascript-application /tmp/rea-fixture --json > rea-analysis.json
+          test -s rea-analysis.json
+
+      - name: Publish source and analysis artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rea-clone-and-test
+          path: |
+            rea-source.tar.gz
+            rea-source-commit.txt
+            rea-help.txt
+            rea-analysis.json
+          retention-days: 7
+          if-no-files-found: warn
