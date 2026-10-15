@@ -117,6 +117,19 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         obj, call = value.get('ObjectExpression', {}), value.get('ContextExpression', {})
         if (kind(obj) == 'EX_ObjectConst' and import_path(package, obj.get('Value')) == ('/Script/Engine', 'Default__KismetArrayLibrary')
                 and kind(call) == 'EX_FinalFunction'
+                and import_path(package, call.get('StackNode')) == ('/Script/Engine', 'KismetArrayLibrary', 'Array_Length')):
+            args = call.get('Parameters', [])
+            if len(args) != 1 or kind(args[0]) != 'EX_InstanceVariable':
+                raise BlueprintTranslationError('Unsupported Array_Length source arguments')
+            name = field(args[0].get('Variable')); cls = package.export(owner)
+            prop = next((p for p in (cls or {}).get('LoadedProperties', []) if p.get('Name') == name), {})
+            schema = property_schema(package, prop)
+            if (not schema or schema['type'] != 'ArrayProperty' or value.get('Offset') != memory_size(call, package=package)
+                    or args[0].get('Variable', {}).get('New', {}).get('ResolvedOwner') != owner):
+                raise BlueprintTranslationError('Unresolved Array_Length source type, owner or context offset')
+            return {'op': 'array_length', 'array': expression(args[0], reads, outputs, depth+1, package, owner)}
+        if (kind(obj) == 'EX_ObjectConst' and import_path(package, obj.get('Value')) == ('/Script/Engine', 'Default__KismetArrayLibrary')
+                and kind(call) == 'EX_FinalFunction'
                 and import_path(package, call.get('StackNode')) == ('/Script/Engine', 'KismetArrayLibrary', 'Array_Get')):
             args = call.get('Parameters', [])
             if len(args) != 3 or kind(args[0]) != 'EX_InstanceVariable' or kind(args[2]) not in ('EX_LocalVariable', 'EX_LocalOutVariable'):

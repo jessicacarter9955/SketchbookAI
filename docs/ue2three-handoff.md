@@ -1,5 +1,17 @@
 # ue2three saved handoff · 2026-10-15
 
+Current batch: **104 translated /396 blocked**. Exact Array_Length source adapter
+unlocks CountItemByID, FindItemByID and HasItemByID. Added 24 independent source
+cases (283 total), including empty arrays, missing IDs, case-insensitive names,
+first-match searches, negative quantities and int32 maximum. Source CountItemByID
+returns the LAST matching quantity, not a stack sum; original behavior preserved.
+100 Python/62 JS tests and editor build pass. Native browser: 312 generic +283
+source cases; real scene: 24 inputs +35 metrics +4 events +148 inventory reads,
+0.671 horizontal displacement. No browser errors. Evidence:
+uild/local-scenes/ue2three/verification/source-search/. Editor revision14.
+10 scoped checkpoints verified; the full inventory/game systems remain yellow/red.
+Next: original inventory mutations and notifications, typed object/native adapters.
+
 Newest batch supersedes counts below: **101 translated /399 blocked**, six empty
 functions and 56 event callbacks without game effects. Added original
 GetSlotData, IsSlotEmpty, GetEquippedWeapon, GetWeaponModData: **124 independent

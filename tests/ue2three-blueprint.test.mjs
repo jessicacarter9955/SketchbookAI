@@ -24,6 +24,9 @@ test('typed array copies and struct writes retain original nonzero defaults with
             {op:'set_member',target:{op:'get',scope:'local',field:'Item'},field:'Health',member_type:'DoubleProperty',value:{op:'constant',value:50}},
             {op:'return',value:{op:'constant',value:null}}]};
     const state={Items:[{Item:'Source_Item',Health:90}]};
+    const length={...get,output_fields:[],steps:[{op:'return',value:{op:'array_length',array:{op:'get',scope:'self',field:'Items'}}}]};
+    assert.equal(executeBlueprint(length,state,{Index:0}).value,1);
+    assert.equal(executeBlueprint(length,{Items:[]},{Index:0}).value,0);
     const valid=executeBlueprint(get,state,{Index:0});
     assert.deepEqual(valid.outputs.Item,{Item:'Source_Item',Health:50});
     assert.equal(state.Items[0].Health,90); assert.equal(valid.state.Items[0].Health,90);

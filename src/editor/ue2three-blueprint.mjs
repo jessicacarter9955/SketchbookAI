@@ -77,6 +77,11 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames) {
     };
     const evaluate = (expression, depth = 0) => {
         if (!expression || depth > 48) throw new Error('Invalid Blueprint expression');
+        if (expression.op === 'array_length') {
+            const array = evaluate(expression.array, depth+1);
+            if (!Array.isArray(array)) throw new Error('Invalid source Array_Length');
+            return array.length;
+        }
         if (expression.op === 'array_get') {
             const array = evaluate(expression.array, depth+1), index = evaluate(expression.index, depth+1), target = expression.target;
             if (!Array.isArray(array) || !validPrimitive('IntProperty', index) || target?.op !== 'get'

@@ -309,3 +309,20 @@ moved back to its original test and the complete suite passed after the fix.
 - Inventory writes, equip/unequip gameplay, persistence, UI and notifications are
   still incomplete. Animations retain deferred 1:1 validation; lighting remains
   last priority. Broader systems do not become green from these read-only checks.
+
+## 2026-10-15 · Original inventory searches and loop bounds
+
+- Strict Engine.KismetArrayLibrary.Array_Length adapter uses original source array,
+  property owner/type and verified context offset. Reuses existing verified flow
+  stack execution for source loops; no Unreal startup or new scan was required.
+- Unlocked CountItemByID, FindItemByID and HasItemByID: **104 translated /396
+  blocked**. Empty callbacks and uncached packages remain explicitly separated.
+- 24 independent comparisons cover empty/missing/duplicate/case-insensitive IDs,
+  negative quantities and int32 maximum. Preserved original CountItemByID quirk:
+  it returns the last matching stack quantity rather than summing quantities.
+- **100 Python /62 JS tests pass**, editor build succeeds. Browser audit passes
+  **312 generic /283 source cases**. Actual scene passes **24 input /35 metric
+  /4 event /148 inventory read checks**, horizontal movement 0.671 units, no console
+  errors. Saved screenshots and DOM evidence: verification/source-search/.
+- Checklist refreshed with current program and screenshot hashes: ten scoped
+  checkpoints verified. Complete inventory mutations, UI and gameplay stay open.

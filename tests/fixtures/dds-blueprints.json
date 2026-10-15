@@ -6567,6 +6567,879 @@
         "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161"
       },
       "base_state": "inventory-defaults"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "CountItemByID",
+      "source_bytecode_sha256": "87185a76b1e9f9423b9fa451ef34861086962cc1b8f34d4339defd644f9d1ba8",
+      "base_state": "inventory-defaults",
+      "self": {
+        "CarryContents": []
+      },
+      "inputs": {
+        "ItemID": "A"
+      },
+      "outputs": {
+        "TotalQuantity": 0
+      },
+      "runtime": "inventory",
+      "note": "Original loop expectations; Count preserves the last matching quantity instead of summing stacks"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "HasItemByID",
+      "source_bytecode_sha256": "ac8bb00a83458c163b103f1a49925b6660db2c9517d97084223a3edd77afda17",
+      "base_state": "inventory-defaults",
+      "self": {
+        "CarryContents": []
+      },
+      "inputs": {
+        "SearchItemID": "A"
+      },
+      "outputs": {
+        "FoundIndex": -1,
+        "bFound": false
+      },
+      "runtime": "inventory",
+      "note": "Original loop expectations; Count preserves the last matching quantity instead of summing stacks"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "FindItemByID",
+      "source_bytecode_sha256": "00dbca8c5b07c4657e13b8eac1fde23f3adefe0b91603e34ec92519efbd191b2",
+      "base_state": "inventory-defaults",
+      "self": {
+        "CarryContents": []
+      },
+      "inputs": {
+        "ItemID": "A"
+      },
+      "outputs": {
+        "SlotType": 0,
+        "SlotIndex": 0,
+        "bFound": false
+      },
+      "runtime": "inventory",
+      "note": "Original loop expectations; Count preserves the last matching quantity instead of summing stacks"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "CountItemByID",
+      "source_bytecode_sha256": "87185a76b1e9f9423b9fa451ef34861086962cc1b8f34d4339defd644f9d1ba8",
+      "base_state": "inventory-defaults",
+      "self": {
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "A",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 2,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          }
+        ]
+      },
+      "inputs": {
+        "ItemID": "A"
+      },
+      "outputs": {
+        "TotalQuantity": 2
+      },
+      "runtime": "inventory",
+      "note": "Original loop expectations; Count preserves the last matching quantity instead of summing stacks"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "HasItemByID",
+      "source_bytecode_sha256": "ac8bb00a83458c163b103f1a49925b6660db2c9517d97084223a3edd77afda17",
+      "base_state": "inventory-defaults",
+      "self": {
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "A",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 2,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          }
+        ]
+      },
+      "inputs": {
+        "SearchItemID": "A"
+      },
+      "outputs": {
+        "FoundIndex": 0,
+        "bFound": true
+      },
+      "runtime": "inventory",
+      "note": "Original loop expectations; Count preserves the last matching quantity instead of summing stacks"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "FindItemByID",
+      "source_bytecode_sha256": "00dbca8c5b07c4657e13b8eac1fde23f3adefe0b91603e34ec92519efbd191b2",
+      "base_state": "inventory-defaults",
+      "self": {
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "A",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 2,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          }
+        ]
+      },
+      "inputs": {
+        "ItemID": "A"
+      },
+      "outputs": {
+        "SlotType": 15,
+        "SlotIndex": 0,
+        "bFound": true
+      },
+      "runtime": "inventory",
+      "note": "Original loop expectations; Count preserves the last matching quantity instead of summing stacks"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "CountItemByID",
+      "source_bytecode_sha256": "87185a76b1e9f9423b9fa451ef34861086962cc1b8f34d4339defd644f9d1ba8",
+      "base_state": "inventory-defaults",
+      "self": {
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "B",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 5,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          },
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "A",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 2,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          },
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "A",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 7,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          }
+        ]
+      },
+      "inputs": {
+        "ItemID": "A"
+      },
+      "outputs": {
+        "TotalQuantity": 7
+      },
+      "runtime": "inventory",
+      "note": "Original loop expectations; Count preserves the last matching quantity instead of summing stacks"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "HasItemByID",
+      "source_bytecode_sha256": "ac8bb00a83458c163b103f1a49925b6660db2c9517d97084223a3edd77afda17",
+      "base_state": "inventory-defaults",
+      "self": {
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "B",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 5,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          },
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "A",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 2,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          },
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "A",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 7,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          }
+        ]
+      },
+      "inputs": {
+        "SearchItemID": "A"
+      },
+      "outputs": {
+        "FoundIndex": 1,
+        "bFound": true
+      },
+      "runtime": "inventory",
+      "note": "Original loop expectations; Count preserves the last matching quantity instead of summing stacks"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "FindItemByID",
+      "source_bytecode_sha256": "00dbca8c5b07c4657e13b8eac1fde23f3adefe0b91603e34ec92519efbd191b2",
+      "base_state": "inventory-defaults",
+      "self": {
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "B",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 5,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          },
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "A",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 2,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          },
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "A",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 7,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          }
+        ]
+      },
+      "inputs": {
+        "ItemID": "A"
+      },
+      "outputs": {
+        "SlotType": 15,
+        "SlotIndex": 1,
+        "bFound": true
+      },
+      "runtime": "inventory",
+      "note": "Original loop expectations; Count preserves the last matching quantity instead of summing stacks"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "CountItemByID",
+      "source_bytecode_sha256": "87185a76b1e9f9423b9fa451ef34861086962cc1b8f34d4339defd644f9d1ba8",
+      "base_state": "inventory-defaults",
+      "self": {
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "a",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 3,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          },
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "A",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 4,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          }
+        ]
+      },
+      "inputs": {
+        "ItemID": "A"
+      },
+      "outputs": {
+        "TotalQuantity": 4
+      },
+      "runtime": "inventory",
+      "note": "Original loop expectations; Count preserves the last matching quantity instead of summing stacks"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "HasItemByID",
+      "source_bytecode_sha256": "ac8bb00a83458c163b103f1a49925b6660db2c9517d97084223a3edd77afda17",
+      "base_state": "inventory-defaults",
+      "self": {
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "a",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 3,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          },
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "A",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 4,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          }
+        ]
+      },
+      "inputs": {
+        "SearchItemID": "A"
+      },
+      "outputs": {
+        "FoundIndex": 0,
+        "bFound": true
+      },
+      "runtime": "inventory",
+      "note": "Original loop expectations; Count preserves the last matching quantity instead of summing stacks"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "FindItemByID",
+      "source_bytecode_sha256": "00dbca8c5b07c4657e13b8eac1fde23f3adefe0b91603e34ec92519efbd191b2",
+      "base_state": "inventory-defaults",
+      "self": {
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "a",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 3,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          },
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "A",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 4,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          }
+        ]
+      },
+      "inputs": {
+        "ItemID": "A"
+      },
+      "outputs": {
+        "SlotType": 15,
+        "SlotIndex": 0,
+        "bFound": true
+      },
+      "runtime": "inventory",
+      "note": "Original loop expectations; Count preserves the last matching quantity instead of summing stacks"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "CountItemByID",
+      "source_bytecode_sha256": "87185a76b1e9f9423b9fa451ef34861086962cc1b8f34d4339defd644f9d1ba8",
+      "base_state": "inventory-defaults",
+      "self": {
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "B",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 5,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          }
+        ]
+      },
+      "inputs": {
+        "ItemID": "A"
+      },
+      "outputs": {
+        "TotalQuantity": 0
+      },
+      "runtime": "inventory",
+      "note": "Original loop expectations; Count preserves the last matching quantity instead of summing stacks"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "HasItemByID",
+      "source_bytecode_sha256": "ac8bb00a83458c163b103f1a49925b6660db2c9517d97084223a3edd77afda17",
+      "base_state": "inventory-defaults",
+      "self": {
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "B",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 5,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          }
+        ]
+      },
+      "inputs": {
+        "SearchItemID": "A"
+      },
+      "outputs": {
+        "FoundIndex": -1,
+        "bFound": false
+      },
+      "runtime": "inventory",
+      "note": "Original loop expectations; Count preserves the last matching quantity instead of summing stacks"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "FindItemByID",
+      "source_bytecode_sha256": "00dbca8c5b07c4657e13b8eac1fde23f3adefe0b91603e34ec92519efbd191b2",
+      "base_state": "inventory-defaults",
+      "self": {
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "B",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 5,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          }
+        ]
+      },
+      "inputs": {
+        "ItemID": "A"
+      },
+      "outputs": {
+        "SlotType": 0,
+        "SlotIndex": 0,
+        "bFound": false
+      },
+      "runtime": "inventory",
+      "note": "Original loop expectations; Count preserves the last matching quantity instead of summing stacks"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "CountItemByID",
+      "source_bytecode_sha256": "87185a76b1e9f9423b9fa451ef34861086962cc1b8f34d4339defd644f9d1ba8",
+      "base_state": "inventory-defaults",
+      "self": {
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "None",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 0,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          }
+        ]
+      },
+      "inputs": {
+        "ItemID": "none"
+      },
+      "outputs": {
+        "TotalQuantity": 0
+      },
+      "runtime": "inventory",
+      "note": "Original loop expectations; Count preserves the last matching quantity instead of summing stacks"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "HasItemByID",
+      "source_bytecode_sha256": "ac8bb00a83458c163b103f1a49925b6660db2c9517d97084223a3edd77afda17",
+      "base_state": "inventory-defaults",
+      "self": {
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "None",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 0,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          }
+        ]
+      },
+      "inputs": {
+        "SearchItemID": "none"
+      },
+      "outputs": {
+        "FoundIndex": 0,
+        "bFound": true
+      },
+      "runtime": "inventory",
+      "note": "Original loop expectations; Count preserves the last matching quantity instead of summing stacks"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "FindItemByID",
+      "source_bytecode_sha256": "00dbca8c5b07c4657e13b8eac1fde23f3adefe0b91603e34ec92519efbd191b2",
+      "base_state": "inventory-defaults",
+      "self": {
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "None",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 0,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          }
+        ]
+      },
+      "inputs": {
+        "ItemID": "none"
+      },
+      "outputs": {
+        "SlotType": 15,
+        "SlotIndex": 0,
+        "bFound": true
+      },
+      "runtime": "inventory",
+      "note": "Original loop expectations; Count preserves the last matching quantity instead of summing stacks"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "CountItemByID",
+      "source_bytecode_sha256": "87185a76b1e9f9423b9fa451ef34861086962cc1b8f34d4339defd644f9d1ba8",
+      "base_state": "inventory-defaults",
+      "self": {
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "A",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": -3,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          }
+        ]
+      },
+      "inputs": {
+        "ItemID": "A"
+      },
+      "outputs": {
+        "TotalQuantity": -3
+      },
+      "runtime": "inventory",
+      "note": "Original loop expectations; Count preserves the last matching quantity instead of summing stacks"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "HasItemByID",
+      "source_bytecode_sha256": "ac8bb00a83458c163b103f1a49925b6660db2c9517d97084223a3edd77afda17",
+      "base_state": "inventory-defaults",
+      "self": {
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "A",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": -3,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          }
+        ]
+      },
+      "inputs": {
+        "SearchItemID": "A"
+      },
+      "outputs": {
+        "FoundIndex": 0,
+        "bFound": true
+      },
+      "runtime": "inventory",
+      "note": "Original loop expectations; Count preserves the last matching quantity instead of summing stacks"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "FindItemByID",
+      "source_bytecode_sha256": "00dbca8c5b07c4657e13b8eac1fde23f3adefe0b91603e34ec92519efbd191b2",
+      "base_state": "inventory-defaults",
+      "self": {
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "A",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": -3,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          }
+        ]
+      },
+      "inputs": {
+        "ItemID": "A"
+      },
+      "outputs": {
+        "SlotType": 15,
+        "SlotIndex": 0,
+        "bFound": true
+      },
+      "runtime": "inventory",
+      "note": "Original loop expectations; Count preserves the last matching quantity instead of summing stacks"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "CountItemByID",
+      "source_bytecode_sha256": "87185a76b1e9f9423b9fa451ef34861086962cc1b8f34d4339defd644f9d1ba8",
+      "base_state": "inventory-defaults",
+      "self": {
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "A",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 2147483647,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          }
+        ]
+      },
+      "inputs": {
+        "ItemID": "A"
+      },
+      "outputs": {
+        "TotalQuantity": 2147483647
+      },
+      "runtime": "inventory",
+      "note": "Original loop expectations; Count preserves the last matching quantity instead of summing stacks"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "HasItemByID",
+      "source_bytecode_sha256": "ac8bb00a83458c163b103f1a49925b6660db2c9517d97084223a3edd77afda17",
+      "base_state": "inventory-defaults",
+      "self": {
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "A",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 2147483647,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          }
+        ]
+      },
+      "inputs": {
+        "SearchItemID": "A"
+      },
+      "outputs": {
+        "FoundIndex": 0,
+        "bFound": true
+      },
+      "runtime": "inventory",
+      "note": "Original loop expectations; Count preserves the last matching quantity instead of summing stacks"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "FindItemByID",
+      "source_bytecode_sha256": "00dbca8c5b07c4657e13b8eac1fde23f3adefe0b91603e34ec92519efbd191b2",
+      "base_state": "inventory-defaults",
+      "self": {
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "A",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 2147483647,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          }
+        ]
+      },
+      "inputs": {
+        "ItemID": "A"
+      },
+      "outputs": {
+        "SlotType": 15,
+        "SlotIndex": 0,
+        "bFound": true
+      },
+      "runtime": "inventory",
+      "note": "Original loop expectations; Count preserves the last matching quantity instead of summing stacks"
     }
   ],
   "schema_version": 1,

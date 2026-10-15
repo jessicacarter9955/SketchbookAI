@@ -74,3 +74,15 @@ class SourceTypesTests(unittest.TestCase):
         self.assertEqual(result['functions']['ReadFirst']['steps'][1]['op'],'set_member')
         package.exports[0]['ScriptBytecode'][1]['Variable']['StructMemberExpression']['New']['Path']=['Unknown']
         self.assertNotIn('ReadFirst',translate_package(package,schema)['functions'])
+
+    def test_array_length_preserves_the_typed_original_context(self):
+        package,schema=self.native_array_package()
+        package.imports[3]['ObjectName']='Array_Length'
+        context=package.exports[0]['ScriptBytecode'][0]
+        context['ContextExpression']['Parameters']=context['ContextExpression']['Parameters'][:1]
+        context['Offset']=19
+        package.exports[0]['LoadedProperties'][0]={'Name':'Out','SerializedType':'IntProperty','PropertyFlags':'CPF_Parm, CPF_OutParm'}
+        package.exports[0]['ScriptBytecode'][0]=node('EX_Let',Variable=node('EX_LocalOutVariable',Variable={'New':{'Path':['Out'],'ResolvedOwner':1}}),Expression=context)
+        self.assertEqual(translate_package(package,schema)['functions']['ReadFirst']['steps'][0]['value']['op'],'array_length')
+        context['Offset']=18
+        self.assertNotIn('ReadFirst',translate_package(package,schema)['functions'])
