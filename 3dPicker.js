@@ -12,7 +12,9 @@
         <section class="asset-fab-tools" hidden><div class="asset-filters"><label><input type="checkbox" name="fab-free" checked> Solo gratuiti</label><label>Categoria <select name="fab-category"><option value="all">Tutte</option><option value="vehicles">Veicoli</option><option value="buildings">Edifici</option><option value="environments">Ambienti</option><option value="props">Oggetti</option></select></label></div><p>Fab apre il marketplace per scegliere il modello e accettare la licenza. Scarica il file GLB/ZIP compatibile, poi importalo qui.</p><button type="button" data-fab-open>Apri risultati su Fab ↗</button><label class="fab-drop">Importa un file scaricato da Fab<input type="file" name="fab-file" accept=".glb,.zip"></label></section>
         <div class="asset-filters asset-sketchfab-filters"><label><input type="checkbox" name="animated"> Animati</label><label>Geometria <select name="faces"><option value="">Tutti</option><option value="10000">≤ 10.000 facce</option><option value="50000">≤ 50.000 facce</option></select></label><button type="button" data-favorites>Preferiti</button></div>
         <details class="asset-sketchfab-access"><summary>Accesso ai download</summary><label>API token Sketchfab <input type="password" name="token" autocomplete="off" placeholder="Solo per questa sessione"></label><p data-access>La ricerca è pubblica. Puoi usare la configurazione locale oppure inserire un token valido qui, solo per questa sessione. <a href="https://sketchfab.com/settings/password" target="_blank" rel="noopener noreferrer">Impostazioni Sketchfab ↗</a></p><button type="button" data-retry hidden>Riprova modello selezionato</button></details>
-        <p role="status" aria-live="polite" data-status>Cerca un modello scaricabile o apri i preferiti.</p><div class="asset-results"></div><button type="button" data-more hidden>Altri risultati</button>`;
+        <p role="status" aria-live="polite" data-status>Cerca un modello scaricabile o apri i preferiti.</p>
+        <section class="asset-inline-preview" hidden><div class="asset-inline-preview-bar"><strong data-preview-title></strong><button type="button" data-preview-close>Chiudi anteprima</button></div><iframe title="Anteprima 3D interattiva Sketchfab" loading="lazy" allow="fullscreen; autoplay; xr-spatial-tracking" referrerpolicy="strict-origin-when-cross-origin"></iframe><p>Anteprima del modello originale su Sketchfab; il download richiede l’autorizzazione del proprietario e il tuo token.</p></section>
+        <div class="asset-results"></div><button type="button" data-more hidden>Altri risultati</button>`;
     document.body.appendChild(dialog);
     const $ = selector => dialog.querySelector(selector);
     let models = [], next = null, controller, generation = 0, callback = null, fabCallback = null, busy = false, pendingModel = null;
@@ -30,7 +32,7 @@
         $('.asset-sketchfab-access').hidden=isFab;
         $('.asset-results').hidden=isFab;
         $('[data-more]').hidden=isFab||!next;
-        if(isFab) status('Fab: apri i risultati sul marketplace e importa il GLB/ZIP scaricato. Il download diretto non è disponibile.');
+        if(isFab) {closePreview();status('Fab: anteprima sul marketplace, poi importa il GLB/ZIP scaricato. Il download diretto non è disponibile.');}
         else status('Sketchfab: scegli un modello scaricabile, oppure apri i preferiti.');
     }
     function openFab() {
@@ -49,6 +51,20 @@
     try { favorites = JSON.parse(localStorage.getItem('sketchbook.favorites') || '[]'); if (!Array.isArray(favorites)) favorites = []; } catch { favorites = []; }
     const status = message => $('[data-status]').textContent = message;
     const safeURL = value => { try { const u = new URL(value); return u.protocol === 'https:' ? u.href : ''; } catch { return ''; } };
+    function closePreview() {
+        const panel=$('.asset-inline-preview');
+        panel.hidden=true;
+        panel.querySelector('iframe').removeAttribute('src');
+    }
+    function openPreview(model) {
+        if(!/^[a-zA-Z0-9_-]{6,100}$/.test(String(model.uid||'')))return status('Anteprima 3D non disponibile per questo modello.');
+        const panel=$('.asset-inline-preview');
+        panel.querySelector('[data-preview-title]').textContent=model.name || 'Anteprima 3D';
+        panel.querySelector('iframe').src=`https://sketchfab.com/models/${encodeURIComponent(model.uid)}/embed?autostart=0&ui_controls=1`;
+        panel.hidden=false;
+        panel.scrollIntoView({block:'nearest'});
+    }
+    $('[data-preview-close]').onclick=closePreview;
     function render() {
         const container = $('.asset-results'); container.replaceChildren();
         for (const model of models) {
@@ -60,13 +76,14 @@
             const title = document.createElement('h3'); title.textContent = model.name;
             const info = document.createElement('p'); info.textContent = `${model.user?.displayName || model.user?.username || 'Autore sconosciuto'} · ${model.license?.label || 'Verifica licenza'} · ${(model.faceCount || 0).toLocaleString()} facce`;
             const link = document.createElement('a'); link.textContent = 'Modello e licenza ↗'; link.href = safeURL(model.viewerUrl) || `https://sketchfab.com/models/${encodeURIComponent(model.uid)}`; link.target = '_blank'; link.rel = 'noopener noreferrer';
+            const preview = document.createElement('button'); preview.type='button'; preview.textContent='Anteprima 3D'; preview.onclick=()=>openPreview(model);
             const add = document.createElement('button'); add.textContent = callback ? 'Aggiungi alla scena' : 'Scarica modello'; add.disabled = busy;
             add.onclick = () => pick(model);
             const star = document.createElement('button'); star.textContent = favorites.some(f => f.uid === model.uid) ? '★ Salvato' : '☆ Preferito';
             star.onclick = () => { favorites = favorites.some(f => f.uid === model.uid) ? favorites.filter(f => f.uid !== model.uid) : [...favorites, model];
                 try { localStorage.setItem('sketchbook.favorites', JSON.stringify(favorites)); } catch { status('Spazio preferiti esaurito.'); } render(); };
             const feedback = document.createElement('p'); feedback.className = 'asset-feedback'; feedback.setAttribute('role', 'alert'); feedback.textContent = errors.get(model.uid) || '';
-            card.append(img, title, info, link, add, star, feedback); container.append(card);
+            card.append(img, title, info, link, preview, add, star, feedback); container.append(card);
         }
         $('[data-more]').hidden = !next;
     }
@@ -76,7 +93,7 @@
         switchSource(parsed.source);
         if(parsed.source==='fab'){openFab();return;}
         const query=parsed.query; if (!query) return status('Scrivi cosa vuoi cercare.');
-        controller?.abort(); controller = new AbortController(); const request = ++generation;
+        closePreview();controller?.abort(); controller = new AbortController(); const request = ++generation;
         status('Ricerca in corso…'); $('[data-more]').hidden = true;
         try {
             const data = await client.search(query, { animated: $('[name=animated]').checked, maxFaces: $('[name=faces]').value, next: more ? next : null, signal: controller.signal });
@@ -138,7 +155,7 @@
     $('[data-retry]').onclick = () => { if (pendingModel) pick(pendingModel); };
     $('[data-close]').onclick = () => { if (!busy) dialog.close(); };
     dialog.addEventListener('cancel', e => { if (busy) e.preventDefault(); });
-    dialog.addEventListener('close', () => { controller?.abort(); generation++; });
+    dialog.addEventListener('close', () => { closePreview();controller?.abort(); generation++; });
     $('[data-more]').onclick = () => search(true);
     $('[data-favorites]').onclick = () => { if (busy) return; controller?.abort(); generation++; models = [...favorites]; next = null; render(); status(`${models.length} preferiti salvati.`); };
     globalThis.picker = {

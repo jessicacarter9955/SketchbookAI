@@ -1,15 +1,29 @@
 // Minimal touch HUD for the real Sketchbook City Player.
-// One command field, one analog joystick and drag-to-look. No API keys.
+// Separate weather/world and model search fields; joystick and drag-to-look.
+// No third-party credentials are bundled into the mobile player.
 export function mountMobileCityPlayer(world,editor){
   document.body.classList.add('mobile-city-player');
   const canvas=world.renderer.domElement;
   const layer=document.createElement('div');
   layer.className='mobile-city-controls';
   layer.innerHTML=`<form class="mobile-city-command" autocomplete="off" aria-label="Comando per il mondo"><input name="instruction" aria-label="Crea o cambia la scena" maxlength="160" enterkeyhint="go" placeholder="Scrivi: tramonto, neve, nebbia…"><span class="mobile-city-message" role="status" aria-live="polite"></span></form>
+    <form class="mobile-city-asset-search" autocomplete="off" aria-label="Ricerca modelli 3D"><input name="query" aria-label="Cerca modelli Sketchfab o Fab" maxlength="200" enterkeyhint="search" placeholder="Modelli 3D: car, @fab tree…"><button type="submit">Cerca</button><button type="button" data-mobile-place>Posiziona</button><span role="status" aria-live="polite" data-asset-status></span></form>
     <div class="mobile-city-joystick" role="group" aria-label="Joystick movimento"><div class="mobile-city-thumb"></div></div>
     <div class="mobile-city-actions"><button type="button" data-mobile-talk hidden>Parla</button><button type="button" data-mobile-car hidden>Entra in auto</button></div>`;
   document.body.append(layer);
-  const form=layer.querySelector('form'),input=form.elements.namedItem('instruction'),status=layer.querySelector('.mobile-city-message');
+  const form=layer.querySelector('.mobile-city-command'),input=form.elements.namedItem('instruction'),status=layer.querySelector('.mobile-city-message');
+  const assetForm=layer.querySelector('.mobile-city-asset-search');
+  const assetStatus=assetForm.querySelector('[data-asset-status]');
+  assetForm.onsubmit=e=>{
+    e.preventDefault();
+    try{editor.openModelLibrary(assetForm.elements.namedItem('query').value);
+      assetStatus.textContent='Scegli un modello e apri l’anteprima 3D.';
+    }catch(error){assetStatus.textContent=error.message;}
+  };
+  assetForm.querySelector('[data-mobile-place]').onclick=()=>{
+    try{editor.placeSelectedAsset();assetStatus.textContent='Seleziona il terreno nell’editor.';}
+    catch(error){assetStatus.textContent=error.message;}
+  };
   let messageTimeout;
   function showMessage(message){
     status.textContent=message;

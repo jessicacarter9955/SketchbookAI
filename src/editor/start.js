@@ -186,6 +186,24 @@ function sceneControls(editor) {
         };
         hud.append(form);
     }
+    // Separate model-search textbox: opens the existing browsable 3D asset library,
+    // never routes asset prompts to weather or overwrites the play scene.
+    const assetForm=document.createElement('form');
+    assetForm.className='city-asset-command';
+    assetForm.setAttribute('aria-label','Cerca modelli 3D Sketchfab e Fab');
+    assetForm.innerHTML='<label for="city-asset-query">Modelli 3D</label><input id="city-asset-query" name="query" aria-label="Cerca modelli da Sketchfab o Fab" maxlength="200" autocomplete="off" placeholder="car, tree, @fab medieval house"><button type="submit">Cerca / anteprima</button><button type="button" data-asset-place>Posiziona</button><span role="status" aria-live="polite" data-asset-status></span>';
+    assetForm.onsubmit=event=>{
+        event.preventDefault();
+        const input=assetForm.elements.namedItem('query');
+        const status=assetForm.querySelector('[data-asset-status]');
+        try { editor.openModelLibrary(input.value);status.textContent='Scegli un modello, visualizza l’anteprima e importalo.'; }
+        catch(error){status.textContent=error.message;}
+    };
+    assetForm.querySelector('[data-asset-place]').onclick=()=>{
+        try {editor.placeSelectedAsset();assetForm.querySelector('[data-asset-status]').textContent='Clicca sul terreno per posizionare il modello.';}
+        catch(error){assetForm.querySelector('[data-asset-status]').textContent=error.message;}
+    };
+    hud.append(assetForm);
     editor.root.append(hud);
 }
 

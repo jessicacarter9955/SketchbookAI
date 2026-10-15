@@ -7,6 +7,7 @@ import { clone } from 'three/examples/jsm/utils/SkeletonUtils';
 import { validateScene, History, SCENE_KEY } from './scene-data.mjs';
 import { AssetStore, checkGLB, encodeBytes, decodeBytes, MAX_BYTES } from './asset-store.mjs';
 import { modelToGLB } from './model-import';
+import { parseCityAssetQuery } from './city-asset-query.mjs';
 import { SurfaceTool } from './SurfaceTool';
 import { IslandTool } from './IslandTool';
 import { DEFAULT_ISLAND } from './island-data.mjs';
@@ -89,7 +90,7 @@ export class SceneEditor {
             const actions = {
                 undo: () => this.restore(this.history.undo()), redo: () => this.restore(this.history.redo()),
                 export: () => this.exportScene(), import: () => $('[data-file=scene]').click(), glb: () => $('[data-file=glb]').click(),
-                search: () => globalThis.picker.openModelPicker('', (url, metadata) => this.importURL(url, metadata), async (file, metadata) => this.importBytes(await file.arrayBuffer(), metadata)),
+                search: () => this.openModelLibrary(''),
                 fab: () => globalThis.fabPicker.open('', async (file, metadata) => this.importBytes(await file.arrayBuffer(), metadata)),
                 geojson: () => $('[data-file=geojson]').click(),
                 play: () => this.setActive(!this.active), focus: () => this.focus(), place: () => { this.placing = true; this.message('Fai clic su una superficie per posizionare l’oggetto. Esc annulla.'); },
@@ -277,17 +278,49 @@ export class SceneEditor {
         root.position.set(-center.x, -normalized.min.y, -center.z);
         return root;
     }
-    async importBytes(bytes, metadata) {
+    openModelLibrary(query = '') {
+        if (!globalThis.picker?.openModelPicker) throw new Error('Libreria Sketchfab / Fab non caricata.');
+        const search = parseCityAssetQuery(query);
+        globalThis.picker.openModelPicker(search,
+            (url, metadata) => this.importURL(url, metadata, {nearPlayer: !this.active}),
+            async (file, metadata) => this.importBytes(await file.arrayBuffer(), metadata, {nearPlayer: !this.active}));
+    }
+    placeSelectedAsset() {
+        const item=this.item();
+        if (!item?.assetId) throw new Error('Importa o seleziona prima un modello 3D.');
+        if (!this.active) this.setActive(true);
+        this.select(item.id); this.placing=true;
+        this.message('Modello selezionato: clicca sul terreno per posizionarlo; usa il gizmo per muovere, ruotare e scalare. Esc annulla.');
+    }
+    spawnPositionForAsset(distance=7) {
+        const player=this.world.editorPlayer;
+        const origin=player?.position || this.world.camera.position;
+        const direction=this.world.camera.getWorldDirection(new THREE.Vector3()).setY(0);
+        if (direction.lengthSq()<.001) direction.set(0,0,-1);
+        direction.normalize();
+        const x=origin.x+direction.x*distance,z=origin.z+direction.z*distance;
+        const ground=this.world.levelRuntime?.groundAt(x,z,200);
+        return [x,Number.isFinite(ground)?ground:origin.y-1,z];
+    }
+    async importBytes(bytes, metadata = {}, {nearPlayer=false} = {}) {
+        if(this.items.length>=500)throw new Error('Limite di 500 oggetti raggiunto.');
         bytes = await modelToGLB(bytes);
         const asset = { id: crypto.randomUUID(), bytes, metadata }; const template = await this.prepareAsset(asset);
         await this.store.putAll([asset]); this.assets.set(asset.id, asset); this.templates.set(asset.id, template);
-        this.add({ assetId: asset.id, name: metadata.name || 'Modello' });
-        this.focus(); this.message(`“${metadata.name || 'Modello'}” aggiunto e selezionato nella scena.`);
+        if(nearPlayer && this.world.editorPlayer){
+            const item={id:crypto.randomUUID(),assetId:asset.id,name:metadata.name||'Modello',
+                position:this.spawnPositionForAsset(),rotation:[0,0,0],scale:[1,1,1],collider:true};
+            this.items.push(item);this.create(item);this.select(item.id);this.commit();
+            this.message('“'+item.name+'” inserito davanti al giocatore. Premi «Posiziona» per spostarlo con un clic nell’editor.');
+        }else{
+            this.add({ assetId: asset.id, name: metadata.name || 'Modello' });
+            this.focus(); this.message('“'+(metadata.name||'Modello')+'” aggiunto e selezionato nella scena.');
+        }
     }
-    async importURL(url, metadata) {
+    async importURL(url, metadata, options = {}) {
         if (this.busy) throw new Error('Attendi il completamento dell’operazione.');
         this.busy = true;
-        try { const response = await fetch(url, { signal: AbortSignal.timeout(120000) }); if (!response.ok) throw new Error(`Download: HTTP ${response.status}`); if (Number(response.headers.get('content-length')) > MAX_BYTES) throw new Error('Modello superiore a 50 MB.'); await this.importBytes(await response.arrayBuffer(), metadata); }
+        try { const response = await fetch(url, { signal: AbortSignal.timeout(120000) }); if (!response.ok) throw new Error(`Download: HTTP ${response.status}`); if (Number(response.headers.get('content-length')) > MAX_BYTES) throw new Error('Modello superiore a 50 MB.'); await this.importBytes(await response.arrayBuffer(), metadata, options); }
         finally { this.busy = false; }
     }
     async restoreSaved() {
