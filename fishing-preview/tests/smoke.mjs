@@ -9,6 +9,11 @@ await page.waitForFunction(()=>Boolean(window.__FISHING_DEBUG__),{timeout:20000}
 await page.screenshot({path:'smoke-desktop.png',fullPage:true});
 const setup=await page.evaluate(()=>{const d=window.__FISHING_DEBUG__;return {s:d.getState(),map:d.getMap(),canvas:!!document.querySelector('canvas'),hud:document.querySelector('#islandName').textContent};});
 assert(setup.canvas);assert(setup.map.props.length>8);assert(setup.hud.includes('Cove'));
+assert.equal(await page.locator('#nearBadge').isVisible(),false,'Do not prompt the player to sell an empty backpack');
+await page.evaluate(()=>window.__FISHING_DEBUG__.cast());
+await page.waitForTimeout(200);
+assert.equal(await page.locator('#toasts .toast').count(),0,'A routine cast must not create an intrusive toast');
+
 const economy=await page.evaluate(()=>{const d=window.__FISHING_DEBUG__;d.grantCoins(1000);const bought=d.buy('bag');d.addFish();d.addFish();const cash=d.sell();return {bought,cash,bag:d.getState().bag.length,lv:d.getState().levels.bag}});
 assert(economy.bought);assert(economy.lv>=1);assert(economy.cash>0);assert.equal(economy.bag,0);
 await page.locator('#skillsButton').click();await page.getByText('SKILL TREE').first().waitFor();await page.screenshot({path:'smoke-upgrades.png'});
