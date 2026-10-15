@@ -5,7 +5,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 const request = JSON.parse(readFileSync(".rea-bridge/request.json", "utf8"));
 const child = spawn("rea", ["mcp"], {
   stdio: ["pipe", "pipe", "pipe"],
-  env: { ...process.env, REA_MCP_MAX_RESPONSE_BYTES: "5242880" }
+  env: { ...process.env, REA_MCP_MAX_RESPONSE_BYTES: "10485760" }
 });
 
 let nextId = 0;
@@ -13,11 +13,11 @@ const pending = new Map();
 let stderr = "";
 child.stderr.on("data", (chunk) => { stderr += chunk.toString().slice(0, 4096); });
 child.on("error", (err) => {
-  for (const item of pending.values()) item.reject(err);
+  for (const item of pending.values()) { clearTimeout(item.timer); item.reject(err); }
   pending.clear();
 });
 child.on("exit", (code) => {
-  for (const item of pending.values()) item.reject(new Error("REA exited: " + code + " " + stderr.slice(-1000)));
+  for (const item of pending.values()) { clearTimeout(item.timer); item.reject(new Error("REA exited: " + code + " " + stderr.slice(-1000))); }
   pending.clear();
 });
 const lines = createInterface({ input: child.stdout });
