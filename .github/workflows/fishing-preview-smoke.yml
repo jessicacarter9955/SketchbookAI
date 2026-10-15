@@ -1,0 +1,28 @@
+name: Fishing Preview Browser Smoke Test
+on:
+  push:
+    branches: [fishing-threejs-preview]
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          cd fishing-preview
+          npm install --no-audit --no-fund
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Browser smoke test
+        run: node fishing-preview/tests/smoke.mjs
+      - name: Store screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fishing-preview-screenshots
+          path: smoke-*.png
