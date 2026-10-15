@@ -1,4 +1,9 @@
 {
-  "requestId": "probe-001",
-  "mode": "list_tools"
+  "requestId": "analysis-probe-002",
+  "tool": "analyze_javascript_application",
+  "arguments": {
+    "input_path": "/home/runner/work/SketchbookAI/SketchbookAI/.rea-bridge",
+    "format": "directory",
+    "detail": "summary"
+  }
 }
