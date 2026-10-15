@@ -24,14 +24,14 @@ const loadingProgress=loading?.querySelector('#city-load-progress');
 const loadingCounter=loading?.querySelector('#city-load-counter');
 const skipVisualButton=loading?.querySelector('#city-load-continue');
 const retryButton=loading?.querySelector('#city-load-retry');
-let bootStage='Avvio editor',bootSince=performance.now();
+let bootStage='Avvio editor',bootSince=performance.now(),bootFailed=false;
 const report=message=>{
  globalThis.cityDiagnostics?.activity('BOOT: '+message);
  bootStage=message;bootSince=performance.now();
  if(loadingMessage)loadingMessage.textContent=message;
 };
 const stageTimer=setInterval(()=>{
- if(loading.style.display==='none'){clearInterval(stageTimer);return;}
+ if(bootFailed||loading.style.display==='none'){clearInterval(stageTimer);return;}
  const elapsed=Math.floor((performance.now()-bootSince)/1000);
  if(loadingMessage&&elapsed>7)loadingMessage.textContent=bootStage+' · '+elapsed+'s';
  if(elapsed>25 && retryButton)retryButton.hidden=false;
@@ -222,7 +222,7 @@ try {
         if(current.playerProfile==='dds') {
             report('DDS: controllo file build/local-scenes/dds/manifest.json prima del mondo HD');
             const check=await fetch('build/local-scenes/dds/manifest.json',{signal:AbortSignal.timeout(12000)});
-            if(!check.ok)throw new Error('DDS non disponibile (HTTP '+check.status+'): manca build/local-scenes/dds/manifest.json. Esporta mannequin, armi e animazioni e ripubblica il pacchetto. La scena Sketchbook originale resta disponibile.');
+            if(!check.ok)throw new Error('DDS non disponibile (HTTP '+check.status+'): manca build/local-scenes/dds/manifest.json. Esporta i modelli/animazioni dall'originale progetto Unreal DDS con tools/export-dds.ps1. I file originali non sono nel repository; verifica i diritti prima di redistribuirli. Usa il link alla città senza DDS o copia il log.');
         }
         world.levelRuntime = new UrbanRuntime(world);
         world.levelRuntime.onVisualProgress=setVisualProgress;
@@ -373,6 +373,9 @@ try {
     if(current.world==='procedural-city' && query.get('play')==='1') sceneEditor.message('Free roam · WASD muovi · E parla con un abitante · 1-4 scegli risposta · F entra in auto · F2 editor.');
     document.title = `${current.name} · Sketchbook`;
 } catch (error) {
+    bootFailed=true;
+    clearInterval(stageTimer);
+    globalThis.cityDiagnostics?.fatal(error);
     loading.style.display = 'flex';
     report(`Errore di avvio: ${error.message}`);
     if(retryButton)retryButton.hidden=false;

@@ -1,7 +1,7 @@
 // Load before the application bundle to capture all asset requests and their stalls.
 (function(){
   'use strict';
-  const pending=new Map(),stages=new Map(),history=[];let sequence=0,lastTick=performance.now();
+  const pending=new Map(),stages=new Map(),history=[];let sequence=0,lastTick=performance.now(),bootFailed=false;
   let started=performance.now(),lastActivity=started,lastStage='Avvio JavaScript',lastCompleted='nessuno';
   const label=url=>{
     try {const u=new URL(url,location.href);return decodeURI(u.pathname).split('/').slice(-4).join('/').slice(-135);}
@@ -82,6 +82,16 @@
     },
     activity(msg){line(msg);},
     problem(err,area='Errore JS'){line(area+': '+String(err?.message||err),'error');},
+    fatal(err){
+      if(bootFailed)return;
+      bootFailed=true;
+      const message=String(err?.message||err);
+      this.stage('Avvio bloccato','error');
+      line('ERRORE DEFINITIVO: '+message,'error');
+      if(summary)summary.textContent='AVVIO INTERROTTO: '+message+
+        '\nNon ci sono caricamenti in corso; correggere il file mancante o aprire la città senza DDS.';
+      details.open=true;
+    },
     snapshot(){return {elapsed:now(),stages:[...stages],pending:[...pending.values()].map(v=>({url:v.url,seconds:Math.round((performance.now()-v.start)/1000),loaded:v.loaded,total:v.total})),recent:history.slice(-25)};}
   };
   globalThis.cityDiagnostics=api;
@@ -127,6 +137,7 @@
     },err=>{finish(id,err?.message||String(err));throw err;});
   };
   function heartbeat(){
+    if(bootFailed)return; // terminal error: no misleading elapsed timer or endless download report
     const nowMs=performance.now(),gap=Math.round(nowMs-lastTick);lastTick=nowMs;
     const active=[...pending.values()].sort((a,b)=>a.start-b.start);
     const most=active.slice(0,3).map(v=>v.url+' '+Math.round((nowMs-v.start)/1000)+'s'+(v.total?' '+Math.round(100*v.loaded/v.total)+'%':'')).join(' | ');
