@@ -37,6 +37,8 @@ jobs:
           git checkout --orphan vendor/rea-upstream
           git rm -r --force --ignore-unmatch .
           rsync -a --exclude=.git /tmp/rea-source/ .
+          # Preserve upstream workflow files without enabling third-party CI in this repo.
+          if [ -d .github/workflows ]; then mv .github/workflows .github/rea-workflows-disabled; fi
           git add -A
           git commit -m "Import official REA snapshot"
           git push origin HEAD:refs/heads/vendor/rea-upstream
