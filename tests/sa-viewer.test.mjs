@@ -17,5 +17,5 @@ test('viewer does not fetch or transmit proprietary GTA assets to public service
  assert.doesNotMatch(script,/\bfetch\(/);
  assert.doesNotMatch(script,/XMLHttpRequest/);
  assert.match(script,/URL\.createObjectURL\(file\)/);
- assert.match(html,/Nessun file è stato inviato/);
+ assert.match(script,/Nessun file è stato inviato/);
 });

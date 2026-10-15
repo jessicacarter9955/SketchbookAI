@@ -54,11 +54,11 @@ const fit=()=>{
 };
 const renderLinks=(net,type)=>{
   const lines=[];let count=0;
-  for(const node of net.nodes)for(const edge of node.edges){
+  outer: for(const node of net.nodes)for(const edge of node.edges){
     const end=net.byKey.get(edge.to);
     if(!end||!Number.isFinite(node.y)||!Number.isFinite(end.y))continue;
     lines.push(node.x,node.y+.12,node.z,end.x,end.y+.12,end.z);
-    if(++count>=1000000)break;
+    if(++count>=1000000)break outer;
   }
   const geometry=new THREE.BufferGeometry();
   geometry.setAttribute('position',new THREE.Float32BufferAttribute(lines,3));

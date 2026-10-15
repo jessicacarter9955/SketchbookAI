@@ -75,7 +75,11 @@ function mountDDSImportPanel(){
       section.querySelectorAll('input').forEach(x=>x.disabled=false);
     }
   });
-  panel.append(section);
+  // Keep import actions ABOVE the expanding diagnostics; the file picker must
+  // stay visible when DDS loading ends in an HTTP 404.
+  const telemetry=panel.querySelector('.city-telemetry');
+  if(telemetry)telemetry.before(section);
+  else panel.append(section);
 }
 if(current.playerProfile==='dds')mountDDSImportPanel();
 

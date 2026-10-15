@@ -22,7 +22,7 @@
 .city-load-actions .city-dds-alternate{display:inline-flex;align-items:center;min-height:42px;border:1px solid #7db3d3;border-radius:7px;padding:7px 12px;color:#e5f8ff;font:600 12px system-ui;text-decoration:none}
 @media(max-width:600px){.city-telemetry .city-log-actions button{flex:1 1 120px}}
 
-.dds-local-import{margin-top:16px;padding:14px;border:1px solid #5684a6;border-radius:9px;background:#0b2637;text-align:left;pointer-events:auto}
+.dds-local-import{margin-top:12px;padding:14px;border:2px solid #87c5b0;border-radius:9px;background:#0b2637;text-align:left;pointer-events:auto}
 .dds-local-import h2{font:700 15px system-ui;margin:0 0 7px;color:#e8f7ff}
 .dds-local-import p{margin:7px 0 10px;color:#d5e9fa;font:13px/1.5 system-ui}
 .dds-local-import .dds-import-file-label{display:block;padding:10px;margin:8px 0;border-radius:8px;border:1px solid #6dabb5;background:#1b4355;color:#f5fcff;font:600 13px system-ui}
