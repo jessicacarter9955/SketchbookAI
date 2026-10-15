@@ -1,0 +1,9 @@
+import {test} from 'node:test';import{strict as assert}from'node:assert';import{initial,upgradePrice,HOLE_UPGRADES,FISH_UPGRADES,purchase,earn,stageOf,HOLE_STAGES,FISH_STAGES,fishCapacity,maxRods,catchFish,sellFish,progressFraction}from'../economy.js';
+test('Black hole starts with enough matter for an upgrade',()=>{const s=initial('hole');assert.ok(s.currency>=HOLE_UPGRADES[0].base);assert.equal(stageOf(s,HOLE_STAGES),0)});
+test('black hole upgrades deduct currency and scale prices',()=>{const s=initial('hole');const item=HOLE_UPGRADES[0],first=upgradePrice(item,s.level);assert.ok(purchase(s,item));assert.equal(s.currency,110-first);assert.ok(upgradePrice(item,s.level)>first)});
+test('cannot purchase unaffordable upgrades',()=>{const s=initial('hole');s.currency=0;assert.equal(purchase(s,HOLE_UPGRADES[0]),false)});
+test('fish has one rod and four slots initially',()=>{const s=initial('fish');assert.equal(maxRods(s),1);assert.equal(fishCapacity(s),4)});
+test('purchasing rods upgrades independent rod count',()=>{const s=initial('fish');assert.ok(purchase(s,FISH_UPGRADES[0]));assert.equal(maxRods(s),2)});
+test('fish bag, selling, money and progression are stable',()=>{const s=initial('fish');assert.equal(catchFish(s,1),1);assert.equal(catchFish(s,2),1);const v=sellFish(s);assert.ok(v>0);assert.equal(s.currency,95+v);assert.equal(s.total,v);assert.equal(s.bag.length,0);assert.equal(s.sold,2)});
+test('bag capacity prevents overflow',()=>{const s=initial('fish');for(let i=0;i<30;i++)catchFish(s);assert.equal(s.bag.length,4);assert.equal(catchFish(s),false)});
+test('stage thresholds are monotonic',()=>{for(const stages of[HOLE_STAGES,FISH_STAGES]){for(let i=1;i<stages.length;i++)assert.ok(stages[i].at>stages[i-1].at);const s=initial('hole');earn(s,stages.at(-1).at+5);assert.equal(stageOf(s,stages),stages.length-1);assert.equal(progressFraction(s,stages),1)}});
