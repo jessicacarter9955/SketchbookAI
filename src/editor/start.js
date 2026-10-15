@@ -222,7 +222,7 @@ try {
         if(current.playerProfile==='dds') {
             report('DDS: controllo file build/local-scenes/dds/manifest.json prima del mondo HD');
             const check=await fetch('build/local-scenes/dds/manifest.json',{signal:AbortSignal.timeout(12000)});
-            if(!check.ok)throw new Error('DDS non disponibile (HTTP '+check.status+'): manca build/local-scenes/dds/manifest.json. Esporta i modelli/animazioni dall'originale progetto Unreal DDS con tools/export-dds.ps1. I file originali non sono nel repository; verifica i diritti prima di redistribuirli. Usa il link alla città senza DDS o copia il log.');
+            if(!check.ok)throw new Error('DDS non disponibile (HTTP '+check.status+'): manca build/local-scenes/dds/manifest.json. Esporta i modelli e le animazioni dal progetto Unreal DDS con tools/export-dds.ps1. I file originali non sono nel repository; verifica i diritti prima di redistribuirli. Usa il link alla città senza DDS o copia il log.');
         }
         world.levelRuntime = new UrbanRuntime(world);
         world.levelRuntime.onVisualProgress=setVisualProgress;
