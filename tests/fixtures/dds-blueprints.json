@@ -7440,6 +7440,246 @@
       },
       "runtime": "inventory",
       "note": "Original loop expectations; Count preserves the last matching quantity instead of summing stacks"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "CalculateReloadAmmo",
+      "source_bytecode_sha256": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+      "self": {},
+      "inputs": {
+        "MagazineSize": 30,
+        "CurrentMagAmmo": 10,
+        "CarryAmmoAvailable": 90
+      },
+      "outputs": {
+        "AmmoNeeded": 20,
+        "AmmoToLoad": 20,
+        "NewMagAmmo": 30,
+        "NewCarryAmmo": 70,
+        "ShouldClearCarrySlot": false
+      },
+      "runtime": "inventory",
+      "note": "Manual expectations from original subtraction/min/add/subtraction graph, including original un-clamped and int32 wrap behavior; full reload action remains blocked"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "CalculateReloadAmmo",
+      "source_bytecode_sha256": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+      "self": {},
+      "inputs": {
+        "MagazineSize": 30,
+        "CurrentMagAmmo": 10,
+        "CarryAmmoAvailable": 5
+      },
+      "outputs": {
+        "AmmoNeeded": 20,
+        "AmmoToLoad": 5,
+        "NewMagAmmo": 15,
+        "NewCarryAmmo": 0,
+        "ShouldClearCarrySlot": true
+      },
+      "runtime": "inventory",
+      "note": "Manual expectations from original subtraction/min/add/subtraction graph, including original un-clamped and int32 wrap behavior; full reload action remains blocked"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "CalculateReloadAmmo",
+      "source_bytecode_sha256": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+      "self": {},
+      "inputs": {
+        "MagazineSize": 30,
+        "CurrentMagAmmo": 30,
+        "CarryAmmoAvailable": 90
+      },
+      "outputs": {
+        "AmmoNeeded": 0,
+        "AmmoToLoad": 0,
+        "NewMagAmmo": 30,
+        "NewCarryAmmo": 90,
+        "ShouldClearCarrySlot": false
+      },
+      "runtime": "inventory",
+      "note": "Manual expectations from original subtraction/min/add/subtraction graph, including original un-clamped and int32 wrap behavior; full reload action remains blocked"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "CalculateReloadAmmo",
+      "source_bytecode_sha256": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+      "self": {},
+      "inputs": {
+        "MagazineSize": 30,
+        "CurrentMagAmmo": 0,
+        "CarryAmmoAvailable": 0
+      },
+      "outputs": {
+        "AmmoNeeded": 30,
+        "AmmoToLoad": 0,
+        "NewMagAmmo": 0,
+        "NewCarryAmmo": 0,
+        "ShouldClearCarrySlot": true
+      },
+      "runtime": "inventory",
+      "note": "Manual expectations from original subtraction/min/add/subtraction graph, including original un-clamped and int32 wrap behavior; full reload action remains blocked"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "CalculateReloadAmmo",
+      "source_bytecode_sha256": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+      "self": {},
+      "inputs": {
+        "MagazineSize": 0,
+        "CurrentMagAmmo": 0,
+        "CarryAmmoAvailable": 0
+      },
+      "outputs": {
+        "AmmoNeeded": 0,
+        "AmmoToLoad": 0,
+        "NewMagAmmo": 0,
+        "NewCarryAmmo": 0,
+        "ShouldClearCarrySlot": true
+      },
+      "runtime": "inventory",
+      "note": "Manual expectations from original subtraction/min/add/subtraction graph, including original un-clamped and int32 wrap behavior; full reload action remains blocked"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "CalculateReloadAmmo",
+      "source_bytecode_sha256": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+      "self": {},
+      "inputs": {
+        "MagazineSize": 30,
+        "CurrentMagAmmo": 40,
+        "CarryAmmoAvailable": 5
+      },
+      "outputs": {
+        "AmmoNeeded": -10,
+        "AmmoToLoad": -10,
+        "NewMagAmmo": 30,
+        "NewCarryAmmo": 15,
+        "ShouldClearCarrySlot": false
+      },
+      "runtime": "inventory",
+      "note": "Manual expectations from original subtraction/min/add/subtraction graph, including original un-clamped and int32 wrap behavior; full reload action remains blocked"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "CalculateReloadAmmo",
+      "source_bytecode_sha256": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+      "self": {},
+      "inputs": {
+        "MagazineSize": 30,
+        "CurrentMagAmmo": 5,
+        "CarryAmmoAvailable": -2
+      },
+      "outputs": {
+        "AmmoNeeded": 25,
+        "AmmoToLoad": -2,
+        "NewMagAmmo": 3,
+        "NewCarryAmmo": 0,
+        "ShouldClearCarrySlot": true
+      },
+      "runtime": "inventory",
+      "note": "Manual expectations from original subtraction/min/add/subtraction graph, including original un-clamped and int32 wrap behavior; full reload action remains blocked"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "CalculateReloadAmmo",
+      "source_bytecode_sha256": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+      "self": {},
+      "inputs": {
+        "MagazineSize": -10,
+        "CurrentMagAmmo": 0,
+        "CarryAmmoAvailable": 20
+      },
+      "outputs": {
+        "AmmoNeeded": -10,
+        "AmmoToLoad": -10,
+        "NewMagAmmo": -10,
+        "NewCarryAmmo": 30,
+        "ShouldClearCarrySlot": false
+      },
+      "runtime": "inventory",
+      "note": "Manual expectations from original subtraction/min/add/subtraction graph, including original un-clamped and int32 wrap behavior; full reload action remains blocked"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "CalculateReloadAmmo",
+      "source_bytecode_sha256": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+      "self": {},
+      "inputs": {
+        "MagazineSize": 2147483647,
+        "CurrentMagAmmo": 0,
+        "CarryAmmoAvailable": 2147483647
+      },
+      "outputs": {
+        "AmmoNeeded": 2147483647,
+        "AmmoToLoad": 2147483647,
+        "NewMagAmmo": 2147483647,
+        "NewCarryAmmo": 0,
+        "ShouldClearCarrySlot": true
+      },
+      "runtime": "inventory",
+      "note": "Manual expectations from original subtraction/min/add/subtraction graph, including original un-clamped and int32 wrap behavior; full reload action remains blocked"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "CalculateReloadAmmo",
+      "source_bytecode_sha256": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+      "self": {},
+      "inputs": {
+        "MagazineSize": -2147483648,
+        "CurrentMagAmmo": 1,
+        "CarryAmmoAvailable": 5
+      },
+      "outputs": {
+        "AmmoNeeded": 2147483647,
+        "AmmoToLoad": 5,
+        "NewMagAmmo": 6,
+        "NewCarryAmmo": 0,
+        "ShouldClearCarrySlot": true
+      },
+      "runtime": "inventory",
+      "note": "Manual expectations from original subtraction/min/add/subtraction graph, including original un-clamped and int32 wrap behavior; full reload action remains blocked"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "CalculateReloadAmmo",
+      "source_bytecode_sha256": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+      "self": {},
+      "inputs": {
+        "MagazineSize": 2147483647,
+        "CurrentMagAmmo": -1,
+        "CarryAmmoAvailable": 10
+      },
+      "outputs": {
+        "AmmoNeeded": -2147483648,
+        "AmmoToLoad": -2147483648,
+        "NewMagAmmo": 2147483647,
+        "NewCarryAmmo": -2147483638,
+        "ShouldClearCarrySlot": true
+      },
+      "runtime": "inventory",
+      "note": "Manual expectations from original subtraction/min/add/subtraction graph, including original un-clamped and int32 wrap behavior; full reload action remains blocked"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "CalculateReloadAmmo",
+      "source_bytecode_sha256": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+      "self": {},
+      "inputs": {
+        "MagazineSize": 30,
+        "CurrentMagAmmo": 29,
+        "CarryAmmoAvailable": 10
+      },
+      "outputs": {
+        "AmmoNeeded": 1,
+        "AmmoToLoad": 1,
+        "NewMagAmmo": 30,
+        "NewCarryAmmo": 9,
+        "ShouldClearCarrySlot": false
+      },
+      "runtime": "inventory",
+      "note": "Manual expectations from original subtraction/min/add/subtraction graph, including original un-clamped and int32 wrap behavior; full reload action remains blocked"
     }
   ],
   "schema_version": 1,

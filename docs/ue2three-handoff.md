@@ -1,5 +1,18 @@
 # ue2three saved handoff · 2026-10-15
 
+Newest checkpoint: **105 translated /395 blocked**. Added exact UE5.7 int Min,
+Max, SelectInt and Conv_IntToDouble primitives after inspecting local Engine
+source. CalculateReloadAmmo now executes with 12 manual source comparisons;
+negative and over-capacity inputs remain un-clamped, matching the source graph.
+101 Python/63 JS tests and editor build pass. Browser: 315 generic +295 source
+cases. Scene: 24 inputs /35 metrics /4 events /160 inventory checks; horizontal
+movement 0.660 units. Evidence: verification/source-reload/. Editor revision15.
+Full reload timing, firing, inventory writes and original notification/network
+paths are NOT complete. Array mutation calls and OnRep multicast/dirty native
+calls still block whole source functions. No side effect was silently discarded.
+Fixed report table overflow exposed by multi-output reload results; corrected
+UTF-8 text damaged by an intermediate Windows-default encoding read before save.
+
 Current batch: **104 translated /396 blocked**. Exact Array_Length source adapter
 unlocks CountItemByID, FindItemByID and HasItemByID. Added 24 independent source
 cases (283 total), including empty arrays, missing IDs, case-insensitive names,

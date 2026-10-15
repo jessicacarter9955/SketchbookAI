@@ -57,6 +57,19 @@ class BlueprintMigrationTests(unittest.TestCase):
         result = translate_function(function, Package({'Imports': imports}))
         self.assertEqual(result['steps'][0]['value']['name'], 'Divide_DoubleDouble')
 
+    def test_int_selection_and_conversion_require_original_native_and_arity(self):
+        for name, arity in [('Min', 2), ('Max', 2), ('Conv_IntToDouble', 1), ('SelectInt', 3)]:
+            imports = [{'ObjectName': name, 'ClassName': 'Function', 'OuterIndex': -2},
+                       {'ObjectName': 'KismetMathLibrary', 'OuterIndex': -3}, {'ObjectName': '/Script/Engine'}]
+            function = self.function()
+            call = node('EX_CallMath', StackNode=-1, Parameters=[node('EX_IntOne') for _ in range(arity)])
+            if name == 'SelectInt': call['Parameters'][-1] = node('EX_True')
+            function['ScriptBytecode'][1]['Expression'] = call
+            self.assertEqual(translate_function(function, Package({'Imports': imports}))['steps'][0]['value']['name'], name)
+            call['Parameters'].pop()
+            with self.assertRaisesRegex(BlueprintTranslationError, 'parameter count'):
+                translate_function(function, Package({'Imports': imports}))
+
     def test_unsupported_unicode_name_constant_blocks_the_source_comparison(self):
         imports = [{'ObjectName': 'EqualEqual_NameName', 'ClassName': 'Function', 'OuterIndex': -2},
                    {'ObjectName': 'KismetMathLibrary', 'OuterIndex': -3}, {'ObjectName': '/Script/Engine'}]

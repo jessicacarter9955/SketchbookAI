@@ -44,6 +44,8 @@ for _type in ('IntInt', 'DoubleDouble'):
     for _operation in ('Add', 'Subtract', 'Multiply'):
         MATH_CALLS[_operation + '_' + _type] = (2, _type)
 MATH_CALLS.update({'Divide_DoubleDouble': (2, 'DoubleDouble'),
+                   'Min': (2, 'IntInt'), 'Max': (2, 'IntInt'),
+                   'Conv_IntToDouble': (1, 'IntInt'), 'SelectInt': (3, 'int_select'),
                    'EqualEqual_BoolBool': (2, 'bool'), 'NotEqual_BoolBool': (2, 'bool'),
                    'EqualEqual_NameName': (2, 'name'), 'NotEqual_NameName': (2, 'name'),
                    'FClamp': (3, 'DoubleDouble'), 'Clamp': (3, 'IntInt')})

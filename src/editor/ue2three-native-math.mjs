@@ -1,5 +1,15 @@
 // Mirrors the supported UE 5.7 KismetMathLibrary primitives. No game rules.
 export function evaluateNativeMath(name, args, warning = () => {}) {
+    if (['Min', 'Max', 'Conv_IntToDouble', 'SelectInt'].includes(name)) {
+        const arity = name === 'SelectInt' ? 3 : name === 'Conv_IntToDouble' ? 1 : 2;
+        if (args.length !== arity || args.some((value, index) => name === 'SelectInt' && index === 2
+            ? typeof value !== 'boolean' : !Number.isInteger(value) || value < -2147483648 || value > 2147483647))
+            throw new Error('Invalid native int selection/conversion parameters');
+        const [a, b, pickA] = args;
+        if (name === 'Conv_IntToDouble') return a;
+        if (name === 'SelectInt') return pickA ? a : b;
+        return name === 'Min' ? (a <= b ? a : b) : (a >= b ? a : b);
+    }
     if (name === 'EqualEqual_NameName' || name === 'NotEqual_NameName') {
         if (args.length !== 2 || args.some(value => typeof value !== 'string' || !value || /[^\x01-\x7f]/.test(value)))
             throw new Error('Unsupported or invalid source FName comparison');

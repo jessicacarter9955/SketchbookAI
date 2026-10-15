@@ -17,6 +17,17 @@ test('int32 arithmetic preserves Windows integer width', () => {
     assert.equal(evaluateNativeMath('Subtract_IntInt', [-2147483648, 1]), 2147483647);
     assert.equal(evaluateNativeMath('Multiply_IntInt', [65536, 65536]), 0);
 });
+test('original int min/max, selection and exact double conversion remain typed', () => {
+    assert.equal(evaluateNativeMath('Min', [-2147483648, 2147483647]), -2147483648);
+    assert.equal(evaluateNativeMath('Max', [-2147483648, 2147483647]), 2147483647);
+    assert.equal(evaluateNativeMath('Min', [3, 3]), 3);
+    for (const value of [-2147483648, 0, 2147483647]) assert.equal(evaluateNativeMath('Conv_IntToDouble', [value]), value);
+    assert.equal(evaluateNativeMath('SelectInt', [2, 7, true]), 2);
+    assert.equal(evaluateNativeMath('SelectInt', [2, 7, false]), 7);
+    for (const [name, args] of [['Min', [1.5, 2]], ['Max', [0, 2147483648]],
+        ['Conv_IntToDouble', [true]], ['Conv_IntToDouble', [1, 2]], ['SelectInt', [2, 7, 1]]])
+        assert.throws(() => evaluateNativeMath(name, args), /Invalid/);
+});
 test('clamp preserves source order including reversed bounds', () => {
     assert.equal(evaluateNativeMath('FClamp', [0.75, 0, 1]), 0.75);
     assert.equal(evaluateNativeMath('FClamp', [0.75, 2, 1]), 2);

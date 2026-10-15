@@ -326,3 +326,20 @@ moved back to its original test and the complete suite passed after the fix.
   errors. Saved screenshots and DOM evidence: verification/source-search/.
 - Checklist refreshed with current program and screenshot hashes: ten scoped
   checkpoints verified. Complete inventory mutations, UI and gameplay stay open.
+
+## 2026-10-15 · Original reload arithmetic and native prerequisites
+
+- Added typed Min, Max, SelectInt and exact int32-to-double conversion using
+  installed UE5.7 KismetMathLibrary.inl contracts. Incorrect types/arity reject.
+- Original CalculateReloadAmmo now executes: **105 translated /395 blocked**.
+  Added 12 independent expected-result cases for normal, partial, empty, full,
+  negative/over-capacity and int32 boundary inputs. No extra clamping was invented.
+- **101 Python /63 JS tests pass**, editor build succeeds. Integrated browser:
+  **315 generic /295 source comparisons**. Actual actor scene: **24 inputs /35
+  metrics /4 events /160 inventory cases**, horizontal displacement 0.660 units;
+  no browser errors. Saved evidence under verification/source-reload/.
+- Fixed horizontal overflow in the audit table and an intermediate Windows text
+  encoding regression; visually confirmed the final UTF-8 report fits the panel.
+- Inventory writes remain blocked by original dirty-property/OnRep notifications,
+  array mutation and native/object dependencies. Full reload gameplay remains
+  separate from its verified arithmetic; no full system status was set to green.
