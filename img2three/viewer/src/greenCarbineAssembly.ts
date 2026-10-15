@@ -7,9 +7,13 @@ import * as THREE from 'three';
  * spatial objects rather than a generic silhouette extruded at one thickness.
  * This is visual geometry only; it contains no operational weapon mechanism.
  */
-const W=1150,H=467,S=11/W;
+// Source cutout is 840 × 301; old reconstruction was stretched to 1150 × 467.
+// Keep traced component coordinates in their authoring pixel frame, but
+// map its vertical axis into the actual original photo's aspect ratio.
+const W=1150,SKETCH_H=467,H=W*301/840,S=11/W;
+const correctedY=(sourceY:number)=>sourceY*H/SKETCH_H;
 type XY=[number,number];
-const pt=([x,y]:XY)=>new THREE.Vector2((x-W/2)*S,(H/2-y)*S);
+const pt=([x,y]:XY)=>new THREE.Vector2((x-W/2)*S,(H/2-correctedY(y))*S);
 const colorMat=(color:number,metalness=.05)=>new THREE.MeshPhysicalMaterial({color,metalness,roughness:.73,clearcoat:.11,clearcoatRoughness:.7,side:THREE.DoubleSide});
 const G=(r:number)=>r*S;
 function figure(outline:XY[],holes:XY[][]=[]):THREE.Shape{
@@ -43,8 +47,8 @@ export async function makeGreenCarbineAssembly():Promise<THREE.Group>{
  function build(name:string,outline:XY[],holes:XY[][],depth:number,bevel:number,sideColor:number){
   const shape=figure(outline,holes);
   const geo=new THREE.ExtrudeGeometry(shape,{
-   depth:depth*2,steps:3,bevelEnabled:true,bevelSegments:6,bevelThickness:bevel,
-   bevelSize:bevel*.80,curveSegments:12
+   depth:depth*2,steps:8,bevelEnabled:true,bevelSegments:10,bevelThickness:bevel,
+   bevelSize:bevel*.53,curveSegments:24
   });geo.translate(0,0,-depth);
   const pos=geo.getAttribute('position'),uv=geo.getAttribute('uv');
   const colors=new Float32Array(pos.count*3);
@@ -115,19 +119,19 @@ export async function makeGreenCarbineAssembly():Promise<THREE.Group>{
  const inside=colorMat(0x1b201e,.39);
  const innerBarrel=new THREE.Mesh(new THREE.CylinderGeometry(.135,.135,G(381),64,1,true),inside);
  innerBarrel.rotation.z=Math.PI/2;
- innerBarrel.position.set((849-W/2)*S,(H/2-74)*S,-.028);
+ innerBarrel.position.set((849-W/2)*S,(H/2-correctedY(74))*S,-.028);
  innerBarrel.name='Black internal liner visibly recessed behind real vents';assembly.add(innerBarrel);
  // Photographed top accessory rail, with actual depth-facing individual teeth.
  build('Milled upper rail core',[
   [363,13],[1042,12],[1044,22],[656,22],[362,24]
  ],[],.214,.008,0xafed9e);
- const toothGeo=new THREE.BoxGeometry(G(6),G(7),G(37));
- const toothMat=colorMat(0x7eab47,.16);
- const n=91;const inst=new THREE.InstancedMesh(toothGeo,toothMat,n);
+ const toothGeo=new THREE.BoxGeometry(G(3.5),G(2.8),G(29));
+ const toothMat=colorMat(0x95c653,.14);
+ const n=108;const inst=new THREE.InstancedMesh(toothGeo,toothMat,n);
  const obj=new THREE.Object3D();
  for(let i=0;i<n;i++){
   const x=360+i*(678/(n-1));
-  obj.position.set((x-W/2)*S,(H/2-9.5)*S,-.02);
+  obj.position.set((x-W/2)*S,(H/2-correctedY(9.5))*S,-.06);
   obj.rotation.set(0,0,0);obj.scale.set(1,1,1);
   obj.updateMatrix();inst.setMatrixAt(i,obj.matrix);
  }
@@ -135,7 +139,7 @@ export async function makeGreenCarbineAssembly():Promise<THREE.Group>{
  inst.name='Independently modeled top rail teeth';assembly.add(inst);
  // Physically hollow forward-facing muzzle shroud, 96 radial segments.
  const muzzle= new THREE.Group();muzzle.name='Separate hollow radial muzzle sleeve';
- const outer=G(24),inner=G(11.5),len=G(90),center=new THREE.Vector3((1091-W/2)*S,(H/2-64)*S,0);
+ const outer=G(19.5),inner=G(9.8),len=G(87),center=new THREE.Vector3((1091-W/2)*S,(H/2-correctedY(64))*S,0);
  const shell=new THREE.Mesh(new THREE.CylinderGeometry(outer,outer,len,96,1,true),colorMat(0x262a2d,.44));
  shell.rotation.z=Math.PI/2;shell.position.copy(center);shell.castShadow=true;muzzle.add(shell);
  const liner=new THREE.Mesh(new THREE.CylinderGeometry(inner,inner,len,96,1,true),colorMat(0x0d0f10,.18));
