@@ -3,6 +3,7 @@ import {clone} from 'three/examples/jsm/utils/SkeletonUtils';
 import {urbanNetworks,shortestUrbanPath,safeFollowingSpeed} from './urban-navigation.mjs';
 import {advanceSimulationClock,isHiddenBehindBuildings} from './urban-visibility.mjs';
 import {reactToPedestrianEvent,advancePedestrianResponse} from './gta-ped-response.mjs';
+import {trafficSignalSpeedLimit,URBAN_SIGNAL} from './urban-traffic-signals.mjs';
 export class UrbanPopulation {
   constructor(world,person,car){
     this.world=world;this.net=urbanNetworks(world.levelRuntime.config);this.group=new THREE.Group();
@@ -222,9 +223,19 @@ export class UrbanPopulation {
           if(d<7&&this.nearCrosswalk(ped))ahead=Math.min(ahead,d);
         }
       }
-      const target=safeFollowingSpeed(ahead,a.maxSpeed);
+      const signal=trafficSignalSpeedLimit(s,a.t,this.net.config,this.elapsed,a.maxSpeed);
+      const stopT=Math.max(0,1-URBAN_SIGNAL.stopDistance/Math.max(1,len));
+      // If a light turns red after the car passed its stop line, let it clear
+      // the crossing; already waiting cars remain stopped until their green.
+      const mustStop=signal.state.controlled&&!signal.state.green&&(a.waitingSignal||a.t<=stopT);
+      if(!mustStop)a.waitingSignal=false;
+      const target=Math.min(safeFollowingSpeed(ahead,a.maxSpeed),mustStop?signal.limit:a.maxSpeed);
       a.speed+=Math.max(-5*detailDt,Math.min(2*detailDt,(target-a.speed)*detailDt*3));
-      a.t+=Math.max(0,a.speed)*detailDt/Math.max(1,len);
+      const nextT=a.t+Math.max(0,a.speed)*detailDt/Math.max(1,len);
+      if(mustStop){
+        a.t=Math.min(nextT,stopT);
+        if(a.t>=stopT-.0001){a.speed=0;a.waitingSignal=true;}
+      }else a.t=nextT;
       if(a.t>=1){
         const options=this.net.roads.map((r,i)=>({i,d:Math.hypot(r.a.x-s.b.x,r.a.z-s.b.z)}))
           .filter(o=>o.i!==a.seg&&o.d<this.net.config.roadWidth+3)
