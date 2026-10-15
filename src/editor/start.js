@@ -4,6 +4,7 @@ import { WorldWeather } from './WorldWeather.js';
 import { mountMobileCityPlayer } from './MobileCityPlayer.js';
 import { loadCatalog, createScene } from './scene-catalog.mjs';
 import { sceneStorageKey, loadRevisions, saveRevision, forkScene } from './scene-revisions.mjs';
+import {localDdsManifest,importLocalDdsFiles} from './dds-local-assets.mjs';
 
 globalThis.THREE = THREE; // shared by procedural weather and the 3D game
 const loading = document.getElementById('loading-screen');
@@ -48,6 +49,35 @@ const setVisualProgress=({completed=0,total=5,failed=0,label=''})=>{
 let resolveVisualSkip=null;
 if(skipVisualButton){skipVisualButton.hidden=true;skipVisualButton.disabled=true;}
 
+
+// Import original DDS exports from a folder; assets never leave this browser.
+function mountDDSImportPanel(){
+  const panel=loading?.querySelector('.city-loading-panel');
+  if(!panel)return;
+  const section=document.createElement('section');section.className='dds-local-import';
+  section.innerHTML='<h2>Importa asset DDS originali</h2>'+
+   '<p>Se hai già esportato il manichino e le animazioni da Unreal, seleziona la cartella che contiene manifest.json e i GLB. Rimangono soltanto in questo browser.</p>'+
+   '<label class="dds-import-file-label">Cartella esportata <input type="file" webkitdirectory multiple></label>'+
+   '<label class="dds-import-file-label">Oppure file singoli <input type="file" accept=".glb,.json" multiple></label>'+
+   '<p role="status" data-dds-import-status aria-live="polite">Nessun asset viene caricato su GitHub o Netlify.</p>';
+  const status=section.querySelector('[data-dds-import-status]');
+  for(const input of section.querySelectorAll('input[type=file]'))input.addEventListener('change',async()=>{
+    const selected=input.files;if(!selected?.length)return;
+    section.querySelectorAll('input').forEach(x=>x.disabled=true);
+    status.textContent='Controllo file…';
+    try{
+      const result=await importLocalDdsFiles(selected,message=>status.textContent=message);
+      status.textContent='Importati '+result.count+' GLB; riavvio la scena DDS.';
+      location.reload();
+    }catch(error){
+      status.textContent='Errore importazione: '+String(error?.message||error);
+      globalThis.cityDiagnostics?.problem(error,'Import DDS');
+      section.querySelectorAll('input').forEach(x=>x.disabled=false);
+    }
+  });
+  panel.append(section);
+}
+if(current.playerProfile==='dds')mountDDSImportPanel();
 
 function sceneControls(editor) {
     const manager = document.createElement('section'); manager.className = 'scene-manager';
@@ -221,8 +251,11 @@ try {
     } else if(current.world === 'procedural-city') {
         if(current.playerProfile==='dds') {
             report('DDS: controllo file build/local-scenes/dds/manifest.json prima del mondo HD');
-            const check=await fetch('build/local-scenes/dds/manifest.json',{signal:AbortSignal.timeout(12000)});
-            if(!check.ok)throw new Error('DDS non disponibile (HTTP '+check.status+'): manca build/local-scenes/dds/manifest.json. Esporta i modelli e le animazioni dal progetto Unreal DDS con tools/export-dds.ps1. I file originali non sono nel repository; verifica i diritti prima di redistribuirli. Usa il link alla città senza DDS o copia il log.');
+            const local=await localDdsManifest();
+            if(!local){
+              const check=await fetch('build/local-scenes/dds/manifest.json',{signal:AbortSignal.timeout(12000)});
+              if(!check.ok)throw new Error('DDS non disponibile (HTTP '+check.status+'): mancano i file originali. Usa il selettore cartella DDS nella schermata per importarli privatamente. La scena si ricarica automaticamente.');
+            }else report('DDS: trovati gli asset originali nel browser; preparo il personaggio.');
         }
         world.levelRuntime = new UrbanRuntime(world);
         world.levelRuntime.onVisualProgress=setVisualProgress;

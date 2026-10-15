@@ -1,21 +1,29 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import {localDdsManifest,readLocalDds,validateDdsExport} from './dds-local-assets.mjs';
 
 const BASE = 'build/local-scenes/dds/';
 export async function loadDdsPlayer() {
-    const response = await fetch(`${BASE}manifest.json`);
-    if (!response.ok) throw new Error('DDS assets missing. Run tools/export-dds.ps1 with your editable Unreal project, then reload this scene.');
-    const manifest = await response.json();
-    if(!manifest.clips?.crouch_walk || !manifest.clips?.heal || !manifest.weapons?.rifle || !manifest.weapons?.pistol)
-        throw new Error('DDS export is outdated. Run tools/export-dds.ps1 again to add the single-player assets.');
-    const loader = new GLTFLoader();
-    const safeURL = file => {
-        if (typeof file !== 'string' || !/^[a-z0-9_-]+\.glb$/i.test(file)) throw new Error('Invalid DDS asset filename');
-        return BASE + file;
+    const local=await localDdsManifest();
+    let manifest=local;
+    if(!manifest){
+        const response=await fetch(BASE+'manifest.json');
+        if(!response.ok)throw new Error('DDS: modelli GLB mancanti. Importali dal tuo progetto Unreal.');
+        manifest=await response.json();
+    }
+    validateDdsExport(manifest);
+    const loader=new GLTFLoader();
+    const loadDdsGLB=async file=>{
+        if(!/^[a-z0-9_-]+\.glb$/i.test(file))throw new Error('Nome file DDS non valido.');
+        const blob=local?await readLocalDds(file):null;
+        if(local&&!blob)throw new Error('File DDS importato mancante: '+file);
+        const url=blob?URL.createObjectURL(blob):BASE+file;
+        try{return await loader.loadAsync(url);}
+        finally{if(blob)URL.revokeObjectURL(url);}
     };
-    const model = await loader.loadAsync(safeURL(manifest.mesh));
+    const model = await loadDdsGLB(manifest.mesh);
     const clips = await Promise.all(Object.entries(manifest.clips).map(async ([name, file]) => {
-        const gltf = await loader.loadAsync(safeURL(file));
+        const gltf = await loadDdsGLB(file);
         if (!gltf.animations.length) throw new Error(`DDS animation missing: ${name}`);
         const clip = gltf.animations[0].clone(); clip.name = name;
         // Physics owns world movement; retain all hip/limb motion, remove root travel.
@@ -54,9 +62,9 @@ export async function loadDdsPlayer() {
     model.scene.userData.playerProfile = 'dds';
     model.weapons = {};
     for (const [name, file] of Object.entries(manifest.weapons || {})) {
-        model.weapons[name] = (await loader.loadAsync(safeURL(file))).scene;
+        model.weapons[name] = (await loadDdsGLB(file)).scene;
         if(manifest.weaponClips?.[name]) {
-            model.weapons[name].animations=(await loader.loadAsync(safeURL(manifest.weaponClips[name]))).animations;
+            model.weapons[name].animations=(await loadDdsGLB(manifest.weaponClips[name])).animations;
         }
     }
     return model;

@@ -114,3 +114,8 @@ capacity and proximity before saving purchases. See `dds-inventory-reference.md`
 
 The broader offline toolchain starts in `tools/ue2three`; see `ue2three.md` for
 the architecture, current inspection-only scope and conversion acceptance gates.
+
+
+## Importazione DDS privata nel browser
+
+La scena DDS su Netlify ora accetta la cartella `build/local-scenes/dds` esportata dal progetto Unreal dell'utente, inclusi `manifest.json` e tutti i GLB. L'utente può selezionare la cartella o i file manualmente nella schermata iniziale. Gli asset rimangono nell'IndexedDB dello stesso browser; non vengono pubblicati nel repository o su Netlify. Il gioco usa i mesh e le animazioni autentiche del kit, senza placeholder. L'utente deve disporre dei diritti sull'origine degli asset. In assenza dei file l'importer segnala quali mancano.
