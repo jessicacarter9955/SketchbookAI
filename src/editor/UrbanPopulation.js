@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {clone} from 'three/examples/jsm/utils/SkeletonUtils';
 import {urbanNetworks,shortestUrbanPath,safeFollowingSpeed} from './urban-navigation.mjs';
 import {advanceSimulationClock,isHiddenBehindBuildings} from './urban-visibility.mjs';
+import {reactToPedestrianEvent,advancePedestrianResponse} from './gta-ped-response.mjs';
 export class UrbanPopulation {
   constructor(world,person,car){
     this.world=world;this.net=urbanNetworks(world.levelRuntime.config);this.group=new THREE.Group();
@@ -26,7 +27,10 @@ export class UrbanPopulation {
 
     for(let i=0;i<36;i++){
       const p=nodes[(i*11+3)%nodes.length],o=clone(person);
-      const a={object:o,x:p.x,z:p.z,path:[],index:0,speed:1.1+(i%4)*.12,seed:i};
+      const speed=1.1+(i%4)*.12;
+       const a={object:o,x:p.x,z:p.z,path:[],index:0,speed,normalSpeed:speed,health:100,state:'walking',seed:i};
+       o.userData.urbanPedSeed=i;
+       o.traverse(child=>{if(child.isMesh)child.userData.urbanPedSeed=i;});
       const bounds=new THREE.Box3().setFromObject(o);
       a.groundOffset=Number.isFinite(bounds.min.y)?Math.max(0.02,-bounds.min.y+0.02):0.65;
       if(person.animations?.length) {
@@ -121,7 +125,7 @@ export class UrbanPopulation {
   }
   updateConversations(dt){
     for(const group of this.conversations){
-      if(group.members.some(member=>member.dialoguePaused))continue;
+      if(group.members.some(member=>member.dialoguePaused||member.state!=='chatting')){group.bubble.visible=false;continue;}
       group.elapsed+=dt;
       const speaker=Math.floor(group.elapsed/2.8)%2;
       const p=group.members[speaker],q=group.members[1-speaker];
@@ -133,6 +137,33 @@ export class UrbanPopulation {
         member.object.rotation.z=Math.sin(group.elapsed*2+(member===p?0:1.1))*.035;
       }
     }
+  }
+  /** Route world threats to real animated civilians and interrupt conversations. */
+  onWorldEvent(event){
+    const buildings=this.world.levelRuntime?.plan?.buildings||[];
+    let count=0;
+    for(const npc of this.pedestrians){
+      const response=reactToPedestrianEvent(npc,event,this.net.pedestrians,buildings,this.elapsed);
+      if(!response)continue;
+      Object.assign(npc,response);count++;
+      npc.object.rotation.z=0;
+      if(npc.state==='dead'){
+        npc.walkAction?.stop();
+        npc.object.rotation.x=Math.PI/2;
+      }
+      if(npc.chatGroup!==undefined){
+        const group=this.conversations[npc.chatGroup];
+        if(group){
+          group.bubble.visible=false;
+          for(const partner of group.members)
+            if(partner!==npc&&partner.state==='chatting'){partner.state='walking';partner.path=[];partner.index=0;}
+        }
+      }
+      if(this.world.urbanDialogue?.active&&this.world.urbanDialogue.npc===npc)
+        this.world.urbanDialogue.close();
+    }
+    if(count)this.lastGtaEvent={type:event.type,count,at:this.elapsed};
+    return count;
   }
   /** Simulation LOD: full-rate near player; sparse updates in distant districts.
    * The active dialogue character, nearby cars and collision-related checks
@@ -149,6 +180,11 @@ export class UrbanPopulation {
     this.visibilityElapsed+=dt;
     const refreshVisuals=this.visibilityElapsed>=.26;
     if(refreshVisuals)this.visibilityElapsed=0;
+    if(player?.aiming&&player?.weaponName&&this.elapsed-(this.lastAimThreat??-Infinity)>.9){
+      this.lastAimThreat=this.elapsed;
+      const dir=camera.getWorldDirection(new THREE.Vector3());
+      this.onWorldEvent({type:'aim',x:player.position.x,z:player.position.z,direction:{x:dir.x,z:dir.z}});
+    }
     this.updateConversations(dt);
     const sim={activeCars:0,activePedestrians:0,sleepingCars:0,sleepingPedestrians:0,occludedAgents:0};
     const isFacing=(x,z)=>{
@@ -210,12 +246,14 @@ export class UrbanPopulation {
         a.object.visible=a.renderAllowed;
         if(!a.renderAllowed)sim.occludedAgents++;
       }
-      if(a.mixer&&a.renderAllowed&&distance<95&&facing)a.mixer.update(dt);
-      if(a.state==='chatting'||a.dialoguePaused){if(interacting)sim.activePedestrians++;continue;}
+      if(a.mixer&&a.renderAllowed&&distance<95&&facing&&a.state!=='dead')a.mixer.update(dt);
+      if(a.state==='dead'){sim.sleepingPedestrians++;continue;}
+       if(advancePedestrianResponse(a,this.elapsed))this.nextDestination(a);
+       if(a.state==='chatting'||a.state==='surrender'||a.dialoguePaused){if(interacting)sim.activePedestrians++;continue;}
       const detailDt=advanceSimulationClock(a,dt,distance,facing,interacting);
       if(!detailDt){sim.sleepingPedestrians++;continue;}
       sim.activePedestrians++;
-      if(a.index>=a.path.length)this.nextDestination(a);
+      if(a.index>=a.path.length){if(a.state==='fleeing')continue;this.nextDestination(a);}
       const target=a.path[a.index];if(!target)continue;
       const dx=target.x-a.x,dz=target.z-a.z,d=Math.hypot(dx,dz);
       if(d<.35){a.index++;continue;}

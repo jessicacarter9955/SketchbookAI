@@ -128,7 +128,10 @@ export class DdsGame {
     }
     hitTest(origin,direction,max=200) {
         this.ray.set(origin,direction);this.ray.far=max;
-        const objects=[this.world.levelRuntime.root,...this.targets.filter(t=>t.visible),...this.population.hitboxes,...(this.world.sceneEditor ? [...this.world.sceneEditor.objects.values()].filter(o=>o.visible):[])];
+        const urban=this.world.actorLayer?.urbanPopulation?.pedestrians||[];
+        const objects=[this.world.levelRuntime.root,...this.targets.filter(t=>t.visible),...this.population.hitboxes,
+            ...urban.filter(n=>n.state!=='dead').map(n=>n.object),
+            ...(this.world.sceneEditor?[...this.world.sceneEditor.objects.values()].filter(o=>o.visible):[])];
         const meshes=[];
         for(const object of objects) {
             object.updateWorldMatrix(true,true);
@@ -149,6 +152,15 @@ export class DdsGame {
         const bulletDirection=aim.clone().sub(muzzle).normalize();
         const hit=this.hitTest(muzzle,bulletDirection,muzzle.distanceTo(aim)+0.02);
         this.lastShot={muzzle:muzzle.toArray(),aim:aim.toArray(),hit:hit?.point.toArray(),target:hit?.object.userData.targetIndex,npc:hit?.object.userData.npcId,sector:hit?.object.userData.citySectorId};
+        const urbanPopulation=this.world.actorLayer?.urbanPopulation;
+        if(urbanPopulation){
+            const seed=hit?.object.userData.urbanPedSeed;
+            if(seed!==undefined){
+                urbanPopulation.onWorldEvent({type:'damage',targetSeed:seed,damage:shot.damage,x:hit.point.x,z:hit.point.z});
+                this.crosshair.classList.add('hit');this.hitTimer=0.18;
+            }
+            urbanPopulation.onWorldEvent({type:'gunshot',x:muzzle.x,z:muzzle.z});
+        }
         if(hit?.object.userData.npcId) {this.population.damage(hit.object.userData.npcId,shot.damage);this.crosshair.classList.add('hit');this.hitTimer=0.18;}
         if(hit?.object.userData.targetIndex!==undefined) {
             const index=hit.object.userData.targetIndex;this.state.hitTarget(index,shot.damage);
