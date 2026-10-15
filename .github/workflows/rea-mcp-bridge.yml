@@ -1,0 +1,47 @@
+name: REA MCP conversation bridge
+
+on:
+  push:
+    branches:
+      - tools/rea-sandbox
+    paths:
+      - .rea-bridge/request.json
+      - .rea-bridge/bridge.mjs
+      - .github/workflows/rea-mcp-bridge.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  invoke-rea-mcp:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout bridge code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Node runtime for REA
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install official pinned REA release
+        run: npm install --global rea-agents@6.5.0
+
+      - name: Call REA MCP over stdio
+        run: node .rea-bridge/bridge.mjs
+        timeout-minutes: 5
+
+      - name: Save tool schemas and output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rea-mcp-response
+          path: |
+            rea-mcp-tools.json
+            rea-mcp-result.json
+          if-no-files-found: warn
+          retention-days: 7
