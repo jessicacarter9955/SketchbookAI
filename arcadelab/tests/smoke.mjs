@@ -30,12 +30,12 @@ await page.locator('#primaryAction').click();
 const fish=await page.evaluate(()=>window.__ARCADE_DEBUG__.getState());
 assert.equal(fish.bag.length,0,'Selling must empty backpack');
 assert(fish.total>0,'Selling must raise total earnings');
-await page.screenshot({path:'screenshot-fishing-upgraded.png',fullPage:true});
+// Gameplay state asserted above; avoid an extra costly GPU screenshot during continuous rendering.
 const mobile=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true});
 mobile.on('pageerror',e=>errors.push(e.message));
 await mobile.goto('http://127.0.0.1:4173/',{waitUntil:'networkidle',timeout:30000});
 await mobile.waitForFunction(()=>Boolean(window.__ARCADE_DEBUG__),{timeout:12000});
-await mobile.screenshot({path:'screenshot-mobile.png',fullPage:true});
+await mobile.screenshot({path:'screenshot-mobile.png',fullPage:false,timeout:15000,animations:'disabled'});
 assert(await mobile.locator('canvas').isVisible());
 assert.deepEqual(errors,[],`Console errors detected: ${errors.join('; ')}`);
 console.log(JSON.stringify({result:'PASS',initialMoney:bhBefore,moneyAfterUpgrade:bhAfter,independentRods:2,fishSold:fish.sold,mobile:true,browserErrors:errors},null,2));
