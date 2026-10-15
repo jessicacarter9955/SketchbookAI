@@ -1,8 +1,30 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createInterface } from "node:readline";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve, sep } from "node:path";
 
 const request = JSON.parse(readFileSync(".rea-bridge/request.json", "utf8"));
+if (request.sourceGithubRepo) {
+  const repoUrl = new URL(request.sourceGithubRepo);
+  if (repoUrl.protocol !== "https:" || repoUrl.hostname !== "github.com" ||
+      repoUrl.username || repoUrl.password || repoUrl.search || repoUrl.hash ||
+      !/^\\/[A-Za-z0-9_.-]+\\/[A-Za-z0-9_.-]+(?:\\.git)?\\/?$/.test(repoUrl.pathname)) {
+    throw new Error("Only simple public https://github.com/owner/repository URLs are supported");
+  }
+  const targetRoot = mkdtempSync(join(tmpdir(), "rea-target-"));
+  const cloned = spawnSync("git", ["clone", "--depth", "1", "--", repoUrl.href, targetRoot], {
+    encoding: "utf8", timeout: 120000, maxBuffer: 1024 * 1024
+  });
+  if (cloned.status !== 0) throw new Error("Target clone failed: " + (cloned.stderr ?? "").slice(-1600));
+  const relativePath = request.sourceRelativePath ?? ".";
+  const targetPath = resolve(targetRoot, relativePath);
+  if (targetPath !== targetRoot && !targetPath.startsWith(targetRoot + sep)) throw new Error("Target path outside clone");
+  const parameter = request.targetParameter ?? "input_path";
+  if (!["input_path", "path"].includes(parameter)) throw new Error("Unsupported target parameter");
+  request.arguments = { ...(request.arguments ?? {}), [parameter]: targetPath };
+  console.log("REA target cloned:", repoUrl.href, "relative path:", relativePath);
+}
 const child = spawn("rea", ["mcp"], {
   stdio: ["pipe", "pipe", "pipe"],
   env: { ...process.env, REA_MCP_MAX_RESPONSE_BYTES: "10485760" }
