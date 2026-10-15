@@ -6,6 +6,7 @@ import {makePhotoReferenceModel} from './photoReferenceVolume.ts';
 import {makeReferenceLoft} from './referenceLoft.ts';
 import {createVioletPistolAssembly} from './violetPistolAssembly.ts';
 import {createCompactReferenceAssembly} from './compactReferenceAssembly.ts';
+import {makeGreenCarbineAssembly} from './greenCarbineAssembly.ts';
 
 import {makeMultiTrunkTree} from './treeModel.ts';
 import {createSourceTreeAssembly} from './treeReferenceAssembly.ts';
@@ -21,9 +22,9 @@ const assets:Array<{id:AssetKey;title:string;subtitle:string;maker:()=>THREE.Gro
     factory.traverse(o=>{if(o instanceof THREE.Mesh)o.visible=false;});
     const ref=buildArchitecturalRefinement();factory.add(ref.group);factory.userData.stats=ref.stats;return factory;
  },fov:34},
- {id:'compact',title:'Compact Violet',subtitle:'Polymer + matte-black steel',maker:()=>compareLegacy?makeReferenceLoft('compact'):createCompactReferenceAssembly(),fov:39},
+ {id:'compact',title:'Compact Violet',subtitle:'Superelliptic sculpted grip · 76 rings / 80 facets · photo matched',maker:()=>compareLegacy?makeReferenceLoft('compact'):createCompactReferenceAssembly(),fov:39},
  {id:'purple',title:'Violet Cylinder',subtitle:'Anodized aluminum + polymer',maker:()=>compareLegacy?makeReferenceLoft('purple'):createVioletPistolAssembly(),fov:36},
- {id:'rifle',title:'Lime Carbine',subtitle:'Green cerakote + black hardware',maker:()=>weapon('rifle'),fov:39},
+ {id:'rifle',title:'Lime Carbine',subtitle:'Multi-part hard surfaces · 840×301 source calibrated · refined rail',maker:()=>compareLegacy?makeReferenceLoft('rifle'):makeGreenCarbineAssembly(),fov:39},
  {id:'tree',title:'Multi-trunk Tree',subtitle:'Reference-traced curved trunks · photographic bark + dense 3D foliage',maker:()=>compareLegacy?makeMultiTrunkTree():createSourceTreeAssembly(),fov:36},
 ];
 const root=document.getElementById('app')!;
@@ -110,7 +111,7 @@ try {
     document.getElementById('asset-subtitle')!.textContent=entry.subtitle;
     document.getElementById('status')!.textContent='Source-locked photo UVs · eleven-ring curved loft · unseen sides inferred';
     [...tabs.children].forEach(n=>(n as HTMLElement).classList.toggle('active',(n as HTMLElement).dataset.id===which));
-    (window as any).__threeStats={model:which,meshCount:countMeshes(current),instances:countInstances(current),version:compareLegacy?'reference-legacy-v3':'glock-inspired-reference-loft-v4'};
+    (window as any).__threeStats={model:which,meshCount:countMeshes(current),instances:countInstances(current),version:compareLegacy?'reference-legacy-v3':'reference-sculpt-v5-compact-rounded-grip-and-rifle-hard-surface'};
     (window as any).__threeReady=true;(window as any).__activeModel=which;firstReady=false;
  }
  function countMeshes(group:THREE.Object3D){let n=0;group.traverse(o=>{if(o instanceof THREE.Mesh && o.visible)n++});return n;}
