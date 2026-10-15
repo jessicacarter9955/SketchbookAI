@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {makeErgonomicPhotoGrip} from './ergonomicGrip.ts';
 
 /**
  * Independent photographic components measured against compact.png
@@ -48,7 +49,7 @@ export async function createCompactReferenceAssembly():Promise<THREE.Group>{
  function part(name:string,contour:Point[],holes:Point[][],depth:number,tint:number,round=.02,swell=0){
   const shape=componentShape(contour,holes);
   const geom=new THREE.ExtrudeGeometry(shape,{
-   depth:depth*2,steps:4,bevelEnabled:true,bevelSegments:6,
+   depth:depth*2,steps:8,bevelEnabled:true,bevelSegments:8,
    bevelSize:round,bevelThickness:round,curveSegments:12
   });
   geom.translate(0,0,-depth);
@@ -84,7 +85,7 @@ export async function createCompactReferenceAssembly():Promise<THREE.Group>{
  ],[
   [[551,48],[738,48],[743,61],[744,124],[734,140],
    [559,140],[549,128],[549,65]]
- ],.345,0x27272c,.018);
+ ],.485,0x27272c,.022);
  // Curved steel ejection-port sleeve is independently visible through the slide opening.
  const barrelMat=new THREE.MeshPhysicalMaterial({color:0x929a9b,metalness:.81,roughness:.31,side:THREE.DoubleSide});
  const tube=new THREE.Mesh(new THREE.CylinderGeometry(.307,.307,1.50,96,1,false),barrelMat);
@@ -108,17 +109,26 @@ export async function createCompactReferenceAssembly():Promise<THREE.Group>{
   [[487,397],[547,314],[583,309],[737,313],[761,319],
    [783,340],[793,375],[790,429],[775,460],[755,469],
    [557,461],[495,443],[472,425]]
- ],.245,0x6a36a0,.026);
+ ],.337,0x6a36a0,.026);
  // Grip geometry has its own rear palm swell and is treated as a part,
  // rather than extending the slide's thickness all the way through.
- const grip=part('Textured violet handle with separate gently swollen cross-section',[
+ // The 2D-extruded handle was the main failure in front, top and 3/4 views.
+ // This separate 6,000+ vertex superelliptic grip preserves the *actual
+ // photograph contour* in X/Y, while its palm swell adds real width along Z.
+ const gripSilhouette:Point[]=[
   [170,368],[211,381],[438,467],[425,512],[397,634],
   [369,787],[359,822],[35,823],[17,794],[32,696],
   [73,567],[128,444],[151,393]
- ],[],.263,0x633699,.021,.11);
- // The continuous original side must not be split by a raised diagonal seam:
- // let the handle shape reinforce the REVERSE volume under the front chassis.
- grip.position.z=-.032;
+ ];
+ const grip=makeErgonomicPhotoGrip({
+   contour:gripSilhouette,
+   texture,
+   pixels:{width:W,height:H},
+   worldWidth:W*SCALE,
+   halfThickness:.62,
+   name:'Sculpted 76-ring rounded grip: photographic profile, real palm swell and softened backstrap'
+ });
+ group.add(grip);
  part('Real black curved trigger inside source-matched guard opening',[
   [564,307],[617,309],[625,338],[642,385],[657,416],
   [636,443],[613,453],[586,425],[563,382],[512,366],[516,341]
@@ -126,7 +136,7 @@ export async function createCompactReferenceAssembly():Promise<THREE.Group>{
  part('Black removable magazine base and foot',[
   [66,836],[355,831],[360,849],[356,873],[339,887],
   [74,888],[53,877],[51,858]
- ],[],.30,0x202124,.017);
+ ],[],.455,0x202124,.017);
  part('Front sight hood and notch',[
   [79,51],[93,12],[122,12],[136,52]
  ],[],.36,0x242427,.012);
@@ -135,7 +145,7 @@ export async function createCompactReferenceAssembly():Promise<THREE.Group>{
  ],[],.37,0x242427,.012);
  group.userData={
   source:'Original 1150x916 photo reference',
-  method:'Slide/barrel/frame/guard/grip/magazine/sights independent Three.js photo-registered assemblies',
+  method:'Slide/barrel/frame/guard/magazine/sights independent photo-registered shells; sculpted 76-ring grip with 80 radial segments',
   status:'Awaiting multiview visual assessment; rear geometry inferred'
  };
  group.position.sub(new THREE.Box3().setFromObject(group).getCenter(new THREE.Vector3()));
