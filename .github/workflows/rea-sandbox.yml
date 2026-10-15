@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   clone-and-test:
@@ -29,6 +29,13 @@ jobs:
           git clone --depth 1 https://github.com/morluto/rea.git /tmp/rea-source
           git -C /tmp/rea-source rev-parse HEAD | tee rea-source-commit.txt
           git -C /tmp/rea-source remote -v
+
+      - name: Save the REA clone as a permanent isolated Git branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git -C /tmp/rea-source remote add archive "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git -C /tmp/rea-source push archive HEAD:refs/heads/vendor/rea-upstream
 
       - name: Pack cloned source for reuse
         run: |
