@@ -16,12 +16,12 @@ jobs:
         run: |
           set +e
           status=$(curl -L -sS --max-time 25 -o /tmp/fab.json -w "%{http_code}" "https://www.fab.com/i/listings/search?q=BMW&currency=USD&count=24")
-          echo "Upstream Fab status: $status" >> "$GITHUB_STEP_SUMMARY"
-          node -e 'const fs=require("fs");try{const j=JSON.parse(fs.readFileSync("/tmp/fab.json","utf8")); console.log("result field array:",Array.isArray(j.results), "items:",j.results?.length,"keys:",Object.keys(j).slice(0,12).join(","))}catch(e){console.log("Fab upstream returned non-JSON response")}' >> "$GITHUB_STEP_SUMMARY"
+          echo "Upstream Fab status: $status" | tee -a "$GITHUB_STEP_SUMMARY"
+          node -e 'const fs=require("fs");try{const j=JSON.parse(fs.readFileSync("/tmp/fab.json","utf8")); console.log("result field array:",Array.isArray(j.results), "items:",j.results?.length,"keys:",Object.keys(j).slice(0,12).join(","))}catch(e){console.log("Fab upstream returned non-JSON response")}' | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Check production Fab bridge endpoint
         shell: bash
         run: |
           set +e
           status=$(curl -L -sS --max-time 25 -o /tmp/bridge.json -w "%{http_code}" "https://my-test-site3.netlify.app/.netlify/functions/fab-catalog?operation=status")
-          echo "Deployed Fab bridge status: $status" >> "$GITHUB_STEP_SUMMARY"
+          echo "Deployed Fab bridge status: $status" | tee -a "$GITHUB_STEP_SUMMARY"
           node -e 'const fs=require("fs");try{const j=JSON.parse(fs.readFileSync("/tmp/bridge.json","utf8")); console.log("mode:",j.mode,"bridge:",j.bridge)}catch(e){console.log("Not a JSON bridge response")}' >> "$GITHUB_STEP_SUMMARY"
