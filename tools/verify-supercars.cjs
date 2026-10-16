@@ -49,6 +49,21 @@ const {chromium}=require('playwright');
         if(!entered.occupied || !entered.control || !entered.throttle || !entered.engine)
             throw Error('Car seat driving controls not connected.');
         console.log('PASS: 3 Sketchfab branded cars and real driveable seat/controls.');
+        await page.evaluate(()=>{
+            const editor=globalThis.sceneEditor,world=globalThis.world;
+            editor.setActive(true);
+            const center=globalThis.supercarsStatus?.imported?.length ? editor.items.filter(x=>x.name.startsWith('Sketchfab · ')) : [];
+            if(center.length) {
+                const x=center.reduce((n,i)=>n+i.position[0],0)/center.length;
+                const y=center.reduce((n,i)=>n+i.position[1],0)/center.length+1.1;
+                const z=center.reduce((n,i)=>n+i.position[2],0)/center.length;
+                editor.orbit.target.set(x,y,z);
+                world.camera.position.set(x+15,y+11,z+17);
+                editor.orbit.update();
+            }
+        });
+        await page.waitForTimeout(1600);
+        await page.screenshot({path:'artifacts/supercars/sketchfab-supercars-overview.png',fullPage:true});
     }catch(e){
         try {await page.screenshot({path:'artifacts/supercars/supercars-failure.png',fullPage:true});}catch{}
         console.error('Browser test failed:',e.message);
