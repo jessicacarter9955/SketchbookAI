@@ -6,6 +6,7 @@ import { Character } from '../ts/characters/Character';
 import { Car } from '../ts/vehicles/Car';
 import { loadDdsPlayer } from './DdsAssets';
 import { DdsCharacter } from './DdsCharacter';
+import { fitVehicleVisual } from './supercars.mjs';
 
 export class ActorLayer {
     constructor(world) { this.world = world; this.actors = []; this.spawn = new THREE.Vector3(0, 2, -5); }
@@ -34,6 +35,7 @@ export class ActorLayer {
         const floor = this.terrainHeight(this.spawn.x, this.spawn.z, this.spawn.y - player.rayCastLength);
         this.spawn.y = floor + player.rayCastLength + 0.08;
         player.setPosition(...this.spawn.toArray());
+        if (player.actions?.enter?.eventCodes && !player.actions.enter.eventCodes.includes('KeyE')) player.actions.enter.eventCodes.push('KeyE');
         player.userData.playerProfile = this.playerProfile;
         if(this.playerProfile==='dds') player.setOrientation(new THREE.Vector3(0,0,-1),true);
         player.position.copy(this.spawn);
@@ -47,6 +49,33 @@ export class ActorLayer {
             let actor;
             if (item.prefab === 'vehicle') {
                 actor = new Car({ ...this.car, scene: clone(this.car.scene) });
+                if (item.assetId) {
+                    const template = this.world.sceneEditor?.templates.get(item.assetId);
+                    if (template) {
+                        // Retain the original rig, wheel transforms and seats for the real
+                        // driving physics. Hide only its visible body: wheel nodes move
+                        // independently into World.graphicsWorld when the car is added.
+                        const rigScene = actor.children[0]?.children[0];
+                        rigScene?.traverse(node => {
+                            if (!node.isMesh) return;
+                            let parent=node, isWheel=false;
+                            while (parent && parent !== rigScene) {
+                                if (parent.userData?.data === 'wheel') { isWheel=true; break; }
+                                parent=parent.parent;
+                            }
+                            if (!isWheel) node.visible=false;
+                        });
+                        const shell = fitVehicleVisual(template);
+                        shell.traverse(node => {
+                            if (!node.isMesh) return;
+                            node.castShadow=true;
+                            node.receiveShadow=true;
+                            for (const mat of [].concat(node.material||[])) if(mat && !actor.materials.includes(mat)) actor.materials.push(mat);
+                        });
+                        shell.userData.sketchfabAsset=item.assetId;
+                        actor.add(shell);
+                    }
+                }
                 const ground = this.terrainHeight(item.position[0], item.position[2], item.position[1]);
                 actor.setPosition(item.position[0], ground + 0.9, item.position[2]);
                 actor.collision.quaternion.setFromEuler(...item.rotation);
