@@ -307,6 +307,7 @@ try {
     const hadSaved = localStorage.getItem(storageKey) !== null;
     report('Caricamento della scena salvata e degli abitanti…');
     await sceneEditor.run(() => sceneEditor.restoreSaved());
+    if(current.id==='san-andreas-streetlab')await sceneEditor.restorePlayerAvatar();
     if (!hadSaved && current.id === 'portland-lab') {
         const original = localStorage.getItem(sceneStorageKey('liberty-city'));
         if (original) {

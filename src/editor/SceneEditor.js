@@ -274,11 +274,47 @@ export class SceneEditor {
         const size = Math.max(extent.x, extent.y, extent.z);
         if (!Number.isFinite(size) || size <= 0) throw new Error('Modello senza geometria visibile.');
         const root = new THREE.Group(); root.add(gltf.scene);
-        const isHuman=asset.metadata?.role==='pedestrian';
+        const isHuman=['pedestrian','avatar'].includes(asset.metadata?.role);
         root.scale.setScalar(isHuman?1.8/Math.max(extent.y,.01):4.3/size); root.updateMatrixWorld(true);
         const normalized = new THREE.Box3().setFromObject(root), center = normalized.getCenter(new THREE.Vector3());
         root.position.set(-center.x, -normalized.min.y, -center.z);
         return root;
+    }
+    async importPlayerAvatar(bytes, metadata={}) {
+        bytes=await modelToGLB(bytes);
+        const asset={id:crypto.randomUUID(),bytes,metadata:{...metadata,role:'avatar'}};
+        const template=await this.prepareAsset(asset);
+        await this.store.putAll([asset]);
+        this.assets.set(asset.id,asset);this.templates.set(asset.id,template);
+        this.playerAvatarId=asset.id;this.playerAvatarTemplate=template;
+        localStorage.setItem(this.storageKey+'.avatar',asset.id);
+        this.applyPlayerAvatar(this.world.editorPlayer);
+        this.message('Personaggio importato: GLB visivo originale, controlli e fisica Sketchbook conservati.');
+        return asset.id;
+    }
+    async restorePlayerAvatar(){
+        const id=localStorage.getItem(this.storageKey+'.avatar');if(!id)return;
+        const asset=await this.store.get(id);
+        if(!asset){localStorage.removeItem(this.storageKey+'.avatar');this.message('Avatar locale mancante: reimporta il GLB originale.');return;}
+        this.playerAvatarId=id;
+        this.playerAvatarTemplate=await this.prepareAsset(asset);
+        this.applyPlayerAvatar(this.world.editorPlayer);
+    }
+    applyPlayerAvatar(player){
+        if(!player?.modelContainer||!this.playerAvatarTemplate)return;
+        const container=player.modelContainer;
+        for(const node of [...container.children])if(node.userData.streetlabAvatar)container.remove(node);
+        for(const node of container.children)node.visible=false;
+        const skin=clone(this.playerAvatarTemplate);skin.userData.streetlabAvatar=true;
+        skin.name='Imported Sketchfab/Fab playable avatar';
+        container.add(skin);
+        player.userData.streetlabAvatarId=this.playerAvatarId;
+        const clips=this.assetClips.get(this.playerAvatarId)||[];
+        if(clips.length){
+            const mixer=new THREE.AnimationMixer(skin);
+            const clip=clips.find(c=>/walk|idle|run/i.test(c.name))||clips[0];
+            mixer.clipAction(clip).play();player.userData.streetlabAvatarMixer=mixer;
+        }
     }
     openModelLibrary(query = '', interactivePrefab = null) {
         if (!globalThis.picker?.openModelPicker) throw new Error('Libreria Sketchfab / Fab non caricata.');

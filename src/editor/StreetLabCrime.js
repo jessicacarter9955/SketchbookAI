@@ -72,7 +72,6 @@ export class StreetLabCrime{
    nearby.obj.visible=false;this.message('Raccolti $100.');this.save();this.draw();
   }else this.message('Avvicinati al simbolo del denaro per raccoglierlo.');
  }
- canShoot(){return !this.editor.active&&!this.bag.hidden===false&&!this.world.editorPlayer?.controlledObject;}
  shoot(){
   if(this.editor.active||!this.bag.hidden||this.world.editorPlayer?.controlledObject)return;
   const w=this.state.fire();if(!w){this.message('Nessun colpo. Premi R per ricaricare.');return;}
@@ -148,6 +147,7 @@ export class StreetLabCrime{
    const dt=Math.max(0,Math.min(.1,(now-this.last)/1000));this.last=now;
    const player=this.world.editorPlayer;
    if(!this.editor.active&&player&&!this.world.levelRuntime.transitioning){
+    player.userData.streetlabAvatarMixer?.update(dt);
     const focus=player?.controlledObject?.position||player?.position;
     this.count+=dt;
     const near=this.cops.some(c=>c.alive&&c.object.position.distanceTo(focus)<45);

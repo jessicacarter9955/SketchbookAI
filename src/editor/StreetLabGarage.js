@@ -18,7 +18,7 @@ export function mountStreetLabGarage(world,editor){
  section.style.cssText='position:fixed;right:12px;top:66px;z-index:20;background:rgba(6,14,25,.9);color:white;padding:12px;border:1px solid #79abb5;border-radius:12px;max-width:min(370px,90vw);font:13px system-ui;max-height:65vh;overflow:auto';
  section.innerHTML='<strong>🏎 STREETLAB · SAN ANDREAS</strong><p>Auto sportive guidabili e NPC reali: scarica il GLB dalle fonti e importalo. Nessun asset viene pubblicato su server.</p>'+
   '<details><summary>BMW · Porsche · Ferrari · NPC Sketchfab</summary><div data-garage-sources></div></details>'+
-  '<label>Tipo di asset <select data-garage-type><option value="vehicle">Auto sportiva guidabile</option><option value="pedestrian">NPC / pedone</option></select></label>'+
+  '<label>Tipo di asset <select data-garage-type><option value="vehicle">Auto sportiva guidabile</option><option value="pedestrian">NPC / pedone</option><option value="avatar">Aspetto del protagonista (CJ-like)</option></select></label>'+
   '<p><button type="button" data-garage-search>Ricerca su Sketchfab / Fab</button></p>'+
   '<label>Importa GLB scaricato <input data-garage-import type="file" accept=".glb,.gltf,.zip"></label>'+
   '<p data-garage-status role="status" aria-live="polite">Scarica un modello con licenza adatta; massimo 50 MB per file.</p>'+
@@ -35,6 +35,7 @@ export function mountStreetLabGarage(world,editor){
  let source=null;
  list.onclick=event=>{const link=event.target.closest('a');if(link){source=STREETLAB_SOURCES.find(s=>s.url===link.href)||null;if(source)role.value=source.type;}};
  section.querySelector('[data-garage-search]').onclick=()=>{
+  if(role.value==='avatar'){status.textContent='Per cambiare il protagonista scarica un GLB e selezionalo qui sotto.';return;}
   editor.openModelLibrary(role.value==='vehicle'?'sports car':'walking person',role.value);
   status.textContent='Usa la ricerca del catalogo e importa un modello scaricabile.';
  };
@@ -47,8 +48,13 @@ export function mountStreetLabGarage(world,editor){
     author:source?.name.split(' · ')[1]||'Autore indicato sulla fonte',
     license:source?.name.includes('CC BY')?'CC BY 4.0 (verificare la scheda originale)':'Verificare licenza',
     licenseUrl:source?.url||''};
-   await editor.importBytes(await file.arrayBuffer(),metadata,{nearPlayer:true,interactivePrefab:role.value});
-   status.textContent=(role.value==='vehicle'?'Auto guidabile':'NPC')+' importato in scena, premi F2/▶ Prova per usarlo. Premi F vicino all’auto.';
+   if(role.value==='avatar'){
+      await editor.importPlayerAvatar(await file.arrayBuffer(),metadata);
+      status.textContent='Protagonista aggiornato (aspetto visivo). WASD cammina, F sale sull’auto. I GLB senza animazioni compatibili non avranno il movimento delle articolazioni.';
+   }else{
+      await editor.importBytes(await file.arrayBuffer(),metadata,{nearPlayer:true,interactivePrefab:role.value});
+      status.textContent=(role.value==='vehicle'?'Auto guidabile':'NPC')+' importato in scena, premi F2/▶ Prova per usarlo. Premi F vicino all’auto.';
+   }
    source=null;
   }catch(e){status.textContent='Errore: '+e.message;}
  };
