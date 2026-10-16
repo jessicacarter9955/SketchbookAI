@@ -41,6 +41,17 @@ jobs:
           print("Native StreetMap XML parsed: 4 road ways and 10 building footprints. Unreal import still untested.")
           PY
           python -m py_compile tools/worldbld-browser/lightning_runner.py
+          python -m py_compile tools/worldbld-browser/WorldBLD_Prototype/Scripts/import_city_block_into_unreal.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          path=Path("tools/worldbld-browser/WorldBLD_Prototype/WorldBLD_Prototype.uproject")
+          project=json.loads(path.read_text())
+          enabled={p["Name"] for p in project["Plugins"] if p["Enabled"]}
+          assert {"WorldBLD","RoadBLD","CityBLD","StreetMap","PythonScriptPlugin"} <= enabled
+          assert project["EngineAssociation"]=="5.8"
+          print("Native Unreal project and StreetMap import automation passed static validation (not executed in Unreal).")
+          PY
           python tools/worldbld-browser/lightning_runner.py
       - name: Inspect Lightning and WorldBLD without authentication or GPU
         run: node tools/worldbld-browser/probe.cjs
