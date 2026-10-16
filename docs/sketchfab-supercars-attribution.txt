@@ -1,0 +1,19 @@
+SketchbookAI – Urban Photoreal car models (Sketchfab)
+===================================================
+The three vehicle shells are original Sketchfab GLB downloads, not synthetic replacements.
+They are visually attached to the stock Sketchbook vehicle physics rig.
+Their original authors retain credit, and the Creative Commons Attribution license applies
+where designated on the source model pages.
+
+BMW M4 G82 – Rosemarin – Creative Commons Attribution (CC BY)
+https://sketchfab.com/3d-models/bmw-m4-g82-5a9007d569a846548dbf352877550c4e
+
+Ferrari F40 – Black Snow – Creative Commons Attribution (CC BY)
+https://sketchfab.com/3d-models/ferrari-f40-52a66c41cfcd4f999fb1b1c49bf24d70
+
+Lamborghini Aventador SV – SDC PERFORMANCE – Creative Commons Attribution (CC BY)
+https://sketchfab.com/3d-models/free-lamborghini-aventador-sv-tunnig-by-sdc-4350c8de8fd740f582bd316c1fa010ff
+
+Downloaded automatically at website deployment from an authenticated Sketchfab source
+through the fixed whitelisted Sketchbook Render bridge. Tokens are never included in
+the static website. Attribution is also stored in model metadata within the editor.
