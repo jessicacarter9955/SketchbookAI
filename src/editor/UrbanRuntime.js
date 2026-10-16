@@ -323,7 +323,7 @@ export class UrbanRuntime {
       // Convert each failure to a result; a missing facade must not block NPCs,
       // traffic or the user's ability to move and talk.
       try {
-        const value=await Promise.race([task(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Timeout dettaglio HD: '+label)),50000))]);
+        const value=await task(); // Genuine HD assets must finish, not false-fail at an arbitrary 50s deadline.
         globalThis.cityDiagnostics?.stage(label,'done');
         if(group.parent===this.root){
           this.visualProgress.completed++;
@@ -540,7 +540,7 @@ export class UrbanRuntime {
     layer.userData.keepLoaded=!this.mobileLite;
     group.add(layer);
     const fallback=group.getObjectByName('Procedural vegetation fallback');if(fallback)fallback.removeFromParent();
-    group.userData.photorealVegetation='tree_small_02 · Poly Haven CC0';
+    group.userData.photorealVegetation='tree_small_02 · Poly Haven CC0 · GPU instanced';
     return {assetId:'tree_small_02',count:items.length,lods:2};
   }
   applySky(preset){
@@ -599,7 +599,7 @@ export class UrbanRuntime {
       this.lastFoliageTick=now;
       const vegetation=this.root.getObjectByName('CC0 photoreal vegetation');
       vegetation?.userData.stream?.(this.world.camera,tree=>!isOccludedTree(this.world.camera.position,tree,this.plan.buildings));
-      vegetation?.children.forEach(lod=>{if(lod.visible)lod.update(this.world.camera);});
+      vegetation?.children.forEach(lod=>{if(lod.isLOD&&lod.visible)lod.update(this.world.camera);});
     }
     const player=this.world.editorPlayer,p=player?.controlledObject?.position||player?.position;if(p)this.world.actorLayer?.update(p);
     this.world.urbanDialogue?.update(1/60);
