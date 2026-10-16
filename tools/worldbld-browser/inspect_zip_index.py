@@ -39,17 +39,43 @@ def main():
         if cd_offset+cd_size>total:raise ValueError("Invalid central dir positions")
         cd,total2=get_range(start=cd_offset,end=cd_offset+cd_size-1)
         if total2!=total or len(cd)!=cd_size:raise ValueError("Range did not match central directory")
-        names=[]; p=0
+        names=[]; entries=[]; p=0
         while p<len(cd):
             if cd[p:p+4]!=b"PK"+bytes([1,2]): raise ValueError("Bad central directory header")
             name_len,extras_len,comment_len=struct.unpack_from("<HHH",cd,p+28)
             raw_name=cd[p+46:p+46+name_len]
             name=raw_name.decode("utf-8","replace")
             names.append(name)
+            entries.append({"name":name, "method":struct.unpack_from("<H",cd,p+10)[0],
+                            "compressed_bytes":struct.unpack_from("<I",cd,p+20)[0],
+                            "local_offset":struct.unpack_from("<I",cd,p+42)[0]})
             p+=46+name_len+extras_len+comment_len
         platform_counts={"windows_dll":sum(n.lower().endswith(".dll") for n in names),
           "linux_so":sum(n.lower().endswith(".so") for n in names),
           "mac_dylib":sum(n.lower().endswith(".dylib") for n in names)}
+        descriptors=[]
+        for item in entries:
+            if not item["name"].lower().endswith(".uplugin"):continue
+            offset=item["local_offset"]
+            hdr,tot=get_range(start=offset,end=offset+4095)
+            if hdr[:4]!=b"PK"+bytes([3,4]): continue
+            namelen,extralen=struct.unpack_from("<HH",hdr,26)
+            start=offset+30+namelen+extralen
+            if item["compressed_bytes"]>65536: continue
+            compressed,_=get_range(start=start,end=start+item["compressed_bytes"]-1)
+            import zlib
+            if item["method"]==8:
+                payload=zlib.decompress(compressed,-15)
+            elif item["method"]==0:payload=compressed
+            else:continue
+            if len(payload)>65536:continue
+            decoded=json.loads(payload)
+            descriptors.append({"name":item["name"],"file_version":decoded.get("FileVersion"),
+             "version_name":decoded.get("VersionName"),"engine_version":decoded.get("EngineVersion"),
+             "supported_target_platforms":decoded.get("SupportedTargetPlatforms"),
+             "modules":[{k:v for k,v in m.items() if k in ("Name","Type","LoadingPhase","PlatformAllowList","WhitelistPlatforms")} for m in decoded.get("Modules",[])],
+             "plugins":[{k:v for k,v in pl.items() if k in ("Name","Enabled")} for pl in decoded.get("Plugins",[])]})
+        result["descriptors"] = descriptors
         result.update({"success":True,"archive_bytes":total,"entries":len(names),
           "index_bytes":cd_size,"platform_counts":platform_counts,
           "plugin_descriptors":[n for n in names if n.lower().endswith(".uplugin")][:100],
