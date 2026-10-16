@@ -22,6 +22,8 @@ jobs:
             status=$(curl --silent --show-error --location --max-time 80 --output /tmp/probe.bin --dump-header /tmp/headers.txt --write-out '%{http_code}' -H "Origin: $ORIGIN" "$BASE/$segment")
             echo "HTTP $status; content-size $(wc -c </tmp/probe.bin)"
             grep -Ei '^(access-control|content-type|server|x-render)' /tmp/headers.txt || true
-            if [ "$status" != 200 ]; then head -c 200 /tmp/probe.bin; echo; fi
+            if [ "$status" != 200 ]; then head -c 200 /tmp/probe.bin; echo; exit 1; fi
+            grep -Fi "access-control-allow-origin: $ORIGIN" /tmp/headers.txt >/dev/null
+            echo "PASS: HTTP 200 with exact preview CORS origin"
             echo "----"
           done
