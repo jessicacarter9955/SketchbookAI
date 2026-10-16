@@ -36,8 +36,11 @@
             const title = document.createElement('h3'); title.textContent = model.name;
             const info = document.createElement('p'); info.textContent = `${model.user?.displayName || model.user?.username || 'Autore sconosciuto'} · ${model.license?.label || 'Verifica licenza'} · ${(model.faceCount || 0).toLocaleString()} facce`;
             const link = document.createElement('a'); link.textContent = 'Modello e licenza ↗'; link.href = safeURL(model.viewerUrl) || `https://sketchfab.com/models/${encodeURIComponent(model.uid)}`; link.target = '_blank'; link.rel = 'noopener noreferrer';
-            const add = document.createElement('button'); add.textContent = model.ownershipKnown && !model.owned ? 'Acquisisci su Fab ↗' : callback ? 'Importa' : 'Scarica modello'; add.disabled = busy;
-            add.onclick = () => model.ownershipKnown && !model.owned ? window.open(link.href, '_blank', 'noopener,noreferrer') : pick(model);
+            const requiresFabPage = provider === 'fab' && (model.importAvailable === false || (model.ownershipKnown && !model.owned));
+            const add = document.createElement('button');
+            add.textContent = requiresFabPage ? 'Apri su Fab ↗' : callback ? 'Importa' : 'Scarica modello';
+            add.disabled = busy;
+            add.onclick = () => requiresFabPage ? window.open(link.href, '_blank', 'noopener,noreferrer') : pick(model);
             const star = document.createElement('button'); star.textContent = isFavorite ? '★ Salvato' : '☆ Preferito';
             star.onclick = () => { favorites = isFavorite ? favorites.filter(f => favoriteId(f) !== favoriteId(model)) : [...favorites, model];
                 try { localStorage.setItem('sketchbook.favorites', JSON.stringify(favorites)); } catch { status('Spazio preferiti esaurito.'); } render(); };
@@ -56,7 +59,7 @@
             if (request !== generation) return;
             const results = (data.results || []).map(model => ({ ...model, provider: source })).sort((a, b) => (b.animationCount || 0) - (a.animationCount || 0));
             models = more ? [...models, ...results] : results; next = data.next || null;
-            render(); status(models.length ? `${models.length} modelli ${source === 'fab' ? 'Fab' : 'Sketchfab'}. Controlla licenza e compatibilità prima dell’uso.` : 'Nessun risultato. Prova anche termini inglesi: tree, car, building.');
+            render(); status(models.length ? `${models.length} modelli ${source === 'fab' ? 'Fab' : 'Sketchfab'}. ${source === 'fab' && fab.catalogOnly ? 'La ricerca è online; per scaricare serve ancora Epic autenticato.' : 'Controlla autore e licenza prima dell’uso.'}` : 'Nessun risultato. Prova anche termini inglesi: tree, car, building.');
         } catch (error) { if (request === generation && error.name !== 'AbortError') status(error.message); }
     }
     async function pick(model) {
@@ -96,7 +99,7 @@
         $('[name=animated]').closest('label').hidden = source === 'fab';
         $('[name=faces]').closest('label').hidden = source === 'fab';
         render();
-        status(source === 'fab' ? 'Fab richiede il bridge FabCLI locale e un account Epic collegato. Cerca un modello già acquisito.' : 'Cerca un modello Sketchfab scaricabile.');
+        status(source === 'fab' ? (fab.catalogOnly ? 'Catalogo Fab online: cerca e visualizza i modelli. Per importarli direttamente serve il collegamento autenticato Epic.' : 'FabCLI locale: cerca gli asset del tuo account Epic e importa quelli disponibili in glTF/GLB.') : 'Cerca un modello Sketchfab scaricabile.');
         if ($('[name=query]').value.trim()) search();
     });
     $('[name=animated]').onchange = () => search();
