@@ -41,6 +41,9 @@ try{
       architecture:r.visualState.architecture,props:r.visualState.props,
       facadeCount:facade.length,hdFacadeCount:facade.filter(c=>c.node).length,
       visiblePlaceholders,pbrMeshes,pbrTextured,vegetationModels:vegetation?.children?.length||0,
+      vegetationBatches:vegetation?.children?.filter(node=>node.isInstancedMesh)?.length||0,
+      visibleTrees:vegetation?.userData?.visibleTrees||0,
+      totalTrees:vegetation?.userData?.treeCount||0,
       mobileLite:r.mobileLite,hdComplete:Boolean(scene.children[0]?.userData)||scene.children.length>0,
       actorSources:{person:w.actorLayer?.person?.scene?.name,car:w.actorLayer?.car?.scene?.name},
       playerReady:!!w.editorPlayer,cars:w.vehicles?.length||0,stats:w.renderer.info.memory,
@@ -51,7 +54,7 @@ try{
   if(report.mobileLite)fail('unexpected forced low-quality mode');
   if(report.facadeCount<1||report.hdFacadeCount!==report.facadeCount)fail('missing imported facade sectors');
   if(report.visiblePlaceholders!==0)fail('primitive facades visible after HD ready');
-  if(report.vegetationModels<15||report.pbrTextured<10)fail('missing high-detail trees or PBR textures');
+  if(report.vegetationBatches<2||report.totalTrees<15||report.pbrTextured<10)fail('missing instanced original two-LOD trees or PBR textures');
   if(!Array.isArray(report.architecture)||report.architecture.length<2||!report.props?.instances)
     fail('missing original city facade or street furniture kits');
   if(!report.playerReady||report.cars<2)fail('original game interactive vehicles not ready');
@@ -70,6 +73,6 @@ try{
     JSON.stringify({...report,readinessSeconds:(Date.now()-started)/1000,screenshotBytes:bytes.length,networkFailures,errors},null,2));
   console.log('ORIGINAL PHOTOREAL CITY SMOKE: PASS',JSON.stringify({
     readinessSeconds:(Date.now()-started)/1000,facades:report.hdFacadeCount,
-    pbrTextures:report.pbrTextured,trees:report.vegetationModels,
+    pbrTextures:report.pbrTextured,trees:report.totalTrees,treeDrawBatches:report.vegetationBatches,
     placeholders:report.visiblePlaceholders,screenshotBytes:bytes.length}));
 }finally{await browser.close();}
