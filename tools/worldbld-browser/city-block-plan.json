@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "project": "WorldBLD_CityBlock_Prototype",
+  "target_engine": "Unreal Engine 5.8.3",
+  "source_tool": "WorldBLD + RoadBLD + CityBLD (licensed native editor)",
+  "units": "centimeters",
+  "scope": "One urban block bounded by four roads; build in the native UE viewport, not a 3D substitute",
+  "road_preset": "Two lane asphalt road with sidewalks, from installed WorldBLD Kit",
+  "roads": [
+    {
+      "id": "south",
+      "from": [
+        0,
+        0
+      ],
+      "to": [
+        22000,
+        0
+      ],
+      "vehicle_lanes": 2,
+      "road_width_cm": 1200,
+      "sidewalk_cm": 250
+    },
+    {
+      "id": "east",
+      "from": [
+        22000,
+        0
+      ],
+      "to": [
+        22000,
+        16000
+      ],
+      "vehicle_lanes": 2,
+      "road_width_cm": 1200,
+      "sidewalk_cm": 250
+    },
+    {
+      "id": "north",
+      "from": [
+        22000,
+        16000
+      ],
+      "to": [
+        0,
+        16000
+      ],
+      "vehicle_lanes": 2,
+      "road_width_cm": 1200,
+      "sidewalk_cm": 250
+    },
+    {
+      "id": "west",
+      "from": [
+        0,
+        16000
+      ],
+      "to": [
+        0,
+        0
+      ],
+      "vehicle_lanes": 2,
+      "road_width_cm": 1200,
+      "sidewalk_cm": 250
+    }
+  ],
+  "intersections": [
+    "[0,0]",
+    "[22000,0]",
+    "[22000,16000]",
+    "[0,16000]"
+  ],
+  "cityblD": {
+    "kit": "Modern Essentials Kit (if available to license)",
+    "land_use": "mixed residential/commercial",
+    "district": "city-center-lowrise",
+    "min_building_floors": 2,
+    "max_building_floors": 5,
+    "target_parcels": 12,
+    "target_buildings": 10,
+    "ground_level_shops": true,
+    "parked_cars": true,
+    "streetlights": true,
+    "crosswalks": true,
+    "sidewalks": true
+  },
+  "milestones": [
+    "UE editor and correct plugin versions start without errors",
+    "WorldBLD license/trial is active",
+    "All four RoadBLD roads created via native plugin",
+    "CityBLD recognizes closed block and creates parcels",
+    "Buildings generated via licensed CityBLD tools",
+    "UE save and reopen verified",
+    "Screenshot of native viewport uploaded to CI artifacts",
+    "Cloud compute stopped after outputs are safely stored"
+  ],
+  "validation": {
+    "minimum_created_roads": 4,
+    "minimum_real_cityblD_blocks": 1,
+    "min_parcels": 8,
+    "min_buildings": 8,
+    "requires_native_worldbld": true
+  }
+}
