@@ -5,7 +5,7 @@ const s=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 test('HD vegetation uses source Poly Haven tree GLTF geometry with true GPU batching',()=>{
  const src=s('src/editor/UrbanVegetation.js');
  assert.match(src,/new THREE.InstancedMesh/);
- assert.match(src,/scene-lod'\+level\+'\.gltf'/);
+ assert.match(src,/scene-lod\$\{level\}\.gltf/);
  assert.match(src,/instance\.count=0/);
  assert.match(src,/instanceMatrix\.needsUpdate=true/);
  assert.doesNotMatch(src,/root\.clone\(true\)/);
