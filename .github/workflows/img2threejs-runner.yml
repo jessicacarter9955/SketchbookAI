@@ -182,6 +182,9 @@ jobs:
             echo "Rifle six-angle screenshots unchanged." >> "$GITHUB_STEP_SUMMARY"
           else
             git commit -m "gallery: publish verified six-angle Three.js rifle screenshots"
+            # Generated assessment/spec files are intentionally uploaded as artifacts,
+            # not preserved as unstaged changes in this ephemeral checkout.
+            git reset --hard HEAD
             git pull --rebase origin img2threejs-runner
             git push origin HEAD:img2threejs-runner
             echo "Rifle six WebGL screenshot views committed to img2three/preview." >> "$GITHUB_STEP_SUMMARY"
