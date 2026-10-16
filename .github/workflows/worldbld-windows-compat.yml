@@ -1,0 +1,30 @@
+name: WorldBLD native Windows compatibility (CPU-only)
+on:
+  push:
+    branches: [img2threejs-runner]
+    paths:
+      - ".github/workflows/worldbld-windows-compat.yml"
+      - "tools/worldbld-browser/inspect_cloud_compat.py"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-native-check:
+    runs-on: windows-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check legitimate download and installed engine with strict 64KiB transfer limit
+        shell: pwsh
+        run: python tools/worldbld-browser/inspect_cloud_compat.py
+      - name: Publish compatibility JSON only, no downloaded proprietary assets
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: worldbld-windows-free-runner-compat
+          path: tools/worldbld-browser/results/compatibility.json
+          if-no-files-found: warn
+          retention-days: 7
