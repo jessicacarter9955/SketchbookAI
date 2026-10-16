@@ -26,3 +26,8 @@ La nuova scena `editor.html?scene=san-andreas-local&play=1` condivide l'IndexedD
 ## Pedoni e veicoli sulla rete originale
 
 `SanAndreasPopulation` usa `buildSanAndreasNetwork` e `sa-agent-navigation.mjs` per posizionare manichini e veicoli Sketchbook sulle posizioni vere dei nodi `nodes*.dat`, rispettando gli archi diretti, i blocchi stradali e le aree consentite. Le auto non guidabili dell'ambiente sono instanziate con `InstancedMesh`, i pedoni animati hanno distanza massima e sleep LOD. Gli agenti si riciclano su nodi originali vicino al giocatore, non inventano strade. Sono prototipi di popolazione, non ancora IA con missioni, traffico poliziesco o semafori GTA originali.
+
+
+## Ottimizzazione città grande: streaming vero
+
+L'importatore GLB registra i bounding box mondiali di ogni settore in IndexedDB (schema v2). La scena giocabile seleziona solo i 12 settori più vicini entro ~520 m, ne carica 2 alla volta, e rilascia geometrie/materiali/texture GPU oltre 1250 m. Mesh statiche hanno trasformazioni congelate, collisioni Cannon Trimesh vengono preparate solo vicino al giocatore, fino a 3 nuove a tick. Le draw call, il numero di settori caricati e gli FPS vengono mostrati nella HUD. Se gli FPS rimangono bassi, un adattamento lento riduce il pixel ratio (non la geometria o le texture originali): `&adaptive=0` lo disabilita. Per importazioni precedenti allo schema v2 con oltre 2 GLB occorre reimportare i GLB tramite il visualizzatore per costruire gli indici; nessun asset viene inviato online. Per grandi mappe separare i GLB in settori, idealmente <256 MB per file; un singolo GLB gigante non può essere diviso automaticamente. Questo non garantisce 60 FPS su tutti i dispositivi: richiede benchmark sul dispositivo reale.

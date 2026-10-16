@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader';
 import {parseSanAndreasNodeFile,buildSanAndreasNetwork} from './sa-paths.mjs';
-import {saveSanAndreasFiles,clearSanAndreasFiles,listSanAndreasFiles} from './sa-local-map.mjs';
+import {saveSanAndreasFiles,saveSanAndreasGeometryMetadata,clearSanAndreasFiles,listSanAndreasFiles} from './sa-local-map.mjs';
 
 const mount=document.getElementById('sa-viewport'),stats=document.getElementById('sa-stats');
 const logBox=document.getElementById('sa-log'),entries=[];
@@ -105,7 +105,7 @@ document.getElementById('sa-meshes').onchange=async e=>{
   try{
     if(files.length>128)throw Error('Massimo 128 settori GLB per importazione.');
     // Stage all scenes first; a failed GLB does not erase previously imported map data.
-    const staged=[];
+    const staged=[],metadata=[];
     for(const file of files){
       if(!/\.glb$/i.test(file.name)||file.size>256*1024*1024)throw Error('GLB non valido o oltre 256 MB: '+file.name);
       log('Caricamento geometria: '+file.name+' ('+Math.round(file.size/1048576)+' MiB)');
@@ -114,10 +114,16 @@ document.getElementById('sa-meshes').onchange=async e=>{
         const gltf=await loader.loadAsync(url);
         if(!gltf.scene?.getObjectByProperty('isMesh',true))throw Error('Il GLB non contiene mesh: '+file.name);
         gltf.scene.name=file.name;
+        gltf.scene.updateMatrixWorld(true);
+        const box=new THREE.Box3().setFromObject(gltf.scene);
+        if(box.isEmpty())throw Error('Geometria GLB senza bounds: '+file.name);
+        metadata.push({name:file.name,bounds:[box.min.x,box.min.y,box.min.z,box.max.x,box.max.y,box.max.z]});
         staged.push(gltf.scene);
       }finally{URL.revokeObjectURL(url);}
     }
     await saveSanAndreasFiles('geometry',files);
+    await saveSanAndreasGeometryMetadata(metadata);
+    log('Indici spaziali salvati: '+metadata.length+' settori. Il gioco può caricare soltanto le zone vicine.');
     releaseGroup(imported);
     loadedMeshes=0;
     for(const obj of staged)imported.add(obj);
