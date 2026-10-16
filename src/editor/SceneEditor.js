@@ -72,7 +72,7 @@ export class SceneEditor {
             <label>Nome<input name="object-name" maxlength="120"></label><div class="editor-grid"><button data-mode="translate">Sposta · W</button><button data-mode="rotate">Ruota · E</button><button data-mode="scale">Scala · R</button><button data-action="focus">Inquadra · F</button></div>
             ${['position', 'rotation', 'scale'].map((field, i) => `<label>${['Posizione · metri', 'Rotazione · gradi', 'Scala'][i]}</label><div class="editor-vector">${['X', 'Y', 'Z'].map((axis, a) => `<input aria-label="${field} ${axis}" data-field="${field}" data-axis="${a}" type="number" step="${field === 'rotation' ? '15' : '0.1'}">`).join('')}</div>`).join('')}
             <label><input name="collider" type="checkbox"> Collisione box statica</label><div class="editor-grid"><button data-action="place">Posiziona al clic</button><button data-action="ground">Appoggia a terra</button><button data-action="duplicate">Duplica</button><button data-action="delete">Elimina</button></div><p data-credit></p></div>
-            <h2>GRIGLIA</h2><label>Scatto spostamento<select name="snap"><option value="0">Libero</option><option value="0.5">0,5 metri</option><option value="1" selected>1 metro</option><option value="5">5 metri</option></select></label><p>Rotazione: 15° con scatto attivo.<br>Usa «Auto guidabile» e «Abitante» per oggetti animati in modalità Prova. I modelli Sketchfab restano scenografia.</p></aside>
+            <h2>GRIGLIA</h2><label>Scatto spostamento<select name="snap"><option value="0">Libero</option><option value="0.5">0,5 metri</option><option value="1" selected>1 metro</option><option value="5">5 metri</option></select></label><p>Rotazione: 15° con scatto attivo.<br>Usa «Auto guidabile» e «Abitante» per oggetti animati in modalità Prova. I GLB assegnati ai veicoli sono carrozzerie guidabili.</p></aside>
             <div class="editor-help">Trascina: orbita · Tasto destro: panoramica · Rotella: zoom · Clic: seleziona</div><div class="editor-footer" role="status" aria-live="polite" data-status>Editor pronto. Aggiungi un oggetto dalla libreria.</div>
             <input type="file" data-file="glb" accept=".glb,.zip" hidden><input type="file" data-file="geojson" accept=".geojson,.json,application/geo+json" hidden><input type="file" data-file="scene" accept=".json" hidden>`;
         document.body.appendChild(this.root); this.log('info','Editor inizializzato.');
@@ -340,7 +340,8 @@ export class SceneEditor {
         const ground=this.world.levelRuntime?.groundAt(x,z,200);
         return [x,Number.isFinite(ground)?ground:origin.y-1,z];
     }
-    async importBytes(bytes, metadata = {}, {nearPlayer=false,interactivePrefab=null} = {}) {
+    async importBytes(bytes, metadata = {}, options = {}) {
+        const {nearPlayer=false,interactivePrefab=null}=options;
         if(this.items.length>=500)throw new Error('Limite di 500 oggetti raggiunto.');
         if(interactivePrefab&&!['vehicle','pedestrian'].includes(interactivePrefab))throw Error('Ruolo GLB non valido.');
         bytes = await modelToGLB(bytes);
@@ -349,7 +350,7 @@ export class SceneEditor {
         await this.store.putAll([asset]); this.assets.set(asset.id, asset); this.templates.set(asset.id, template);
         if(nearPlayer && this.world.editorPlayer){
             const item={id:crypto.randomUUID(),assetId:asset.id,...(interactivePrefab?{prefab:interactivePrefab}:{}),name:metadata.name||'Modello',
-                position:this.spawnPositionForAsset(interactivePrefab?5:7),rotation:[0,0,0],scale:[1,1,1],collider:!interactivePrefab};
+                position:options.position||this.spawnPositionForAsset(interactivePrefab?5:7),rotation:options.rotation||[0,0,0],scale:[1,1,1],collider:!interactivePrefab};
             this.items.push(item);this.create(item);this.select(item.id);this.commit();
             this.message('“'+item.name+'” inserito davanti al giocatore. Premi «Posiziona» per spostarlo con un clic nell’editor.');
         }else{
@@ -390,7 +391,7 @@ export class SceneEditor {
             const bytes = decodeBytes(raw.data); total += bytes.byteLength; if (total > MAX_BYTES) throw new Error('Massimo 50 MB complessivi di modelli.');
             // Remap IDs so importing another scene cannot overwrite assets used by undo.
             const newId = crypto.randomUUID(); const metadata = {};
-            for (const key of ['name', 'author', 'license', 'licenseUrl', 'source', 'uid', 'role']) metadata[key] = String(raw.metadata?.[key] || '').slice(0, 1000);
+            for (const key of ['name', 'author', 'license', 'licenseUrl', 'source', 'uid', 'role', 'marketplace']) metadata[key] = String(raw.metadata?.[key] || '').slice(0, 1000);
             const asset = { id: newId, metadata, bytes }; templates.set(newId, await this.prepareAsset(asset)); prepared.push(asset);
             scene.objects.filter(i => i.assetId === id).forEach(i => i.assetId = newId);
         }

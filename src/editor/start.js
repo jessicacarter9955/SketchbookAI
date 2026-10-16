@@ -8,6 +8,7 @@ import {localDdsManifest,importLocalDdsFiles} from './dds-local-assets.mjs';
 import {SanAndreasRuntime} from './SanAndreasRuntime.js';
 import {mountStreetLabGarage} from './StreetLabGarage.js';
 import {StreetLabCrime} from './StreetLabCrime.js';
+import {mountUrbanMarketplaceGarage} from './UrbanMarketplaceGarage.js';
 
 globalThis.THREE = THREE; // shared by procedural weather and the 3D game
 const loading = document.getElementById('loading-screen');
@@ -137,7 +138,7 @@ function sceneControls(editor) {
         catch (error) { dialog.querySelector('[role=status]').textContent = error.message; }
     };
     const hud = document.createElement('div'); hud.className = 'city-hud';
-    hud.innerHTML = '<strong data-city-status></strong><span class="vehicle-prompt" data-vehicle-prompt></span><button data-board>Entra in auto · F</button><button data-reset>Riparti</button>';
+    hud.innerHTML = '<strong data-city-status></strong><span class="vehicle-prompt" data-vehicle-prompt></span><button data-board>Entra in auto · E</button><button data-reset>Riparti</button>';
     hud.querySelector('[data-city-status]').textContent = current.name;
     const nearestVehicle = (maxDistance = 8) => {
         const player = world.editorPlayer; if (!player || player.controlledObject) return null;
@@ -163,13 +164,13 @@ function sceneControls(editor) {
     };
     const updateVehiclePrompt = () => {
         const player=world.editorPlayer, prompt=hud.querySelector('[data-vehicle-prompt]'), button=hud.querySelector('[data-board]');
-        if (!player || editor.active) { prompt.textContent=''; button.textContent='Entra in auto · F'; return; }
-        if (player.controlledObject) { prompt.textContent='F · Esci dal veicolo'; button.textContent='Esci dall’auto · F'; return; }
+        if (!player || editor.active) { prompt.textContent=''; button.textContent='Entra in auto · E'; return; }
+        if (player.controlledObject) { prompt.textContent='E · Esci dal veicolo'; button.textContent='Esci dall’auto · E'; return; }
         const car=nearestVehicle(8);
         if (car) {
             const distance=car.position.distanceTo(player.position);
-            prompt.textContent=`F · Entra nel veicolo · ${distance.toFixed(1)} m`;
-            button.textContent='Entra in auto · F';
+            prompt.textContent=`E · Entra nel veicolo · ${distance.toFixed(1)} m`;
+            button.textContent='Entra in auto · E';
             button.disabled=false;
         } else {
             prompt.textContent='Avvicinati a un’auto per guidare';
@@ -183,7 +184,7 @@ function sceneControls(editor) {
         requestAnimationFrame(()=>{ updateVehiclePrompt(); urbanVehicleAction(); });
     };
     document.addEventListener('keydown',event=>{
-        if(editor.active||event.code!=='KeyF'||event.repeat||event.target.closest?.('input,textarea,select,dialog,[contenteditable=true]'))return;
+        if(editor.active||!['KeyF','KeyE'].includes(event.code)||event.repeat||event.target.closest?.('input,textarea,select,dialog,[contenteditable=true]'))return;
         event.preventDefault();event.stopImmediatePropagation();urbanVehicleAction();updateVehiclePrompt();
     },true);
     hud.querySelector('[data-reset]').onclick = () => { world.actorLayer.resetPlayer(); if (!editor.active) { world.actorLayer.start(editor.items); world.renderer.domElement.focus(); } };
@@ -383,7 +384,10 @@ try {
        mountStreetLabGarage(world,sceneEditor);
        world.streetLabCrime=new StreetLabCrime(world,sceneEditor,storageKey);
     }
-    if(current.world==='procedural-city')globalThis.urbanDialogue=world.urbanDialogue=new UrbanDialogue(world,sceneEditor);
+    if(current.world==='procedural-city'){
+        globalThis.urbanDialogue=world.urbanDialogue=new UrbanDialogue(world,sceneEditor);
+        world.marketplaceGarage=mountUrbanMarketplaceGarage(world,sceneEditor);
+    }
     if(current.playerProfile==='dds') new DdsGame(world,{key:`${storageKey}.dds-game`});
     if(current.world==='procedural-city'){
         const progress=world.levelRuntime.visualProgress;
