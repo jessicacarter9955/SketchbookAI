@@ -12,6 +12,10 @@ on:
       - "img2three/viewer/**"
   workflow_dispatch:
 
+concurrency:
+  group: img2threejs-original-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
@@ -61,12 +65,30 @@ jobs:
           test -s img2three/rifle-superprompt.md
           test -s img2three/viewer/public/ref/rifle.webp
           test -s img2three/rifle-view-contract.json
+          test -s img2three/input/lime-rifle-auxiliary-views.json
+          # The true original is never replaced: unpack six AI-generated support views.
+          python3 - <<'PY'
+          import base64,hashlib,json
+          from pathlib import Path
+          package=json.loads(Path('img2three/input/lime-rifle-auxiliary-views.json').read_text())
+          assert len(package['views']) == 6
+          for view in package['views']:
+              payload=base64.b64decode(''.join(view['encodedWebpChunks']))
+              assert hashlib.sha256(payload).hexdigest()==view['sha256']
+              out=Path('img2three/input')/('rifle-aux-'+view['id']+'.webp')
+              out.write_bytes(payload)
+              print('decoded supporting reference',view['id'],out,len(payload))
+          PY
           mkdir -p img2three/output
           cp img2three/rifle-superprompt.md img2three/output/rifle-superprompt-applied.md
           cp img2three/rifle-view-contract.json img2three/output/rifle-view-contract.json
           cd img2three-source
           # Execute upstream Forge scripts, rather than pretending a scene image is 3D.
           python3 forge/stage1_intake/probe_image.py ../img2three/viewer/public/ref/rifle.webp > ../img2three/output/rifle-image-probe.json
+          for angle in left muzzle right brace top bottom; do
+            python3 forge/stage1_intake/probe_image.py "../img2three/input/rifle-aux-${angle}.webp" \
+              > "../img2three/output/rifle-aux-${angle}-probe.json"
+          done
           python3 forge/stage2_spec/new_pre_spec_assessment.py "Lime Green Reference Carbine" \
             --image ../img2three/viewer/public/ref/rifle.webp \
             --complexity ultra-complex \
@@ -164,6 +186,8 @@ jobs:
             img2three/output/
             img2three/reference_tower.jpg
             img2three/rifle-superprompt.md
+            img2three/input/lime-rifle-auxiliary-views.json
+            img2three/input/rifle-aux-*.webp
             img2three/viewer/public/ref/rifle.webp
             img2three/preview/
           if-no-files-found: warn
