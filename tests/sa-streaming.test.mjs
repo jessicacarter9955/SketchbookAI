@@ -12,6 +12,7 @@ test('SA chunk prioritizes visible nearby geometry, excludes distant sectors and
 test('original GLB bounds stored in IndexedDB must be finite valid and not duplicated',()=>{
  const valid=[s('district0.glb',0,0),s('district1.glb',40,0)];
  assert.equal(validateSaGeometryMetadata(valid).length,2);
+ assert.equal(validateSaGeometryMetadata([{name:'road-plane.glb',bounds:[0,0,0,50,0,40]}]).length,1);
  assert.throws(()=>validateSaGeometryMetadata([s('broken.glb',3,5),s('broken.glb',2,0)]),/non valido/);
  assert.throws(()=>validateSaGeometryMetadata([{name:'../bad.glb',bounds:[0,0,0,5,5,5]}]),/non valido/);
  assert.throws(()=>validateSaGeometryMetadata([{name:'bad.glb',bounds:[0,0,0,NaN,5,5]}]),/non validi/);

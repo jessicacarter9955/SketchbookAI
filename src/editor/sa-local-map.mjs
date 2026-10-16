@@ -81,7 +81,7 @@ export function validateSaGeometryMetadata(entries){
    names.add(entry.name.toLowerCase());
    const b=entry.bounds;
    if(!Array.isArray(b)||b.length!==6||!b.every(x=>Number.isFinite(x)&&Math.abs(x)<=200000)||
-     b[3]<=b[0]||b[4]<=b[1]||b[5]<=b[2])throw Error('Limiti geometrici settore SA non validi: '+entry.name);
+     b[3]<=b[0]||b[4]<b[1]||b[5]<=b[2])throw Error('Limiti geometrici settore SA non validi: '+entry.name);
  }
  return entries.map(e=>({name:e.name.toLowerCase(),bounds:[...e.bounds]}));
 }
