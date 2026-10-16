@@ -193,3 +193,26 @@ test('manual credentials supersede saved browser credentials without implicitly 
     await client.search('BMW');
     assert.equal(auth, 'Token ' + saved);
 });
+
+test('saved imported vehicle keeps real drivable prefab instead of reverting to static scenery', () => {
+    const entry={id:'bmw-test',prefab:'vehicle',assetId:'asset-bmw-001',name:'Sketchfab · BMW M4 G82',
+        position:[6,2,5],rotation:[0,Math.PI/2,0],scale:[1,1,1],collider:false};
+    const roundtrip=validateScene({version:1,world:'liberty-city',objects:[entry]});
+    assert.equal(roundtrip.objects[0].prefab,'vehicle');
+    assert.equal(roundtrip.objects[0].assetId,'asset-bmw-001');
+    assert.equal(roundtrip.objects[0].name,entry.name);
+});
+test('Sketchfab BMW Ferrari Lamborghini positions remain close to the spawn',async()=>{
+    const {SUPERCARS,supercarPositions,fitVehicleVisual}=await import('../src/editor/supercars.mjs');
+    const THREE=await import('three');
+    assert.deepEqual(SUPERCARS.map(c=>c.brand),['BMW','Ferrari','Lamborghini']);
+    assert.ok(SUPERCARS.every(c=>c.license==='CC BY'&&c.uid.length===32));
+    const positions=supercarPositions({x:40,y:2,z:100});
+    assert.deepEqual(positions,[[33,2,110],[40,2,110],[47,2,110]]);
+    const sample=new THREE.Mesh(new THREE.BoxGeometry(2,1.4,4.6));
+    const visual=fitVehicleVisual(sample);
+    const box=new THREE.Box3().setFromObject(visual);
+    const size=box.getSize(new THREE.Vector3());
+    assert.ok(size.z>4.2 && size.z<=4.61);
+    assert.ok(Math.abs(box.min.y+0.84)<0.02);
+});
