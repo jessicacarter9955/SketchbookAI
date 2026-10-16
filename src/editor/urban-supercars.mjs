@@ -31,8 +31,18 @@ export async function installPhotorealSupercars(world,editor,{
         if(!slot){errors.push(model.name+': nessun parcheggio vicino al giocatore');continue;}
         onStatus('Sketchfab HD · '+model.name+' ('+(i+1)+'/'+missing.length+')');
         try {
-            const response=await fetcher(ENDPOINT+'/sketchfab/cars/'+model.id,{
-                signal:AbortSignal.timeout(100000)
+            // The photoreal Netlify build publishes verified licensed GLBs to
+            // same-origin CDN, so heavy models never depend on Render waking up.
+            // Development builds may lack these files: in that case use Render.
+            let response;
+            try {
+                const local=await fetcher('build/assets/supercars/'+model.id+'.glb',{
+                    signal:AbortSignal.timeout(60000)
+                });
+                if(local.ok)response=local;
+            }catch { /* local asset unavailable; use authenticated backend cache */ }
+            if(!response)response=await fetcher(ENDPOINT+'/sketchfab/cars/'+model.id,{
+                signal:AbortSignal.timeout(210000)
             });
             if(!response.ok) {
                 const payload=await response.json().catch(()=>({}));
