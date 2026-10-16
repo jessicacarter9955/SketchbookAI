@@ -6,6 +6,7 @@ import { batchUrbanStaticBoxes } from './UrbanStaticBatch.js';
 import { batchUrbanPbrSurfaces } from './UrbanSurfaceBatch.js';
 import {restoreUrbanFacades,saveUrbanFacades} from './UrbanSceneCache.js';
 import { buildUrbanStreets } from './UrbanStreets.js';
+import { UrbanSignals } from './UrbanSignals.js';
 import { createVegetation } from './UrbanVegetation.js';
 import { isHiddenBehindBuildings,isOccludedSector,isOccludedTree } from './urban-visibility.mjs';
 import { photographicLighting, loadSurface, metricUV, captureStreetReflections } from './UrbanLighting.js';
@@ -269,6 +270,7 @@ export class UrbanRuntime {
     const treeItems=plan.trees.filter(t=>t.kind!=='median'||!(plan.roads.some(r=>r.axis==='x'&&Math.abs(t.z-r.z)<config.roadWidth/2+6)&&plan.roads.some(r=>r.axis==='z'&&Math.abs(t.x-r.x)<config.roadWidth/2+6))).map(t=>({...t,y:urbanGroundHeight(t.x,t.z,config)}));group.add(treeInstances(treeItems));
     group.userData.materialSource='RoadForge UE5 CC0 asphalt/concrete';
     group.userData.staticBatches=batchUrbanStaticBoxes(group,new Set([matRoad,matSidewalk,matGrass]),config.blockSize);
+    this.signals=new UrbanSignals(config);group.add(this.signals.group);
 
     this.clearGenerated();this.root.add(group);bodies.forEach(b=>this.world.physicsWorld.addBody(b));this.bodies=bodies;
     this.fallbackBuildingNodes.clear();
@@ -588,6 +590,7 @@ export class UrbanRuntime {
     // Prewarming can clone thousands of PBR modules. Never compete with it by
     // rendering or doing more distance-streaming behind an opaque loader.
     if(this.loadingHeavy)return;
+    this.signals?.update(this.world.actorLayer?.urbanPopulation?.elapsed??0);
     this.world.urbanLighting?.update();
     this.streamPhotorealDetails();
     const now=performance.now();
