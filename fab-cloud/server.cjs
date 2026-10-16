@@ -18,7 +18,9 @@ let activeDownload = false;
 let activeLogin = false;
 const calls = new Map();
 function isAllowedOrigin(origin) {
-    return !origin || origin === ORIGIN;
+    // Exact production site or an immutable Netlify deployment of the same site.
+    // Never trust arbitrary *.netlify.app origins.
+    return !origin || origin === ORIGIN || /^https:\/\/[a-z0-9-]+--my-test-site3\.netlify\.app$/.test(origin);
 }
 function hasAccess(value) {
     if (!KEY || !value || typeof value !== 'string') return false;
