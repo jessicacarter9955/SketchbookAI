@@ -15,6 +15,7 @@ Goal: create one **native WorldBLD / RoadBLD / CityBLD** block, with four street
 
 - `city-block-plan.json`: dimensional specification for four streets and a closed city block, building targets and native tool acceptance gates.
 - `validate-block.cjs`: CPU-only structural validation, not a world-generation engine.
+- `generate-osm.cjs`: generates a **synthetic, valid OSM/StreetMap file** with four connected 2-lane roads and ten building footprint ways; CI puts `worldbld-city-block.osm` in its downloadable artifact. This is native GIS input intended for CityBLD's documented OpenStreetMap import, **not yet imported or rendered**.
 - `probe.cjs`: real, read-only browser navigation and screenshots.
 - `lightning_runner.py`: safe dry-run by default. Does not create an account, activate a GPU, or subscribe to any service. To permit a GPU execution, both `--execute --allow-gpu` and environment `LIGHTNING_ALLOW_GPU=YES` must be passed; an account API key and existing Studio/teamspace are also required. The script always attempts `studio.stop()` after execution or failure.
 - The actual WorldBLD scene, saved UE assets and viewport screenshots remain **not built**, and are required to mark this task as done.
@@ -23,7 +24,7 @@ Goal: create one **native WorldBLD / RoadBLD / CityBLD** block, with four street
 
 1. Install UE 5.8.3 and the compatible WorldBLD hub and RoadBLD/CityBLD plugin versions.
 2. Open a blank Unreal level; activate an authorized seven-day trial when the editor and plugins work.
-3. Select Modern Essentials Kit (or licensed equivalent); in RoadBLD draw **four** two-lane roads whose center lines are specified in `city-block-plan.json` (UE dimensions are centimeters), completing a rectangular loop.
+3. Select Modern Essentials Kit (or licensed equivalent). Prefer the **native OSM import** workflow documented by WorldBLD: import the CI-generated `worldbld-city-block.osm` using Unreal's StreetMap asset integration, then use RoadBLD/CityBLD to convert the four street ways into its actual roads and blocks. If the installed version doesn't support automatic import, draw the four two-lane roads manually in the RoadBLD viewport using coordinates in `city-block-plan.json`.
 4. Validate four intersections and sidewalks. In CityBLD select the district, use its native viewport block tools to form an enclosed urban block; subdivide into approximately 12 parcels and generate 8–12 low-rise buildings.
 5. Save the Unreal level and all project content. Reopen to ensure all generated actors and meshes persist.
 6. Capture actual editor screenshots plus a map of placed actors and a run log as durable artifacts. Only then declare the job complete.
