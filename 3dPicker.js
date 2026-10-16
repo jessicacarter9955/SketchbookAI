@@ -2,6 +2,7 @@
 (function () {
     const client = new SketchfabClient();
     const fab = new FabClient();
+    const fabReady = fab.loadSavedKey().catch(() => false);
     // Load both trusted localhost configuration and this device's opt-in IndexedDB store.
     const localAccess = Promise.all([client.loadLocalToken(), client.loadSavedTokens().catch(() => false)]);
     const accessReady = localAccess.then(([local, saved]) => local || saved);
@@ -12,7 +13,8 @@
         <nav class="asset-sources" aria-label="Catalogo modelli"><button type="button" data-source="sketchfab" aria-pressed="true">Sketchfab</button><button type="button" data-source="fab" aria-pressed="false">Fab</button></nav>
         <form class="asset-search"><input name="query" aria-label="Cerca modelli" placeholder="Alberi, auto, edifici…" maxlength="200"><button>Cerca</button></form>
         <div class="asset-filters"><label><input type="checkbox" name="animated"> Animati</label><label>Geometria <select name="faces"><option value="">Tutti</option><option value="10000">≤ 10.000 facce</option><option value="50000">≤ 50.000 facce</option></select></label><button type="button" data-favorites>Preferiti</button></div>
-        <details><summary>Accesso ai download</summary><label>Token Sketchfab per questa sessione <input type="password" name="token" autocomplete="off" placeholder="Incolla un token, oppure salvalo qui sotto"></label><p data-access>Su localhost si legge automaticamente /.local/sketchfab.json. Su questo dispositivo puoi salvare l'accesso una sola volta e riutilizzarlo dopo ogni riavvio. <a href="https://sketchfab.com/settings/password" target="_blank" rel="noopener noreferrer">Impostazioni Sketchfab ↗</a></p><label>Configurazione una tantum (token singolo, più token oppure JSON)<textarea name="tokens-json" rows="3" spellcheck="false" autocomplete="off" placeholder='{"tokens":["TOKEN_1","TOKEN_2"]}'></textarea></label><div class="asset-credential-actions"><button type="button" data-save-tokens>Salva su questo dispositivo</button><button type="button" data-forget-tokens>Elimina accesso salvato</button></div><small>Le credenziali vengono salvate in IndexedDB, solo per questo browser/origine. Non caricarle su un dispositivo condiviso: gli script della pagina possono accedere all'archivio locale.</small><button type="button" data-retry hidden>Riprova modello selezionato</button></details>
+        <details data-sketchfab-access><summary>Accesso ai download</summary><label>Token Sketchfab per questa sessione <input type="password" name="token" autocomplete="off" placeholder="Incolla un token, oppure salvalo qui sotto"></label><p data-access>Su localhost si legge automaticamente /.local/sketchfab.json. Su questo dispositivo puoi salvare l'accesso una sola volta e riutilizzarlo dopo ogni riavvio. <a href="https://sketchfab.com/settings/password" target="_blank" rel="noopener noreferrer">Impostazioni Sketchfab ↗</a></p><label>Configurazione una tantum (token singolo, più token oppure JSON)<textarea name="tokens-json" rows="3" spellcheck="false" autocomplete="off" placeholder='{"tokens":["TOKEN_1","TOKEN_2"]}'></textarea></label><div class="asset-credential-actions"><button type="button" data-save-tokens>Salva su questo dispositivo</button><button type="button" data-forget-tokens>Elimina accesso salvato</button></div><small>Le credenziali vengono salvate in IndexedDB, solo per questo browser/origine. Non caricarle su un dispositivo condiviso: gli script della pagina possono accedere all'archivio locale.</small><button type="button" data-retry hidden>Riprova modello selezionato</button></details>
+        <details data-fab-access hidden><summary>Connetti Fab a Epic Games (una volta)</summary><p>Salva la chiave del bridge su questo dispositivo e collega Epic. Non inserire mai la password Epic in Sketchbook.</p><label>Chiave personale Fab <input type="password" name="fab-key" autocomplete="off" placeholder="Chiave privata Render"></label><button type="button" data-save-fab-key>Salva chiave Fab</button> <button type="button" data-clear-fab-key>Elimina chiave</button><p data-fab-connection>Connessione non verificata.</p><p><a data-fab-epic-login href="#" target="_blank" rel="noopener noreferrer">1. Accedi a Epic Games ↗</a></p><label>2. Copia il campo authorizationCode della pagina Epic <input type="password" name="epic-code" autocomplete="off" placeholder="authorizationCode"></label><button type="button" data-connect-epic>3. Collega Epic al bridge</button><p>Il piano gratuito Render può richiedere un nuovo login quando il container viene ricreato. Si importano solo asset posseduti e disponibili in GLB/glTF.</p></details>
         <p role="status" aria-live="polite" data-status>Cerca un modello scaricabile o apri i preferiti.</p><div class="asset-results"></div><button type="button" data-more hidden>Altri risultati</button>`;
     document.body.appendChild(dialog);
     const $ = selector => dialog.querySelector(selector);
@@ -73,19 +75,21 @@
             busy = false;
             const message = `Per aggiungere “${model.name}” inserisci il tuo token in Accesso ai download, poi premi Riprova. Nessun oggetto è stato aggiunto.`;
             errors.set(key, message); render(); status(message);
-            $('details').open = true; $('[data-retry]').hidden = false; $('[name=token]').focus(); $('[name=token]').scrollIntoView({block:'center'}); return;
+            $('[data-sketchfab-access]').open = true; $('[data-retry]').hidden = false; $('[name=token]').focus(); $('[name=token]').scrollIntoView({block:'center'}); return;
         }
         busy = true; render(); status(`Download e importazione di “${model.name}”…`);
         const onPick = callback;
         try {
             const url = await (provider === 'fab' ? fab : client).download(model.uid);
-            if (onPick) await onPick(url, { uid: model.uid, name: model.name, author: model.user?.displayName || model.user?.username || '', license: model.license?.label || '', licenseUrl: safeURL(model.license?.url), source: safeURL(model.viewerUrl), provider });
-            else { const a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.click(); }
+            try {
+                if (onPick) await onPick(url, { uid: model.uid, name: model.name, author: model.user?.displayName || model.user?.username || '', license: model.license?.label || '', licenseUrl: safeURL(model.license?.url), source: safeURL(model.viewerUrl), provider });
+                else { const a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.click(); }
+            } finally { if (url.startsWith('blob:')) setTimeout(() => URL.revokeObjectURL(url), onPick ? 1000 : 60000); }
             dialog.close();
         } catch (error) {
             const message = `“${model.name}”: ${error.message}`; errors.set(key, message); status(message);
             $('[data-retry]').hidden = false;
-            if (provider === 'sketchfab' && /token|account/i.test(error.message)) { $('details').open = true; $('[name=token]').focus(); }
+            if (provider === 'sketchfab' && /token|account/i.test(error.message)) { $('[data-sketchfab-access]').open = true; $('[name=token]').focus(); }
         }
         finally { busy = false; render(); }
     }
@@ -95,16 +99,50 @@
         source = button.dataset.source;
         controller?.abort(); generation++; models = []; next = null; pendingModel = null;
         dialog.querySelectorAll('[data-source]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.source === source)));
-        $('details').hidden = source === 'fab';
+        $('[data-sketchfab-access]').hidden = source === 'fab';
+        $('[data-fab-access]').hidden = source !== 'fab';
+        if (source === 'fab') {
+            fabReady.then(() => fab.status()).then(data => {
+                $('[data-fab-connection]').textContent = data.connected ? '✓ Epic Games collegato.' : 'Chiave disponibile: collega Epic per usare Fab.';
+            }).catch(error => { $('[data-fab-connection]').textContent = error.message; $('[data-fab-access]').open = true; });
+        }
         $('[name=animated]').closest('label').hidden = source === 'fab';
         $('[name=faces]').closest('label').hidden = source === 'fab';
         render();
-        status(source === 'fab' ? (fab.catalogOnly ? 'Catalogo Fab online: cerca e visualizza i modelli. Per importarli direttamente serve il collegamento autenticato Epic.' : 'FabCLI locale: cerca gli asset del tuo account Epic e importa quelli disponibili in glTF/GLB.') : 'Cerca un modello Sketchfab scaricabile.');
+        status(source === 'fab' ? 'Fab tramite Render: salva una volta la chiave e collega Epic per ricerca/importazione.' : 'Cerca un modello Sketchfab scaricabile.');
         if ($('[name=query]').value.trim()) search();
     });
     $('[name=animated]').onchange = () => search();
     $('[name=faces]').onchange = () => search();
     $('[name=token]').oninput = e => client.token = e.target.value.trim();
+    $('[data-fab-epic-login]').href = fab.epicLoginURL;
+    fabReady.then(ready => {
+        if (ready) $('[name=fab-key]').placeholder = 'Chiave Fab salvata su questo dispositivo';
+    });
+    $('[data-save-fab-key]').onclick = async () => {
+        try {
+            await fab.saveBridgeKey($('[name=fab-key]').value);
+            $('[name=fab-key]').value = '';
+            const data = await fab.status();
+            $('[data-fab-connection]').textContent = data.connected ? '✓ Fab ed Epic collegati.' : 'Chiave salvata. Collega Epic sotto.';
+            status('Chiave Fab salvata su questo dispositivo.');
+        } catch (error) { status('Fab: ' + error.message); }
+    };
+    $('[data-clear-fab-key]').onclick = async () => {
+        try { await fab.clearSavedKey(); status('Chiave Fab eliminata.'); }
+        catch (error) { status(error.message); }
+    };
+    $('[data-connect-epic]').onclick = async () => {
+        const code = $('[name=epic-code]').value.trim();
+        $('[name=epic-code]').value = '';
+        status('Autenticazione Epic in corso…');
+        try {
+            await fab.connectEpic(code);
+            $('[data-fab-connection]').textContent = '✓ Epic collegato al bridge.';
+            status('Epic collegato. Ora puoi cercare e importare modelli Fab.');
+            if ($('[name=query]').value.trim()) search();
+        } catch (error) { status('Fab: ' + error.message); }
+    };
     accessReady.then(loaded => {
         if (!loaded) return;
         $('[name=token]').placeholder = 'Accesso Sketchfab già disponibile';
