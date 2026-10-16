@@ -2,7 +2,9 @@
 (function () {
     const client = new SketchfabClient();
     const fab = new FabClient();
-    const localAccess = client.loadLocalToken();
+    // Load both trusted localhost configuration and this device's opt-in IndexedDB store.
+    const localAccess = Promise.all([client.loadLocalToken(), client.loadSavedTokens().catch(() => false)]);
+    const accessReady = localAccess.then(([local, saved]) => local || saved);
     const dialog = document.createElement('dialog');
     dialog.className = 'asset-picker';
     dialog.setAttribute('aria-label', 'Libreria modelli Sketchfab e Fab');
@@ -10,7 +12,7 @@
         <nav class="asset-sources" aria-label="Catalogo modelli"><button type="button" data-source="sketchfab" aria-pressed="true">Sketchfab</button><button type="button" data-source="fab" aria-pressed="false">Fab</button></nav>
         <form class="asset-search"><input name="query" aria-label="Cerca modelli" placeholder="Alberi, auto, edifici…" maxlength="200"><button>Cerca</button></form>
         <div class="asset-filters"><label><input type="checkbox" name="animated"> Animati</label><label>Geometria <select name="faces"><option value="">Tutti</option><option value="10000">≤ 10.000 facce</option><option value="50000">≤ 50.000 facce</option></select></label><button type="button" data-favorites>Preferiti</button></div>
-        <details><summary>Accesso ai download</summary><label>API token Sketchfab <input type="password" name="token" autocomplete="off" placeholder="Solo per questa sessione"></label><p data-access>La ricerca è pubblica. Puoi usare la configurazione locale oppure inserire un token valido qui, solo per questa sessione. <a href="https://sketchfab.com/settings/password" target="_blank" rel="noopener noreferrer">Impostazioni Sketchfab ↗</a></p><button type="button" data-retry hidden>Riprova modello selezionato</button></details>
+        <details><summary>Accesso ai download</summary><label>Token Sketchfab per questa sessione <input type="password" name="token" autocomplete="off" placeholder="Incolla un token, oppure salvalo qui sotto"></label><p data-access>Su localhost si legge automaticamente /.local/sketchfab.json. Su questo dispositivo puoi salvare l'accesso una sola volta e riutilizzarlo dopo ogni riavvio. <a href="https://sketchfab.com/settings/password" target="_blank" rel="noopener noreferrer">Impostazioni Sketchfab ↗</a></p><label>Configurazione una tantum (token singolo, più token oppure JSON)<textarea name="tokens-json" rows="3" spellcheck="false" autocomplete="off" placeholder='{"tokens":["TOKEN_1","TOKEN_2"]}'></textarea></label><div class="asset-credential-actions"><button type="button" data-save-tokens>Salva su questo dispositivo</button><button type="button" data-forget-tokens>Elimina accesso salvato</button></div><small>Le credenziali vengono salvate in IndexedDB, solo per questo browser/origine. Non caricarle su un dispositivo condiviso: gli script della pagina possono accedere all'archivio locale.</small><button type="button" data-retry hidden>Riprova modello selezionato</button></details>
         <p role="status" aria-live="polite" data-status>Cerca un modello scaricabile o apri i preferiti.</p><div class="asset-results"></div><button type="button" data-more hidden>Altri risultati</button>`;
     document.body.appendChild(dialog);
     const $ = selector => dialog.querySelector(selector);
@@ -63,7 +65,7 @@
         const key = provider + ':' + model.uid;
         pendingModel = model; errors.delete(key);
         busy = true;
-        await localAccess;
+        await accessReady;
         if (provider === 'sketchfab' && !client.token) {
             busy = false;
             const message = `Per aggiungere “${model.name}” inserisci il tuo token in Accesso ai download, poi premi Riprova. Nessun oggetto è stato aggiunto.`;
@@ -100,7 +102,31 @@
     $('[name=animated]').onchange = () => search();
     $('[name=faces]').onchange = () => search();
     $('[name=token]').oninput = e => client.token = e.target.value.trim();
-    localAccess.then(loaded => { if (loaded) { $('[name=token]').placeholder = 'Accesso locale configurato'; $('[data-access]').textContent = `Accesso locale Sketchfab: ${client.credentialCount} credenziale/i disponibile/i. File privato escluso da Git.`; } });
+    accessReady.then(loaded => {
+        if (!loaded) return;
+        $('[name=token]').placeholder = 'Accesso Sketchfab già disponibile';
+        $('[data-access]').textContent = `Accesso automatico attivo: ${client.credentialCount} credenziale/i disponibile/i (${client.hasSavedTokens ? 'salvataggio nel browser' : 'file locale'}). Non serve ricaricare il JSON.`;
+    });
+    $('[data-save-tokens]').onclick = async () => {
+        const value = $('[name=tokens-json]').value.trim() || $('[name=token]').value.trim();
+        try {
+            const count = await client.saveSavedTokens(value);
+            $('[name=tokens-json]').value = '';
+            $('[name=token]').value = '';
+            $('[name=token]').placeholder = 'Accesso Sketchfab già disponibile';
+            $('[data-access]').textContent = `Salvati ${count} token in questo browser. Il caricamento sarà automatico ai prossimi avvii.`;
+            status(`Accesso Sketchfab salvato per i prossimi avvii (${count} token).`);
+        } catch (error) { status(error.message); }
+    };
+    $('[data-forget-tokens]').onclick = async () => {
+        try {
+            await client.clearSavedTokens();
+            $('[name=token]').value = '';
+            $('[name=tokens-json]').value = '';
+            $('[data-access]').textContent = client.token ? 'Credenziali locali disponibili; quelle memorizzate nel browser sono state eliminate.' : 'Accesso memorizzato eliminato. Per scaricare, inserisci un token o configura il file locale.';
+            status('Credenziali Sketchfab memorizzate eliminate da questo browser.');
+        } catch (error) { status(error.message); }
+    };
     $('[data-retry]').onclick = () => { if (pendingModel) pick(pendingModel); };
     $('[data-close]').onclick = () => { if (!busy) dialog.close(); };
     dialog.addEventListener('cancel', e => { if (busy) e.preventDefault(); });
