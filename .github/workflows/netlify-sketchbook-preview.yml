@@ -21,7 +21,7 @@ permissions:
 
 concurrency:
   group: sketchbook-live-site
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   publish:
@@ -72,26 +72,28 @@ jobs:
           fs.appendFileSync(process.env.GITHUB_ENV, 'NETLIFY_AUTH_TOKEN=' + token + '\nNETLIFY_SITE_ID=' + site + '\n');
           NODE
           rm -f /tmp/sketchbook-existing-netlify.yml
-      - name: Deploy to existing live Netlify site
+      - name: Deploy site and Netlify Functions using current Netlify CLI
         id: deploy
-        uses: nwtgck/actions-netlify@v3.0
-        with:
-          publish-dir: "./site-dist"
-          functions-dir: "./netlify/functions"
-          production-branch: img2threejs-runner
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          deploy-message: "Sketchbook editor · Sketchfab and Fab picker from ${{ github.sha }}"
-          enable-pull-request-comment: false
-          enable-commit-comment: false
-          overwrites-pull-request-comment: false
+        shell: bash
+        timeout-minutes: 10
         env:
           NETLIFY_AUTH_TOKEN: ${{ env.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ env.NETLIFY_SITE_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes netlify-cli@23 deploy --prod --no-build --dir="./site-dist" --functions="./netlify/functions" --json > /tmp/sketchbook-netlify-deploy.json
+          node <<'NODE'
+          const fs = require('fs');
+          const data = JSON.parse(fs.readFileSync('/tmp/sketchbook-netlify-deploy.json', 'utf8'));
+          const url = data.website_url || data.site_url || data.url || 'https://my-test-site3.netlify.app';
+          if (!url.startsWith('https://')) throw Error('Unexpected deployment URL');
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, 'deploy_url=' + url + '\n');
+          console.log('Netlify deploy finished:', url);
+          NODE
       - name: Verify public editor URLs
         shell: bash
         env:
-          DEPLOY_URL: ${{ steps.deploy.outputs.deploy-url }}
-          PREVIEW_URL: ${{ steps.deploy.outputs.preview-url }}
+          DEPLOY_URL: ${{ steps.deploy.outputs.deploy_url }}
         run: |
           echo "Deploy URL: ${DEPLOY_URL:-unknown}" >> "$GITHUB_STEP_SUMMARY"
           echo "Preview URL: ${PREVIEW_URL:-unknown}" >> "$GITHUB_STEP_SUMMARY"
