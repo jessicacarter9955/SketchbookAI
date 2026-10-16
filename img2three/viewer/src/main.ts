@@ -34,7 +34,7 @@ root.innerHTML='<div class="ui"><div class="overline">IMG2THREEJS <span>· INTER
 '<div class="row"><button id="front">Source side</button><button id="threequarter">3/4 view</button>'+
 '<button id="side">Muzzle end</button><button id="rear">Opposite side</button>'+
 '<button id="butt">Brace end</button><button id="top">Top</button><button id="bottom">Bottom</button><button id="wire">Wireframe</button>'+
-'<button id="shot">Screenshot</button><button id="compare">Reference</button></div>'+
+'<button id="shot">Screenshot</button><button id="compare">Reference</button><button id="hide-ui">Hide UI</button></div>'+
 '<div class="reference-panel" id="reference-panel" hidden><img id="reference-img" alt="Original user photograph used for reconstruction"/><span>Original source photograph · master reference</span></div>'+
 '<div class="small-note" id="status">Original photo = visual priority · inferred missing depths · real geometry</div></div>'+
 '<div class="bottomhint">Drag to orbit · Wheel/pinch to zoom · Keyboard ← → cycles models</div>';
@@ -79,7 +79,9 @@ try {
    const vFOV=camera.fov*Math.PI/180,hFOV=2*Math.atan(Math.tan(vFOV/2)*camera.aspect);
    const fitY=size.y/(2*Math.tan(vFOV/2)),fitX=size.x/(2*Math.tan(hFOV/2));
    cameraDistance=Math.max(fitY,fitX,size.z*1.6)*1.08+size.z*.22;
-   cameraDistance*=innerWidth<700?1.12:1;
+   // Keep the entire source carbine within the usable canvas on mobile and
+   // away from the fixed top-right UI, instead of hiding the muzzle under it.
+   cameraDistance*=currentKey==='rifle'?(innerWidth<700?1.46:1.32):(innerWidth<700?1.12:1);
    controls.target.copy(modelCenter);controls.minDistance=Math.max(size.length()*.08,.6);
    controls.maxDistance=cameraDistance*5;front();ground.position.y=bounds.min.y-.095;
    key.shadow.camera.left=Math.min(-14,-size.length());key.shadow.camera.right=-key.shadow.camera.left;
@@ -140,6 +142,17 @@ try {
  document.getElementById('top')!.onclick=()=>placeView('top');
  document.getElementById('bottom')!.onclick=()=>placeView('bottom');
  document.getElementById('wire')!.onclick=()=>{wire=!wire;setWire(wire);};
+ document.getElementById('hide-ui')!.onclick=()=>{
+   const ui=document.querySelector('.ui') as HTMLElement;
+   const hidden=ui.dataset.collapsed==='1';
+   ui.dataset.collapsed=hidden?'0':'1';
+   // Keep a small reopen affordance while the render occupies the full screen.
+   for(const child of [...ui.children])if((child as HTMLElement).id!=='asset-tabs' &&
+      (child as HTMLElement).id!=='asset-title' && (child as HTMLElement).id!=='status')
+     (child as HTMLElement).style.display=hidden?'':'none';
+   (document.getElementById('hide-ui') as HTMLElement).style.display='';
+   (document.getElementById('hide-ui') as HTMLButtonElement).textContent=hidden?'Hide UI':'Show UI';
+ };
  document.getElementById('shot')!.onclick=()=>{
    renderer.render(scene,camera);const a=document.createElement('a');a.download='img2threejs-'+currentKey+'.png';
    a.href=renderer.domElement.toDataURL('image/png');a.click();
