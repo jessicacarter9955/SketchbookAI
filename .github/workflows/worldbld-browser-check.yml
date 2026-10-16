@@ -26,6 +26,11 @@ jobs:
           npm init -y
           npm install --no-save playwright@1.56.0
           npx playwright install --with-deps chromium
+      - name: Validate WorldBLD block design without Unreal or GPU
+        run: |
+          node tools/worldbld-browser/validate-block.cjs
+          python -m py_compile tools/worldbld-browser/lightning_runner.py
+          python tools/worldbld-browser/lightning_runner.py
       - name: Inspect Lightning and WorldBLD without authentication or GPU
         run: node tools/worldbld-browser/probe.cjs
       - name: Upload screenshot and machine-readable results
