@@ -39,7 +39,7 @@ const {chromium}=require('playwright');
   console.log('PHOTO_SCENE_RESULT',JSON.stringify(state));
   console.log('PAGE_ERRORS',JSON.stringify(errors.slice(0,12)));
   console.log('REQUEST_FAILURES',JSON.stringify(failed.slice(0,16)));
-  await page.screenshot({path:'artifacts/urban-supercars/photoreal-scene.png',fullPage:true});
+  await page.screenshot({path:'artifacts/urban-supercars/photoreal-scene.png',fullPage:false,timeout:18000}).catch(e=>console.warn('Screenshot optional:',e.message));
   if(!state.editorReady||state.scene!=='procedural-city'||state.imported.length!==3||
      state.cars.length!==3||!state.playing||state.status.errors.length)
       throw Error('Expected 3 licensed Sketchfab cars in playable photoreal city.');
@@ -73,7 +73,7 @@ const {chromium}=require('playwright');
      ed.orbit.update();
   });
   await page.waitForTimeout(1700);
-  await page.screenshot({path:'artifacts/urban-supercars/photoreal-three-cars-overview.png',fullPage:true});
+  await page.screenshot({path:'artifacts/urban-supercars/photoreal-three-cars-overview.png',fullPage:false,timeout:18000}).catch(e=>console.warn('Overview screenshot optional:',e.message));
   console.log('PASS: 3 branded cars next to photoreal player and controllable physics with E.');
  }catch(error){
    console.error('PHOTO_SCENE_FAILED',error.message);
@@ -86,7 +86,7 @@ const {chromium}=require('playwright');
        editor:!!globalThis.sceneEditor,
        body:document.body.innerText.slice(0,700)
    })).catch(()=>({}))));
-   try{await page.screenshot({path:'artifacts/urban-supercars/photoreal-failure.png',fullPage:true});}catch{}
+   try{await page.screenshot({path:'artifacts/urban-supercars/photoreal-failure.png',fullPage:false,timeout:8000});}catch{}
    await browser.close();process.exit(1);
  }
  await browser.close();
