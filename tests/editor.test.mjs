@@ -210,7 +210,7 @@ test('Sketchfab BMW Ferrari Lamborghini positions remain close to the spawn',asy
     const positions=supercarPositions({x:40,y:2,z:100});
     assert.deepEqual(positions,[[33,2,110],[40,2,110],[47,2,110]]);
     const sample=new THREE.Mesh(new THREE.BoxGeometry(2,1.4,4.6));
-    const visual=fitVehicleVisual(sample);
+    const visual=fitVehicleVisual(sample,THREE);
     const box=new THREE.Box3().setFromObject(visual);
     const size=box.getSize(new THREE.Vector3());
     assert.ok(size.z>4.2 && size.z<=4.61);
