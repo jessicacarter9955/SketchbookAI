@@ -49,4 +49,47 @@ if original.exists(): original.unlink()
 (out/'index.html').write_text('<!doctype html><meta http-equiv="refresh" content="0;url=editor.html?scene=urban-photoreal&play=1"><a href="editor.html?scene=urban-photoreal">Apri la città</a>')
 (out/'WEBGPU-README.txt').write_text('WebGPU sperimentale: urban-webgpu.html?backend=webgpu\nControllo identico: urban-webgpu.html?backend=webgl2\nEntrambi condividono la pianta urbana, non la completa grafica e simulazione del gioco WebGL.\n')
 (out/'AVVIO.txt').write_text('Avvia in questa cartella: python -m http.server 8401\nApri http://localhost:8401/editor.html?scene=urban-photoreal\nEsempi: http://localhost:8401/urban-examples.html\nAsset locali: non servono API key.\n')
+# Distribute genuine licensed Sketchfab supercars with the same photoreal
+# static site: no private API tokens in the browser or this Git repository.
+# Serve the 28 MB Lamborghini directly from Netlify instead of waiting for
+# the Render free-tier proxy on every first visit.
+import json
+import struct
+import time
+import urllib.request
+cars=out/'build/assets/supercars'
+cars.mkdir(parents=True,exist_ok=True)
+for model in ('bmw','ferrari','lamborghini'):
+    source='https://sketchbook-fab-bridge.onrender.com/sketchfab/cars/'+model
+    destination=cars/(model+'.glb')
+    temp=cars/(model+'.glb.part')
+    for attempt in range(3):
+        try:
+            request=urllib.request.Request(source,headers={'User-Agent':'SketchbookAI-Urban-Photoreal-Release/1.0'})
+            with urllib.request.urlopen(request,timeout=180) as response, temp.open('wb') as output:
+                total=0
+                while True:
+                    chunk=response.read(1024*1024)
+                    if not chunk:break
+                    total+=len(chunk)
+                    if total>50*1024*1024:raise ValueError('Sketchfab model exceeds 50MB')
+                    output.write(chunk)
+            with temp.open('rb') as input_file:
+                header=input_file.read(20)
+                if len(header)!=20 or header[:4]!=b'glTF':raise ValueError('Sketchfab asset is not a GLB')
+                size=struct.unpack_from('<I',header,8)[0]
+                json_size=struct.unpack_from('<I',header,12)[0]
+                if size!=temp.stat().st_size or size<500 or json_size>size-20:
+                    raise ValueError('Sketchfab GLB has invalid length')
+                data=json.loads(input_file.read(json_size))
+                if not data.get('meshes'):raise ValueError('Sketchfab model contains no meshes')
+            temp.replace(destination)
+            print('Included genuine',model,'Sketchfab GLB,',round(total/1e6,1),'MB,',len(data['meshes']),'meshes')
+            break
+        except Exception as error:
+            temp.unlink(missing_ok=True)
+            if attempt==2:raise RuntimeError('Required Sketchfab '+model+' GLB download failed') from error
+            time.sleep(3*(attempt+1))
+shutil.copy2(root/'docs/sketchfab-supercars-attribution.txt',cars/'ATTRIBUTION.txt')
+
 print(out)
