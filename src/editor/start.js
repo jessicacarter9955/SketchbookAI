@@ -5,6 +5,7 @@ import { mountMobileCityPlayer } from './MobileCityPlayer.js';
 import { loadCatalog, createScene } from './scene-catalog.mjs';
 import { sceneStorageKey, loadRevisions, saveRevision, forkScene } from './scene-revisions.mjs';
 import {localDdsManifest,importLocalDdsFiles} from './dds-local-assets.mjs';
+import {SanAndreasRuntime} from './SanAndreasRuntime.js';
 
 globalThis.THREE = THREE; // shared by procedural weather and the 3D game
 const loading = document.getElementById('loading-screen');
@@ -92,7 +93,7 @@ function sceneControls(editor) {
     editor.root.querySelector('.editor-library').prepend(manager);
     editor.root.querySelector('.editor-brand small').textContent = current.name;
     const dialog = document.createElement('dialog'); dialog.className = 'asset-picker scene-dialog';
-    dialog.innerHTML = '<form><h2>Nuova scena</h2><label>Nome <input name="name" required maxlength="80" placeholder="Il mio quartiere"></label><label>Mappa <select name="world"><option value="liberty-city">Liberty City</option><option value="sketchbook">Sketchbook originale</option><option value="procedural-island">Isola procedurale</option><option value="procedural-city">Città procedurale</option></select></label><p>Gli oggetti e gli abitanti di ogni scena vengono salvati separatamente.</p><button type="submit">Crea scena</button> <button type="button" data-cancel>Annulla</button><p role="status"></p></form>';
+    dialog.innerHTML = '<form><h2>Nuova scena</h2><label>Nome <input name="name" required maxlength="80" placeholder="Il mio quartiere"></label><label>Mappa <select name="world"><option value="liberty-city">Liberty City</option><option value="sketchbook">Sketchbook originale</option><option value="procedural-island">Isola procedurale</option><option value="procedural-city">Città procedurale</option><option value="san-andreas">San Andreas importata</option></select></label><p>Gli oggetti e gli abitanti di ogni scena vengono salvati separatamente.</p><button type="submit">Crea scena</button> <button type="button" data-cancel>Annulla</button><p role="status"></p></form>';
     document.body.append(dialog);
     let source = null;
     const openDialog = state => {
@@ -248,6 +249,11 @@ try {
         world.levelRuntime = new CityRuntime(world);
         await world.initialize(undefined, false); loading.style.display = 'flex';
         await world.levelRuntime.initialize(report);
+    } else if(current.world === 'san-andreas') {
+        report('San Andreas: carico esclusivamente settori GLB originali salvati nel browser…');
+        world.levelRuntime=new SanAndreasRuntime(world);
+        await world.initialize(undefined,false);loading.style.display='flex';
+        await world.levelRuntime.initialize(report);
     } else if(current.world === 'procedural-island') {
         world.levelRuntime = new IslandRuntime(world);
         await world.initialize(undefined, false); loading.style.display = 'flex';
@@ -335,6 +341,12 @@ try {
         for(const [i,p] of [[-12,-12],[12,-12],[-12,12],[12,12]].entries()) add('pedestrian',`Pedone urbano ${i+1}`,...p);
         sceneEditor.restore({version:1,world:current.world,objects,generator:{...sceneEditor.generator}}); sceneEditor.commit();
     }
+    if (!hadSaved && current.world === 'san-andreas') {
+        const sp=world.levelRuntime.manifest.spawns[0].position;
+        const y=world.levelRuntime.groundAt(sp[0],sp[2],sp[1]+10)??sp[1];
+        const starter={id:crypto.randomUUID(),prefab:'vehicle',name:'Auto di prova',position:[sp[0]+5,y+.05,sp[2]],rotation:[0,0,0],scale:[1,1,1],collider:false};
+        sceneEditor.restore({version:1,world:'san-andreas',objects:[starter]});sceneEditor.commit();
+    }
     if (!hadSaved && current.world === 'procedural-island') {
         const objects=[];
         const add=(prefab,name,x,z,rotation=0)=>objects.push({id:crypto.randomUUID(),prefab,name,position:[x,world.levelRuntime.groundAt(x,z,50)+.04,z],rotation:[0,rotation,0],scale:[1,1,1],collider:prefab==='lamp'});
@@ -382,7 +394,7 @@ try {
         }
     }
     if (query.get('play') === '1'||minimalMobile) sceneEditor.setActive(false);
-    if(minimalMobile&&current.world==='procedural-city'){
+    if(minimalMobile&&['procedural-city','san-andreas'].includes(current.world)){
         // Actually draw into the default framebuffer before revealing it.
         // The WebGL engine can have live UI even when its 3D viewport is black.
         report('Verifica GPU e primo fotogramma 3D…');
@@ -407,6 +419,7 @@ try {
         loading.style.display='none';
         document.title='Sketchbook City · Mobile Player';
     }
+    if(current.world==='san-andreas' && query.get('play')==='1')sceneEditor.message('San Andreas · mappa GLB originale caricata dal browser · WASD muovi · F guida vicino a un veicolo · F2 editor. I dati GTA non sono pubblicati.');
     if(current.world==='procedural-city' && query.get('play')==='1') sceneEditor.message('Free roam · WASD muovi · E parla con un abitante · 1-4 scegli risposta · F entra in auto · F2 editor.');
     document.title = `${current.name} · Sketchbook`;
 } catch (error) {
@@ -419,6 +432,10 @@ try {
     if(skipVisualButton)skipVisualButton.hidden=true;
     loading.style.cssText='display:flex!important;z-index:99999!important;background:#13232e!important';
     const panel=loading.querySelector('.city-loading-panel');
+    if(current.world==='san-andreas'&&panel){
+      const anchor=document.createElement('a');anchor.href='sa-navigation.html';anchor.textContent='Importa la mappa GTA SA originale (GLB e nodes*.dat)';
+      anchor.style.cssText='display:block;color:#9de9ff;padding:14px;text-decoration:underline';panel.append(anchor);
+    }
     if(panel){
       panel.style.display='block';
       panel.querySelector('#city-load-message').textContent='Errore di avvio: '+String(error?.message||error);

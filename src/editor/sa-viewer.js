@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader';
 import {parseSanAndreasNodeFile,buildSanAndreasNetwork} from './sa-paths.mjs';
+import {saveSanAndreasFiles,clearSanAndreasFiles,listSanAndreasFiles} from './sa-local-map.mjs';
 
 const mount=document.getElementById('sa-viewport'),stats=document.getElementById('sa-stats');
 const logBox=document.getElementById('sa-log'),entries=[];
@@ -89,6 +90,7 @@ document.getElementById('sa-nodes').onchange=async e=>{
     const ped=buildSanAndreasNetwork(parsed,'pedestrian'),vehicle=buildSanAndreasNetwork(parsed,'vehicle');
     releaseGroup(pathGroups.pedestrian);releaseGroup(pathGroups.vehicle);
     renderLinks(ped,'pedestrian');renderLinks(vehicle,'vehicle');
+    await saveSanAndreasFiles('nodes',list);
     sectorCount=parsed.length;setStats();fit();
     log('Rete originale: '+ped.nodes.length+' pedoni, '+vehicle.nodes.length+' veicoli, '+sectorCount+' settori.');
   }catch(error){log('ERRORE NODI: '+error.message,true);}
@@ -115,8 +117,12 @@ document.getElementById('sa-meshes').onchange=async e=>{
         staged.push(gltf.scene);
       }finally{URL.revokeObjectURL(url);}
     }
+    await saveSanAndreasFiles('geometry',files);
+    releaseGroup(imported);
+    loadedMeshes=0;
     for(const obj of staged)imported.add(obj);
-    loadedMeshes+=staged.length;setStats();fit();
+    loadedMeshes=staged.length;setStats();fit();
+    document.getElementById('sa-play').hidden=false;
     log('Geometria aggiunta: '+staged.length+' GLB originali, totale '+loadedMeshes);
   }catch(error){log('ERRORE MAPPA: '+error.message,true);}
   finally{busy=false;}
@@ -124,7 +130,13 @@ document.getElementById('sa-meshes').onchange=async e=>{
 document.getElementById('sa-vehicle-lines').onchange=e=>pathGroups.vehicle.visible=e.target.checked;
 document.getElementById('sa-ped-lines').onchange=e=>pathGroups.pedestrian.visible=e.target.checked;
 document.getElementById('sa-focus').onclick=fit;
-document.getElementById('sa-clear').onclick=()=>{
+document.getElementById('sa-clear').onclick=async()=>{
+  if(busy)return;
+  busy=true;
+  try{await Promise.all([clearSanAndreasFiles('geometry'),clearSanAndreasFiles('nodes')]);}
+  catch(error){log('ERRORE PULIZIA: '+error.message,true);busy=false;return;}
+  busy=false;
+  document.getElementById('sa-play').hidden=true;
   releaseGroup(imported);releaseGroup(pathGroups.pedestrian);releaseGroup(pathGroups.vehicle);
   loadedMeshes=0;sectorCount=0;nodeCount={pedestrian:0,vehicle:0};setStats();log('Sessione svuotata.');
 };
@@ -141,6 +153,7 @@ document.getElementById('sa-download').onclick=()=>{
 const resize=()=>{const w=Math.max(mount.clientWidth,1),h=Math.max(mount.clientHeight,1);
   renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();};
 new ResizeObserver(resize).observe(mount);resize();setStats();
+listSanAndreasFiles('geometry').then(keys=>{if(keys.length){document.getElementById('sa-play').hidden=false;log('Settori già salvati in questo browser: '+keys.length+'. Puoi aprire la scena giocabile.');}}).catch(error=>log('Archivio locale: '+error.message,true));
 log('Visualizzatore pronto. Seleziona file GTA SA originali, non sono inclusi nel deploy.');
 function frame(){requestAnimationFrame(frame);controls.update();renderer.render(scene,camera);}
 frame();
