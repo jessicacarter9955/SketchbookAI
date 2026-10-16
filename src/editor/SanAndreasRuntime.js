@@ -90,7 +90,7 @@ export class SanAndreasRuntime{
  }
  groundAt(x,z,top=1000){
   if(!this.surfaces.length)return undefined;
-  const ray=new THREE.Raycaster(new THREE.Vector3(x,Math.max(top,this.bounds.max.y+1),z),new THREE.Vector3(0,-1,0),0,40000);
+  const ray=new THREE.Raycaster(new THREE.Vector3(x,top,z),new THREE.Vector3(0,-1,0),0,40000);
   // Broad-phase filtering keeps raycasting bounded when thousands of meshes exist.
   const nearby=this.surfaces.filter(s=>x>=s.bbox.min.x&&x<=s.bbox.max.x&&z>=s.bbox.min.z&&z<=s.bbox.max.z);
   const hit=ray.intersectObjects(nearby.map(s=>s.mesh),false)[0];
