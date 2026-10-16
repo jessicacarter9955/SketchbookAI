@@ -130,7 +130,7 @@ export class SceneEditor {
         } else { this.gizmo.detach(); this.outline.visible = false; this.world.renderer.domElement.focus(); }
         document.body.classList.toggle('playing', !active);
         this.root.querySelector('[data-action=play]').textContent = active ? '▶ Prova' : '▣ Editor · F2';
-        this.message(active ? 'Modalità editor. La simulazione è in pausa.' : 'WASD: muovi/guida · Trascina col destro o usa le frecce: camera · F: entra/esci · F2: editor.');
+        this.message(active ? 'Modalità editor. La simulazione è in pausa.' : 'WASD: muovi/guida · Trascina col destro o usa le frecce: camera · E/F: entra/esci · F2: editor.');
     }
     update() { this.orbit.update(); if (this.selected) { this.outline.setFromObject(this.objects.get(this.selected)); this.outline.visible = true; } }
     item() { return this.items.find(item => item.id === this.selected); }
