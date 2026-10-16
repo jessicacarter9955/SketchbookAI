@@ -1,18 +1,25 @@
-/* Fab marketplace connector. Requires an opt-in FabCLI bridge running on the user's PC. */
+/* Fab marketplace connector: online public catalog + optional authenticated local FabCLI bridge. */
 (function (root) {
     class FabClient {
-        constructor(fetcher = (...args) => fetch(...args), base = 'http://127.0.0.1:8765') {
+        constructor(fetcher = (...args) => fetch(...args), base = null) {
             this.fetcher = fetcher;
-            this.base = base;
+            const host = root.location?.hostname || '';
+            const local = !host || ['localhost', '127.0.0.1', '[::1]'].includes(host);
+            this.base = base || (local ? 'http://127.0.0.1:8765' : '/.netlify/functions/fab-catalog');
+            this.catalogOnly = this.base.startsWith('/.netlify/functions/');
         }
         async request(path, options = {}) {
-            const response = await this.fetcher(this.base + path, {
+            const url = this.catalogOnly
+                ? this.base + '?operation=' + encodeURIComponent(path.slice(1).split('?')[0]) +
+                    (path.includes('?') ? '&' + path.split('?').slice(1).join('?') : '')
+                : this.base + path;
+            const response = await this.fetcher(url, {
                 ...options,
                 cache: 'no-store',
                 signal: options.signal || AbortSignal.timeout(120000),
             });
             const data = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(data.error || 'Servizio Fab non disponibile. Avvia il bridge locale FabCLI.');
+            if (!response.ok) throw new Error(data.error || (this.catalogOnly ? 'Catalogo Fab temporaneamente non disponibile.' : 'Servizio Fab non disponibile. Avvia il bridge locale FabCLI.'));
             return data;
         }
         status() { return this.request('/status'); }
@@ -38,12 +45,14 @@
                         animationCount: item.animation_count || 0,
                         owned: item.owned === true,
                         ownershipKnown: typeof item.owned === 'boolean',
+                        importAvailable: !this.catalogOnly,
                     };
                 }).filter(item => /^[a-zA-Z0-9_-]{1,100}$/.test(item.uid)),
             };
         }
         async download(uid) {
             if (!/^[a-zA-Z0-9_-]{1,100}$/.test(uid)) throw new Error('ID Fab non valido.');
+            if (this.catalogOnly) throw new Error('Il catalogo Fab web è consultabile, ma il download richiede ancora un collegamento Epic autenticato. Apri la scheda Fab.');
             const data = await this.request('/download', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
