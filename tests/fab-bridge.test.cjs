@@ -49,3 +49,53 @@ test('Fab bridge serves local routes but does not allow cross-site downloads', a
         assert.equal(malformed.status,400);
     } finally { await new Promise(resolve => server.close(resolve)); }
 });
+
+const {handler,normalizeListing,searchPublicFab} = require('../netlify/functions/fab-catalog.cjs');
+
+test('online Fab catalog lists only validated metadata without authenticated ownership claims', async () => {
+    const listing=normalizeListing({uid:'abcdefab-1234-1234-1234-abcdefabcdef',
+        title:'BMW M8',thumbnail_url:'https://example.org/bmw.webp',
+        publisher:{name:'Studio'},licenses:[{name:'Fab Standard'}]});
+    assert.equal(listing.uid,'abcdefab-1234-1234-1234-abcdefabcdef');
+    assert.equal(listing.owned,null);
+    assert.equal(listing.thumbnail_url,'https://example.org/bmw.webp');
+    assert.equal(normalizeListing({uid:'../download',title:'Invalid'}),null);
+});
+test('online Fab catalog bridge uses only Fab fixed URL and query encoding', async () => {
+    let requested;
+    const data=await searchPublicFab('BMW & Ferrari',async(url,opts)=>{
+        requested=new URL(url);assert.equal(opts.method,'GET');
+        return {ok:true,text:async()=>JSON.stringify({results:[{uid:'abcdefab-1234-1234-1234-abcdefabcdef',title:'BMW'}]})};
+    });
+    assert.equal(requested.origin,'https://www.fab.com');
+    assert.equal(requested.pathname,'/i/listings/search');
+    assert.equal(requested.searchParams.get('q'),'BMW & Ferrari');
+    assert.equal(data.downloadable,false);
+    assert.equal(data.results.length,1);
+});
+test('online Fab bridge does not expose an unauthenticated download route',async()=>{
+    const status=await handler({httpMethod:'GET',queryStringParameters:{operation:'status'}});
+    const info=JSON.parse(status.body);
+    assert.equal(info.connected,false);
+    assert.equal(info.downloadable,false);
+    const download=await handler({httpMethod:'POST',queryStringParameters:{operation:'download'}});
+    assert.equal(download.statusCode,405);
+    const invalid=await handler({httpMethod:'GET',queryStringParameters:{operation:'search',q:'x'}});
+    assert.equal(invalid.statusCode,400);
+});
+test('Fab client selects public browser bridge but preserves local authenticated provider',async()=>{
+    const original=globalThis.location;
+    globalThis.location={hostname:'my-test-site3.netlify.app'};
+    try {
+        let requested;
+        const online=new FabClient(async(url)=>{
+            requested=url; return {ok:true,json:async()=>({results:[{uid:'abcde123-1234-1234-1234-abcdefabcdef',title:'Lambo'}]})};
+        });
+        const search=await online.search('lambo');
+        assert.ok(requested.startsWith('/.netlify/functions/fab-catalog?operation=search'));
+        assert.equal(search.results[0].importAvailable,false);
+        await assert.rejects(online.download('demoUid'),/richiede ancora/);
+        const local=new FabClient(async()=>({ok:true,json:async()=>({results:[]})}),'http://127.0.0.1:8765');
+        assert.equal(local.catalogOnly,false);
+    } finally { globalThis.location=original; }
+});
