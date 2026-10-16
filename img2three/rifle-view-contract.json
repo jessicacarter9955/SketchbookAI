@@ -1,0 +1,77 @@
+{
+  "schema": "img2three-rifle-multiview-v1",
+  "master": {
+    "path": "img2three/viewer/public/ref/rifle.webp",
+    "role": "identity and exact visible-side color/shape",
+    "priority": 1,
+    "source": "original user-provided rifle reference"
+  },
+  "auxiliaryRule": "The six generated views are lower-trust, synthetic geometric hypotheses. Never override the original photograph with an inconsistent generated feature.",
+  "views": [
+    {
+      "id": "left",
+      "degrees": 0,
+      "axis": "+Z",
+      "source": "neon_lime_compact_carbine_render.png",
+      "visible": "receiver, magwell, rail, ventilated lime handguard, brace, grip and magazine",
+      "priority": 2
+    },
+    {
+      "id": "front",
+      "degrees": 90,
+      "axis": "+X",
+      "source": "neon_green_and_black_carbine_muzzle_view.png",
+      "visible": "muzzle center, handguard cross section and front-to-back relative thickness",
+      "priority": 2
+    },
+    {
+      "id": "right",
+      "degrees": 180,
+      "axis": "-Z",
+      "source": "neon_green_compact_ar_style_carbine.png",
+      "visible": "reverse receiver, grip and magazine thickness, side vent continuity",
+      "priority": 2
+    },
+    {
+      "id": "rear",
+      "degrees": 270,
+      "axis": "-X",
+      "source": "neon_green_ar_style_carbine_rear_view.png",
+      "visible": "brace rear footprint and center alignment",
+      "priority": 2
+    },
+    {
+      "id": "top",
+      "axis": "+Y",
+      "source": "neon_green_and_black_carbine_overhead.png",
+      "visible": "rail silhouette, handguard width, muzzle coaxiality",
+      "priority": 2
+    },
+    {
+      "id": "bottom",
+      "axis": "-Y",
+      "source": "neon_green_ar_carbine_underside_catalog_render.png",
+      "visible": "magwell and grip spacing, volume underside and muzzle alignment",
+      "priority": 2
+    }
+  ],
+  "modelRules": [
+    "Side silhouette, lengths, brand markings and lime color distribution obey the true original reference.",
+    "No mechanisms or functional weapon engineering: this is a non-operational game prop visual study.",
+    "Geometrically separate receiver, brace, handguard, rail, pistol grip, trigger guard, magazine and barrel shell.",
+    "Use actual through geometry for handguard vents and non-capped visual bore.",
+    "Do not treat the perspective generated photos as metric scans or strict depth constraints.",
+    "If generated sides contradict, prefer conservatively inferred volumes and flag uncertainty."
+  ],
+  "qualityGates": [
+    "upstream image probe",
+    "upstream pre-spec assessment",
+    "upstream authored spec",
+    "strict spec validation",
+    "upstream Three.js factory when spec validated",
+    "Vite compilation",
+    "Playwright Chromium WebGL six angle capture",
+    "visual reference comparison"
+  ],
+  "precisionClaim": "Reference-targeted, not guaranteed exact 1:1 without measured views"
+}
