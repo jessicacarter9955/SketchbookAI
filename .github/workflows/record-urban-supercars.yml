@@ -11,7 +11,7 @@ permissions:
 jobs:
   record:
     runs-on: ubuntu-latest
-    timeout-minutes: 17
+    timeout-minutes: 22
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,7 +27,7 @@ jobs:
         env:
           NODE_PATH: /tmp/photoreal-recording/node_modules
           PHOTO_URL: https://6ad259ad86251ebad353dc0c--my-test-site3.netlify.app/editor.html?scene=urban-photoreal&cityBlocks=2&play=1
-          DRIVE_MS: '8500'
+          DRIVE_MS: '7000'
         run: node tools/record-urban-supercars.cjs
       - name: Verify images and MP4 outputs
         if: success()
