@@ -1,0 +1,36 @@
+name: Validate hosted Fab bridge and Sketchbook UI
+on:
+  push:
+    branches: [img2threejs-runner]
+    paths:
+      - ".github/workflows/fab-cloud-smoke.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cloud-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - name: Check Fab bridge health, access controls and new picker
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL=https://sketchbook-fab-bridge.onrender.com
+          for i in 1 2 3 4 5 6; do
+            if curl -fsSL --max-time 25 "$URL/health" -o /tmp/fab-health.json; then break; fi
+            sleep 6
+          done
+          node -e 'const h=require("/tmp/fab-health.json");if(h.ok!==true||h.bridge!==true)process.exit(1)'
+          echo "Render Fab bridge public health: OK" >> "$GITHUB_STEP_SUMMARY"
+          code=$(curl -sS -o /tmp/no-key.json -w '%{http_code}' --max-time 30 "$URL/status")
+          test "$code" = 401
+          echo "Protected Fab endpoint without key: HTTP $code" >> "$GITHUB_STEP_SUMMARY"
+          code=$(curl -sS -o /tmp/foreign.json -w '%{http_code}' --max-time 30 -H 'Origin: https://untrusted.invalid' "$URL/status")
+          test "$code" = 403
+          echo "Foreign browser origin: HTTP $code" >> "$GITHUB_STEP_SUMMARY"
+          curl -fsSL --max-time 25 https://my-test-site3.netlify.app/src/editor/fab-client.js >/tmp/fab-client-live.js
+          curl -fsSL --max-time 25 https://my-test-site3.netlify.app/3dPicker.js >/tmp/fab-picker-live.js
+          grep -q "sketchbook-fab-bridge.onrender.com" /tmp/fab-client-live.js
+          grep -q "data-connect-epic" /tmp/fab-picker-live.js
+          echo "Netlify Fab cloud client and Epic connection controls: OK" >> "$GITHUB_STEP_SUMMARY"
