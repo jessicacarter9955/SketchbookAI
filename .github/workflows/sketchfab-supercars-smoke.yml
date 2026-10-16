@@ -1,0 +1,32 @@
+name: Verify real Sketchfab supercar downloads
+on:
+  push:
+    branches: [img2threejs-runner]
+    paths: [".github/workflows/sketchfab-supercars-smoke.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-models:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check configured catalog and actual BMW Ferrari Lamborghini downloads
+        shell: bash
+        run: |
+          set -eu
+          HOST="https://sketchbook-fab-bridge.onrender.com"
+          curl -fsSL --retry 3 --max-time 30 "$HOST/sketchfab/showcase" -o /tmp/sketchfab-catalog.json
+          node -e 'const c=require("/tmp/sketchfab-catalog.json");if(!c.configured||c.vehicles.length!==3)process.exit(1);console.log("Catalog shows 3 licensed models and server credentials are configured.")'
+          for model in bmw ferrari lamborghini; do
+            status=$(curl -sSL --max-time 120 --retry 1 --output "/tmp/${model}.blob" --write-out '%{http_code}' "$HOST/sketchfab/cars/$model")
+            bytes=$(wc -c <"/tmp/${model}.blob")
+            echo "$model: HTTP $status, $bytes bytes" | tee -a "$GITHUB_STEP_SUMMARY"
+            if [ "$status" != 200 ]; then
+              head -c 240 "/tmp/${model}.blob" | tee -a "$GITHUB_STEP_SUMMARY"
+              exit 1
+            fi
+            MODEL="$model" node -e 'const fs=require("fs");const b=fs.readFileSync("/tmp/"+process.env.MODEL+".blob");if(b.length<1000||!["glTF","PK"].some(x=>b.toString("utf8",0,4).startsWith(x)))process.exit(1);'
+            rm -f "/tmp/${model}.blob"
+          done
+          echo "All 3 licensed Sketchfab car downloads verified." >> "$GITHUB_STEP_SUMMARY"
