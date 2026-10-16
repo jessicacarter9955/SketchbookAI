@@ -5,8 +5,17 @@ on:
     branches: [img2threejs-runner]
     paths:
       - ".github/workflows/worldbld-browser-check.yml"
-      - "tools/worldbld-browser/**"
+      - "tools/worldbld-browser/probe.cjs"
+      - "tools/worldbld-browser/validate-block.cjs"
+      - "tools/worldbld-browser/generate-osm.cjs"
+      - "tools/worldbld-browser/city-block-plan.json"
+      - "tools/worldbld-browser/lightning_runner.py"
+      - "tools/worldbld-browser/WorldBLD_Prototype/**"
   workflow_dispatch:
+
+concurrency:
+  group: worldbld-public-probe-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
