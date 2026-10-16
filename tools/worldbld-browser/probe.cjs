@@ -42,6 +42,11 @@ const targets = [
         await page.screenshot({ path: path.join(OUTPUT, target.name + '.png'), fullPage: true, timeout: 10000 });
       } catch (e) { rec.error = String(e); }
       reports.push(rec);
+      if (['worldbld-plans', 'worldbld-tools', 'worldbld-download', 'lightning-signup'].includes(rec.name)) {
+        console.log('PUBLIC_SITE_DIAGNOSTIC', JSON.stringify({ name: rec.name, title: rec.title,
+          content: (rec.content || '').slice(0, 2100), links: (rec.links || []).slice(0, 14),
+          buttons: (rec.buttons || []).slice(0, 20) }));
+      }
       await page.close();
     }
   } finally {
