@@ -1,0 +1,40 @@
+name: Sketchbook asset catalog regression
+on:
+  push:
+    branches: [img2threejs-runner]
+    paths:
+      - ".github/workflows/sketchbook-assets-ci.yml"
+      - "3dPicker.js"
+      - "index.html"
+      - "editor.html"
+      - "src/editor/sketchfab-client.js"
+      - "src/editor/fab-client.js"
+      - "tools/fab-bridge.cjs"
+      - "tests/editor.test.mjs"
+      - "tests/fab-bridge.test.cjs"
+      - "package.json"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Check standalone JavaScript syntax
+        run: |
+          node --check src/editor/fab-client.js
+          node --check src/editor/sketchfab-client.js
+          node --check 3dPicker.js
+          node --check tools/fab-bridge.cjs
+      - name: Unit and bridge security tests
+        run: npm test
+      - name: Build game runtime
+        run: npm run build
