@@ -113,3 +113,39 @@ test('local credentials load only on loopback and do not override manual input',
     client.token = 'manual'; await client.loadLocalToken({hostname:'localhost'});
     assert.equal(client.token, 'manual');
 });
+
+
+test('local Sketchfab JSON accepts unique valid token pools and preserves manual overrides', async () => {
+    const a = 'a'.repeat(32), b = 'b'.repeat(32);
+    let calls = 0, authorization = [];
+    const client = new SketchfabClient(async (url, options) => {
+        calls++;
+        if (url === '/.local/sketchfab.json') return { ok: true, json: async () => ({
+            token: a, tokens: [a, b, '', 'not-a-token', null, b]
+        }) };
+        authorization.push(options.headers.Authorization);
+        return { ok: true, json: async () => ({ results: [] }) };
+    });
+    assert.equal(await client.loadLocalToken({hostname:'example.com'}), false);
+    assert.equal(calls, 0);
+    assert.equal(await client.loadLocalToken({hostname:'localhost'}), true);
+    assert.equal(client.credentialCount, 2);
+    for(let i=0;i<10;i++) await client.search('car');
+    assert.ok(authorization.every(header => header === `Token ${a}` || header === `Token ${b}`));
+    client.token = 'manual-selection';
+    assert.equal(client.credentialCount, 1);
+    await client.search('tree');
+    assert.equal(authorization.at(-1), 'Token manual-selection');
+});
+test('invalid pooled Sketchfab token is removed after 401 without rate-limit retries', async () => {
+    const token = 'x'.repeat(32);
+    let requests = 0;
+    const client = new SketchfabClient(async (url) => {
+        if (url === '/.local/sketchfab.json') return {ok:true,json:async()=>({tokens:[token]})};
+        requests++; return {ok:false,status:401};
+    });
+    assert.equal(await client.loadLocalToken({hostname:'127.0.0.1'}), true);
+    await assert.rejects(client.download('demoUid'), /valido/);
+    assert.equal(client.credentialCount, 0);
+    assert.equal(requests, 1);
+});
