@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 const API = 'https://sketchbook-fab-bridge.onrender.com';
 export const SUPERCARS = Object.freeze([
     { id:'bmw',name:'BMW M4 G82',brand:'BMW',author:'Rosemarin',uid:'5a9007d569a846548dbf352877550c4e',source:'https://sketchfab.com/3d-models/bmw-m4-g82-5a9007d569a846548dbf352877550c4e',license:'CC BY' },
@@ -11,7 +10,8 @@ export function supercarPositions(base) {
         base.x+x,base.y,base.z+z
     ]);
 }
-export function fitVehicleVisual(source) {
+export function fitVehicleVisual(source, THREE = globalThis.THREE) {
+    if (!THREE?.Group) throw Error('Motore Three.js non inizializzato.');
     const holder=new THREE.Group();
     const mesh=source.clone(true);
     holder.add(mesh);
