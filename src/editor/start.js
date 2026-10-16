@@ -7,6 +7,7 @@ import { sceneStorageKey, loadRevisions, saveRevision, forkScene } from './scene
 import {localDdsManifest,importLocalDdsFiles} from './dds-local-assets.mjs';
 import {SanAndreasRuntime} from './SanAndreasRuntime.js';
 import {mountStreetLabGarage} from './StreetLabGarage.js';
+import {StreetLabCrime} from './StreetLabCrime.js';
 
 globalThis.THREE = THREE; // shared by procedural weather and the 3D game
 const loading = document.getElementById('loading-screen');
@@ -368,7 +369,10 @@ try {
     }
     report('Attivazione menu, dialoghi e modelli…');
     sceneControls(sceneEditor);
-    if(current.id==='san-andreas-streetlab')mountStreetLabGarage(world,sceneEditor);
+    if(current.id==='san-andreas-streetlab'){
+       mountStreetLabGarage(world,sceneEditor);
+       world.streetLabCrime=new StreetLabCrime(world,sceneEditor,storageKey);
+    }
     if(current.world==='procedural-city')globalThis.urbanDialogue=world.urbanDialogue=new UrbanDialogue(world,sceneEditor);
     if(current.playerProfile==='dds') new DdsGame(world,{key:`${storageKey}.dds-game`});
     if(current.world==='procedural-city'){
