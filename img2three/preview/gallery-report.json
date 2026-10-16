@@ -6,7 +6,7 @@
       "model": "tower",
       "meshCount": 819,
       "instances": 1924,
-      "version": "glock-inspired-reference-loft-v4"
+      "version": "reference-sculpt-v5-compact-rounded-grip-and-rifle-hard-surface"
     }
   },
   {
@@ -16,7 +16,7 @@
       "model": "compact",
       "meshCount": 9,
       "instances": 0,
-      "version": "glock-inspired-reference-loft-v4"
+      "version": "reference-sculpt-v5-compact-rounded-grip-and-rifle-hard-surface"
     }
   },
   {
@@ -24,9 +24,9 @@
     "ready": true,
     "stats": {
       "model": "purple",
-      "meshCount": 12,
+      "meshCount": 13,
       "instances": 0,
-      "version": "glock-inspired-reference-loft-v4"
+      "version": "reference-sculpt-v5-compact-rounded-grip-and-rifle-hard-surface"
     }
   },
   {
@@ -34,9 +34,9 @@
     "ready": true,
     "stats": {
       "model": "rifle",
-      "meshCount": 8,
-      "instances": 0,
-      "version": "glock-inspired-reference-loft-v4"
+      "meshCount": 13,
+      "instances": 108,
+      "version": "reference-sculpt-v5-compact-rounded-grip-and-rifle-hard-surface"
     }
   },
   {
@@ -44,9 +44,9 @@
     "ready": true,
     "stats": {
       "model": "tree",
-      "meshCount": 405,
-      "instances": 35300,
-      "version": "glock-inspired-reference-loft-v4"
+      "meshCount": 80,
+      "instances": 41400,
+      "version": "reference-sculpt-v5-compact-rounded-grip-and-rifle-hard-surface"
     }
   }
 ]
