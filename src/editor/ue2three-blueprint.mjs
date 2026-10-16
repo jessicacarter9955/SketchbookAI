@@ -18,14 +18,22 @@ function validateSchema(schema, value, depth = 0) {
             if (!safeField(field) || !owns(value, field)) throw new Error('Missing typed source struct field: ' + field);
             validateSchema(child, value[field], depth+1);
         }
+    } else if (schema.type === 'ObjectProperty') {
+        if (value !== null && (!value || typeof value !== 'object' || typeof value.asset !== 'string'
+            || !/^\/(Game|Engine|Script)\/[A-Za-z0-9_\/.]+$/.test(value.asset)
+            || JSON.stringify(value.declared_class) !== JSON.stringify(schema.class))) throw new Error('Invalid source asset identity');
+    } else if (schema.type === 'TextProperty') {
+        if (!value || typeof value.text !== 'string' || !Number.isInteger(value.flags) || value.flags < 0 || value.flags > 4294967295
+            || !(value.history === 'empty' && value.text === '' || value.history === 'base' && typeof value.namespace === 'string'
+                && typeof value.key === 'string')) throw new Error('Unsupported original FText');
     } else if (!validPrimitive(schema.type, value)) throw new Error('Invalid typed source member: ' + schema.type);
 }
 
-export function executeBlueprint(program, self = {}, inputs = {}, { functions = {}, frames = {} } = {}) {
-    return runBlueprint(program, self, inputs, functions, { remaining: 10000 }, 0, structuredClone(frames));
+export function executeBlueprint(program, self = {}, inputs = {}, { functions = {}, frames = {}, tables = {} } = {}) {
+    return runBlueprint(program, self, inputs, functions, { remaining: 10000 }, 0, structuredClone(frames), tables);
 }
 
-function runBlueprint(program, self, inputs, functions, budget, depth, frames) {
+function runBlueprint(program, self, inputs, functions, budget, depth, frames, tables) {
     if (depth > 32) throw new Error('Blueprint call depth exceeded');
     if (program?.schema_version !== 1 || !['translated_straight_line', 'translated_control_flow'].includes(program.status)
         || !Array.isArray(program.steps) || program.steps.length > 10000
@@ -70,6 +78,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames) {
             || ['FloatProperty', 'DoubleProperty'].includes(type) && typeof value === 'number' && Number.isFinite(value)
             || ['StrProperty', 'NameProperty'].includes(type) && typeof value === 'string'
             || type === 'ArrayProperty' && Array.isArray(value)
+            || type === 'ObjectProperty' && (value === null || typeof value === 'object')
             || type === 'StructProperty' && value !== null && typeof value === 'object' && !Array.isArray(value);
         if (!valid) throw new Error(`Unsupported or invalid ${type}: ${scope}.${field}`);
         const schema = program.schemas?.[scope]?.[field];
@@ -77,6 +86,25 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames) {
     };
     const evaluate = (expression, depth = 0) => {
         if (!expression || depth > 48) throw new Error('Invalid Blueprint expression');
+        if (expression.op === 'typed_literal') {
+            validateSchema(expression.schema, expression.value);
+            return structuredClone(expression.value);
+        }
+        if (expression.op === 'table_get') {
+            const reference = evaluate(expression.table, depth+1), row = evaluate(expression.row, depth+1), target = expression.target;
+            const table = reference && owns(tables, reference.asset) ? tables[reference.asset] : null;
+            if (!table || target?.op !== 'get' || target.scope !== 'local' || !safeField(target.field)
+                || table.schema?.source !== expression.row_source || program.schemas?.local?.[target.field]?.source !== expression.row_source
+                || typeof row !== 'string' || !row || /[^\x01-\x7f]/.test(row)) throw new Error('Unmigrated or incompatible original data table');
+            const key = Object.keys(table.rows).find(name => name.toUpperCase() === row.toUpperCase());
+            if (key !== undefined) {
+                const value = table.rows[key]; validateSchema(program.schemas.local[target.field], value);
+                locals[target.field] = structuredClone(value);
+            }
+            // UE leaves OutRow unchanged when the row is absent.
+            trace.push({source_index: sourceIndex, op: 'table_get', table: reference.asset, row, found: key !== undefined});
+            return key !== undefined;
+        }
         if (expression.op === 'array_length') {
             const array = evaluate(expression.array, depth+1);
             if (!Array.isArray(array)) throw new Error('Invalid source Array_Length');
@@ -110,7 +138,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames) {
                     targets.push(binding);
                 } else throw new Error('Unsupported call argument');
             }
-            const nested = runBlueprint(callee, instance, args, functions, budget, callDepth + 1, frames);
+            const nested = runBlueprint(callee, instance, args, functions, budget, callDepth + 1, frames, tables);
             for (const binding of targets) {
                 if (!owns(nested.outputs, binding.parameter)) throw new Error(`Missing call output: ${binding.parameter}`);
                 checkType(binding.target.scope, binding.target.field, nested.outputs[binding.parameter], binding.target.frame);

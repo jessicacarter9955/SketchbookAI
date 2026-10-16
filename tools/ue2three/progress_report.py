@@ -197,7 +197,9 @@ def project_progress(workspace, published, character_dir=None):
                             and all(key in sample.get('outputs', {}) and digest(sample['outputs'][key]) == digest(value)
                                     for key, value in sample.get('expected', {}).items())
                             and all(key in sample.get('resulting_state', {}) and digest(sample['resulting_state'][key]) == digest(value)
-                                    for key, value in sample.get('expected_state', {}).items()) for sample in samples)):
+                                    for key, value in sample.get('expected_state', {}).items())
+                            and all(key in sample.get('actual_members', {}) and digest(sample['actual_members'][key]) == digest(value)
+                                    for key, value in sample.get('expected_members', {}).items()) for sample in samples)):
                 verified.append(entry['function']); cases += len(samples)
                 if all(sample.get('expected_state') for sample in samples):
                     event_verified.append(entry['function']); event_cases += len(samples)

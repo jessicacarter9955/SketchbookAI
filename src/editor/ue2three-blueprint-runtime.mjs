@@ -15,7 +15,7 @@ export class BlueprintActorRuntime {
         const data = this.report.packages[packageName], program = data?.functions[functionName];
         if (!program || !Object.hasOwn(this.states, packageName)) throw new Error(`Untranslated source function: ${functionName}`);
         const result = executeBlueprint(program, this.states[packageName], inputs,
-            {functions: {...data.functions, ...data.event_programs}, frames: this.frames[packageName] || {}});
+            {functions: {...data.functions, ...data.event_programs}, frames: this.frames[packageName] || {}, tables: this.report.tables || {}});
         this.states[packageName] = result.state;
         this.frames[packageName] = result.frames;
         return result;

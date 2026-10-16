@@ -1,5 +1,4 @@
-"""Original primitive UserDefinedStruct defaults and typed array schemas."""
-import math
+"""Original source type identities, constructors and value schemas."""
 
 PRIMITIVES = {'BoolProperty': False, 'ByteProperty': 0, 'IntProperty': 0,
               'FloatProperty': 0, 'DoubleProperty': 0, 'StrProperty': '', 'NameProperty': 'None'}
@@ -16,58 +15,26 @@ def import_path(package, reference):
 
 
 def source_structs(documents, error):
-    enums, structs = {}, {}
-    for name, document in documents.items():
-        for export in document.get('Exports', []):
-            if 'Enum' in export:
-                enums[(name, export['ObjectName'])] = {v['Item1']: v['Item2'] for v in export['Enum'].get('Names', [])}
-    for name, document in documents.items():
-        for export in document.get('Exports', []):
-            if 'StructData' not in export: continue
-            try:
-                defaults, fields = {}, {}
-                values = {v['Name']: v for v in export['StructData']}
-                for prop in export.get('LoadedProperties', []):
-                    field, type_name = prop['Name'], prop['SerializedType']
-                    if field in ('__proto__', 'constructor', 'prototype') or type_name not in PRIMITIVES:
-                        raise error('Unsupported source struct member')
-                    value = values.get(field)
-                    if value is None: raise error('Missing serialized source struct default')
-                    if type_name == 'ByteProperty' and value.get('ByteType') == 'FName':
-                        ref = prop.get('Enum')
-                        names = []
-                        for _ in range(16):
-                            if type(ref) is not int or not -len(document.get('Imports', [])) <= ref < 0: break
-                            item = document['Imports'][-ref-1]; names.append(item['ObjectName'])
-                            if item.get('ClassName') == 'Package': break
-                            ref = item.get('OuterIndex')
-                        mapping = enums.get(tuple(reversed(names)), {})
-                        if value.get('EnumValue') not in mapping: raise error('Missing original enum mapping')
-                        raw = mapping[value['EnumValue']]
-                    else: raw = value.get('Value')
-                    if type_name in ('FloatProperty', 'DoubleProperty'):
-                        raw = float(raw)
-                        if not math.isfinite(raw): raise error('Non-finite source struct default')
-                    elif type_name == 'BoolProperty':
-                        if type(raw) is not bool: raise error('Invalid source Boolean default')
-                    elif type_name in ('IntProperty', 'ByteProperty'):
-                        if type(raw) is not int or not (-2**31 <= raw < 2**31 if type_name == 'IntProperty' else 0 <= raw <= 255):
-                            raise error('Invalid source integer default')
-                    elif not isinstance(raw, str): raise error('Invalid source string default')
-                    fields[field] = {'type': type_name}; defaults[field] = raw
-                structs[(name, export['ObjectName'])] = {'type': 'StructProperty', 'source': name,
-                                                       'fields': fields, 'default': defaults}
-            except (ValueError, TypeError, KeyError):
-                # The whole constructor stays unavailable if any member/default
-                # cannot be established. Never fill missing source data by guess.
-                continue
-    return structs
+    from blueprint_values import construct_source_structs
+    return construct_source_structs(documents)
 
 
 def property_schema(package, prop):
+    from blueprint_values import native_schema
     type_name = prop.get('SerializedType')
-    if type_name in PRIMITIVES: return {'type': type_name, 'default': PRIMITIVES[type_name]}
-    if type_name == 'StructProperty': return getattr(package, 'source_structs', {}).get(import_path(package, prop.get('Struct')))
+    if type_name in PRIMITIVES:
+        schema = {'type': type_name, 'default': PRIMITIVES[type_name]}
+        if type_name == 'ByteProperty' and prop.get('Enum'):
+            mapping = getattr(package, 'source_enums', {}).get(import_path(package, prop.get('Enum')))
+            if mapping: schema['enum_values'] = mapping
+        return schema
+    if type_name == 'ObjectProperty':
+        identity = import_path(package, prop.get('PropertyClass'))
+        if identity: return {'type': type_name, 'class': list(identity), 'default': None}
+    if type_name == 'TextProperty': return {'type': type_name, 'default': {'history': 'empty', 'text': '', 'flags': 0}}
+    if type_name == 'StructProperty':
+        identity = import_path(package, prop.get('Struct'))
+        return native_schema(identity) or getattr(package, 'source_structs', {}).get(identity)
     if type_name == 'ArrayProperty':
         element = property_schema(package, prop.get('Inner', {}))
         if element: return {'type': 'ArrayProperty', 'element': element, 'default': []}

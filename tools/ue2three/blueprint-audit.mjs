@@ -1,5 +1,5 @@
 import { executeBlueprint } from '/src/editor/ue2three-blueprint.mjs';
-import { blueprintFixtureState } from '/src/editor/ue2three-fixtures.mjs';
+import { blueprintFixtureState, blueprintFixtureMembers } from '/src/editor/ue2three-fixtures.mjs';
 const status = document.querySelector('#status');
 const applyFilter = () => {
     const term = document.querySelector('#function-filter').value.toLowerCase();
@@ -23,7 +23,7 @@ try {
                 const inputs = Object.create(null);
                 for (const name of program.self_reads) {
                     const boolean = program.steps.some(step => step.boolean && step.value.op === 'get' && step.value.scope === 'self' && step.value.field === name);
-                    if (['StructProperty', 'ArrayProperty'].includes(program.field_types?.self?.[name])) {
+                    if (['StructProperty', 'ArrayProperty', 'ObjectProperty'].includes(program.field_types?.self?.[name])) {
                         if (!Object.hasOwn(program.source_defaults || {}, name)) throw new Error(`Default struct sorgente assente: ${name}`);
                         self[name] = structuredClone(program.source_defaults[name]);
                     } else if (['NameProperty', 'StrProperty'].includes(program.field_types?.self?.[name])) self[name] = sample ? 'Fixture_' + sample : 'None';
@@ -33,13 +33,13 @@ try {
                     : program.schemas?.local?.[name] ? structuredClone(program.schemas.local[name].default)
                     : program.field_types?.local?.[name] === 'StructProperty' ? {}
                     : ['NameProperty', 'StrProperty'].includes(program.field_types?.local?.[name]) ? sample ? 'Fixture_' + sample : 'None' : 1;
-                const result = executeBlueprint(program, self, inputs, {functions: {...packageData.functions, ...packageData.event_programs}});
+                const result = executeBlueprint(program, self, inputs, {functions: {...packageData.functions, ...packageData.event_programs}, tables: report.tables || {}});
                 // Independently check each translated source assignment against
                 // the provided fixture or literal; this does not emulate native calls.
                 for (const executed of result.trace.filter(step => step.op === 'set')) {
                     const step = program.steps.find(step => step.source_index === executed.source_index);
                     if (executed.scope === 'persistent' || step.value.op === 'get' && step.value.scope !== 'self') continue;
-                    if (step.value.op === 'math' || step.value.op === 'call' || step.value.op === 'member') continue;
+                    if (['math', 'call', 'member', 'table_get', 'typed_literal'].includes(step.value.op)) continue;
                     const expected = step.value.op === 'get' ? self[step.value.field] : step.value.value;
                     const actual = executed.value;
                     if ((step.scope === 'self' || program.output_fields.includes(step.field)) && JSON.stringify(actual) !== JSON.stringify(expected))
@@ -48,7 +48,9 @@ try {
                 outputs.push({self, inputs, result: {value: result.value, outputs: result.outputs}}); scenarios++;
             }
             const row = document.createElement('tr');
-            for (const text of [program.name, '🟢 PASS · 3 scenari', JSON.stringify(outputs.at(-1).result.outputs)]) {
+            const preview = Object.fromEntries(Object.entries(outputs.at(-1).result.outputs).map(([name, value]) => [name,
+                value && typeof value === 'object' ? `dati originali · ${Object.keys(value).length} campi` : value]));
+            for (const text of [program.name, '🟢 PASS · 3 scenari', JSON.stringify(preview)]) {
                 const cell = document.createElement('td'); cell.textContent = text; row.append(cell);
             }
             row.children[1].className = 'pass'; document.querySelector('#results').append(row);
@@ -72,13 +74,15 @@ try {
             for (const [name, hash] of Object.entries(test.types || {}))
                 if (report.type_sources?.[name]?.source_sha256 !== hash) throw new Error(`Tipo sorgente non aggiornato: ${name}`);
             const self = blueprintFixtureState(fixture, test, report);
-            const result = executeBlueprint(program, self, test.inputs, {functions: {...report.packages[test.package].functions, ...report.packages[test.package].event_programs}});
+            const result = executeBlueprint(program, self, test.inputs, {functions: {...report.packages[test.package].functions, ...report.packages[test.package].event_programs}, tables: report.tables || {}});
             for (const [field, expected] of Object.entries(test.outputs))
                 if (JSON.stringify(result.outputs[field]) !== JSON.stringify(expected)) throw new Error(`Confronto sorgente fallito: ${test.function}.${field}`);
             for (const [field, expected] of Object.entries(test.state || {}))
                 if (JSON.stringify(result.state[field]) !== JSON.stringify(expected)) throw new Error(`Stato sorgente differente: ${test.function}.${field}`);
+            const actualMembers = blueprintFixtureMembers(result.outputs, test.output_members);
             rowsByFunction.get(JSON.stringify([test.package, test.function])).samples.push({inputs: test.inputs, state: test.self,
                 base_state: test.base_state, outputs: result.outputs, expected: test.outputs,
+                actual_members: actualMembers, expected_members: test.output_members || {},
                 resulting_state: test.state ? result.state : undefined, expected_state: test.state || {}, trace: test.state ? result.trace : undefined});
             golden++;
         }
@@ -89,6 +93,7 @@ try {
         const details = document.createElement('details'), summary = document.createElement('summary'), pre = document.createElement('pre');
         summary.textContent = `${samples.length} casi sorgenti verificati`;
         pre.textContent = JSON.stringify(samples.map(sample => ({inputs: sample.inputs, outputs: sample.outputs, expected: sample.expected,
+            ...(Object.keys(sample.expected_members).length ? {actual_members: sample.actual_members, expected_members: sample.expected_members} : {}),
             ...(Object.keys(sample.expected_state).length ? {resulting_state: sample.resulting_state, expected_state: sample.expected_state} : {}),
             base_state: sample.base_state, state: sample.state, ...(sample.trace ? {trace: sample.trace} : {})})), null, 2); pre.style.cssText = 'max-height:260px;overflow:auto';
         details.append(summary, pre); row.children[2].append(details);

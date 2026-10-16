@@ -91,6 +91,11 @@ class ProgressReportTests(unittest.TestCase):
         sample['expected']['Result'] = 1; atomic_json(path, audit)
         report = project_progress(self.workspace, self.published, self.character)
         self.assertTrue(any('confronti sorgenti' in m['title'] for m in report['milestones']))
+        sample['expected_members'] = {'Item': {'Weight': 2}}
+        sample['actual_members'] = {'Item': {'Weight': True}}; atomic_json(path, audit)
+        self.assertFalse(any('confronti sorgenti' in m['title'] for m in project_progress(self.workspace, self.published, self.character)['milestones']))
+        sample['actual_members']['Item']['Weight'] = 2; atomic_json(path, audit)
+        self.assertTrue(any('confronti sorgenti' in m['title'] for m in project_progress(self.workspace, self.published, self.character)['milestones']))
         audit['programs_content_sha256'] = 'stale'; atomic_json(path, audit)
         report = project_progress(self.workspace, self.published, self.character)
         self.assertFalse(any('confronti sorgenti' in m['title'] for m in report['milestones']))

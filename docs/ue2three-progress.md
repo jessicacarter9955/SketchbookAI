@@ -367,3 +367,37 @@ moved back to its original test and the complete suite passed after the fix.
   or game errors. Evidence saved with current program/bytecode/screenshot hashes.
 - Checklist now has **11 scoped verified checkpoints**; full systems retain their
   yellow/red status. Source calculations are checked against matching audit cases.
+
+## 2026-10-16 · Original item table and inventory data rules
+
+- Added generic rich source value/constructor parsing in blueprint_values.py:
+  source enum mappings, arrays, FText localization identity, asset references,
+  native Vector/Rotator values. Unsupported members/history/identities reject
+  the whole constructor/table; no fields or rows are silently dropped.
+- Bounded parser read: S_ItemData, four enum dependencies and DT_Items, **118,463
+  original bytes**. Reused all existing scan/export data, without starting Unreal.
+- Exact Engine.DataTableFunctionLibrary.GetDataTableRowFromName adapter validates
+  original library, default table, row schema, parameter owners and VM offset.
+  Runtime supports case-insensitive row identity, copy semantics and unchanged
+  OutRow on a missing name; null/missing/incompatible tables fail explicitly.
+- Unlocked **ten original functions**, from item lookup through weight/value,
+  compatibility/stack/swap checks and ammo search. **117 translated /383 blocked**;
+  six empty functions, 56 no-effect callbacks and 263 uncached packages are separate.
+- **77 independent source cases** added: all 16 original records, missing and
+  case-insensitive IDs, selected localized text/numeric members, quantity/weight
+  limits, storage swaps and ammo search. Expected values come from original
+  tagged data and branch/arithmetic inspection, not the executed outputs.
+- Preserved source quirks: CanStackWith subtracts max stack from current quantity;
+  FindAmmoInCarry resets FoundIndex to zero before searching. Negative capacity
+  and successful empty-search results are original behavior, not replacements.
+- Added table/member fixture hash checks, typed runtime and compiler rejection
+  tests, sparse row/default/copy/localization tests; **109 Python /66 JS pass**,
+  editor build succeeds. Browser audit: **351 generic /403 source comparisons**.
+- Rich data asset identities remain references: rendering/playing their assets,
+  full mutations, UI, persistence, notifications and replication are incomplete.
+- Final visible scene verification: **24 inputs /35 metrics /4 events /237 inventory
+  cases /31 character calculations**; horizontal movement 0.509 units, no console
+  errors. Saved screenshot and DOM evidence: verification/source-item-data/.
+- Browser inspection initially timed out while the hidden scene awaited animation
+  frames. Presenting the integrated browser resumed it and all checks passed.
+  Keep browser visibility enabled before live QA to avoid background throttling.

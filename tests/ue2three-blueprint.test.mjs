@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { executeBlueprint } from '../src/editor/ue2three-blueprint.mjs';
-import { blueprintFixtureState } from '../src/editor/ue2three-fixtures.mjs';
+import { blueprintFixtureState, blueprintFixtureMembers } from '../src/editor/ue2three-fixtures.mjs';
 
 test('shared source fixtures reject changed packages and types and remain isolated', () => {
     const fixture={shared_states:{base:{package:'/Game/A',source_sha256:'source',types:{'/Game/Type':'type'},state:{Items:[{Count:1}],Flag:false}}}};
@@ -12,6 +12,35 @@ test('shared source fixtures reject changed packages and types and remain isolat
     assert.throws(()=>blueprintFixtureState(fixture,test,{...report,type_sources:{}}),/fixture type/);
     assert.throws(()=>blueprintFixtureState(fixture,test,{...report,packages:{}}),/original source package/);
     assert.throws(()=>blueprintFixtureState(fixture,{...test,base_state:'constructor'},report),/original source package/);
+});
+
+test('source table fixtures and member checks reject stale data and mismatched values', () => {
+    assert.throws(() => blueprintFixtureState({}, {tables:{'/Game/Table':'hash'}}, {}), /table differs/);
+    const expected={Data:{Weight:1,Title:{text:'Original',history:'base'}}};
+    assert.deepEqual(blueprintFixtureMembers({Data:{Title:{history:'base',text:'Original'},Weight:1,Other:7}},expected),expected);
+    assert.throws(() => blueprintFixtureMembers({Data:{Weight:true}}, {Data:{Weight:1}}), /differs/);
+    assert.throws(() => blueprintFixtureMembers({}, expected), /Missing/);
+});
+
+test('original table lookup preserves missing-row output and copies typed rich source data', () => {
+    const object={type:'ObjectProperty',class:['/Script/Engine','DataTable'],default:null};
+    const text={type:'TextProperty',default:{history:'empty',text:'',flags:0}};
+    const schema={type:'StructProperty',source:'/Game/Row',fields:{Title:text,Weight:{type:'DoubleProperty'}},
+        default:{Title:text.default,Weight:-1}};
+    const tables={'/Game/Table.Table':{schema,rows:{First:{Title:{history:'base',text:'Original',namespace:'NS',key:'Key',flags:0},Weight:2}}}};
+    const program={schema_version:1,status:'translated_straight_line',input_fields:['Row'],output_fields:['Out'],
+        field_types:{self:{Table:'ObjectProperty'},local:{Out:'StructProperty',Row:'NameProperty'}},
+        schemas:{self:{Table:object},local:{Out:schema}},steps:[{op:'evaluate',value:{op:'table_get',table:{op:'get',scope:'self',field:'Table'},
+            row:{op:'get',scope:'local',field:'Row'},target:{op:'get',scope:'local',field:'Out'},row_source:'/Game/Row'}},
+            {op:'return',value:{op:'constant',value:null}}]};
+    const self={Table:{asset:'/Game/Table.Table',declared_class:object.class}};
+    const found=executeBlueprint(program,self,{Row:'FIRST'},{tables});
+    assert.equal(found.outputs.Out.Weight,2); assert.equal(found.trace[0].found,true);
+    found.outputs.Out.Title.text='changed';assert.equal(tables['/Game/Table.Table'].rows.First.Title.text,'Original');
+    assert.equal(executeBlueprint(program,self,{Row:'Missing'},{tables}).outputs.Out.Weight,-1);
+    assert.throws(()=>executeBlueprint(program,self,{Row:'First'}),/Unmigrated/);
+    assert.throws(()=>executeBlueprint(program,{Table:null},{Row:'First'},{tables}),/Unmigrated/);
+    assert.throws(()=>executeBlueprint(program,{Table:{...self.Table,declared_class:['Other']}},{Row:'First'},{tables}),/asset identity/);
 });
 
 test('typed array copies and struct writes retain original nonzero defaults without aliasing', () => {

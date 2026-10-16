@@ -1,6 +1,6 @@
 // Explicit QA fixtures act on the actual player input hook and are restored.
 // They are not gameplay rules or permanent changes to source defaults.
-import { blueprintFixtureState } from './ue2three-fixtures.mjs';
+import { blueprintFixtureState, blueprintFixtureMembers } from './ue2three-fixtures.mjs';
 export async function verifyLiveBlueprintInputs(player, runtime, fixture) {
     const snapshot = runtime.snapshot(), results = [], metricResults = [], eventResults = [], inventoryResults = [], calculationResults = [];
     const guards = runtime.report.character_guards || {};
@@ -72,8 +72,10 @@ export async function verifyLiveBlueprintInputs(player, runtime, fixture) {
             for (const [field, expected] of Object.entries(test.outputs))
                 if (JSON.stringify(result.outputs[field]) !== JSON.stringify(expected)) throw new Error('Inventory source differs: ' + test.function + '.' + field);
             const target = test.runtime === 'inventory' ? inventoryResults : calculationResults;
+            const members = blueprintFixtureMembers(result.outputs, test.output_members);
             target.push({package: test.package, source_function: test.function, source_bytecode_sha256: program.source_bytecode_sha256,
-                inputs: test.inputs, outputs: result.outputs, expected: test.outputs});
+                inputs: test.inputs, outputs: result.outputs, expected: test.outputs,
+                ...(test.output_members ? {actual_members: members, expected_members: test.output_members} : {})});
         }
         return {schema_version: 1, project: runtime.report.project, programs_content_sha256: runtime.report.content_sha256,
                 checked: results.length, metrics_checked: metricResults.length, status: 'passed', movement_distance: movementDistance,

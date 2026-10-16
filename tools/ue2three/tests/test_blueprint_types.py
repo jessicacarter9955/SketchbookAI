@@ -109,3 +109,23 @@ class SourceTypesTests(unittest.TestCase):
         program = translate_package(package, schema)['functions']['ReadFirst']
         self.assertEqual(program['input_fields'], ['Out'])
         self.assertEqual(program['output_fields'], ['Out'])
+
+    def test_table_read_requires_exact_library_original_row_schema_and_context(self):
+        package, schemas = self.native_array_package()
+        imports = package.imports
+        imports[2]['ObjectName'] = 'Default__DataTableFunctionLibrary'
+        imports[3]['ObjectName'] = 'GetDataTableRowFromName'; imports[4]['ObjectName'] = 'DataTableFunctionLibrary'
+        imports.extend([{'ObjectName': 'DataTable', 'OuterIndex': -6},
+                        {'ObjectName': 'Rows', 'OuterIndex': -9}, {'ObjectName': '/Game/Rows', 'ClassName': 'Package'}])
+        package.exports[1]['LoadedProperties'] = [{'Name': 'Rows', 'SerializedType': 'ObjectProperty', 'PropertyClass': -7}]
+        package.exports.append({'ObjectName': 'Default__Test_C', 'Data': [{'Name': 'Rows', 'Value': -8}]})
+        context = package.exports[0]['ScriptBytecode'][0]; context['Offset'] = 41
+        context['ContextExpression']['Parameters'][0]['Variable']['New']['Path'] = ['Rows']
+        context['ContextExpression']['Parameters'][1] = node('EX_NameConst', Value='First')
+        schema = schemas[('/Game/Slot', 'Slot')]
+        tables = {'/Game/Rows.Rows': {'schema': schema, 'rows': {'First': schema['default']}}}
+        self.assertEqual(translate_package(package, schemas, tables)['functions']['ReadFirst']['steps'][0]['value']['op'], 'table_get')
+        context['Offset'] = 40
+        self.assertNotIn('ReadFirst', translate_package(package, schemas, tables)['functions'])
+        context['Offset'] = 41
+        self.assertNotIn('ReadFirst', translate_package(package, schemas, {})['functions'])

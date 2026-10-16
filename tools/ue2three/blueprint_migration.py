@@ -8,6 +8,7 @@ from core import atomic_json, digest, file_hash, read_json
 from umg_migration import Package, _tool, _asset_document
 from blueprint_events import reachable_event
 from blueprint_types import source_structs, property_schema, import_path
+from blueprint_values import asset_reference, native_schema, source_tables
 
 
 class BlueprintTranslationError(ValueError):
@@ -26,8 +27,11 @@ def field(pointer):
     return path[0]
 
 
-def property_type(prop):
+def property_type(prop, package=None):
     result = prop.get('SerializedType')
+    if result == 'ObjectProperty' and package:
+        schema = property_schema(package, prop)
+        if schema and schema.get('class') == ['/Script/Engine', 'DataTable']: return result
     if result == 'EnumProperty':
         result = prop.get('UnderlyingProp', {}).get('SerializedType')
     if result not in ('BoolProperty', 'ByteProperty', 'IntProperty', 'FloatProperty',
@@ -104,7 +108,7 @@ def local_call(value, package, owner, reads, outputs, depth):
     result = {'op': 'call', 'function': callee['ObjectName'], 'export_index': ref, 'bindings': bindings}
     if callee['ObjectName'].startswith('ExecuteUbergraph_'):
         if (len(parameters) != 1 or parameters[0].get('Name') != 'EntryPoint'
-                or property_type(parameters[0]) != 'IntProperty' or bindings[0]['mode'] != 'input'
+                or property_type(parameters[0], package) != 'IntProperty' or bindings[0]['mode'] != 'input'
                 or bindings[0]['value'].get('op') != 'constant'
                 or type(bindings[0]['value'].get('value')) is not int):
             raise BlueprintTranslationError('Event graph requires an original constant EntryPoint')
@@ -119,6 +123,29 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
     token = kind(value)
     if token == 'EX_Context' and package:
         obj, call = value.get('ObjectExpression', {}), value.get('ContextExpression', {})
+        if (kind(obj) == 'EX_ObjectConst' and import_path(package, obj.get('Value')) == ('/Script/Engine', 'Default__DataTableFunctionLibrary')
+                and kind(call) == 'EX_FinalFunction'
+                and import_path(package, call.get('StackNode')) == ('/Script/Engine', 'DataTableFunctionLibrary', 'GetDataTableRowFromName')):
+            args = call.get('Parameters', [])
+            if len(args) != 3 or kind(args[0]) != 'EX_InstanceVariable' or kind(args[2]) not in ('EX_LocalVariable', 'EX_LocalOutVariable'):
+                raise BlueprintTranslationError('Unsupported original table lookup arguments')
+            table_name = field(args[0].get('Variable')); target_name = field(args[2].get('Variable'))
+            cls = package.export(owner); function = getattr(package, '_active_function', {})
+            prop = next((p for p in (cls or {}).get('LoadedProperties', []) if p.get('Name') == table_name), {})
+            target_prop = next((p for p in function.get('LoadedProperties', []) if p.get('Name') == target_name), {})
+            schema = property_schema(package, target_prop)
+            try: default = asset_reference(package, getattr(package, 'source_defaults', {}).get(table_name), ('/Script/Engine', 'DataTable'))
+            except ValueError as error: raise BlueprintTranslationError(str(error))
+            table = getattr(package, 'source_tables', {}).get((default or {}).get('asset'))
+            if (import_path(package, prop.get('PropertyClass')) != ('/Script/Engine', 'DataTable')
+                    or args[0].get('Variable', {}).get('New', {}).get('ResolvedOwner') != owner
+                    or package.export(args[2].get('Variable', {}).get('New', {}).get('ResolvedOwner')) is not function
+                    or not schema or not table or table['schema'] != schema
+                    or value.get('Offset') != memory_size(call, package=package)):
+                raise BlueprintTranslationError('Unresolved original table, row type, owner or context offset')
+            return {'op': 'table_get', 'table': expression(args[0], reads, outputs, depth+1, package, owner),
+                    'row': expression(args[1], reads, outputs, depth+1, package, owner),
+                    'target': expression(args[2], reads, outputs, depth+1, package, owner), 'row_source': schema['source']}
         if (kind(obj) == 'EX_ObjectConst' and import_path(package, obj.get('Value')) == ('/Script/Engine', 'Default__KismetArrayLibrary')
                 and kind(call) == 'EX_FinalFunction'
                 and import_path(package, call.get('StackNode')) == ('/Script/Engine', 'KismetArrayLibrary', 'Array_Length')):
@@ -181,9 +208,21 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         if token == 'EX_InstanceVariable': reads.add(name)
         if token == 'EX_LocalOutVariable': outputs.add(name)
         return {'op': 'get', 'scope': scopes[token], 'field': name}
-    if token in ('EX_True', 'EX_False', 'EX_IntZero', 'EX_IntOne', 'EX_Nothing'):
+    if token == 'EX_TextConst' and value.get('Value', {}).get('TextLiteralType') == 'Empty':
+        return {'op': 'typed_literal', 'schema': property_schema(package, {'SerializedType': 'TextProperty'}),
+                'value': {'history': 'empty', 'text': '', 'flags': 0}}
+    if token in ('EX_VectorConst', 'EX_RotationConst'):
+        memory_size(value, package=package)
+        schema = native_schema(('/Script/CoreUObject', 'Vector' if token == 'EX_VectorConst' else 'Rotator'))
+        try:
+            if any(isinstance(value['Value'][key], bool) for key in schema['fields']): raise ValueError('Invalid native number')
+            literal = {key: float(value['Value'][key]) for key in schema['fields']}
+        except (KeyError, TypeError, ValueError): raise BlueprintTranslationError('Invalid source native struct constant')
+        if not all(math.isfinite(v) for v in literal.values()): raise BlueprintTranslationError('Non-finite source native struct constant')
+        return {'op': 'typed_literal', 'schema': schema, 'value': literal}
+    if token in ('EX_True', 'EX_False', 'EX_IntZero', 'EX_IntOne', 'EX_Nothing', 'EX_NoObject'):
         return {'op': 'constant', 'value': {'EX_True': True, 'EX_False': False,
-                'EX_IntZero': 0, 'EX_IntOne': 1, 'EX_Nothing': None}[token]}
+                'EX_IntZero': 0, 'EX_IntOne': 1, 'EX_Nothing': None, 'EX_NoObject': None}[token]}
     if token in ('EX_IntConst', 'EX_IntConstByte', 'EX_ByteConst', 'EX_FloatConst', 'EX_DoubleConst',
                  'EX_StringConst', 'EX_UnicodeStringConst', 'EX_NameConst'):
         result = value.get('Value')
@@ -391,10 +430,11 @@ def translate_function(export, package=None, entry_offset=None):
             'output_fields': sorted(outputs), 'steps': steps}
 
 
-def translate_package(package, structs=None):
+def translate_package(package, structs=None, tables=None):
     functions, blocked, declarations, event_blocked = {}, [], [], []
     package._event_layouts = {}
     package.source_structs = structs or {}
+    package.source_tables = tables or {}
     class_properties = {prop['Name']: prop for export in package.exports
                         if str(export.get('ObjectName', '')).endswith('_C')
                         for prop in export.get('LoadedProperties', []) if prop.get('Name')}
@@ -402,6 +442,7 @@ def translate_package(package, structs=None):
     for export in package.exports:
         if str(export.get('ObjectName', '')).startswith('Default__'):
             defaults.update(package.props(export))
+    package.source_defaults = defaults
     pending = [(index, export, None) for index, export in enumerate(package.exports, 1)]
     requested = set()
     for index, export, entry_offset in pending:
@@ -425,7 +466,7 @@ def translate_package(package, structs=None):
                 def local_reads(value):
                     if isinstance(value, dict):
                         target = value.get('target', {})
-                        if (value.get('op') in ('array_get', 'set_member') and target.get('scope') == 'local'
+                        if (value.get('op') in ('array_get', 'table_get', 'set_member') and target.get('scope') == 'local'
                                 and target.get('field') in const_inputs):
                             raise BlueprintTranslationError('Write through original const input')
                         if value.get('op') == 'call' and any(binding.get('mode') == 'output'
@@ -440,7 +481,7 @@ def translate_package(package, structs=None):
                                 raise BlueprintTranslationError('Persistent property belongs to another source class')
                             props = [p for p in frame.get('LoadedProperties', []) if p.get('Name') == field_name]
                             if len(props) != 1: raise BlueprintTranslationError('Unresolved persistent source property: ' + field_name)
-                            persistent.setdefault(str(frame_index), {})[field_name] = property_type(props[0])
+                            persistent.setdefault(str(frame_index), {})[field_name] = property_type(props[0], package)
                         if value.get('op') == 'call' and 'entry_offset' in value:
                             request = (value['export_index'], value['entry_offset'])
                             if request not in requested:
@@ -451,13 +492,13 @@ def translate_package(package, structs=None):
                         for child in value: local_reads(child)
                 local_reads(step)
             program['field_types'] = {
-                'self': {name: property_type(class_properties[name]) for name in program['self_reads'] if name in class_properties},
-                'local': {prop['Name']: property_type(prop) for prop in export.get('LoadedProperties', []) if prop.get('Name') in used_locals}}
+                'self': {name: property_type(class_properties[name], package) for name in program['self_reads'] if name in class_properties},
+                'local': {prop['Name']: property_type(prop, package) for prop in export.get('LoadedProperties', []) if prop.get('Name') in used_locals}}
             program['source_property_types'] = {prop['Name']: prop for prop in export.get('LoadedProperties', []) if prop.get('Name') in used_locals}
             program['schemas'] = {'local': {name: schema for name, prop in program['source_property_types'].items()
-                                           if (schema := property_schema(package, prop)) and schema['type'] in ('StructProperty', 'ArrayProperty')},
+                                           if (schema := property_schema(package, prop)) and schema['type'] in ('StructProperty', 'ArrayProperty', 'ObjectProperty')},
                                   'self': {name: schema for name in program['self_reads'] if name in class_properties
-                                           and (schema := property_schema(package, class_properties[name])) and schema['type'] in ('StructProperty', 'ArrayProperty')}}
+                                           and (schema := property_schema(package, class_properties[name])) and schema['type'] in ('StructProperty', 'ArrayProperty', 'ObjectProperty')}}
             for scope, types in program['field_types'].items():
                 if any(type_name == 'ArrayProperty' and name not in program['schemas'][scope] for name, type_name in types.items()):
                     raise BlueprintTranslationError('Unresolved array element schema')
@@ -511,15 +552,17 @@ def translate_package(package, structs=None):
                         writes.add(binding['target']['field'])
             if reads != set(program['self_reads']) or writes != set(program['self_writes']): changed = True
             program['self_reads'], program['self_writes'] = sorted(reads), sorted(writes)
-            program['field_types']['self'] = {name: property_type(class_properties[name]) for name in reads | writes if name in class_properties}
+            program['field_types']['self'] = {name: property_type(class_properties[name], package) for name in reads | writes if name in class_properties}
             program['source_defaults'] = {name: defaults[name] for name in reads | writes if name in defaults}
         if not changed: break
     default_state = {}
     for name, prop in class_properties.items():
-        try: type_name = property_type(prop)
+        try: type_name = property_type(prop, package)
         except BlueprintTranslationError: continue
         schema = property_schema(package, prop)
-        if schema and schema['type'] == 'StructProperty' and (name not in defaults or isinstance(defaults[name], dict)):
+        if type_name == 'ObjectProperty':
+            default_state[name] = asset_reference(package, defaults.get(name, 0), schema['class'])
+        elif schema and schema['type'] == 'StructProperty' and (name not in defaults or isinstance(defaults[name], dict)):
             default_state[name] = {**schema['default'], **defaults.get(name, {})}
         elif name in defaults: default_state[name] = defaults[name]
         elif schema and schema['type'] == 'ArrayProperty': default_state[name] = []
@@ -619,9 +662,9 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
         version = str(read_json(workspace / 'artifacts/engine.json')['version']).split('-')[0]
         tool = _tool(workspace / 'tool-cache')
         for name in dict.fromkeys(read_packages):
-            source_type_packages = {a['package'] for a in registry['assets'] if a.get('class') in ('UserDefinedStruct', 'UserDefinedEnum')}
+            source_type_packages = {a['package'] for a in registry['assets'] if a.get('class') in ('UserDefinedStruct', 'UserDefinedEnum', 'DataTable')}
             if (name not in candidates and name not in source_type_packages) or name not in assets:
-                raise BlueprintTranslationError(f'Requested parser input is not an inventoried Blueprint or source struct: {name}')
+                raise BlueprintTranslationError(f'Requested parser input is not an inventoried Blueprint, source type or table: {name}')
             asset = assets[name]; source = (project.parent / asset['path']).resolve()
             if project.parent not in source.parents or file_hash(source) != asset['sha256']:
                 raise BlueprintTranslationError(f'Source changed since cached inspection: {name}')
@@ -651,11 +694,24 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
         type_inputs[name] = {'source_sha256': asset['sha256'], 'parsed_sha256': file_hash(path)}
         type_documents[name] = read_json(path)
     structs = source_structs(type_documents, BlueprintTranslationError)
+    table_documents, table_inputs = {}, {}
+    for row in registry['assets']:
+        name = row['package']
+        if row.get('class') != 'DataTable' or name not in assets: continue
+        asset = assets[name]; path = workspace / 'artifacts/uasset-json' / (asset['sha256'] + '.json')
+        if not path.is_file(): continue
+        source = (project.parent / asset['path']).resolve()
+        if project.parent not in source.parents or file_hash(source) != asset['sha256']:
+            raise BlueprintTranslationError('Source table changed since cached inspection: ' + name)
+        table_inputs[name] = {'source_sha256': asset['sha256'], 'parsed_sha256': file_hash(path)}
+        table_documents[name] = read_json(path)
+    tables, table_blocked = source_tables(table_documents, structs)
     controls_file = output / 'character-controls.json'
-    fingerprint = digest({'project': str(project), 'inputs': key_inputs, 'missing': missing, 'types': type_inputs,
+    fingerprint = digest({'project': str(project), 'inputs': key_inputs, 'missing': missing, 'types': type_inputs, 'tables': table_inputs,
                           'controls': file_hash(controls_file) if controls_file.is_file() else None,
                           'implementation': file_hash(Path(__file__)),
                           'events_implementation': file_hash(Path(__file__).with_name('blueprint_events.py')),
+                          'values_implementation': file_hash(Path(__file__).with_name('blueprint_values.py')),
                           'types_implementation': file_hash(Path(__file__).with_name('blueprint_types.py'))})
     report_file = output / 'blueprint-programs.json'
     try:
@@ -665,7 +721,7 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
     except (OSError, ValueError): pass
     packages, counts = {}, Counter()
     for name, cache in cached:
-        packages[name] = translate_package(Package(read_json(cache)), structs)
+        packages[name] = translate_package(Package(read_json(cache)), structs, tables)
         packages[name]['source'] = key_inputs[name]
         counts.update(packages[name]['counts'])
     guards = {}
@@ -678,10 +734,13 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
     report = {'schema_version': 1, 'project': str(project), 'fingerprint': fingerprint,
               'packages': packages, 'counts': dict(counts), 'missing_cached_packages': missing,
               'source_types': [{'package': name[0], 'object': name[1], **schema} for name, schema in structs.items()], 'type_sources': type_inputs,
+              'tables': tables, 'table_sources': table_inputs, 'table_blocked': table_blocked,
               'character_guards': guards, 'character_metrics': character_metrics(guards, packages),
               'limitations': ['Locals, instance state, comparisons, static jumps and same-source-class calls with out parameters execute.',
                              'Struct member reads, typed source-struct field writes/defaults, typed Array_Get copies and ASCII FName equality execute.',
-                             'Struct constants, nested struct writes, other array operations and Unicode FName comparisons remain unsupported.',
+                             'Cached typed DataTable row reads retain primitive/array/native-vector fields, FText identities and data-only asset references.',
+                             'Asset references do not execute or convert their referenced assets. Other FText histories, unsupported identity characters, struct constants and nested writes remain blocked.',
+                             'Other array operations and Unicode FName comparisons remain unsupported.',
                              'Constant source event entries, flow stacks and per-instance persistent primitive fields execute on fully translated reachable paths.',
                              'Event callbacks with no source effects are counted separately; animation dispatch, native effects and complete game events are not implied.',
                              'Cross-object calls, derived-class virtual overrides, arbitrary dynamic jumps, latent actions and replication remain blocked.',

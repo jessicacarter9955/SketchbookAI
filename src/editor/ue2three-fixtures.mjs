@@ -1,5 +1,7 @@
 // Shared source-state fixtures avoid repeating complete inventories per case.
 export function blueprintFixtureState(fixture, test, report) {
+    for (const [name, hash] of Object.entries(test.tables || {}))
+        if (report.table_sources?.[name]?.source_sha256 !== hash) throw new Error('Source fixture table differs from source');
     if (!test.base_state) return structuredClone(test.self || {});
     const base = Object.hasOwn(fixture.shared_states || {}, test.base_state) ? fixture.shared_states[test.base_state] : null;
     if (!base || base.package !== test.package || report.packages?.[base.package]?.source?.source_sha256 !== base.source_sha256)
@@ -7,4 +9,21 @@ export function blueprintFixtureState(fixture, test, report) {
     for (const [name, hash] of Object.entries(base.types || {}))
         if (report.type_sources?.[name]?.source_sha256 !== hash) throw new Error('Shared fixture type differs from source');
     return {...structuredClone(base.state), ...structuredClone(test.self || {})};
+}
+
+export function blueprintFixtureMembers(outputs, expected) {
+    const actual = {};
+    const equal = (a, b) => a === b || a !== null && b !== null && typeof a === 'object' && typeof b === 'object'
+        && Array.isArray(a) === Array.isArray(b) && Object.keys(a).length === Object.keys(b).length
+        && Object.keys(a).every(key => Object.hasOwn(b, key) && equal(a[key], b[key]));
+    for (const [output, members] of Object.entries(expected || {})) {
+        if (!Object.hasOwn(outputs, output) || !outputs[output] || typeof outputs[output] !== 'object') throw new Error('Missing source output structure');
+        actual[output] = {};
+        for (const [member, value] of Object.entries(members)) {
+            if (['__proto__', 'constructor', 'prototype'].includes(member) || !Object.hasOwn(outputs[output], member)
+                || !equal(outputs[output][member], value)) throw new Error('Source output member differs: ' + output + '.' + member);
+            actual[output][member] = structuredClone(outputs[output][member]);
+        }
+    }
+    return actual;
 }

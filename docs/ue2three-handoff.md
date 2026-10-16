@@ -1,5 +1,36 @@
 # ue2three saved handoff · 2026-10-15
 
+Latest batch (2026-10-16): **117 translated /383 blocked**, 60 declarations,
+six empty functions, 56 callbacks without effects, 263 packages uncached.
+Original DT_Items (16 rows, 53 fields) is now readable through the exact Engine
+DataTableFunctionLibrary.GetDataTableRowFromName adapter. Missing rows preserve
+OutRow; null/unmigrated/incompatible tables fail. Sparse rows copy original UDS
+defaults, following local UE5.7 DataTable.cpp/UserDefinedStruct.cpp contracts.
+New blueprint_values.py retains arrays, numeric enum mappings, native Vector/
+Rotator data, FText namespace/key/source/flags, and data-only asset identities.
+Other text histories/unsupported identities/types block the whole constructor/
+table. Asset references do NOT imply mesh, sound, texture or object execution.
+Added ten original functions: GetItemData, CalculateItemWeight,
+CalculateTotalWeight, GetSlotWeight [trailing space], GetTotalCarryValue,
+WouldExceedWeight, CanItemFitInSlot, CanStackWith, CanSwapSlots, FindAmmoInCarry.
+77 source cases added (403 total); all 16 item rows are checked for key numeric
+and localized text fields, plus missing/case-insensitive names, weights/values,
+limits, slot compatibility, storage swaps and source quirks. Function outputs
+and targeted struct members are compared independently and tied to source table,
+type and dependency hashes. Member evidence is checked by progress_report.py.
+109 Python/66 JS tests and editor build pass; browser audit 351 generic +403
+source cases pass. Editor revision17 and optional chunk421 must ship together.
+Only 118,463 bytes of additional original assets were parsed this batch (one
+struct, four enums, one table); no Unreal start, export or full scan.
+Source quirks intentionally preserved: CanStackWith uses target quantity minus
+max stack (can produce negative MaxAddable); FindAmmoInCarry resets FoundIndex
+to zero so missing matches can return Found=true/index0/quantity0. Do not fix
+these as translator errors without an explicit game-rule change.
+Evidence directory: verification/source-item-data/. Full inventory writes,
+notification/native adapters, game action integration and other tables remain
+open. Next: typed array mutation + original dirty/OnRep event delivery; migrate
+other data tables and their exact row dependencies using bounded cached reads.
+
 Latest source batch (2026-10-16): **107 translated /393 blocked**. Added exact
 UE5.7 Lerp, FMin/FMax and InRange_FloatFloat primitives. Original
 CalculateDamageFalloff and Get_MovementDirectionFromThresholds now execute.
