@@ -7,6 +7,7 @@ import { clone } from 'three/examples/jsm/utils/SkeletonUtils';
 import { validateScene, History, SCENE_KEY } from './scene-data.mjs';
 import { AssetStore, checkGLB, encodeBytes, decodeBytes, MAX_BYTES } from './asset-store.mjs';
 import { modelToGLB } from './model-import';
+import { fitVehicleVisual } from './supercars.mjs';
 import { SurfaceTool } from './SurfaceTool';
 import { IslandTool } from './IslandTool';
 import { DEFAULT_ISLAND } from './island-data.mjs';
@@ -50,7 +51,7 @@ export class SceneEditor {
             <label>Nome<input name="object-name" maxlength="120"></label><div class="editor-grid"><button data-mode="translate">Sposta · W</button><button data-mode="rotate">Ruota · E</button><button data-mode="scale">Scala · R</button><button data-action="focus">Inquadra · F</button></div>
             ${['position', 'rotation', 'scale'].map((field, i) => `<label>${['Posizione · metri', 'Rotazione · gradi', 'Scala'][i]}</label><div class="editor-vector">${['X', 'Y', 'Z'].map((axis, a) => `<input aria-label="${field} ${axis}" data-field="${field}" data-axis="${a}" type="number" step="${field === 'rotation' ? '15' : '0.1'}">`).join('')}</div>`).join('')}
             <label><input name="collider" type="checkbox"> Collisione box statica</label><div class="editor-grid"><button data-action="place">Posiziona al clic</button><button data-action="ground">Appoggia a terra</button><button data-action="duplicate">Duplica</button><button data-action="delete">Elimina</button></div><p data-credit></p></div>
-            <h2>GRIGLIA</h2><label>Scatto spostamento<select name="snap"><option value="0">Libero</option><option value="0.5">0,5 metri</option><option value="1" selected>1 metro</option><option value="5">5 metri</option></select></label><p>Rotazione: 15° con scatto attivo.<br>Usa «Auto guidabile» e «Abitante» per oggetti animati in modalità Prova. I modelli Sketchfab restano scenografia.</p></aside>
+            <h2>GRIGLIA</h2><label>Scatto spostamento<select name="snap"><option value="0">Libero</option><option value="0.5">0,5 metri</option><option value="1" selected>1 metro</option><option value="5">5 metri</option></select></label><p>Rotazione: 15° con scatto attivo.<br>Usa «Auto guidabile» e «Abitante» per oggetti animati in modalità Prova. Le supercar Sketchfab abbinate al veicolo funzionano in modalità guida.</p></aside>
             <div class="editor-help">Trascina: orbita · Tasto destro: panoramica · Rotella: zoom · Clic: seleziona</div><div class="editor-footer" role="status" aria-live="polite" data-status>Editor pronto. Aggiungi un oggetto dalla libreria.</div>
             <input type="file" data-file="glb" accept=".glb,.zip" hidden><input type="file" data-file="scene" accept=".json" hidden>`;
         document.body.appendChild(this.root); this.snap = 1; this.gizmo.setTranslationSnap(1); this.gizmo.setRotationSnap(Math.PI / 12);
@@ -168,7 +169,11 @@ export class SceneEditor {
     }
     create(item) {
         const object = new THREE.Group(); object.userData.editorId = item.id;
-        object.add(item.assetId ? clone(this.templates.get(item.assetId)) : this.prefab(item.prefab));
+        if (item.prefab === 'vehicle' && item.assetId) {
+            const template = this.templates.get(item.assetId);
+            if (!template) throw new Error('Modello veicolo non trovato. Ricarica la scena.');
+            object.add(fitVehicleVisual(template));
+        } else object.add(item.assetId ? clone(this.templates.get(item.assetId)) : this.prefab(item.prefab));
         object.traverse(node => { if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; for (const material of [].concat(node.material)) this.world.sky.csm.setupMaterial(material); } });
         object.userData.bounds = new THREE.Box3().setFromObject(object);
         object.position.fromArray(item.position); object.rotation.set(...item.rotation); object.scale.fromArray(item.scale);
@@ -238,6 +243,27 @@ export class SceneEditor {
         await this.store.putAll([asset]); this.assets.set(asset.id, asset); this.templates.set(asset.id, template);
         this.add({ assetId: asset.id, name: metadata.name || 'Modello' });
         this.focus(); this.message(`“${metadata.name || 'Modello'}” aggiunto e selezionato nella scena.`);
+    }
+    async installDrivableSupercar(raw, model, position) {
+        if (this.items.length >= 500) throw new Error('Limite oggetti raggiunto.');
+        if (this.items.some(x => x.prefab === 'vehicle' && x.name === 'Sketchfab · ' + model.name)) return false;
+        const bytes = await modelToGLB(raw);
+        const metadata = {name:model.name,author:model.author,license:model.license,
+            uid:model.uid,source:model.source,provider:'sketchfab'};
+        const asset = {id:crypto.randomUUID(),bytes,metadata};
+        const template = await this.prepareAsset(asset);
+        await this.store.putAll([asset]);
+        this.assets.set(asset.id,asset);
+        this.templates.set(asset.id,template);
+        const floor=this.world.actorLayer.terrainHeight(position[0],position[2],position[1]);
+        const item={id:crypto.randomUUID(),prefab:'vehicle',assetId:asset.id,
+            name:'Sketchfab · '+model.name,position:[position[0],floor+0.04,position[2]],
+            rotation:[0,Math.PI/2,0],scale:[1,1,1],collider:false};
+        this.items.push(item);
+        this.create(item);
+        this.commit();
+        if (!this.active) this.world.actorLayer.start(this.items);
+        return true;
     }
     async importURL(url, metadata) {
         if (this.busy) throw new Error('Attendi il completamento dell’operazione.');
