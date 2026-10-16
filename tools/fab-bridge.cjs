@@ -21,7 +21,7 @@ function allowedOrigin(req) {
         const u = new URL(origin);
         const port = Number(u.port);
         if (u.protocol === 'http:' && ['127.0.0.1', 'localhost'].includes(u.hostname) &&
-            (port >= 8000 && port <= 9000)) return origin;
+            (port >= 8000 && port <= 9000) && port !== PORT) return origin;
     } catch {}
     return null;
 }
