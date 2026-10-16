@@ -11,6 +11,19 @@ Goal: create one **native WorldBLD / RoadBLD / CityBLD** block, with four street
 - The most faithful deployment path is a **Windows cloud GPU** with UE 5.8.3, WorldBLD plugins, RoadBLD, CityBLD, and a license/trial. Windows cloud GPUs are NOT proven free here and may require verified cloud signup and quota approvals.
 - Lightning free CPU is appropriate for source prep, code, asset manifests and CI only until Linux entitlement and plugin build compatibility are verified. Switching it to GPU will not make Windows-only plugins work.
 
+## Real Windows compatibility tests — 2026-10-16
+
+**Verified by executing GitHub Actions on `windows-latest`, not by assuming specs.**
+- WorldBLD 5.8 official full plugin ZIP is publicly retrievable with HTTP byte-ranges: **2,537,684,720 bytes** (~2.36 GiB). We downloaded only tiny ranges of its ZIP index, never its licensed full archive.
+- The official `WorldBLD.uplugin` inside the ZIP declares version **1.4.12**, `EngineVersion: 5.8.0`. All three relevant native modules—`WorldBLDBootstrap`, `WorldBLDRuntime`, and `WorldBLDEditor`—explicitly contain `PlatformAllowList: ["Win64"]`. The ZIP contains three Windows DLLs and **zero Linux .so binaries**. This is direct proof Lightning's Linux GPU cannot run this distributed WorldBLD build. Stop prioritizing Lightning for *native WorldBLD*.
+- The GitHub Windows runner had **146.85 GiB of free storage** in the test, but **UnrealEditor.exe was not installed**. Windows CPU runner can verify file formats but cannot build/render a native WorldBLD level without an authorized Unreal install.
+- The authenticated GitHub connector returned **404** for private `EpicGames/UnrealEngine` source. A linked Epic account/engine installer is a distinct prerequisite; do not replace it with unrelated GitHub repositories.
+- GitHub's Windows GPU larger runner costs **$0.102/minute** and requires **an organization on GitHub Team/Enterprise**. It cannot be started simply by switching a personal public repository to `runs-on: windows-gpu`. GitHub standard Windows CPU runners remain free on public repos.
+- Genuine **native WorldBLD** requires Windows Unreal 5.8.3 and active RoadBLD/CityBLD license/trial. Alternatives to vet for a *legitimate* Windows GPU desktop include iRender's no-card, manually reviewed free trial (Windows RTX 4090) and paid Windows cloud GPU VMs; neither is provisioned or approved. Do not launch billable compute without explicit charge ceiling.
+- Official WorldBLD 5.8 binaries and license-bearing plugin assets must **never** be committed to this public GitHub repo. Install them inside an authorized workstation only.
+
+**Evidence:** [Windows official ZIP compatibility and metadata run](https://github.com/jessicacarter9955/SketchbookAI/actions/runs/38899249813), [no-GPU native Unreal project static validation](https://github.com/jessicacarter9955/SketchbookAI/actions/runs/38899480083).
+
 ## What exists here
 
 - `city-block-plan.json`: dimensional specification for four streets and a closed city block, building targets and native tool acceptance gates.
