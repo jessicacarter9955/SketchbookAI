@@ -1,0 +1,35 @@
+name: Verify Sketchfab cars in actual City Player browser
+on:
+  push:
+    branches: [img2threejs-runner]
+    paths:
+      - ".github/workflows/sketchfab-supercars-browser.yml"
+      - "tools/verify-supercars.cjs"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 11
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install isolated Chromium automation
+        run: |
+          npm install --prefix /tmp/sketchbook-browser --no-save --no-audit --no-fund playwright@1.56.0
+          /tmp/sketchbook-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Verify 3 Sketchfab cars with real physics and Three.js renderer
+        env:
+          NODE_PATH: /tmp/sketchbook-browser/node_modules
+        run: node tools/verify-supercars.cjs
+      - name: Upload browser screenshot and diagnostic images
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sketchfab-bmw-ferrari-lambo-browser
+          path: artifacts/supercars/
+          if-no-files-found: warn
+          retention-days: 7
