@@ -13,8 +13,12 @@ const {chromium}=require('playwright');
     fs.mkdirSync('artifacts/supercars',{recursive:true});
     try {
         await page.goto(target,{waitUntil:'domcontentloaded',timeout:65000});
-        await page.waitForFunction(()=>Boolean(globalThis.supercarsStatus) || Boolean(document.querySelector('.loading-error')),
-            null,{timeout:220000});
+        await page.waitForFunction(()=>Boolean(globalThis.supercarsStatus) ||
+            /Impossibile avviare la scena/.test(document.querySelector('#loading-screen')?.textContent||''),
+            null,{timeout:140000});
+        const loadState=await page.evaluate(()=>({loading:document.querySelector('#loading-screen')?.innerText?.slice(0,600),
+            status:globalThis.supercarsStatus,active:!!globalThis.sceneEditor}));
+        console.log('Loading status:',JSON.stringify(loadState));
         await page.waitForTimeout(2500);
         const data=await page.evaluate(()=>{
             const ed=globalThis.sceneEditor,world=globalThis.world;
@@ -48,6 +52,15 @@ const {chromium}=require('playwright');
     }catch(e){
         try {await page.screenshot({path:'artifacts/supercars/supercars-failure.png',fullPage:true});}catch{}
         console.error('Browser test failed:',e.message);
+        console.error('Browser page errors:',JSON.stringify(errors.slice(0,20)));
+        console.error('Browser failed requests:',JSON.stringify(failed.slice(0,20)));
+        try {
+            console.error('Browser DOM diagnostic:',JSON.stringify(await page.evaluate(()=>({
+                title:document.title,loading:document.querySelector('#loading-screen')?.innerText?.slice(0,1100),
+                status:globalThis.supercarsStatus,hasWorld:!!globalThis.world,
+                hasEditor:!!globalThis.sceneEditor,body:document.body.innerText.slice(0,700)
+            }))));
+        }catch{}
         await browser.close();
         process.exit(1);
     }
