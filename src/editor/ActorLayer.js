@@ -56,10 +56,26 @@ export class ActorLayer {
             this.saPopulation=new SanAndreasPopulation(this.world,this.playerProfile==='dds'?this.playerModel.scene:this.person.scene,this.car.scene);
         for (const item of items) {
             if(urban && item.prefab==='pedestrian')continue;
+            if(this.saPopulation&&item.prefab==='pedestrian'){
+                if(item.assetId){const editor=this.world.sceneEditor,visual=editor?.templates.get(item.assetId);
+                    if(visual)this.saPopulation.addImportedPedestrian(item,visual,editor.assetClips.get(item.assetId)||[]);}
+                continue;
+            }
             if (!['vehicle', 'pedestrian'].includes(item.prefab)) continue;
             let actor;
             if (item.prefab === 'vehicle') {
                 actor = new Car({ ...this.car, scene: clone(this.car.scene) });
+                // A downloaded GLB is an authentic visual skin over the existing
+                // Sketchbook chassis, wheels, suspension, camera and seat rig.
+                const editor=this.world.sceneEditor,skin=item.assetId&&editor?.templates.get(item.assetId);
+                if(skin){
+                    const originalRig=actor.children.find(child=>child.children.length&&child.children[0]?.isObject3D);
+                    if(originalRig)originalRig.visible=false;
+                    actor.wheels.forEach(wheel=>{wheel.wheelObject.visible=false;});
+                    const visual=clone(skin);visual.name='Imported licensed drivable sports car';
+                    visual.position.y=-.78;actor.add(visual);
+                    actor.userData.importedCar=item.assetId;
+                }
                 actor.setPosition(item.position[0], this.ground(item.position[0],item.position[2],item.position[1]) + 0.9, item.position[2]);
                 actor.collision.quaternion.setFromEuler(...item.rotation);
                 actor.collision.initQuaternion.copy(actor.collision.quaternion);

@@ -6,6 +6,7 @@ import { loadCatalog, createScene } from './scene-catalog.mjs';
 import { sceneStorageKey, loadRevisions, saveRevision, forkScene } from './scene-revisions.mjs';
 import {localDdsManifest,importLocalDdsFiles} from './dds-local-assets.mjs';
 import {SanAndreasRuntime} from './SanAndreasRuntime.js';
+import {mountStreetLabGarage} from './StreetLabGarage.js';
 
 globalThis.THREE = THREE; // shared by procedural weather and the 3D game
 const loading = document.getElementById('loading-screen');
@@ -344,8 +345,17 @@ try {
     if (!hadSaved && current.world === 'san-andreas') {
         const sp=world.levelRuntime.manifest.spawns[0].position;
         const y=world.levelRuntime.groundAt(sp[0],sp[2],sp[1]+10)??sp[1];
-        const starter={id:crypto.randomUUID(),prefab:'vehicle',name:'Auto di prova',position:[sp[0]+5,y+.05,sp[2]],rotation:[0,0,0],scale:[1,1,1],collider:false};
-        sceneEditor.restore({version:1,world:'san-andreas',objects:[starter]});sceneEditor.commit();
+        // Place original Sketchbook drivable physics-rig cars near the real spawn;
+        // third-party branded bodies are added only after their licensed GLBs are imported.
+        const near=world.levelRuntime.navigation?.vehicle?.nodes?.filter(n=>
+          Math.hypot(n.x-sp[0],n.z-sp[2])<55&&!n.isWater&&!n.roadBlock).slice(0,200)||[];
+        const spots=near.sort((a,b)=>Math.hypot(a.x-sp[0],a.z-sp[2])-Math.hypot(b.x-sp[0],b.z-sp[2]));
+        const points=spots.filter(n=>Math.hypot(n.x-sp[0],n.z-sp[2])>3).slice(0,3);
+        if(!points.length)points.push({x:sp[0]+5,z:sp[2],y});
+        const objects=points.map((n,i)=>({id:crypto.randomUUID(),prefab:'vehicle',name:'Auto guidabile · slot '+(i+1),
+          position:[n.x,(world.levelRuntime.groundAt(n.x,n.z,n.y+8)??n.y??y)+.06,n.z],
+          rotation:[0,0,0],scale:[1,1,1],collider:false}));
+        sceneEditor.restore({version:1,world:'san-andreas',objects});sceneEditor.commit();
     }
     if (!hadSaved && current.world === 'procedural-island') {
         const objects=[];
@@ -358,6 +368,7 @@ try {
     }
     report('Attivazione menu, dialoghi e modelli…');
     sceneControls(sceneEditor);
+    if(current.id==='san-andreas-streetlab')mountStreetLabGarage(world,sceneEditor);
     if(current.world==='procedural-city')globalThis.urbanDialogue=world.urbanDialogue=new UrbanDialogue(world,sceneEditor);
     if(current.playerProfile==='dds') new DdsGame(world,{key:`${storageKey}.dds-game`});
     if(current.world==='procedural-city'){

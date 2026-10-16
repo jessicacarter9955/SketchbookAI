@@ -45,6 +45,23 @@ export class SanAndreasPopulation{
   this.stats.cars=this.cars.length;this.stats.pedestrians=this.pedestrians.length;
   this.update(1/60);
  }
+ addImportedPedestrian(item,template,clips=[]){
+   if(!this.graph.pedestrian?.nodes?.length)return null;
+   const [x,y,z]=item.position,near=nodesNear(this.pedIndex,x,z,140,8);
+   if(!near.length)return null;
+   const obj=clone(template),node=near[0];
+   const box=new THREE.Box3().setFromObject(obj);
+   const offset=Number.isFinite(box.min.y)?Math.max(.02,-box.min.y+.06):0;
+   const a={object:obj,route:{key:node.key,to:null,t:0,turns:0},seed:1000+this.pedestrians.length,
+     speed:1.18,offset,source:'Sketchfab/Fab user GLB'};
+   if(clips.length){
+      a.mixer=new THREE.AnimationMixer(obj);
+      const walk=clips.find(c=>/walk/i.test(c.name))||clips.find(c=>/run/i.test(c.name))||clips[0];
+      a.mixer.clipAction(walk).play();
+   }
+   this.group.add(obj);this.pedestrians.push(a);this.stats.pedestrians=this.pedestrians.length;
+   return a;
+ }
  makeInstances(template){
   template.updateMatrixWorld(true);
   const inverse=template.matrixWorld.clone().invert();

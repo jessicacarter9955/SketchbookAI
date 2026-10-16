@@ -21,7 +21,7 @@ export class SceneEditor {
     constructor(world, { storageKey = SCENE_KEY, worldId = 'sketchbook' } = {}) {
         this.storageKey = storageKey;
         this.worldId = worldId;
-        this.world = world; this.active = false; this.busy = false; this.items = []; this.objects = new Map(); this.templates = new Map(); this.assets = new Map(); this.logs = [];
+        this.world = world; this.active = false; this.busy = false; this.items = []; this.objects = new Map(); this.templates = new Map(); this.assetClips = new Map(); this.assets = new Map(); this.logs = [];
         this.mapEdits = [];
         this.generator = worldId === 'procedural-island' ? copy(world.levelRuntime.config || DEFAULT_ISLAND) : worldId === 'procedural-city' ? copy(world.levelRuntime.config || DEFAULT_URBAN) : undefined;
         this.store = new AssetStore(); this.loader = new GLTFLoader(); this.history = new History(this.scene());
@@ -269,21 +269,23 @@ export class SceneEditor {
     async prepareAsset(asset) {
         checkGLB(asset.bytes);
         const gltf = await this.loader.parseAsync(asset.bytes, '');
+        this.assetClips.set(asset.id,gltf.animations||[]);
         const box = new THREE.Box3().setFromObject(gltf.scene); const extent = box.getSize(new THREE.Vector3());
         const size = Math.max(extent.x, extent.y, extent.z);
         if (!Number.isFinite(size) || size <= 0) throw new Error('Modello senza geometria visibile.');
         const root = new THREE.Group(); root.add(gltf.scene);
-        root.scale.setScalar(4 / size); root.updateMatrixWorld(true);
+        const isHuman=asset.metadata?.role==='pedestrian';
+        root.scale.setScalar(isHuman?1.8/Math.max(extent.y,.01):4.3/size); root.updateMatrixWorld(true);
         const normalized = new THREE.Box3().setFromObject(root), center = normalized.getCenter(new THREE.Vector3());
         root.position.set(-center.x, -normalized.min.y, -center.z);
         return root;
     }
-    openModelLibrary(query = '') {
+    openModelLibrary(query = '', interactivePrefab = null) {
         if (!globalThis.picker?.openModelPicker) throw new Error('Libreria Sketchfab / Fab non caricata.');
         const search = parseCityAssetQuery(query);
         globalThis.picker.openModelPicker(search,
-            (url, metadata) => this.importURL(url, metadata, {nearPlayer: !this.active}),
-            async (file, metadata) => this.importBytes(await file.arrayBuffer(), metadata, {nearPlayer: !this.active}));
+            (url, metadata) => this.importURL(url, metadata, {nearPlayer: !this.active,interactivePrefab}),
+            async (file, metadata) => this.importBytes(await file.arrayBuffer(), metadata, {nearPlayer: !this.active,interactivePrefab}));
     }
     placeSelectedAsset() {
         const item=this.item();
@@ -302,14 +304,16 @@ export class SceneEditor {
         const ground=this.world.levelRuntime?.groundAt(x,z,200);
         return [x,Number.isFinite(ground)?ground:origin.y-1,z];
     }
-    async importBytes(bytes, metadata = {}, {nearPlayer=false} = {}) {
+    async importBytes(bytes, metadata = {}, {nearPlayer=false,interactivePrefab=null} = {}) {
         if(this.items.length>=500)throw new Error('Limite di 500 oggetti raggiunto.');
+        if(interactivePrefab&&!['vehicle','pedestrian'].includes(interactivePrefab))throw Error('Ruolo GLB non valido.');
         bytes = await modelToGLB(bytes);
+        metadata={...metadata,...(interactivePrefab?{role:interactivePrefab}:{})};
         const asset = { id: crypto.randomUUID(), bytes, metadata }; const template = await this.prepareAsset(asset);
         await this.store.putAll([asset]); this.assets.set(asset.id, asset); this.templates.set(asset.id, template);
         if(nearPlayer && this.world.editorPlayer){
-            const item={id:crypto.randomUUID(),assetId:asset.id,name:metadata.name||'Modello',
-                position:this.spawnPositionForAsset(),rotation:[0,0,0],scale:[1,1,1],collider:true};
+            const item={id:crypto.randomUUID(),assetId:asset.id,...(interactivePrefab?{prefab:interactivePrefab}:{}),name:metadata.name||'Modello',
+                position:this.spawnPositionForAsset(interactivePrefab?5:7),rotation:[0,0,0],scale:[1,1,1],collider:!interactivePrefab};
             this.items.push(item);this.create(item);this.select(item.id);this.commit();
             this.message('“'+item.name+'” inserito davanti al giocatore. Premi «Posiziona» per spostarlo con un clic nell’editor.');
         }else{
@@ -350,7 +354,7 @@ export class SceneEditor {
             const bytes = decodeBytes(raw.data); total += bytes.byteLength; if (total > MAX_BYTES) throw new Error('Massimo 50 MB complessivi di modelli.');
             // Remap IDs so importing another scene cannot overwrite assets used by undo.
             const newId = crypto.randomUUID(); const metadata = {};
-            for (const key of ['name', 'author', 'license', 'licenseUrl', 'source', 'uid']) metadata[key] = String(raw.metadata?.[key] || '').slice(0, 1000);
+            for (const key of ['name', 'author', 'license', 'licenseUrl', 'source', 'uid', 'role']) metadata[key] = String(raw.metadata?.[key] || '').slice(0, 1000);
             const asset = { id: newId, metadata, bytes }; templates.set(newId, await this.prepareAsset(asset)); prepared.push(asset);
             scene.objects.filter(i => i.assetId === id).forEach(i => i.assetId = newId);
         }
