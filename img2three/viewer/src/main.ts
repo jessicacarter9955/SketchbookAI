@@ -31,8 +31,9 @@ const root=document.getElementById('app')!;
 root.innerHTML='<div class="ui"><div class="overline">IMG2THREEJS <span>· INTERACTIVE GALLERY</span></div>'+
 '<h1 id="asset-title">Five high-detail 3D models</h1><div class="asset-tabs" id="asset-tabs"></div>'+
 '<div class="asset-subtitle" id="asset-subtitle">Loading…</div>'+
-'<div class="row"><button id="front">Front</button><button id="threequarter">3/4 view</button>'+
-'<button id="side">Side</button><button id="rear">Rear</button><button id="wire">Wireframe</button>'+
+'<div class="row"><button id="front">Source side</button><button id="threequarter">3/4 view</button>'+
+'<button id="side">Muzzle end</button><button id="rear">Opposite side</button>'+
+'<button id="butt">Brace end</button><button id="top">Top</button><button id="bottom">Bottom</button><button id="wire">Wireframe</button>'+
 '<button id="shot">Screenshot</button><button id="compare">Reference</button></div>'+
 '<div class="reference-panel" id="reference-panel" hidden><img id="reference-img" alt="Original user photograph used for reconstruction"/><span>Original source photograph · master reference</span></div>'+
 '<div class="small-note" id="status">Original photo = visual priority · inferred missing depths · real geometry</div></div>'+
@@ -85,12 +86,20 @@ try {
    key.shadow.camera.bottom=key.shadow.camera.left;key.shadow.camera.top=key.shadow.camera.right;
    key.shadow.camera.updateProjectionMatrix();
  }
- function placeView(type:'front'|'angle'|'side'|'back'){
+ type PreviewAngle='front'|'angle'|'side'|'back'|'butt'|'top'|'bottom';
+ function placeView(type:PreviewAngle){
    const d=cameraDistance;
+   ground.visible=type!=='bottom';
+   camera.up.set(0,1,0);
    if(type==='front')camera.position.copy(modelCenter).add(new THREE.Vector3(0,Math.max(.07,d*.025),d));
    if(type==='angle')camera.position.copy(modelCenter).add(new THREE.Vector3(d*.64,d*.21,d*.93));
    if(type==='side')camera.position.copy(modelCenter).add(new THREE.Vector3(d,Math.max(.07,d*.02),0));
    if(type==='back')camera.position.copy(modelCenter).add(new THREE.Vector3(0,Math.max(.07,d*.025),-d));
+   if(type==='butt')camera.position.copy(modelCenter).add(new THREE.Vector3(-d,Math.max(.07,d*.02),0));
+   if(type==='top'||type==='bottom'){
+     camera.up.set(0,0,-1);
+     camera.position.copy(modelCenter).add(new THREE.Vector3(0,type==='top'?d:-d,.0001));
+   }
    camera.lookAt(modelCenter);controls.update();
  }
  let sequence=0;
@@ -127,6 +136,9 @@ try {
  document.getElementById('threequarter')!.onclick=()=>placeView('angle');
  document.getElementById('side')!.onclick=()=>placeView('side');
  document.getElementById('rear')!.onclick=()=>placeView('back');
+ document.getElementById('butt')!.onclick=()=>placeView('butt');
+ document.getElementById('top')!.onclick=()=>placeView('top');
+ document.getElementById('bottom')!.onclick=()=>placeView('bottom');
  document.getElementById('wire')!.onclick=()=>{wire=!wire;setWire(wire);};
  document.getElementById('shot')!.onclick=()=>{
    renderer.render(scene,camera);const a=document.createElement('a');a.download='img2threejs-'+currentKey+'.png';
