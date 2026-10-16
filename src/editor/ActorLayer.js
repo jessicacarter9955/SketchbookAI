@@ -65,7 +65,7 @@ export class ActorLayer {
                             }
                             if (!isWheel) node.visible=false;
                         });
-                        const shell = fitVehicleVisual(template);
+                        const shell = fitVehicleVisual(template, THREE);
                         shell.traverse(node => {
                             if (!node.isMesh) return;
                             node.castShadow=true;
