@@ -149,3 +149,47 @@ test('invalid pooled Sketchfab token is removed after 401 without rate-limit ret
     assert.equal(client.credentialCount, 0);
     assert.equal(requests, 1);
 });
+
+test('one-time JSON setup persists across new Sketchfab clients and can be revoked', async () => {
+    const saved = { value: [] };
+    const store = { load: async () => saved.value, save: async tokens => { saved.value = [...tokens]; },
+        clear: async () => { saved.value = []; } };
+    const a = 'a'.repeat(32), b = 'b'.repeat(32);
+    const first = new SketchfabClient();
+    assert.equal(await first.saveSavedTokens(JSON.stringify({tokens:[a,b,a]}), store), 2);
+    assert.equal(first.credentialCount, 2);
+    const calls = [];
+    const reopened = new SketchfabClient(async (_, options) => {
+        calls.push(options.headers.Authorization);
+        return {ok:true,json:async()=>({results:[]})};
+    });
+    assert.equal(await reopened.loadSavedTokens(store), true);
+    assert.equal(reopened.credentialCount, 2);
+    await reopened.search('Ferrari');
+    assert.ok(['Token ' + a, 'Token ' + b].includes(calls[0]));
+    await reopened.clearSavedTokens(store);
+    const afterClear = new SketchfabClient();
+    assert.equal(await afterClear.loadSavedTokens(store), false);
+    assert.equal(afterClear.credentialCount, 0);
+});
+test('invalid Sketchfab credential JSON cannot overwrite stored credentials', async () => {
+    const store = { load: async () => [], save: async () => { throw Error('Must not be called'); } };
+    const client = new SketchfabClient();
+    await assert.rejects(client.saveSavedTokens('{"tokens":["short"]}', store), /token valido/);
+    await assert.rejects(client.saveSavedTokens('{"tokens":[}', store), /JSON/);
+});
+test('manual credentials supersede saved browser credentials without implicitly persisting edits', async () => {
+    const saved = 's'.repeat(32);
+    const store = { load: async () => [saved] };
+    let auth = null;
+    const client = new SketchfabClient(async (_, options) => {
+        auth = options.headers.Authorization; return {ok:true,json:async()=>({results:[]})};
+    });
+    await client.loadSavedTokens(store);
+    client.token = 'manual';
+    await client.search('BMW');
+    assert.equal(auth, 'Token manual');
+    client.token = '';
+    await client.search('BMW');
+    assert.equal(auth, 'Token ' + saved);
+});
