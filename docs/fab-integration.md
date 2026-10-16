@@ -1,5 +1,13 @@
 # SketchbookAI — Sketchfab e Fab nello stesso picker
 
+## Non caricare mai più il JSON a ogni avvio
+
+- **App locale:** lascia una sola volta `/.local/sketchfab.json` nella cartella del progetto (esclusa da Git). L'app lo legge automaticamente ogni volta che si apre su localhost.
+- **Browser online / Android:** apri il picker > Sketchfab > Accesso ai download, incolla una volta il token o il JSON `{"tokens":["..."]}` e premi **Salva su questo dispositivo**. La configurazione è conservata in IndexedDB, associata all'origine del sito, e viene letta automaticamente dopo un refresh o riavvio del browser. Nessun upload ricorrente.
+- **Revoca:** premi **Elimina accesso salvato**. Cancellare i dati del sito o cambiare dispositivo/browser richiede una nuova configurazione.
+- **Sicurezza:** IndexedDB non è un archivio crittografato: il codice JavaScript della stessa origine può leggerlo. Non usare un dispositivo condiviso o un sito di cui non ti fidi. Il JSON/tokens non sono sincronizzati con GitHub né esposti nelle esportazioni delle scene. Quando possibile, preferire un proxy autenticato lato server con segreti protetti.
+
+
 ## Sketchfab: configurazione locale
 
 Il file privato /.local/sketchfab.json viene caricato automaticamente solo da localhost / 127.0.0.1. La cartella /.local/ è esclusa da Git. GitHub non contiene questo file: deve restare sulla macchina che avvia Sketchbook.
