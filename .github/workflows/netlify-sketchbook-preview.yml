@@ -4,10 +4,19 @@ on:
     branches: [img2threejs-runner]
     paths:
       - ".github/workflows/netlify-sketchbook-preview.yml"
+      - "3dPicker.js"
+      - "index.html"
+      - "editor.html"
+      - "src/**"
+      - "build/assets/**"
+      - "package.json"
+      - "webpack.*.js"
   workflow_dispatch:
 
 permissions:
   contents: read
+  deployments: write
+  statuses: write
 
 concurrency:
   group: sketchbook-live-site
@@ -86,7 +95,14 @@ jobs:
             curl --fail --silent --show-error --location --retry 3 --max-time 25 "${DEPLOY_URL%/}/editor.html" >/tmp/sketchbook-online-editor.html
             grep -q "src/editor/fab-client.js" /tmp/sketchbook-online-editor.html
             grep -q "src/editor/sketchfab-client.js" /tmp/sketchbook-online-editor.html
-            echo "Editor served with Sketchfab + Fab picker scripts." >> "$GITHUB_STEP_SUMMARY"
+            curl --fail --silent --show-error --location --retry 3 --max-time 25 "${DEPLOY_URL%/}/3dPicker.js" >/tmp/sketchbook-live-picker.js
+            curl --fail --silent --show-error --location --retry 3 --max-time 25 "${DEPLOY_URL%/}/src/editor/sketchfab-client.js" >/tmp/sketchbook-live-sketchfab.js
+            curl --fail --silent --show-error --location --retry 3 --max-time 25 "${DEPLOY_URL%/}/src/editor/fab-client.js" >/tmp/sketchbook-live-fab.js
+            grep -q "data-source=\"fab\"" /tmp/sketchbook-live-picker.js
+            grep -q "data-save-tokens" /tmp/sketchbook-live-picker.js
+            grep -q "loadSavedTokens" /tmp/sketchbook-live-sketchfab.js
+            grep -q "FabClient" /tmp/sketchbook-live-fab.js
+            echo "Verified live editor, both catalog clients, and automatic saved-token setup." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "Action did not expose deploy URL. Verify the Netlify deploy log." >> "$GITHUB_STEP_SUMMARY"
           fi
