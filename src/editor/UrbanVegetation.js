@@ -6,7 +6,7 @@ import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 let templatesPromise;
 async function templates(){
  if(!templatesPromise)templatesPromise=Promise.all([0,1].map(level=>
-   new GLTFLoader().loadAsync('assets/urban-kits/tree_small_02/scene-lod'+level+'.gltf')
+   new GLTFLoader().loadAsync(`assets/urban-kits/tree_small_02/scene-lod${level}.gltf`)
  )).then(kits=>kits.map(kit=>{
    const root=kit.scene;
    root.updateMatrixWorld(true);
