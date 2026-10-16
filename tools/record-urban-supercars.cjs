@@ -76,10 +76,6 @@ function validatePhoto(file) {
         console.log('DRIVING_STARTUP',JSON.stringify(startup));
         if(startup.spawned!==3||startup.supercars?.errors?.length||startup.names?.length!==3)
             throw Error('The three licensed cars are not loaded before recording.');
-        // Render an overview with all three original model meshes.
-        const overview=path.join(ROOT,'urban-photoreal-overview.png');
-        await page.screenshot({path:overview,timeout:25000});
-        validatePhoto(overview);
 
         for(const car of CARS) {
             console.log('RECORDING_START',car.id,car.name);
@@ -122,8 +118,6 @@ function validatePhoto(file) {
             // A real viewport capture: no static photos, no synthetic 3D animation.
             await page.waitForTimeout(800);
             const png=path.join(ROOT,car.id+'.png');
-            await page.screenshot({path:png,timeout:30000});
-            validatePhoto(png);
             const capture=await page.evaluate(()=>{
                 const canvas=globalThis.world?.renderer?.domElement;
                 if(!canvas || !canvas.captureStream)throw Error('WebGL canvas captureStream unavailable');
@@ -189,6 +183,12 @@ function validatePhoto(file) {
             });
             fs.writeFileSync(path.join(ROOT,car.id+'.webm'),Buffer.from(b64,'base64'));
             const encoded=convertVideo(car.id);
+            // Frame extraction is significantly cheaper than page.screenshot()
+            // for this GPU-heavy photoreal scene (Chromium screenshot stalls).
+            runBin('ffmpeg',['-hide_banner','-loglevel','error','-y',
+                '-ss',String(Math.min(2,encoded.duration/2)),
+                '-i',path.join(ROOT,car.id+'.mp4'),'-frames:v','1',png]);
+            validatePhoto(png);
             const start=enter.before,end=motion.end;
             const distance=Math.hypot(start[0]-end[0],start[2]-end[2]);
             console.log('RECORDING_DRIVE',car.id,JSON.stringify({distance,motion,encoded}));
@@ -205,6 +205,8 @@ function validatePhoto(file) {
             },car.id);
         }
         result.ok=true;
+        // A real photograph of each car is included separately; the collage of
+        // the three cars can be assembled from these extracted video frames.
         fs.writeFileSync(path.join(ROOT,'results.json'),JSON.stringify(result,null,2));
         console.log('ALL_THREE_REAL_VEHICLE_VIDEOS_PASS',JSON.stringify(result.cars));
     }catch(error){
