@@ -7,6 +7,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { promisify } = require('node:util');
 const { zipStore } = require('../tools/fab-bridge.cjs');
+const sketchfab = require('./sketchfab-supercars.cjs');
 const exec = promisify(execFile);
 const PORT = Number(process.env.PORT || 10000);
 const ORIGIN = process.env.FAB_ALLOWED_ORIGIN || 'https://my-test-site3.netlify.app';
@@ -120,6 +121,24 @@ async function app(req,res) {
     if(req.method==='OPTIONS') return reply(res,204,Buffer.alloc(0),origin);
     const url=new URL(req.url,'https://fab.example');
     if(url.pathname==='/health' && req.method==='GET') return reply(res,200,{ok:true,bridge:true,mode:'private-fabcli',requiresEpicLogin:true},origin);
+    // Fixed, credited CC BY showcase is public; arbitrary model downloads still require
+    // Sketchfab's own permission and are not exposed through this bridge.
+    if(req.method==='GET' && url.pathname==='/sketchfab/showcase') {
+        return reply(res,200,{provider:'sketchfab',configured:sketchfab.configured(),
+            vehicles:sketchfab.catalog()},origin);
+    }
+    if(req.method==='GET' && /^\/sketchfab\/cars\/(bmw|ferrari|lamborghini)$/.test(url.pathname)) {
+        if(!throttle(req,12)) return reply(res,429,{error:'Troppe richieste.'},origin);
+        try {
+            const id = url.pathname.split('/').pop();
+            const item = await sketchfab.loadAsset(id);
+            return reply(res,200,item.bytes,origin,'application/octet-stream');
+        } catch(error) {
+            const code = error.status === 401 ? 503 : error.status === 429 ? 429 :
+                error.status === 403 ? 403 : error.status === 503 ? 503 : 502;
+            return reply(res,code,{error:String(error.message).slice(0,180)},origin);
+        }
+    }
     if(!hasAccess(req.headers['x-fab-bridge-key'])) return reply(res,401,{error:'Inserisci la chiave personale del bridge Fab.'},origin);
     if(!throttle(req)) return reply(res,429,{error:'Troppe richieste: riprova tra un minuto.'},origin);
     try {
