@@ -26,7 +26,7 @@ jobs:
               head -c 240 "/tmp/${model}.blob" | tee -a "$GITHUB_STEP_SUMMARY"
               exit 1
             fi
-            MODEL="$model" node -e 'const fs=require("fs");const b=fs.readFileSync("/tmp/"+process.env.MODEL+".blob");if(b.length<1000||!["glTF","PK"].some(x=>b.toString("utf8",0,4).startsWith(x)))process.exit(1);'
+            MODEL="$model" node -e 'const fs=require("fs");const b=fs.readFileSync("/tmp/"+process.env.MODEL+".blob"); console.log("FORMAT",process.env.MODEL,b.toString("hex",0,4));if(b.length<1000||!["glTF","PK"].some(x=>b.toString("utf8",0,4).startsWith(x)))process.exit(1);'
             rm -f "/tmp/${model}.blob"
           done
           echo "All 3 licensed Sketchfab car downloads verified." >> "$GITHUB_STEP_SUMMARY"
