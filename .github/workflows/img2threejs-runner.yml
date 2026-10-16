@@ -167,6 +167,25 @@ jobs:
             img2three/viewer/public/ref/rifle.webp
             img2three/preview/
           if-no-files-found: warn
+      - name: Publish verified rifle multiview images on isolated branch
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          for view in left muzzle right brace top bottom; do
+            test -s "img2three/preview/rifle-${view}-verification.png"
+          done
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add img2three/preview/rifle-*-verification.png img2three/preview/gallery-report.json
+          if git diff --cached --quiet; then
+            echo "Rifle six-angle screenshots unchanged." >> "$GITHUB_STEP_SUMMARY"
+          else
+            git commit -m "gallery: publish verified six-angle Three.js rifle screenshots"
+            git pull --rebase origin img2threejs-runner
+            git push origin HEAD:img2threejs-runner
+            echo "Rifle six WebGL screenshot views committed to img2three/preview." >> "$GITHUB_STEP_SUMMARY"
+          fi
       # Generated factory output remains in the repository; the separate gallery
       # workflow publishes the bundle. This job validates WebGL and uploads
       # screenshots as artifacts, preventing duplicate concurrent Git pushes.
