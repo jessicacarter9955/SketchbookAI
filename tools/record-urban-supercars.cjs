@@ -56,6 +56,17 @@ function duration(filename){
         console.log('DRIVING_READY',JSON.stringify(first));
         if(first.vehicles!==3||first.status?.errors?.length)
             throw Error('Some of the three Sketchfab cars have not loaded.');
+        // GitHub's virtual runner has a CPU-only WebGL renderer. Keep the HD
+        // meshes/materials but reduce drawing resolution to keep physics active.
+        const recordingQuality=await page.evaluate(()=>{
+            const w=globalThis.world;
+            w.renderer.setPixelRatio(0.4);
+            w.params.FXAA=false;
+            w.params.Shadows=false;
+            w.renderer.shadowMap.enabled=false;
+            return {pixelRatio:w.renderer.getPixelRatio(),drawingBuffer:w.renderer.getDrawingBufferSize(new (globalThis.THREE).Vector2()).toArray()};
+        });
+        console.log('RECORDING_WEBGL_QUALITY',JSON.stringify(recordingQuality));
         for(const car of CARS){
             console.log('DRIVE_CAR_START',car.id);
             const input=await page.evaluate(id=>{
@@ -95,7 +106,28 @@ function duration(filename){
                 w.sceneEditor.message('Guida '+item.name+' · WASD');
             },car.id);
             await page.keyboard.down('w');
-            await page.waitForTimeout(DRIVING_MS);
+            // Drive using actual Cannon.RaycastVehicle engine and physics.
+            // Render runners occasionally fail to advance RAF under software GL.
+            // Extra fixed steps advance the *real* physics engine, never fake
+            // positions. Yield to the renderer between batches for video frames.
+            const physicsReports=[];
+            const phases=Math.max(6,Math.floor(DRIVING_MS/800));
+            for(let batch=0;batch<phases;batch++){
+                const report=await page.evaluate(id=>{
+                    const w=globalThis.world;
+                    const item=w.sceneEditor.items.find(i=>i.name?.startsWith('Sketchfab · ')&&i.name.toLowerCase().includes(id));
+                    const car=w.vehicles.find(v=>v.userData.importedCar===item.assetId);
+                    for(let frame=0;frame<25;frame++){
+                        car.update(1/60);
+                        w.physicsWorld.step(1/60);
+                    }
+                    return {pos:[car.collision.position.x,car.collision.position.y,car.collision.position.z],
+                        wheels:car.rayCastVehicle.numWheelsOnGround,speed:car.speed};
+                },car.id);
+                physicsReports.push(report);
+                await page.waitForTimeout(350);
+            }
+            console.log('DRIVE_PHYSICS_STEPS',car.id,JSON.stringify(physicsReports));
             await page.keyboard.up('w');
             const motion=await page.evaluate(id=>{
                 const w=globalThis.world;
