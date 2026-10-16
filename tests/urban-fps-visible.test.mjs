@@ -8,6 +8,8 @@ test('3D traffic lights reflect all-red and terrain heights with safe GPU instan
 });
 test('large HD city is opt-in and reports drawcalls and low FPS occlusion budget',()=>{
  assert.match(s('src/editor/start.js'),/query.get\('cityBlocks'\)/);
+ assert.match(s('src/editor/start.js'),/cityBenchmarkSuffix/);
+ assert.match(s('src/editor/start.js'),/\.benchmark-/);
  assert.match(s('src/editor/UrbanRuntime.js'),/draw calls/);
  assert.match(s('src/editor/UrbanRuntime.js'),/this.fps<40\?540:320/);
 });

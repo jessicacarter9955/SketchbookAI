@@ -41,3 +41,5 @@ Nella città procedurale i semafori sono finalmente VISIBILI: pali e tre LED su 
 ## Fix urban-photoreal 4×4/6×6 timeout HD
 
 Eliminato il timeout fisso a 50 s che abortiva anche caricamenti originali GLTF in corso. Il gate di avvio continua a richiedere tutti i dettagli HD e compilazione degli shader, senza mostrare asset fittizi. La vegetazione `tree_small_02` mantiene i due LOD e i materiali originali, ma usa `THREE.InstancedMesh` e selezione di esemplari visibili, anziché decine/centinaia di cloni `THREE.LOD`. Non è ancora implementato un timeout per singola richiesta di rete; una richiesta realmente bloccata resta da diagnosticare.
+
+L'opzione URL `cityBlocks=6` ha ora una chiave di salvataggio separata dal 4×4, per garantire il benchmark 6×6 richiesto anche quando il browser possiede una vecchia scena salvata. La scena originale `urban-photoreal` e le revisioni dell'utente restano intatte.

@@ -22,7 +22,13 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){
 if(minimalMobile)document.body.classList.add('mobile-city-boot');
 const catalog = loadCatalog(localStorage);
 const current = catalog.find(s => s.id === query.get('scene')) || catalog[0];
-const storageKey = sceneStorageKey(current.id);
+// A URL-explicit city-size benchmark has its own save slot. A previous 4x4
+// scene cannot silently override a requested 6x6, and a test cannot overwrite
+// the user's regular City Player save.
+const cityBlocksParam=query.get('cityBlocks');
+const cityBenchmarkSuffix=current.world==='procedural-city'&&/^[2-6]$/.test(cityBlocksParam||'')?
+  '.benchmark-'+cityBlocksParam+'x'+cityBlocksParam:'';
+const storageKey = sceneStorageKey(current.id)+cityBenchmarkSuffix;
 const loadingMessage=loading?.querySelector('#city-load-message');
 const loadingProgress=loading?.querySelector('#city-load-progress');
 const loadingCounter=loading?.querySelector('#city-load-counter');
