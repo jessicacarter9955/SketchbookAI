@@ -21,3 +21,8 @@ Apri `sa-navigation.html` sul deploy del ramo. Questa pagina usa Three.js per mo
 ## Giocare nella geometria locale
 
 La nuova scena `editor.html?scene=san-andreas-local&play=1` condivide l'IndexedDB del visualizzatore `sa-navigation.html` **sullo stesso dominio Netlify**. Importa i veri settori GLB e opzionalmente `nodes*.dat` nel visualizzatore, poi premi `▶ Prova in Sketchbook City Player`. Sketchbook ora istanzia i settori GLB originali senza inventare edifici, trasferisce le due reti originali di navigazione al runtime e crea collisioni Cannon Trimesh *a breve distanza* per mesh con meno di 55.000 triangoli (fino a 36 collider vicini). La posizione di partenza è scelta fra i nodi pedonali originali quando presenti. Nessun asset viene pubblicato online. Si tratta di una prima integrazione giocabile: AI sulle reti SA, missioni, streaming ottimizzato dei settori giganteschi, collisioni complesse e DDS autentico restano incompleti. Il personaggio del test è quello già esistente di Sketchbook, non un nuovo modello GTA.
+
+
+## Pedoni e veicoli sulla rete originale
+
+`SanAndreasPopulation` usa `buildSanAndreasNetwork` e `sa-agent-navigation.mjs` per posizionare manichini e veicoli Sketchbook sulle posizioni vere dei nodi `nodes*.dat`, rispettando gli archi diretti, i blocchi stradali e le aree consentite. Le auto non guidabili dell'ambiente sono instanziate con `InstancedMesh`, i pedoni animati hanno distanza massima e sleep LOD. Gli agenti si riciclano su nodi originali vicino al giocatore, non inventano strade. Sono prototipi di popolazione, non ancora IA con missioni, traffico poliziesco o semafori GTA originali.

@@ -7,6 +7,7 @@ import { Car } from '../ts/vehicles/Car';
 import { loadDdsPlayer } from './DdsAssets';
 import { DdsCharacter } from './DdsCharacter';
 import { UrbanPopulation } from './UrbanPopulation.js';
+import { SanAndreasPopulation } from './SanAndreasPopulation.js';
 
 export class ActorLayer {
     constructor(world) { this.world = world; this.actors = []; this.spawn = new THREE.Vector3(0, 2, -5); }
@@ -51,6 +52,8 @@ export class ActorLayer {
         this.stop(false);
         const urban=Boolean(this.world.levelRuntime?.plan?.roads);
         if(urban)this.urbanPopulation=new UrbanPopulation(this.world,this.playerProfile==='dds'?this.playerModel.scene:this.person.scene,this.car.scene);
+        if(this.world.levelRuntime?.navigation?.vehicle?.nodes.length||this.world.levelRuntime?.navigation?.pedestrian?.nodes.length)
+            this.saPopulation=new SanAndreasPopulation(this.world,this.playerProfile==='dds'?this.playerModel.scene:this.person.scene,this.car.scene);
         for (const item of items) {
             if(urban && item.prefab==='pedestrian')continue;
             if (!['vehicle', 'pedestrian'].includes(item.prefab)) continue;
@@ -84,11 +87,13 @@ export class ActorLayer {
     }
     stop(resetPlayer = true) {
         this.urbanPopulation?.destroy();this.urbanPopulation=null;
+        this.saPopulation?.destroy();this.saPopulation=null;
         if (resetPlayer && this.actors.length) this.resetPlayer();
         this.actors.forEach(actor => { if (!actor.userData.dormant) this.world.remove(actor); }); this.actors = [];
     }
     update(position) {
         if(this.urbanPopulation&&!this.world.sceneEditor?.active)this.urbanPopulation.update(this.world.requestDelta||1/60);
+        if(this.saPopulation&&!this.world.sceneEditor?.active)this.saPopulation.update(this.world.requestDelta||1/60);
         for (const actor of this.actors) {
             if (actor.controllingCharacter === this.world.editorPlayer) continue;
             const distance = Math.hypot(actor.position.x - position.x, actor.position.z - position.z);

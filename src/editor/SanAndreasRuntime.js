@@ -135,12 +135,12 @@ export class SanAndreasRuntime{
  update(){
   if(!this.ready)return;
   const now=performance.now();
+  const player=this.focusPosition();
+  this.world.actorLayer?.update(player);
   if(now-this.lastTick<400)return;
   this.lastTick=now;
-  const player=this.focusPosition();
   this.refreshPhysics(player);
-  this.world.actorLayer?.update(player);
   const hud=document.querySelector('[data-city-status]');
-  if(hud)hud.textContent='San Andreas · '+this.root.children.length+' GLB originali · '+this.colliders.size+' collider attivi · '+(this.navigation.pedestrian?.nodes.length||0)+' nodi pedoni';
+  if(hud)hud.textContent='San Andreas · '+this.root.children.length+' GLB originali · '+this.colliders.size+' collider attivi · '+(this.navigation.pedestrian?.nodes.length||0)+' nodi pedoni · '+(this.world.actorLayer?.saPopulation?.stats.active||0)+' agenti vicini';
  }
 }
