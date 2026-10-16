@@ -18,7 +18,7 @@ jobs:
       - name: Check raw.githack static host returns HTML and JavaScript
         run: |
           set -euo pipefail
-          BASE="https://raw.githack.com/jessicacarter9955/SketchbookAI/859a2e671d0442df13b6100deda2af07878416d6/img2three/viewer/dist"
+          BASE="https://raw.githack.com/jessicacarter9955/SketchbookAI/ec6f11fddd46704f026f94429d45304ec197aa8e/img2three/viewer/dist"
           curl --retry 3 --retry-delay 3 --max-time 45 -fsSL -D /tmp/html.headers "$BASE/index.html" -o /tmp/index.html
           cat /tmp/html.headers | head -20
           cat /tmp/index.html
@@ -45,7 +45,7 @@ jobs:
             page.on('console',msg=>consoles.push(msg.type()+': '+msg.text()));
             page.on('requestfailed',req=>requests.push(req.url()+': '+req.failure()?.errorText));
             page.on('response',res=>{if(res.status()>=400)requests.push(res.status()+' '+res.url())});
-            const url='https://raw.githack.com/jessicacarter9955/SketchbookAI/859a2e671d0442df13b6100deda2af07878416d6/img2three/viewer/dist/index.html';
+            const url='https://raw.githack.com/jessicacarter9955/SketchbookAI/ec6f11fddd46704f026f94429d45304ec197aa8e/img2three/viewer/dist/index.html?model=rifle';
             await page.goto(url,{waitUntil:'domcontentloaded',timeout:60000});
             if((await page.title()).includes('External Content Notice')){
               const links=await page.locator('a').evaluateAll(els=>els.map(e=>({text:e.textContent?.trim(),href:e.getAttribute('href'),target:e.getAttribute('target')})));
@@ -65,16 +65,16 @@ jobs:
             await page.waitForTimeout(2200);
             const result=await page.evaluate(()=>({ready:window.__threeReady,error:window.__threeError,stats:window.__threeStats,canvas:document.querySelector('canvas')?.getBoundingClientRect().toJSON()}));
             require('fs').mkdirSync('img2three/preview',{recursive:true});
-            const screenshot=await page.screenshot({path:'img2three/preview/front.png'});
+            const screenshot=await page.screenshot({path:'img2three/preview/rifle-live-front.png'});
             await page.getByRole('button',{name:'3/4 view'}).click();
             await page.waitForTimeout(1500);
-            await page.screenshot({path:'img2three/preview/threequarter.png'});
+            await page.screenshot({path:'img2three/preview/rifle-live-threequarter.png'});
             const png=PNG.sync.read(screenshot);
             let varied=0;
             for(let y=100;y<png.height;y+=11)for(let x=25;x<png.width;x+=11){const i=(png.width*y+x)*4; const [r,g,b]=[png.data[i],png.data[i+1],png.data[i+2]]; if(Math.abs(r-238)+Math.abs(g-241)+Math.abs(b-246)>50)varied++;}
             console.log(JSON.stringify({url,result,errors,consoles,requests,documentUrl:page.url(),title:await page.title(),bodyPreview:(await page.locator('body').innerText()).slice(0,900),nonBackgroundSamples:varied,screenshotBytes:screenshot.length},null,2));
             await browser.close();
-            if(!result.ready||errors.length||!result.stats.realGeometry||result.stats.paneInstances<1500||varied<150) process.exit(1);
+            if(!result.ready||errors.length||result.stats?.model!=='rifle'||result.stats.meshCount<7||varied<150) process.exit(1);
           })().catch(e=>{console.error(e);process.exit(2)});
           NODE
       - name: Upload live render screenshot
@@ -89,7 +89,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add img2three/preview/*.png
+          git add img2three/preview/rifle-live-*.png
           if ! git diff --cached --quiet; then
             git commit -m "preview: verified front and three-quarter WebGL screenshots"
             git pull --rebase
