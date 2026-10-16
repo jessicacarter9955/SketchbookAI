@@ -1,0 +1,38 @@
+name: WorldBLD + Lightning (read-only browser check)
+
+on:
+  push:
+    branches: [img2threejs-runner]
+    paths:
+      - ".github/workflows/worldbld-browser-check.yml"
+      - "tools/worldbld-browser/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-sites:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install isolated Playwright browser
+        run: |
+          cd tools/worldbld-browser
+          npm init -y
+          npm install --no-save playwright@1.56.0
+          npx playwright install --with-deps chromium
+      - name: Inspect Lightning and WorldBLD without authentication or GPU
+        run: node tools/worldbld-browser/probe.cjs
+      - name: Upload screenshot and machine-readable results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: worldbld-lightning-readonly-probe
+          path: tools/worldbld-browser/results/
+          if-no-files-found: warn
+          retention-days: 7
