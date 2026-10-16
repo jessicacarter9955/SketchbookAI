@@ -8,6 +8,7 @@ on:
       - "index.html"
       - "editor.html"
       - "src/**"
+      - "netlify/functions/**"
       - "build/assets/**"
       - "package.json"
       - "webpack.*.js"
@@ -48,6 +49,8 @@ jobs:
           test -s site-dist/src/editor/sketchfab-client.js
           test -s site-dist/src/editor/fab-client.js
           test -s site-dist/build/sketchbook.min.js
+          test -s netlify/functions/fab-catalog.js
+          test -s netlify/functions/fab-catalog.cjs
           test ! -e site-dist/.github
           test ! -e site-dist/.local
       - name: Reuse original configured Netlify deployment identity
@@ -74,6 +77,7 @@ jobs:
         uses: nwtgck/actions-netlify@v3.0
         with:
           publish-dir: "./site-dist"
+          functions-dir: "./netlify/functions"
           production-branch: img2threejs-runner
           github-token: ${{ secrets.GITHUB_TOKEN }}
           deploy-message: "Sketchbook editor · Sketchfab and Fab picker from ${{ github.sha }}"
@@ -103,6 +107,9 @@ jobs:
             grep -q "loadSavedTokens" /tmp/sketchbook-live-sketchfab.js
             grep -q "FabClient" /tmp/sketchbook-live-fab.js
             echo "Verified live editor, both catalog clients, and automatic saved-token setup." >> "$GITHUB_STEP_SUMMARY"
+            curl --fail --silent --show-error --location --retry 2 --max-time 30 "${DEPLOY_URL%/}/.netlify/functions/fab-catalog?operation=status" >/tmp/fab-online-status.json
+            node -e "const x=require('/tmp/fab-online-status.json');if(x.bridge!==true||x.mode!=='public-search-only')process.exit(1)"
+            echo "Verified Fab serverless catalog bridge status." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "Action did not expose deploy URL. Verify the Netlify deploy log." >> "$GITHUB_STEP_SUMMARY"
           fi
