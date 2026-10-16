@@ -5,6 +5,10 @@ on:
     paths:
       - ".github/workflows/sketchfab-supercars-browser.yml"
       - "tools/verify-supercars.cjs"
+      - "src/editor/supercars.mjs"
+      - "src/editor/ActorLayer.js"
+      - "src/editor/SceneEditor.js"
+      - "src/editor/start.js"
   workflow_dispatch:
 permissions:
   contents: read
