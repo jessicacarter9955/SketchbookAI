@@ -25,3 +25,10 @@ jobs:
           status=$(curl -L -sS --max-time 25 -o /tmp/bridge.json -w "%{http_code}" "https://my-test-site3.netlify.app/.netlify/functions/fab-catalog?operation=status")
           echo "Deployed Fab bridge status: $status" | tee -a "$GITHUB_STEP_SUMMARY"
           node -e 'const fs=require("fs");try{const j=JSON.parse(fs.readFileSync("/tmp/bridge.json","utf8")); console.log("mode:",j.mode,"bridge:",j.bridge)}catch(e){console.log("Not a JSON bridge response")}' >> "$GITHUB_STEP_SUMMARY"
+      - name: Check online Fab BMW query
+        shell: bash
+        run: |
+          status=$(curl -L -sS --max-time 25 -o /tmp/bridge-bmw.json -w "%{http_code}" "https://my-test-site3.netlify.app/.netlify/functions/fab-catalog?operation=search&q=BMW")
+          echo "Cloud Fab BMW search status: $status" | tee -a "$GITHUB_STEP_SUMMARY"
+          node -e 'const fs=require("fs");try{const j=JSON.parse(fs.readFileSync("/tmp/bridge-bmw.json","utf8"));console.log("count:",j.results?.length,"error:",j.error?.slice(0,130))}catch(e){console.log("Non-JSON Fab search response")}' | tee -a "$GITHUB_STEP_SUMMARY"
+
