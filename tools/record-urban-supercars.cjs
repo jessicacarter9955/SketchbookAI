@@ -118,77 +118,91 @@ function validatePhoto(file) {
             // A real viewport capture: no static photos, no synthetic 3D animation.
             await page.waitForTimeout(800);
             const png=path.join(ROOT,car.id+'.png');
-            const capture=await page.evaluate(()=>{
-                const canvas=globalThis.world?.renderer?.domElement;
-                if(!canvas || !canvas.captureStream)throw Error('WebGL canvas captureStream unavailable');
-                const mime=['video/webm;codecs=vp8','video/webm;codecs=vp9','video/webm']
-                    .find(m=>MediaRecorder.isTypeSupported(m));
-                if(!mime)throw Error('MediaRecorder WebM encoder unavailable');
-                const stream=canvas.captureStream(18);
-                if(!stream.getVideoTracks().length)throw Error('Canvas did not provide video track');
-                const blobs=[];
-                const recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:1600000});
-                recorder.ondataavailable=e=>{if(e.data.size)blobs.push(e.data);};
-                const finished=new Promise((resolve,reject)=>{
-                    recorder.onerror=e=>reject(Error('Video recorder: '+e.error?.message));
-                    recorder.onstop=async()=>{
-                        try{
-                            const blob=new Blob(blobs,{type:mime});
-                            if(blob.size<5000)throw Error('Recorded video empty');
-                            const reader=new FileReader();
-                            reader.onload=()=>resolve(reader.result.split(',')[1]);
-                            reader.onerror=()=>reject(Error('Cannot read video'));
-                            reader.readAsDataURL(blob);
-                        }catch(e){reject(e);}
-                    };
-                });
-                recorder.start(800);
-                globalThis.__urbanRecording={recorder,finished,stream};
-                return {mime,width:canvas.width,height:canvas.height};
-            });
-            console.log('CANVAS_CAPTURE',car.id,JSON.stringify(capture));
             await page.evaluate(id=>{
                 const w=globalThis.world,ed=globalThis.sceneEditor;
                 const item=ed.items.find(i=>i.name.startsWith('Sketchfab · ') &&
-                    i.name.toLowerCase().includes(id==='lamborghini'?'lamborghini':id));
+                    i.name.toLowerCase().includes(id));
                 const target=w.vehicles.find(v=>v.userData.importedCar===item.assetId);
-                // Inject throttle into Sketchbook's actual drive input, never
-                // animate transforms directly or replace the Cannon engine.
                 target.triggerAction('throttle',true);
                 w.renderer.domElement.focus();
             },car.id);
             await page.keyboard.down('w');
-            await page.waitForTimeout(DURATION_MS);
+            // The headless WebGL canvas is not capturable with MediaRecorder
+            // (zero frames). Render to its real default buffer and read actual
+            // pixels immediately, then encode them into an MP4 in ffmpeg.
+            const footage=await page.evaluate(async(duration)=>{
+                const w=globalThis.world, renderer=w.renderer,gl=renderer.getContext();
+                const width=gl.drawingBufferWidth,height=gl.drawingBufferHeight;
+                if(!width||!height)throw Error('WebGL default framebuffer unavailable');
+                const canvas=document.createElement('canvas');
+                canvas.width=width; canvas.height=height;
+                const ctx=canvas.getContext('2d',{willReadFrequently:true});
+                const image=ctx.createImageData(width,height);
+                const pixel=new Uint8Array(width*height*4);
+                const frames=[],started=performance.now();
+                while(performance.now()-started<duration){
+                    renderer.setRenderTarget(null);
+                    renderer.render(w.graphicsWorld,w.camera);
+                    gl.readPixels(0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,pixel);
+                    const error=gl.getError();
+                    if(error!==gl.NO_ERROR)throw Error('WebGL readPixels error '+error);
+                    for(let y=0;y<height;y++)
+                        image.data.set(pixel.subarray((height-y-1)*width*4,
+                            (height-y)*width*4),y*width*4);
+                    ctx.putImageData(image,0,0);
+                    frames.push(canvas.toDataURL('image/jpeg',0.74).split(',')[1]);
+                    await new Promise(resolve=>setTimeout(resolve,160));
+                }
+                return {frames,width,height,elapsed:performance.now()-started};
+            },DURATION_MS);
             await page.keyboard.up('w');
             const motion=await page.evaluate(id=>{
                 const w=globalThis.world,ed=globalThis.sceneEditor;
                 const item=ed.items.find(i=>i.name.startsWith('Sketchfab · ') &&
-                    i.name.toLowerCase().includes(id==='lamborghini'?'lamborghini':id));
+                    i.name.toLowerCase().includes(id));
                 const target=w.vehicles.find(v=>v.userData.importedCar===item.assetId);
                 target.triggerAction('throttle',false);
                 target.triggerAction('brake',true);
-                const result={end:[target.collision.position.x,target.collision.position.y,target.collision.position.z],
+                return {
+                    end:[target.collision.position.x,target.collision.position.y,target.collision.position.z],
                     speed:target.speed,physicsVelocity:target.collision.velocity.length(),
                     groundedWheels:target.rayCastVehicle.numWheelsOnGround,
-                    occupied:target.seats.some(seat=>seat.occupiedBy===w.editorPlayer)};
-                return result;
+                    occupied:target.seats.some(seat=>seat.occupiedBy===w.editorPlayer)
+                };
             },car.id);
-            const b64=await page.evaluate(async()=>{
-                const r=globalThis.__urbanRecording;
-                r.recorder.stop();
-                const result=await r.finished;
-                r.stream.getTracks().forEach(t=>t.stop());
-                delete globalThis.__urbanRecording;
-                return result;
-            });
-            fs.writeFileSync(path.join(ROOT,car.id+'.webm'),Buffer.from(b64,'base64'));
-            const encoded=convertVideo(car.id);
-            // Frame extraction is significantly cheaper than page.screenshot()
-            // for this GPU-heavy photoreal scene (Chromium screenshot stalls).
+            console.log('ACTUAL_WEBGL_FRAMES',car.id,footage.frames.length,
+                'resolution',footage.width+'x'+footage.height,
+                'elapsed_ms',footage.elapsed);
+            if(footage.frames.length<4)throw Error('Too few actual WebGL frames for '+car.id);
+            const framesDir=path.join(ROOT,car.id+'-frames');
+            fs.mkdirSync(framesDir,{recursive:true});
+            const hashes=new Set();
+            for(const [i,data] of footage.frames.entries()){
+                const bytes=Buffer.from(data,'base64');
+                fs.writeFileSync(path.join(framesDir,'frame_'+String(i).padStart(4,'0')+'.jpg'),bytes);
+                hashes.add(require('node:crypto').createHash('sha256').update(bytes).digest('hex'));
+            }
+            if(hashes.size<3)throw Error('WebGL rendered too few distinct frames for '+car.id);
+            const frameRate=footage.frames.length/(footage.elapsed/1000);
             runBin('ffmpeg',['-hide_banner','-loglevel','error','-y',
-                '-ss',String(Math.min(2,encoded.duration/2)),
-                '-i',path.join(ROOT,car.id+'.mp4'),'-frames:v','1',png]);
+                '-framerate',String(frameRate),'-start_number','0',
+                '-i',path.join(framesDir,'frame_%04d.jpg'),
+                '-an','-c:v','libx264','-preset','veryfast','-crf','23',
+                '-pix_fmt','yuv420p','-r','24','-movflags','+faststart',
+                path.join(ROOT,car.id+'.mp4')]);
+            const target=path.join(ROOT,car.id+'.mp4');
+            const duration=Number(runBin('ffprobe',['-v','error','-show_entries','format=duration',
+                '-of','default=noprint_wrappers=1:nokey=1',target]));
+            if(!Number.isFinite(duration)||duration<3)
+                throw Error(car.id+' video duration was too short: '+duration);
+            const encoded={filename:car.id+'.mp4',duration,
+                bytes:fs.statSync(target).size,frames:footage.frames.length};
+            const center=path.join(framesDir,'frame_'+
+                String(Math.floor(footage.frames.length/2)).padStart(4,'0')+'.jpg');
+            runBin('ffmpeg',['-hide_banner','-loglevel','error','-y','-i',center,
+                '-frames:v','1',png]);
             validatePhoto(png);
+            console.log('REAL_DRIVING_VIDEO',car.id,JSON.stringify(encoded));
             const start=enter.before,end=motion.end;
             const distance=Math.hypot(start[0]-end[0],start[2]-end[2]);
             console.log('RECORDING_DRIVE',car.id,JSON.stringify({distance,motion,encoded}));
