@@ -205,8 +205,14 @@ function validatePhoto(file) {
             },car.id);
         }
         result.ok=true;
-        // A real photograph of each car is included separately; the collage of
-        // the three cars can be assembled from these extracted video frames.
+        // Compose a contact sheet from genuine recorded game frames.
+        const overview=path.join(ROOT,'urban-photoreal-overview.png');
+        runBin('ffmpeg',['-hide_banner','-loglevel','error','-y',
+            '-i',path.join(ROOT,'bmw.png'),'-i',path.join(ROOT,'ferrari.png'),
+            '-i',path.join(ROOT,'lamborghini.png'),
+            '-filter_complex','[0:v]scale=640:360[a];[1:v]scale=640:360[b];[2:v]scale=640:360[c];[a][b][c]hstack=inputs=3',
+            '-frames:v','1',overview]);
+        validatePhoto(overview);
         fs.writeFileSync(path.join(ROOT,'results.json'),JSON.stringify(result,null,2));
         console.log('ALL_THREE_REAL_VEHICLE_VIDEOS_PASS',JSON.stringify(result.cars));
     }catch(error){
