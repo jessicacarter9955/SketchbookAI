@@ -22,7 +22,7 @@ jobs:
       - name: Open real Urban Photoreal City Player, check 3 cars and press E to drive
         env:
           NODE_PATH: /tmp/photoreal-webgl/node_modules
-          PHOTO_URL: https://6ad254d0bfe5508f774ea6ce--my-test-site3.netlify.app/editor.html?scene=urban-photoreal&cityBlocks=2&play=1
+          PHOTO_URL: https://6ad255c363c5be530652347e--my-test-site3.netlify.app/editor.html?scene=urban-photoreal&cityBlocks=2&play=1
         run: node tools/verify-photoreal-supercars.cjs
       - name: Upload screenshot evidence
         if: always()
