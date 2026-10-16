@@ -1,0 +1,27 @@
+name: Check Render CORS from photoreal preview
+on:
+  push:
+    branches: [codex/sa-navigation-port]
+    paths: ['.github/workflows/photoreal-supercar-cors.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cors:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Probe bridge with real Netlify preview Origin
+        shell: bash
+        run: |
+          set -eu
+          BASE="https://sketchbook-fab-bridge.onrender.com"
+          ORIGIN="https://6ad254d0bfe5508f774ea6ce--my-test-site3.netlify.app"
+          for segment in health sketchfab/showcase sketchfab/cars/bmw; do
+            echo "$segment"
+            status=$(curl --silent --show-error --location --max-time 80 --output /tmp/probe.bin --dump-header /tmp/headers.txt --write-out '%{http_code}' -H "Origin: $ORIGIN" "$BASE/$segment")
+            echo "HTTP $status; content-size $(wc -c </tmp/probe.bin)"
+            grep -Ei '^(access-control|content-type|server|x-render)' /tmp/headers.txt || true
+            if [ "$status" != 200 ]; then head -c 200 /tmp/probe.bin; echo; fi
+            echo "----"
+          done
