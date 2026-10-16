@@ -108,5 +108,30 @@ class ProgressReportTests(unittest.TestCase):
         sample['resulting_state']['Enabled'] = True; atomic_json(path, audit)
         self.assertTrue(any('confronti sorgenti' in m['title'] for m in project_progress(self.workspace, self.published, self.character)['milestones']))
 
+    def test_scene_calculations_require_matching_source_cases_and_current_visual_proof(self):
+        function = {'source_bytecode_sha256': 'bytecode', 'input_fields': ['X'], 'output_fields': ['Y'], 'self_writes': []}
+        program = {'project': self.project, 'packages': {'/Game/A': {'functions': {'Probe': function}}}}
+        program['content_sha256'] = digest(program); atomic_json(self.published / 'blueprint-programs.json', program)
+        folder = self.published / 'verification'; folder.mkdir()
+        (folder / 'blueprint-audit.jpg').write_bytes(b'audit'); (folder / 'blueprint-live.jpg').write_bytes(b'live')
+        sample = {'inputs': {'X': 1}, 'outputs': {'Y': 2}, 'expected': {'Y': 2}}
+        audit = {'project': self.project, 'status': 'passed', 'programs_content_sha256': program['content_sha256'],
+                 'screenshot_sha256': file_hash(folder / 'blueprint-audit.jpg'), 'golden_source_cases': 1,
+                 'evidence': [{'package': '/Game/A', 'function': 'Probe', 'source_bytecode_sha256': 'bytecode', 'source_cases': [sample]}]}
+        atomic_json(self.published / 'blueprint-audit-verification.json', audit)
+        result = {'package': '/Game/A', 'source_function': 'Probe', 'source_bytecode_sha256': 'bytecode', **sample}
+        live = {'schema_version': 1, 'project': self.project, 'status': 'passed', 'programs_content_sha256': program['content_sha256'],
+                'screenshot_sha256': file_hash(folder / 'blueprint-live.jpg'), 'calculations_checked': 1, 'calculation_results': [result]}
+        path = self.published / 'blueprint-live-verification.json'
+        def has_checkpoint():
+            atomic_json(path, live)
+            return any(m['title'] == 'Calcoli sorgenti sul runtime della scena'
+                       for m in project_progress(self.workspace, self.published, self.character)['milestones'])
+        self.assertTrue(has_checkpoint())
+        result['source_bytecode_sha256'] = 'stale'; self.assertFalse(has_checkpoint())
+        result['source_bytecode_sha256'] = 'bytecode'; result['inputs'] = {'X': 7}; self.assertFalse(has_checkpoint())
+        result['inputs'] = {'X': 1}; result['outputs'] = {'Y': True}; self.assertFalse(has_checkpoint())
+        result['outputs'] = {'Y': 2}; live['screenshot_sha256'] = 'stale'; self.assertFalse(has_checkpoint())
+
 
 if __name__ == '__main__': unittest.main()

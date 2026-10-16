@@ -2,7 +2,7 @@
 // They are not gameplay rules or permanent changes to source defaults.
 import { blueprintFixtureState } from './ue2three-fixtures.mjs';
 export async function verifyLiveBlueprintInputs(player, runtime, fixture) {
-    const snapshot = runtime.snapshot(), results = [], metricResults = [], eventResults = [], inventoryResults = [];
+    const snapshot = runtime.snapshot(), results = [], metricResults = [], eventResults = [], inventoryResults = [], calculationResults = [];
     const guards = runtime.report.character_guards || {};
     const priorActions = Object.fromEntries([...Object.keys(guards), 'up'].map(action => [action, !!player.actions[action]?.isPressed]));
     let movementDistance = null;
@@ -60,7 +60,7 @@ export async function verifyLiveBlueprintInputs(player, runtime, fixture) {
             await new Promise(requestAnimationFrame);
         }
         for (const test of fixture.cases) {
-            if (test.runtime !== 'inventory') continue;
+            if (!['inventory', 'character_math'].includes(test.runtime)) continue;
             const data = runtime.report.packages[test.package], program = data?.functions[test.function];
             if (!program || program.source_bytecode_sha256 !== test.source_bytecode_sha256) throw new Error('Inventory fixture source differs from program');
             for (const [name, hash] of Object.entries(test.dependencies || {}))
@@ -71,12 +71,15 @@ export async function verifyLiveBlueprintInputs(player, runtime, fixture) {
             const result = runtime.call(test.package, test.function, test.inputs);
             for (const [field, expected] of Object.entries(test.outputs))
                 if (JSON.stringify(result.outputs[field]) !== JSON.stringify(expected)) throw new Error('Inventory source differs: ' + test.function + '.' + field);
-            inventoryResults.push({source_function: test.function, outputs: result.outputs, expected: test.outputs});
+            const target = test.runtime === 'inventory' ? inventoryResults : calculationResults;
+            target.push({package: test.package, source_function: test.function, source_bytecode_sha256: program.source_bytecode_sha256,
+                inputs: test.inputs, outputs: result.outputs, expected: test.outputs});
         }
         return {schema_version: 1, project: runtime.report.project, programs_content_sha256: runtime.report.content_sha256,
                 checked: results.length, metrics_checked: metricResults.length, status: 'passed', movement_distance: movementDistance,
                 movement_axis: 'horizontal_xz', results, metric_results: metricResults, events_checked: eventResults.length, event_results: eventResults,
                 inventory_checked: inventoryResults.length, inventory_results: inventoryResults,
+                calculations_checked: calculationResults.length, calculation_results: calculationResults,
                 scope: 'Original sprint/jump prerequisites applied to the real scene input; excludes complete Mover, timers, stamina consumption and replication'};
     } finally {
         runtime.restore(snapshot);

@@ -343,3 +343,27 @@ moved back to its original test and the complete suite passed after the fix.
 - Inventory writes remain blocked by original dirty-property/OnRep notifications,
   array mutation and native/object dependencies. Full reload gameplay remains
   separate from its verified arithmetic; no full system status was set to green.
+
+## 2026-10-16 · Original damage and direction calculations
+
+- Added typed UE5.7 Lerp, FMin/FMax and InRange_FloatFloat primitives, preserving
+  inclusivity, reversed bounds, extrapolation and finite double behavior.
+- Fixed const reference parameters being treated as outputs. Required input is
+  preserved, const output/write targets reject, mutable reference input remains
+  required. This fixes original Thresholds passing without inventing thresholds.
+- Read one original source type (6,814 bytes), reused the existing registry,
+  exports and parsed packages. No Unreal startup or full rescan.
+- **107 translated /393 blocked**. Added 14 independently expected damage cases
+  and 17 direction cases: effective/max boundaries, equal/reversed ranges,
+  negative/un-clamped values, inclusive angle limits and source branch priority.
+- **104 Python /64 JS tests pass**, editor build succeeds. Integrated browser
+  audit: **321 generic /326 source comparisons**. Scene verification now exposes
+  separate character calculation results with package/bytecode identities.
+- Full damage application, traces, movement state/configuration, Mover and
+  animations remain incomplete. Callee count does not make these systems green.
+- Final live scene: **24 inputs /35 metrics /4 events /160 inventory /31 character
+  calculations**, horizontal movement 0.760 units, no console errors. Loading
+  briefly exceeded the browser inspection timeout; it finished without reload
+  or game errors. Evidence saved with current program/bytecode/screenshot hashes.
+- Checklist now has **11 scoped verified checkpoints**; full systems retain their
+  yellow/red status. Source calculations are checked against matching audit cases.

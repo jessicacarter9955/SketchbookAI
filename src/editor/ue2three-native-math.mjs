@@ -8,7 +8,17 @@ export function evaluateNativeMath(name, args, warning = () => {}) {
         const [a, b, pickA] = args;
         if (name === 'Conv_IntToDouble') return a;
         if (name === 'SelectInt') return pickA ? a : b;
-        return name === 'Min' ? (a <= b ? a : b) : (a >= b ? a : b);
+        return name === 'Min' ? (a < b ? a : b) : (b < a ? a : b);
+    }
+    if (['Lerp', 'FMin', 'FMax', 'InRange_FloatFloat'].includes(name)) {
+        const arity = name === 'InRange_FloatFloat' ? 5 : name === 'Lerp' ? 3 : 2;
+        if (args.length !== arity || args.some((value, index) => name === 'InRange_FloatFloat' && index >= 3
+            ? typeof value !== 'boolean' : typeof value !== 'number' || !Number.isFinite(value)))
+            throw new Error('Invalid native double interpolation/range parameters');
+        const [a, b, c, inclusiveMin, inclusiveMax] = args;
+        if (name === 'Lerp') return a + c * (b - a);
+        if (name === 'InRange_FloatFloat') return (inclusiveMin ? a >= b : a > b) && (inclusiveMax ? a <= c : a < c);
+        return name === 'FMin' ? (a < b ? a : b) : (b < a ? a : b);
     }
     if (name === 'EqualEqual_NameName' || name === 'NotEqual_NameName') {
         if (args.length !== 2 || args.some(value => typeof value !== 'string' || !value || /[^\x01-\x7f]/.test(value)))

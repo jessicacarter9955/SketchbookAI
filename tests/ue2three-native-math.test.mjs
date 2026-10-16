@@ -33,6 +33,23 @@ test('clamp preserves source order including reversed bounds', () => {
     assert.equal(evaluateNativeMath('FClamp', [0.75, 2, 1]), 2);
     assert.equal(evaluateNativeMath('Clamp', [10, 0, 5]), 5);
 });
+test('source double interpolation and ranges preserve bounds, flags and extrapolation', () => {
+    assert.equal(evaluateNativeMath('Lerp', [1, 0.25, 0.5]), 0.625);
+    assert.equal(evaluateNativeMath('Lerp', [1, 0.25, 2]), -0.5);
+    assert.equal(evaluateNativeMath('FMin', [0.25, -1]), -1);
+    assert.equal(evaluateNativeMath('FMax', [0.25, -1]), 0.25);
+    assert.ok(Object.is(evaluateNativeMath('FMin', [0, -0]), -0));
+    assert.ok(Object.is(evaluateNativeMath('FMax', [-0, 0]), 0));
+    for (const inclusiveMin of [true, false]) for (const inclusiveMax of [true, false]) {
+        assert.equal(evaluateNativeMath('InRange_FloatFloat', [0, 0, 1, inclusiveMin, inclusiveMax]), inclusiveMin);
+        assert.equal(evaluateNativeMath('InRange_FloatFloat', [1, 0, 1, inclusiveMin, inclusiveMax]), inclusiveMax);
+        assert.equal(evaluateNativeMath('InRange_FloatFloat', [0.5, 0, 1, inclusiveMin, inclusiveMax]), true);
+        assert.equal(evaluateNativeMath('InRange_FloatFloat', [0, 1, -1, inclusiveMin, inclusiveMax]), false);
+    }
+    for (const [name, args] of [['Lerp', [1, 2, true]], ['FMax', [1, Infinity]],
+        ['InRange_FloatFloat', [0, 0, 1, 1, true]], ['InRange_FloatFloat', [0, 0, 1, true]]])
+        assert.throws(() => evaluateNativeMath(name, args), /Invalid/);
+});
 test('Boolean equality is typed and unknown math is rejected', () => {
     assert.equal(evaluateNativeMath('NotEqual_BoolBool', [false, true]), true);
     assert.equal(evaluateNativeMath('EqualEqual_BoolBool', [true, true]), true);

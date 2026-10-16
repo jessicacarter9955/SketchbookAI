@@ -213,6 +213,24 @@ def project_progress(workspace, published, character_dir=None):
             if container_verified:
                 milestones.append({'title': 'Letture di contenitori tipizzati', 'status': 'green',
                                    'evidence': f"{len(container_verified)} funzioni, {container_cases} casi: {', '.join(container_verified)}; scritture, UI e persistenza escluse"})
+            calculations = live.get('calculation_results', [])
+            def verified_calculation(result):
+                package, function = result.get('package'), result.get('source_function')
+                program = blueprint_report.get('packages', {}).get(package, {}).get('functions', {}).get(function, {})
+                source = next((entry for entry in audit.get('evidence', [])
+                               if entry.get('package') == package and entry.get('function') == function), {})
+                return (program and not program.get('self_writes') and program.get('output_fields')
+                        and result.get('source_bytecode_sha256') == program.get('source_bytecode_sha256')
+                        and set(result.get('inputs', {})) == set(program.get('input_fields', []))
+                        and set(result.get('outputs', {})) == set(program['output_fields'])
+                        and digest(result.get('outputs')) == digest(result.get('expected'))
+                        and any(digest(sample.get('inputs')) == digest(result.get('inputs'))
+                                and digest(sample.get('expected')) == digest(result.get('expected'))
+                                for sample in source.get('source_cases', [])))
+            if (live_valid and calculations and live.get('calculations_checked') == len(calculations)
+                    and all(verified_calculation(result) for result in calculations)):
+                milestones.append({'title': 'Calcoli sorgenti sul runtime della scena', 'status': 'green',
+                                   'evidence': f"{len(calculations)} confronti di {len({(r['package'], r['source_function']) for r in calculations})} funzioni; input, output, bytecode e screenshot verificati; integrazione dei flussi completi esclusa"})
     report = {'schema_version': 1, 'project': project, 'fingerprint': fingerprint,
               'scope': 'cached registry and published outputs; no full-game percentage inferred',
               'source_classes': dict(classes), 'rows': rows, 'milestones': milestones,

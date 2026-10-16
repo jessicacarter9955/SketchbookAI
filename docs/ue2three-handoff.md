@@ -1,5 +1,22 @@
 # ue2three saved handoff · 2026-10-15
 
+Latest source batch (2026-10-16): **107 translated /393 blocked**. Added exact
+UE5.7 Lerp, FMin/FMax and InRange_FloatFloat primitives. Original
+CalculateDamageFalloff and Get_MovementDirectionFromThresholds now execute.
+Fixed const reference inputs incorrectly classified as outputs: require their
+input values, exclude them from outputs and reject writes/output bindings to
+const inputs. Mutable reference parameters require initial input too.
+Only one extra source type was parsed: S_MovementDirectionThresholds, 6,814 bytes.
+Its original constructor has zero thresholds; tests also use -60/60/-120/120
+from one original source branch. The full cvar/configuration dispatcher remains
+blocked and no runtime movement/animation state machine was replaced.
+104 Python/64 JS tests and editor build pass. Audit: 321 generic +326 source
+comparisons (14 damage and 17 direction cases added). Evidence is saved under
+verification/source-character-math/. Editor revision16, optional chunk421.
+Next inventory dependency: GetItemData calls original GetDataTableRowFromName,
+with TextProperty/ObjectProperty fields in S_ItemData; do not discard these
+fields or invent item records to bypass blocked functions.
+
 Newest checkpoint: **105 translated /395 blocked**. Added exact UE5.7 int Min,
 Max, SelectInt and Conv_IntToDouble primitives after inspecting local Engine
 source. CalculateReloadAmmo now executes with 12 manual source comparisons;

@@ -86,3 +86,26 @@ class SourceTypesTests(unittest.TestCase):
         self.assertEqual(translate_package(package,schema)['functions']['ReadFirst']['steps'][0]['value']['op'],'array_length')
         context['Offset']=18
         self.assertNotIn('ReadFirst',translate_package(package,schema)['functions'])
+
+    def test_const_reference_struct_is_an_input_and_never_an_output_or_write(self):
+        package, schema = self.native_array_package()
+        fn = package.exports[0]
+        fn['LoadedProperties'][0]['PropertyFlags'] = 'CPF_Parm, CPF_OutParm, CPF_ReferenceParm, CPF_ConstParm'
+        fn['ScriptBytecode'] = [node('EX_Return', ReturnExpression=node('EX_LocalOutVariable',
+            Variable={'New': {'Path': ['Out'], 'ResolvedOwner': 1}})), node('EX_EndOfScript')]
+        program = translate_package(package, schema)['functions']['ReadFirst']
+        self.assertEqual(program['input_fields'], ['Out'])
+        self.assertEqual(program['output_fields'], [])
+        fn['ScriptBytecode'].insert(0, node('EX_Let', Variable=node('EX_LocalOutVariable',
+            Variable={'New': {'Path': ['Out'], 'ResolvedOwner': 1}}), Expression=node('EX_Nothing')))
+        self.assertNotIn('ReadFirst', translate_package(package, schema)['functions'])
+        package, schema = self.native_array_package()
+        package.exports[0]['LoadedProperties'][0]['PropertyFlags'] += ', CPF_ReferenceParm, CPF_ConstParm'
+        self.assertNotIn('ReadFirst', translate_package(package, schema)['functions'])
+
+    def test_mutable_reference_requires_initial_input_and_retains_output(self):
+        package, schema = self.native_array_package()
+        package.exports[0]['LoadedProperties'][0]['PropertyFlags'] += ', CPF_ReferenceParm'
+        program = translate_package(package, schema)['functions']['ReadFirst']
+        self.assertEqual(program['input_fields'], ['Out'])
+        self.assertEqual(program['output_fields'], ['Out'])

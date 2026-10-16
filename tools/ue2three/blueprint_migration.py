@@ -44,6 +44,8 @@ for _type in ('IntInt', 'DoubleDouble'):
     for _operation in ('Add', 'Subtract', 'Multiply'):
         MATH_CALLS[_operation + '_' + _type] = (2, _type)
 MATH_CALLS.update({'Divide_DoubleDouble': (2, 'DoubleDouble'),
+                   'Lerp': (3, 'DoubleDouble'), 'FMin': (2, 'DoubleDouble'), 'FMax': (2, 'DoubleDouble'),
+                   'InRange_FloatFloat': (5, 'double_range'),
                    'Min': (2, 'IntInt'), 'Max': (2, 'IntInt'),
                    'Conv_IntToDouble': (1, 'IntInt'), 'SelectInt': (3, 'int_select'),
                    'EqualEqual_BoolBool': (2, 'bool'), 'NotEqual_BoolBool': (2, 'bool'),
@@ -92,7 +94,7 @@ def local_call(value, package, owner, reads, outputs, depth):
     bindings = []
     for prop, arg in zip(parameters, args):
         name = prop.get('Name'); field({'New': {'Path': [name]}})
-        if 'CPF_OutParm' in str(prop.get('PropertyFlags')):
+        if 'CPF_OutParm' in str(prop.get('PropertyFlags')) and 'CPF_ConstParm' not in str(prop.get('PropertyFlags')):
             if kind(arg) not in ('EX_LocalVariable', 'EX_LocalOutVariable', 'EX_InstanceVariable'):
                 raise BlueprintTranslationError('Unsupported output argument target')
             target = expression(arg, reads, outputs, depth+1, package, owner)
@@ -409,12 +411,27 @@ def translate_package(package, structs=None):
             continue
         try:
             program = translate_function(export, package, entry_offset)
+            const_inputs = {prop['Name'] for prop in export.get('LoadedProperties', [])
+                            if 'CPF_Parm' in str(prop.get('PropertyFlags')) and 'CPF_ConstParm' in str(prop.get('PropertyFlags'))}
+            program['output_fields'] = [name for name in program['output_fields'] if name not in const_inputs]
+            for step in program['steps']:
+                if (step['op'] == 'set' and step.get('scope') == 'local' and step['field'] in const_inputs
+                        or step['op'] == 'set_member' and step['target'].get('scope') == 'local' and step['target']['field'] in const_inputs):
+                    raise BlueprintTranslationError('Assignment to original const input')
             used_locals = set(program['output_fields'])
             persistent = {}
             for step in program['steps']:
                 if step['op'] == 'set' and step.get('scope') == 'local': used_locals.add(step['field'])
                 def local_reads(value):
                     if isinstance(value, dict):
+                        target = value.get('target', {})
+                        if (value.get('op') in ('array_get', 'set_member') and target.get('scope') == 'local'
+                                and target.get('field') in const_inputs):
+                            raise BlueprintTranslationError('Write through original const input')
+                        if value.get('op') == 'call' and any(binding.get('mode') == 'output'
+                                and binding.get('target', {}).get('scope') == 'local'
+                                and binding['target'].get('field') in const_inputs for binding in value.get('bindings', [])):
+                            raise BlueprintTranslationError('Output binding writes original const input')
                         if value.get('scope') == 'local': used_locals.add(value['field'])
                         if value.get('scope') == 'persistent':
                             frame_index, field_name = value['frame'], value['field']
@@ -447,7 +464,8 @@ def translate_package(package, structs=None):
             program['persistent_types'] = persistent
             program['input_fields'] = [prop['Name'] for prop in export.get('LoadedProperties', [])
                                        if prop.get('Name') in used_locals and 'CPF_Parm' in str(prop.get('PropertyFlags'))
-                                       and 'CPF_OutParm' not in str(prop.get('PropertyFlags'))
+                                       and ('CPF_OutParm' not in str(prop.get('PropertyFlags')) or prop['Name'] in const_inputs
+                                            or 'CPF_ReferenceParm' in str(prop.get('PropertyFlags')))
                                        and 'CPF_ReturnParm' not in str(prop.get('PropertyFlags'))]
             program['source_defaults'] = {name: defaults[name] for name in program['self_reads'] if name in defaults}
             program['source_export_index'] = index

@@ -7680,6 +7680,635 @@
       },
       "runtime": "inventory",
       "note": "Manual expectations from original subtraction/min/add/subtraction graph, including original un-clamped and int32 wrap behavior; full reload action remains blocked"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CalculateDamageFalloff",
+      "source_bytecode_sha256": "5f3647ca59bcf6ec59ac38de030503199ffd57fcb3dd59fd6ef3c55facad1bcd",
+      "self": {},
+      "inputs": {
+        "Distance": 0,
+        "EffectiveRange": 10,
+        "MaxRange": 20,
+        "MinDamagePercent": 0.25
+      },
+      "outputs": {
+        "DamageMultiplier": 1
+      },
+      "runtime": "character_math",
+      "note": "Manual source branch/interpolation expectations; does not verify hitscan, damage application or replication"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CalculateDamageFalloff",
+      "source_bytecode_sha256": "5f3647ca59bcf6ec59ac38de030503199ffd57fcb3dd59fd6ef3c55facad1bcd",
+      "self": {},
+      "inputs": {
+        "Distance": 10,
+        "EffectiveRange": 10,
+        "MaxRange": 20,
+        "MinDamagePercent": 0.25
+      },
+      "outputs": {
+        "DamageMultiplier": 1
+      },
+      "runtime": "character_math",
+      "note": "Manual source branch/interpolation expectations; does not verify hitscan, damage application or replication"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CalculateDamageFalloff",
+      "source_bytecode_sha256": "5f3647ca59bcf6ec59ac38de030503199ffd57fcb3dd59fd6ef3c55facad1bcd",
+      "self": {},
+      "inputs": {
+        "Distance": 15,
+        "EffectiveRange": 10,
+        "MaxRange": 20,
+        "MinDamagePercent": 0.25
+      },
+      "outputs": {
+        "DamageMultiplier": 0.625
+      },
+      "runtime": "character_math",
+      "note": "Manual source branch/interpolation expectations; does not verify hitscan, damage application or replication"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CalculateDamageFalloff",
+      "source_bytecode_sha256": "5f3647ca59bcf6ec59ac38de030503199ffd57fcb3dd59fd6ef3c55facad1bcd",
+      "self": {},
+      "inputs": {
+        "Distance": 20,
+        "EffectiveRange": 10,
+        "MaxRange": 20,
+        "MinDamagePercent": 0.25
+      },
+      "outputs": {
+        "DamageMultiplier": 0.25
+      },
+      "runtime": "character_math",
+      "note": "Manual source branch/interpolation expectations; does not verify hitscan, damage application or replication"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CalculateDamageFalloff",
+      "source_bytecode_sha256": "5f3647ca59bcf6ec59ac38de030503199ffd57fcb3dd59fd6ef3c55facad1bcd",
+      "self": {},
+      "inputs": {
+        "Distance": 100,
+        "EffectiveRange": 10,
+        "MaxRange": 20,
+        "MinDamagePercent": 0.25
+      },
+      "outputs": {
+        "DamageMultiplier": 0.25
+      },
+      "runtime": "character_math",
+      "note": "Manual source branch/interpolation expectations; does not verify hitscan, damage application or replication"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CalculateDamageFalloff",
+      "source_bytecode_sha256": "5f3647ca59bcf6ec59ac38de030503199ffd57fcb3dd59fd6ef3c55facad1bcd",
+      "self": {},
+      "inputs": {
+        "Distance": -5,
+        "EffectiveRange": 10,
+        "MaxRange": 20,
+        "MinDamagePercent": 0.25
+      },
+      "outputs": {
+        "DamageMultiplier": 1
+      },
+      "runtime": "character_math",
+      "note": "Manual source branch/interpolation expectations; does not verify hitscan, damage application or replication"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CalculateDamageFalloff",
+      "source_bytecode_sha256": "5f3647ca59bcf6ec59ac38de030503199ffd57fcb3dd59fd6ef3c55facad1bcd",
+      "self": {},
+      "inputs": {
+        "Distance": 10,
+        "EffectiveRange": 10,
+        "MaxRange": 10,
+        "MinDamagePercent": 0.25
+      },
+      "outputs": {
+        "DamageMultiplier": 1
+      },
+      "runtime": "character_math",
+      "note": "Manual source branch/interpolation expectations; does not verify hitscan, damage application or replication"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CalculateDamageFalloff",
+      "source_bytecode_sha256": "5f3647ca59bcf6ec59ac38de030503199ffd57fcb3dd59fd6ef3c55facad1bcd",
+      "self": {},
+      "inputs": {
+        "Distance": 11,
+        "EffectiveRange": 10,
+        "MaxRange": 10,
+        "MinDamagePercent": 0.25
+      },
+      "outputs": {
+        "DamageMultiplier": 0.25
+      },
+      "runtime": "character_math",
+      "note": "Manual source branch/interpolation expectations; does not verify hitscan, damage application or replication"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CalculateDamageFalloff",
+      "source_bytecode_sha256": "5f3647ca59bcf6ec59ac38de030503199ffd57fcb3dd59fd6ef3c55facad1bcd",
+      "self": {},
+      "inputs": {
+        "Distance": 15,
+        "EffectiveRange": 20,
+        "MaxRange": 10,
+        "MinDamagePercent": 0.25
+      },
+      "outputs": {
+        "DamageMultiplier": 1
+      },
+      "runtime": "character_math",
+      "note": "Manual source branch/interpolation expectations; does not verify hitscan, damage application or replication"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CalculateDamageFalloff",
+      "source_bytecode_sha256": "5f3647ca59bcf6ec59ac38de030503199ffd57fcb3dd59fd6ef3c55facad1bcd",
+      "self": {},
+      "inputs": {
+        "Distance": 21,
+        "EffectiveRange": 20,
+        "MaxRange": 10,
+        "MinDamagePercent": 0.25
+      },
+      "outputs": {
+        "DamageMultiplier": 0.25
+      },
+      "runtime": "character_math",
+      "note": "Manual source branch/interpolation expectations; does not verify hitscan, damage application or replication"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CalculateDamageFalloff",
+      "source_bytecode_sha256": "5f3647ca59bcf6ec59ac38de030503199ffd57fcb3dd59fd6ef3c55facad1bcd",
+      "self": {},
+      "inputs": {
+        "Distance": 15,
+        "EffectiveRange": 10,
+        "MaxRange": 20,
+        "MinDamagePercent": 2
+      },
+      "outputs": {
+        "DamageMultiplier": 1.5
+      },
+      "runtime": "character_math",
+      "note": "Manual source branch/interpolation expectations; does not verify hitscan, damage application or replication"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CalculateDamageFalloff",
+      "source_bytecode_sha256": "5f3647ca59bcf6ec59ac38de030503199ffd57fcb3dd59fd6ef3c55facad1bcd",
+      "self": {},
+      "inputs": {
+        "Distance": 15,
+        "EffectiveRange": 10,
+        "MaxRange": 20,
+        "MinDamagePercent": -1
+      },
+      "outputs": {
+        "DamageMultiplier": 0
+      },
+      "runtime": "character_math",
+      "note": "Manual source branch/interpolation expectations; does not verify hitscan, damage application or replication"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CalculateDamageFalloff",
+      "source_bytecode_sha256": "5f3647ca59bcf6ec59ac38de030503199ffd57fcb3dd59fd6ef3c55facad1bcd",
+      "self": {},
+      "inputs": {
+        "Distance": 600,
+        "EffectiveRange": 200,
+        "MaxRange": 1000,
+        "MinDamagePercent": 0.25
+      },
+      "outputs": {
+        "DamageMultiplier": 0.625
+      },
+      "runtime": "character_math",
+      "note": "Manual source branch/interpolation expectations; does not verify hitscan, damage application or replication"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CalculateDamageFalloff",
+      "source_bytecode_sha256": "5f3647ca59bcf6ec59ac38de030503199ffd57fcb3dd59fd6ef3c55facad1bcd",
+      "self": {},
+      "inputs": {
+        "Distance": 12.5,
+        "EffectiveRange": 10,
+        "MaxRange": 20,
+        "MinDamagePercent": 0.5
+      },
+      "outputs": {
+        "DamageMultiplier": 0.875
+      },
+      "runtime": "character_math",
+      "note": "Manual source branch/interpolation expectations; does not verify hitscan, damage application or replication"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+      "function": "Get_MovementDirectionFromThresholds",
+      "source_bytecode_sha256": "1cb624069443792f4cd04ab33a1797218cd2b90c9d544a42f25ce46f0f1ecec9",
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5"
+      },
+      "self": {},
+      "inputs": {
+        "Thresholds": {
+          "FL_3_747C69604F939E7EFF347D97BBD8A811": -60,
+          "FR_5_790F2C4742CB53A5585DBFAF660F9CF0": 60,
+          "BL_7_630ADC5A4B6C3AF9DA182E816EDB311B": -120,
+          "BR_9_67DF35F84900050330F770A709E84CF7": 120
+        },
+        "Direction": -180
+      },
+      "outputs": {
+        "ReturnValue": 1
+      },
+      "runtime": "character_math",
+      "note": "Threshold input values -60/60/-120/120 appear in an original Get_MovementDirectionThresholds source branch; tests preserve inclusive limits and first-branch priority, not the full configuration dispatcher"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+      "function": "Get_MovementDirectionFromThresholds",
+      "source_bytecode_sha256": "1cb624069443792f4cd04ab33a1797218cd2b90c9d544a42f25ce46f0f1ecec9",
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5"
+      },
+      "self": {},
+      "inputs": {
+        "Thresholds": {
+          "FL_3_747C69604F939E7EFF347D97BBD8A811": -60,
+          "FR_5_790F2C4742CB53A5585DBFAF660F9CF0": 60,
+          "BL_7_630ADC5A4B6C3AF9DA182E816EDB311B": -120,
+          "BR_9_67DF35F84900050330F770A709E84CF7": 120
+        },
+        "Direction": -120.0001
+      },
+      "outputs": {
+        "ReturnValue": 1
+      },
+      "runtime": "character_math",
+      "note": "Threshold input values -60/60/-120/120 appear in an original Get_MovementDirectionThresholds source branch; tests preserve inclusive limits and first-branch priority, not the full configuration dispatcher"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+      "function": "Get_MovementDirectionFromThresholds",
+      "source_bytecode_sha256": "1cb624069443792f4cd04ab33a1797218cd2b90c9d544a42f25ce46f0f1ecec9",
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5"
+      },
+      "self": {},
+      "inputs": {
+        "Thresholds": {
+          "FL_3_747C69604F939E7EFF347D97BBD8A811": -60,
+          "FR_5_790F2C4742CB53A5585DBFAF660F9CF0": 60,
+          "BL_7_630ADC5A4B6C3AF9DA182E816EDB311B": -120,
+          "BR_9_67DF35F84900050330F770A709E84CF7": 120
+        },
+        "Direction": -120
+      },
+      "outputs": {
+        "ReturnValue": 2
+      },
+      "runtime": "character_math",
+      "note": "Threshold input values -60/60/-120/120 appear in an original Get_MovementDirectionThresholds source branch; tests preserve inclusive limits and first-branch priority, not the full configuration dispatcher"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+      "function": "Get_MovementDirectionFromThresholds",
+      "source_bytecode_sha256": "1cb624069443792f4cd04ab33a1797218cd2b90c9d544a42f25ce46f0f1ecec9",
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5"
+      },
+      "self": {},
+      "inputs": {
+        "Thresholds": {
+          "FL_3_747C69604F939E7EFF347D97BBD8A811": -60,
+          "FR_5_790F2C4742CB53A5585DBFAF660F9CF0": 60,
+          "BL_7_630ADC5A4B6C3AF9DA182E816EDB311B": -120,
+          "BR_9_67DF35F84900050330F770A709E84CF7": 120
+        },
+        "Direction": -90
+      },
+      "outputs": {
+        "ReturnValue": 2
+      },
+      "runtime": "character_math",
+      "note": "Threshold input values -60/60/-120/120 appear in an original Get_MovementDirectionThresholds source branch; tests preserve inclusive limits and first-branch priority, not the full configuration dispatcher"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+      "function": "Get_MovementDirectionFromThresholds",
+      "source_bytecode_sha256": "1cb624069443792f4cd04ab33a1797218cd2b90c9d544a42f25ce46f0f1ecec9",
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5"
+      },
+      "self": {},
+      "inputs": {
+        "Thresholds": {
+          "FL_3_747C69604F939E7EFF347D97BBD8A811": -60,
+          "FR_5_790F2C4742CB53A5585DBFAF660F9CF0": 60,
+          "BL_7_630ADC5A4B6C3AF9DA182E816EDB311B": -120,
+          "BR_9_67DF35F84900050330F770A709E84CF7": 120
+        },
+        "Direction": -60.0001
+      },
+      "outputs": {
+        "ReturnValue": 2
+      },
+      "runtime": "character_math",
+      "note": "Threshold input values -60/60/-120/120 appear in an original Get_MovementDirectionThresholds source branch; tests preserve inclusive limits and first-branch priority, not the full configuration dispatcher"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+      "function": "Get_MovementDirectionFromThresholds",
+      "source_bytecode_sha256": "1cb624069443792f4cd04ab33a1797218cd2b90c9d544a42f25ce46f0f1ecec9",
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5"
+      },
+      "self": {},
+      "inputs": {
+        "Thresholds": {
+          "FL_3_747C69604F939E7EFF347D97BBD8A811": -60,
+          "FR_5_790F2C4742CB53A5585DBFAF660F9CF0": 60,
+          "BL_7_630ADC5A4B6C3AF9DA182E816EDB311B": -120,
+          "BR_9_67DF35F84900050330F770A709E84CF7": 120
+        },
+        "Direction": -60
+      },
+      "outputs": {
+        "ReturnValue": 0
+      },
+      "runtime": "character_math",
+      "note": "Threshold input values -60/60/-120/120 appear in an original Get_MovementDirectionThresholds source branch; tests preserve inclusive limits and first-branch priority, not the full configuration dispatcher"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+      "function": "Get_MovementDirectionFromThresholds",
+      "source_bytecode_sha256": "1cb624069443792f4cd04ab33a1797218cd2b90c9d544a42f25ce46f0f1ecec9",
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5"
+      },
+      "self": {},
+      "inputs": {
+        "Thresholds": {
+          "FL_3_747C69604F939E7EFF347D97BBD8A811": -60,
+          "FR_5_790F2C4742CB53A5585DBFAF660F9CF0": 60,
+          "BL_7_630ADC5A4B6C3AF9DA182E816EDB311B": -120,
+          "BR_9_67DF35F84900050330F770A709E84CF7": 120
+        },
+        "Direction": 0
+      },
+      "outputs": {
+        "ReturnValue": 0
+      },
+      "runtime": "character_math",
+      "note": "Threshold input values -60/60/-120/120 appear in an original Get_MovementDirectionThresholds source branch; tests preserve inclusive limits and first-branch priority, not the full configuration dispatcher"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+      "function": "Get_MovementDirectionFromThresholds",
+      "source_bytecode_sha256": "1cb624069443792f4cd04ab33a1797218cd2b90c9d544a42f25ce46f0f1ecec9",
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5"
+      },
+      "self": {},
+      "inputs": {
+        "Thresholds": {
+          "FL_3_747C69604F939E7EFF347D97BBD8A811": -60,
+          "FR_5_790F2C4742CB53A5585DBFAF660F9CF0": 60,
+          "BL_7_630ADC5A4B6C3AF9DA182E816EDB311B": -120,
+          "BR_9_67DF35F84900050330F770A709E84CF7": 120
+        },
+        "Direction": 60
+      },
+      "outputs": {
+        "ReturnValue": 0
+      },
+      "runtime": "character_math",
+      "note": "Threshold input values -60/60/-120/120 appear in an original Get_MovementDirectionThresholds source branch; tests preserve inclusive limits and first-branch priority, not the full configuration dispatcher"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+      "function": "Get_MovementDirectionFromThresholds",
+      "source_bytecode_sha256": "1cb624069443792f4cd04ab33a1797218cd2b90c9d544a42f25ce46f0f1ecec9",
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5"
+      },
+      "self": {},
+      "inputs": {
+        "Thresholds": {
+          "FL_3_747C69604F939E7EFF347D97BBD8A811": -60,
+          "FR_5_790F2C4742CB53A5585DBFAF660F9CF0": 60,
+          "BL_7_630ADC5A4B6C3AF9DA182E816EDB311B": -120,
+          "BR_9_67DF35F84900050330F770A709E84CF7": 120
+        },
+        "Direction": 60.0001
+      },
+      "outputs": {
+        "ReturnValue": 4
+      },
+      "runtime": "character_math",
+      "note": "Threshold input values -60/60/-120/120 appear in an original Get_MovementDirectionThresholds source branch; tests preserve inclusive limits and first-branch priority, not the full configuration dispatcher"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+      "function": "Get_MovementDirectionFromThresholds",
+      "source_bytecode_sha256": "1cb624069443792f4cd04ab33a1797218cd2b90c9d544a42f25ce46f0f1ecec9",
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5"
+      },
+      "self": {},
+      "inputs": {
+        "Thresholds": {
+          "FL_3_747C69604F939E7EFF347D97BBD8A811": -60,
+          "FR_5_790F2C4742CB53A5585DBFAF660F9CF0": 60,
+          "BL_7_630ADC5A4B6C3AF9DA182E816EDB311B": -120,
+          "BR_9_67DF35F84900050330F770A709E84CF7": 120
+        },
+        "Direction": 90
+      },
+      "outputs": {
+        "ReturnValue": 4
+      },
+      "runtime": "character_math",
+      "note": "Threshold input values -60/60/-120/120 appear in an original Get_MovementDirectionThresholds source branch; tests preserve inclusive limits and first-branch priority, not the full configuration dispatcher"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+      "function": "Get_MovementDirectionFromThresholds",
+      "source_bytecode_sha256": "1cb624069443792f4cd04ab33a1797218cd2b90c9d544a42f25ce46f0f1ecec9",
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5"
+      },
+      "self": {},
+      "inputs": {
+        "Thresholds": {
+          "FL_3_747C69604F939E7EFF347D97BBD8A811": -60,
+          "FR_5_790F2C4742CB53A5585DBFAF660F9CF0": 60,
+          "BL_7_630ADC5A4B6C3AF9DA182E816EDB311B": -120,
+          "BR_9_67DF35F84900050330F770A709E84CF7": 120
+        },
+        "Direction": 120
+      },
+      "outputs": {
+        "ReturnValue": 4
+      },
+      "runtime": "character_math",
+      "note": "Threshold input values -60/60/-120/120 appear in an original Get_MovementDirectionThresholds source branch; tests preserve inclusive limits and first-branch priority, not the full configuration dispatcher"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+      "function": "Get_MovementDirectionFromThresholds",
+      "source_bytecode_sha256": "1cb624069443792f4cd04ab33a1797218cd2b90c9d544a42f25ce46f0f1ecec9",
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5"
+      },
+      "self": {},
+      "inputs": {
+        "Thresholds": {
+          "FL_3_747C69604F939E7EFF347D97BBD8A811": -60,
+          "FR_5_790F2C4742CB53A5585DBFAF660F9CF0": 60,
+          "BL_7_630ADC5A4B6C3AF9DA182E816EDB311B": -120,
+          "BR_9_67DF35F84900050330F770A709E84CF7": 120
+        },
+        "Direction": 120.0001
+      },
+      "outputs": {
+        "ReturnValue": 1
+      },
+      "runtime": "character_math",
+      "note": "Threshold input values -60/60/-120/120 appear in an original Get_MovementDirectionThresholds source branch; tests preserve inclusive limits and first-branch priority, not the full configuration dispatcher"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+      "function": "Get_MovementDirectionFromThresholds",
+      "source_bytecode_sha256": "1cb624069443792f4cd04ab33a1797218cd2b90c9d544a42f25ce46f0f1ecec9",
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5"
+      },
+      "self": {},
+      "inputs": {
+        "Thresholds": {
+          "FL_3_747C69604F939E7EFF347D97BBD8A811": -60,
+          "FR_5_790F2C4742CB53A5585DBFAF660F9CF0": 60,
+          "BL_7_630ADC5A4B6C3AF9DA182E816EDB311B": -120,
+          "BR_9_67DF35F84900050330F770A709E84CF7": 120
+        },
+        "Direction": 180
+      },
+      "outputs": {
+        "ReturnValue": 1
+      },
+      "runtime": "character_math",
+      "note": "Threshold input values -60/60/-120/120 appear in an original Get_MovementDirectionThresholds source branch; tests preserve inclusive limits and first-branch priority, not the full configuration dispatcher"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+      "function": "Get_MovementDirectionFromThresholds",
+      "source_bytecode_sha256": "1cb624069443792f4cd04ab33a1797218cd2b90c9d544a42f25ce46f0f1ecec9",
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5"
+      },
+      "self": {},
+      "inputs": {
+        "Thresholds": {
+          "BL_7_630ADC5A4B6C3AF9DA182E816EDB311B": 0.0,
+          "BR_9_67DF35F84900050330F770A709E84CF7": 0.0,
+          "FL_3_747C69604F939E7EFF347D97BBD8A811": 0.0,
+          "FR_5_790F2C4742CB53A5585DBFAF660F9CF0": 0.0
+        },
+        "Direction": -1
+      },
+      "outputs": {
+        "ReturnValue": 1
+      },
+      "runtime": "character_math",
+      "note": "Original all-zero source type defaults; zero-width range and first-branch priority"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+      "function": "Get_MovementDirectionFromThresholds",
+      "source_bytecode_sha256": "1cb624069443792f4cd04ab33a1797218cd2b90c9d544a42f25ce46f0f1ecec9",
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5"
+      },
+      "self": {},
+      "inputs": {
+        "Thresholds": {
+          "BL_7_630ADC5A4B6C3AF9DA182E816EDB311B": 0.0,
+          "BR_9_67DF35F84900050330F770A709E84CF7": 0.0,
+          "FL_3_747C69604F939E7EFF347D97BBD8A811": 0.0,
+          "FR_5_790F2C4742CB53A5585DBFAF660F9CF0": 0.0
+        },
+        "Direction": 0
+      },
+      "outputs": {
+        "ReturnValue": 0
+      },
+      "runtime": "character_math",
+      "note": "Original all-zero source type defaults; zero-width range and first-branch priority"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+      "function": "Get_MovementDirectionFromThresholds",
+      "source_bytecode_sha256": "1cb624069443792f4cd04ab33a1797218cd2b90c9d544a42f25ce46f0f1ecec9",
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5"
+      },
+      "self": {},
+      "inputs": {
+        "Thresholds": {
+          "BL_7_630ADC5A4B6C3AF9DA182E816EDB311B": 0.0,
+          "BR_9_67DF35F84900050330F770A709E84CF7": 0.0,
+          "FL_3_747C69604F939E7EFF347D97BBD8A811": 0.0,
+          "FR_5_790F2C4742CB53A5585DBFAF660F9CF0": 0.0
+        },
+        "Direction": 1
+      },
+      "outputs": {
+        "ReturnValue": 1
+      },
+      "runtime": "character_math",
+      "note": "Original all-zero source type defaults; zero-width range and first-branch priority"
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+      "function": "Get_MovementDirectionFromThresholds",
+      "source_bytecode_sha256": "1cb624069443792f4cd04ab33a1797218cd2b90c9d544a42f25ce46f0f1ecec9",
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5"
+      },
+      "self": {},
+      "inputs": {
+        "Thresholds": {
+          "FL_3_747C69604F939E7EFF347D97BBD8A811": 60,
+          "FR_5_790F2C4742CB53A5585DBFAF660F9CF0": -60,
+          "BL_7_630ADC5A4B6C3AF9DA182E816EDB311B": 120,
+          "BR_9_67DF35F84900050330F770A709E84CF7": -120
+        },
+        "Direction": 0
+      },
+      "outputs": {
+        "ReturnValue": 1
+      },
+      "runtime": "character_math",
+      "note": "Reversed bounds remain reversed; no sorting or normalization invented"
     }
   ],
   "schema_version": 1,
