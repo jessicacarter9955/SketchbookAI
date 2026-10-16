@@ -83,19 +83,39 @@ test('online Fab bridge does not expose an unauthenticated download route',async
     const invalid=await handler({httpMethod:'GET',queryStringParameters:{operation:'search',q:'x'}});
     assert.equal(invalid.statusCode,400);
 });
-test('Fab client selects public browser bridge but preserves local authenticated provider',async()=>{
+test('Fab client uses authenticated hosted bridge from Netlify and preserves localhost mode',async()=>{
     const original=globalThis.location;
     globalThis.location={hostname:'my-test-site3.netlify.app'};
     try {
-        let requested;
-        const online=new FabClient(async(url)=>{
-            requested=url; return {ok:true,json:async()=>({results:[{uid:'abcde123-1234-1234-1234-abcdefabcdef',title:'Lambo'}]})};
+        let requested,headers;
+        const online=new FabClient(async(url,options)=>{
+            requested=url; headers=options.headers;
+            return {ok:true,json:async()=>({results:[{uid:'abcde123-1234-1234-1234-abcdefabcdef',title:'Lambo'}]})};
         });
-        const search=await online.search('lambo');
-        assert.ok(requested.startsWith('/.netlify/functions/fab-catalog?operation=search'));
-        assert.equal(search.results[0].importAvailable,false);
-        await assert.rejects(online.download('demoUid'),/richiede ancora/);
+        online.key='test-private-key';
+        const found=await online.search('Lambo');
+        assert.ok(requested.startsWith('https://sketchbook-fab-bridge.onrender.com/search?q=Lambo'));
+        assert.equal(headers['X-Fab-Bridge-Key'],'test-private-key');
+        assert.equal(found.results[0].importAvailable,true);
+        assert.equal(online.hosted,true);
         const local=new FabClient(async()=>({ok:true,json:async()=>({results:[]})}),'http://127.0.0.1:8765');
-        assert.equal(local.catalogOnly,false);
-    } finally { globalThis.location=original; }
+        assert.equal(local.hosted,false);
+    }finally{globalThis.location=original;}
+});
+test('Fab cloud refuses operations without bridge key and rejects foreign origins',async()=>{
+    process.env.FAB_BRIDGE_KEY='test-key-only-for-unit-test';
+    const {server:cloud, isAllowedOrigin} = require('../fab-cloud/server.cjs');
+    assert.equal(isAllowedOrigin('https://evil.example'),false);
+    assert.equal(isAllowedOrigin('https://my-test-site3.netlify.app'),true);
+    await new Promise(resolve=>cloud.listen(0,'127.0.0.1',resolve));
+    try {
+        const address='http://127.0.0.1:'+cloud.address().port;
+        const unauthorized=await fetch(address+'/search?q=BMW');
+        assert.equal(unauthorized.status,401);
+        const health=await fetch(address+'/health');
+        assert.equal(health.status,200);
+        assert.equal((await health.json()).bridge,true);
+        const origin=await fetch(address+'/search?q=BMW',{headers:{Origin:'https://evil.example'}});
+        assert.equal(origin.status,403);
+    }finally{await new Promise(resolve=>cloud.close(resolve));}
 });
