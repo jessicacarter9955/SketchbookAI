@@ -1,0 +1,29 @@
+{
+  "FileVersion": 3,
+  "EngineAssociation": "5.8",
+  "Category": "World Building",
+  "Description": "Native Unreal Engine WorldBLD block prototype (requires UE 5.8.3 and licensed WorldBLD plugins).",
+  "Modules": [],
+  "Plugins": [
+    {
+      "Name": "WorldBLD",
+      "Enabled": true
+    },
+    {
+      "Name": "RoadBLD",
+      "Enabled": true
+    },
+    {
+      "Name": "CityBLD",
+      "Enabled": true
+    },
+    {
+      "Name": "StreetMap",
+      "Enabled": true
+    },
+    {
+      "Name": "PythonScriptPlugin",
+      "Enabled": true
+    }
+  ]
+}
