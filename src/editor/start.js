@@ -1,5 +1,6 @@
 import { loadCatalog, createScene } from './scene-catalog.mjs';
 import { sceneStorageKey, loadRevisions, saveRevision, forkScene } from './scene-revisions.mjs';
+import { SUPERCARS, supercarPositions, downloadSupercar } from './supercars.mjs';
 
 const loading = document.getElementById('loading-screen');
 const query = new URLSearchParams(location.search);
@@ -8,6 +9,25 @@ const current = catalog.find(s => s.id === query.get('scene')) || catalog[0];
 const storageKey = sceneStorageKey(current.id);
 const report = message => { globalThis.cityLoading?.stage(message); };
 
+async function ensureSketchfabSupercars(editor, onStatus = report) {
+    const pos = supercarPositions(editor.world.actorLayer.spawn);
+    const errors = [], imported = [];
+    for (let i = 0; i < SUPERCARS.length; i++) {
+        const model = SUPERCARS[i];
+        if (editor.items.some(item => item.prefab === 'vehicle' && item.name === 'Sketchfab · ' + model.name)) continue;
+        onStatus('Sketchfab: caricamento ' + model.name + ' ('+(i+1)+'/3)');
+        try {
+            const bytes = await downloadSupercar(model);
+            const added = await editor.installDrivableSupercar(bytes, model, pos[i]);
+            if (added) imported.push(model.name);
+        } catch (error) {
+            errors.push(model.name + ': ' + error.message);
+            console.warn('[Sketchfab supercar]', model.name, error.message);
+        }
+    }
+    globalThis.supercarsStatus = {imported, errors};
+    return {imported,errors};
+}
 function sceneControls(editor) {
     const manager = document.createElement('section'); manager.className = 'scene-manager';
     manager.innerHTML = '<h2>LE TUE SCENE</h2><select aria-label="Scena attiva" class="wide"></select><button class="wide" data-new-scene>Nuova scena</button><button class="wide" data-fork>Crea copia / ramo</button><h2>REVISIONI LOCALI</h2><input class="wide" aria-label="Nome revisione" maxlength="80" placeholder="Es. Prima di cambiare il prato"><button class="wide" data-checkpoint>Salva revisione</button><select class="wide" aria-label="Revisione salvata"></select><button class="wide" data-restore>Apri revisione in una copia</button><p>Originali della mappa invariati. La prima revisione resta protetta; conserviamo le ultime 19. Esporta per un backup esterno.</p>';
@@ -53,7 +73,7 @@ function sceneControls(editor) {
         catch (error) { dialog.querySelector('[role=status]').textContent = error.message; }
     };
     const hud = document.createElement('div'); hud.className = 'city-hud';
-    hud.innerHTML = '<strong data-city-status></strong><button data-board>In auto</button><button data-reset>Riparti</button>';
+    hud.innerHTML = '<strong data-city-status></strong><button data-board>In auto</button><button data-supercars>Supercar Sketchfab</button><button data-reset>Riparti</button>';
     hud.querySelector('[data-city-status]').textContent = current.name;
     hud.querySelector('[data-board]').onclick = () => {
         if (editor.active) editor.setActive(false);
@@ -66,7 +86,17 @@ function sceneControls(editor) {
         const rear = new THREE.Vector3(0, 0, -1).applyQuaternion(cars[0].quaternion);
         world.cameraOperator.theta = Math.atan2(rear.x, rear.z) * 180 / Math.PI; world.cameraOperator.phi = 15;
         world.renderer.domElement.focus();
-        editor.message('Sei al volante. WASD guida · Spazio frena · F esce · F2 apre l’editor.');
+        editor.message('Sei al volante. WASD guida · Spazio frena · E o F esce · F2 apre l’editor.');
+    };
+    hud.querySelector('[data-supercars]').onclick = async e => {
+        const button = e.currentTarget;
+        button.disabled = true;
+        try {
+            const result = await ensureSketchfabSupercars(editor, text => editor.message(text));
+            editor.message(result.errors.length
+                ? 'Supercar: '+result.imported.length+' importate. '+result.errors.join(' · ')
+                : 'Supercar BMW, Ferrari e Lamborghini pronte. Premi Prova, avvicinati e usa E o F.');
+        } finally { button.disabled=false; }
     };
     hud.querySelector('[data-reset]').onclick = () => { world.actorLayer.resetPlayer(); if (!editor.active) { world.actorLayer.start(editor.items); world.renderer.domElement.focus(); } };
     if (world.levelRuntime) {
@@ -150,6 +180,10 @@ try {
         for(const x of [-20,0,20,185,205,225]) add('lamp','Lampione',x,7);
         for(const x of [-12,12]) add('pedestrian','Abitante',x,-12);
         sceneEditor.restore({version:1,world:current.world,objects,generator:{...sceneEditor.generator,sky:current.id==='island-sunset'?'sunset':'day'}});sceneEditor.commit();
+    }
+    if (query.get('cars') !== '0') {
+        const result = await ensureSketchfabSupercars(sceneEditor);
+        if (result.errors.length) report('Supercar Sketchfab parziali: '+result.imported.length+'/3. Usa il pulsante Supercar per riprovare.');
     }
     report('Preparazione interfaccia e controlli');
     sceneControls(sceneEditor);
