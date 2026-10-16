@@ -17,7 +17,8 @@ export function validateScene(value) {
         }
         if (item.scale.some(n => n < 0.01 || n > 100)) throw new Error('Scala ammessa: 0.01–100.');
         return { id: item.id, name: String(item.name || 'Oggetto').slice(0, 120),
-            ...(item.assetId ? { assetId: item.assetId } : { prefab: item.prefab }),
+            ...(item.assetId ? { assetId: item.assetId } : {}),
+            ...(PREFABS.includes(item.prefab) ? { prefab: item.prefab } : {}),
             position: [...item.position], rotation: [...item.rotation], scale: [...item.scale], collider: item.collider === true };
     });
     if (value.world !== undefined && !WORLD_IDS.includes(value.world)) throw new Error('Mappa scena non riconosciuta.');
