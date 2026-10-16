@@ -144,14 +144,19 @@ try {
  document.getElementById('wire')!.onclick=()=>{wire=!wire;setWire(wire);};
  document.getElementById('hide-ui')!.onclick=()=>{
    const ui=document.querySelector('.ui') as HTMLElement;
-   const hidden=ui.dataset.collapsed==='1';
-   ui.dataset.collapsed=hidden?'0':'1';
-   // Keep a small reopen affordance while the render occupies the full screen.
-   for(const child of [...ui.children])if((child as HTMLElement).id!=='asset-tabs' &&
-      (child as HTMLElement).id!=='asset-title' && (child as HTMLElement).id!=='status')
-     (child as HTMLElement).style.display=hidden?'':'none';
-   (document.getElementById('hide-ui') as HTMLElement).style.display='';
-   (document.getElementById('hide-ui') as HTMLButtonElement).textContent=hidden?'Hide UI':'Show UI';
+   const collapsed=ui.dataset.collapsed!=='1';
+   ui.dataset.collapsed=collapsed?'1':'0';
+   const keep=document.getElementById('hide-ui') as HTMLButtonElement;
+   for(const child of [...ui.children]) {
+     const el=child as HTMLElement;
+     if(el.contains(keep)){
+       el.style.display='';
+       for(const btn of el.querySelectorAll('button')){
+         (btn as HTMLElement).style.display=btn===keep?'':collapsed?'none':'';
+       }
+     }else el.style.display=collapsed?'none':'';
+   }
+   keep.textContent=collapsed?'Show UI':'Hide UI';
  };
  document.getElementById('shot')!.onclick=()=>{
    renderer.render(scene,camera);const a=document.createElement('a');a.download='img2threejs-'+currentKey+'.png';
