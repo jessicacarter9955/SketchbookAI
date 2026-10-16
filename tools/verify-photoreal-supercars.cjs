@@ -50,12 +50,13 @@ const {chromium}=require('playwright');
   const drive=await page.evaluate(()=>{
       const w=globalThis.world,player=w.editorPlayer,
         car=w.vehicles.find(v=>v.userData.importedCar);
-      player.teleportToVehicle(car,car.seats[0]);
-      player.takeControl();
-      return {occupied:car.seats[0].occupiedBy===player,
+      player.setPosition(car.position.x+0.9,car.position.y,car.position.z);
+      player.position.set(car.position.x+0.9,car.position.y,car.position.z);
+      document.dispatchEvent(new KeyboardEvent('keydown',{key:'e',code:'KeyE',bubbles:true,cancelable:true}));
+      return {occupied:car.seats.some(s=>s.occupiedBy===player),
               controlled:player.controlledObject===car,
               engine:!!car.actions?.throttle,
-              enterE:player.actions?.enter?.eventCodes?.includes('KeyE')||false};
+              enterE:player.controlledObject===car};
   });
   console.log('DRIVING_RESULT',JSON.stringify(drive));
   if(!drive.occupied||!drive.controlled||!drive.engine||!drive.enterE)
