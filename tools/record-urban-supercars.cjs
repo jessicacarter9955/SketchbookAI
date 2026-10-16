@@ -64,7 +64,7 @@ function validatePhoto(file) {
             const ed=globalThis.sceneEditor;
             return (status && ed && !ed.active && globalThis.world?.vehicles?.filter(v=>v.userData.importedCar).length>=3)
                 || /Errore di avvio/.test(document.querySelector('#city-load-message')?.textContent||'');
-        },null,{timeout:260000});
+        },null,{timeout:470000});
         const startup=await page.evaluate(()=>{
             const w=globalThis.world,ed=globalThis.sceneEditor;
             return {supercars:globalThis.urbanSupercarsStatus,
