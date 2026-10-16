@@ -5,6 +5,8 @@ on:
     paths:
       - ".github/workflows/img2threejs-runner.yml"
       - "img2three/input/**"
+      - "img2three/rifle-superprompt.md"
+      - "img2three/rifle-view-contract.json"
       - "img2three/*.base64"
       - "img2three/tower-spec.json"
       - "img2three/viewer/**"
@@ -52,21 +54,48 @@ jobs:
           python3 forge/stage3_build/generate_threejs_factory.py ../img2three/output/object-sculpt-spec.json --force --out ../img2three/output/createTowerModel.ts --blocked-report ../img2three/output/generator-blocked.json > ../img2three/output/generator-log.txt 2>&1 || true
           echo "Original img2threejs scripts executed against author-reviewed 51-component skyscraper specification." >> "$GITHUB_STEP_SUMMARY"
           cat ../img2three/output/generator-log.txt | tail -25
-      - name: Probe source-locked lime carbine and apply superprompt to original assessment
+      - name: Run original img2threejs rifle spec pipeline and enforce quality gates
+        shell: bash
         run: |
           set -euo pipefail
           test -s img2three/rifle-superprompt.md
           test -s img2three/viewer/public/ref/rifle.webp
+          test -s img2three/rifle-view-contract.json
           mkdir -p img2three/output
           cp img2three/rifle-superprompt.md img2three/output/rifle-superprompt-applied.md
+          cp img2three/rifle-view-contract.json img2three/output/rifle-view-contract.json
           cd img2three-source
+          # Execute upstream Forge scripts, rather than pretending a scene image is 3D.
           python3 forge/stage1_intake/probe_image.py ../img2three/viewer/public/ref/rifle.webp > ../img2three/output/rifle-image-probe.json
           python3 forge/stage2_spec/new_pre_spec_assessment.py "Lime Green Reference Carbine" \
             --image ../img2three/viewer/public/ref/rifle.webp \
             --complexity ultra-complex \
             --spec-query "$(sed -n '4,9p' ../img2three/rifle-superprompt.md | tr '\n' ' ' | cut -c1-280)" \
             --out ../img2three/output/rifle-pre-spec-assessment.json --force
-          echo "Image-driven ultra-complex carbine assessment saved beside verbatim quality superprompt." >> "$GITHUB_STEP_SUMMARY"
+          python3 forge/stage2_spec/new_sculpt_spec.py "Lime Green Reference Carbine" \
+            --image ../img2three/viewer/public/ref/rifle.webp \
+            --assessment ../img2three/output/rifle-pre-spec-assessment.json \
+            --out ../img2three/output/rifle-object-sculpt-spec.json --force
+          set +e
+          python3 forge/stage2_spec/validate_sculpt_spec.py \
+            ../img2three/output/rifle-object-sculpt-spec.json --strict-quality --json \
+            > ../img2three/output/rifle-strict-validation.json
+          rifle_status=$?
+          set -e
+          if [ "$rifle_status" -eq 0 ]; then
+            python3 forge/stage3_build/generate_threejs_factory.py \
+              ../img2three/output/rifle-object-sculpt-spec.json --force \
+              --out ../img2three/output/createRifleModel.ts \
+              --blocked-report ../img2three/output/rifle-generator-blocked.json
+            echo "Rifle strict quality: PASS; official factory generated." >> "$GITHUB_STEP_SUMMARY"
+          else
+            python3 forge/stage3_build/generate_threejs_factory.py \
+              ../img2three/output/rifle-object-sculpt-spec.json --force \
+              --out ../img2three/output/createRifleModel.ts \
+              --blocked-report ../img2three/output/rifle-generator-blocked.json || test "$?" -eq 2
+            echo "Rifle strict quality: BLOCKED; automatic starter spec is NOT a finished production model." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "The master reference remains the user original; synthetic views have lower authority." >> "$GITHUB_STEP_SUMMARY"
       - name: Build Three.js viewer against generated original source
         run: |
           mkdir -p img2three/viewer/src/generated
@@ -104,6 +133,17 @@ jobs:
               await page.evaluate(()=>window.__setPreviewView('angle'));
               await page.waitForTimeout(350);
               await page.screenshot({path:'img2three/preview/'+id+'-threequarter.png',timeout:90000});
+              if(id==='rifle'){
+                const angles=[
+                  ['left','front'],['muzzle','side'],['right','back'],
+                  ['brace','butt'],['top','top'],['bottom','bottom']
+                ];
+                for(const [label,view] of angles){
+                  await page.evaluate(view=>window.__setPreviewView(view),view);
+                  await page.waitForTimeout(400);
+                  await page.screenshot({path:'img2three/preview/rifle-'+label+'-verification.png',timeout:90000});
+                }
+              }
               await page.evaluate(()=>{window.__setPreviewView('front');document.querySelector('.ui').style.visibility='visible';document.querySelector('.bottomhint').style.visibility='visible'});
               report.push({id,...v});
               console.log(JSON.stringify({id,stats:v.stats,error:v.error}));
@@ -112,7 +152,7 @@ jobs:
             if(errors.length)throw Error('Browser exceptions: '+errors.join('; '));
             await browser.close();
             require('fs').writeFileSync('img2three/preview/gallery-report.json',JSON.stringify(report,null,2));
-            console.log('PASS: WebGL 5/5; 10 screenshots captured');
+            console.log('PASS: WebGL 5/5; 16 screenshots captured including six rifle orthogonal checks');
           })().catch(e=>{console.error(e);process.exit(2)});
           NODE
       - name: Upload input and pipeline artifacts
