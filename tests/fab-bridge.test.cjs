@@ -119,3 +119,25 @@ test('Fab cloud refuses operations without bridge key and rejects foreign origin
         assert.equal(origin.status,403);
     }finally{await new Promise(resolve=>cloud.close(resolve));}
 });
+
+test('Sketchfab supercar credentials stay in server environment, and only whitelisted CC BY models are downloadable',async()=>{
+    const {MODELS,catalog,getGrant} = require('../fab-cloud/sketchfab-supercars.cjs');
+    assert.deepEqual(Object.keys(MODELS), ['bmw','ferrari','lamborghini']);
+    assert.ok(catalog().every(c=>c.license==='CC BY' && /^https:\/\/sketchfab.com\//.test(c.url)));
+    const prior=process.env.SKETCHFAB_TOKENS;
+    process.env.SKETCHFAB_TOKENS='a'.repeat(32);
+    try {
+        const urls=[];
+        const link=await getGrant('ferrari',async (url, options)=>{
+            urls.push(url);
+            assert.equal(options.headers.Authorization,'Token '+'a'.repeat(32));
+            return {ok:true,json:async()=>({glb:{url:'https://cdn.sketchfab.com/test.glb'}})};
+        });
+        assert.equal(link,'https://cdn.sketchfab.com/test.glb');
+        assert.ok(urls[0].includes(MODELS.ferrari.uid));
+        await assert.rejects(getGrant('not-a-car'),/non disponibile/);
+        let attempts=0;
+        await assert.rejects(getGrant('bmw',async()=>{attempts++;return {ok:false,status:429}}),/limite/);
+        assert.equal(attempts,1);
+    }finally{if(prior===undefined)delete process.env.SKETCHFAB_TOKENS;else process.env.SKETCHFAB_TOKENS=prior;}
+});
