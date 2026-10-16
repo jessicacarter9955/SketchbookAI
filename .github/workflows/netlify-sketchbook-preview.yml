@@ -1,0 +1,92 @@
+name: Publish Sketchbook editor to existing Netlify site
+on:
+  push:
+    branches: [img2threejs-runner]
+    paths:
+      - ".github/workflows/netlify-sketchbook-preview.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sketchbook-live-site
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - name: Checkout isolated source branch
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build Three.js application
+        run: npm run build
+      - name: Prepare static deploy without local files or credentials
+        shell: bash
+        run: |
+          mkdir -p site-dist
+          rsync -a --exclude '/.git/' --exclude '/.github/' --exclude '/.local/' --exclude '/node_modules/' --exclude '/site-dist/' --exclude '/.env*' --exclude '/localSettings.js' --exclude '/img2three-source/' --exclude '/img2three/input/' --exclude '/img2three/output/' --exclude '/img2three/viewer/node_modules/' ./ site-dist/
+          test -s site-dist/editor.html
+          test -s site-dist/3dPicker.js
+          test -s site-dist/src/editor/sketchfab-client.js
+          test -s site-dist/src/editor/fab-client.js
+          test -s site-dist/build/sketchbook.min.js
+          test ! -e site-dist/.github
+          test ! -e site-dist/.local
+      - name: Reuse original configured Netlify deployment identity
+        shell: bash
+        run: |
+          # Existing site authentication is read only at runner runtime, never committed to this branch.
+          git fetch -q --depth=1 origin main
+          git show FETCH_HEAD:.github/workflows/netlify-deploy.yml > /tmp/sketchbook-existing-netlify.yml
+          node <<'NODE'
+          const fs = require('fs');
+          const data = fs.readFileSync('/tmp/sketchbook-existing-netlify.yml','utf8');
+          const token = data.match(/^\s*NETLIFY_AUTH_TOKEN:\s*(\S+)\s*$/m)?.[1];
+          const site = data.match(/^\s*NETLIFY_SITE_ID:\s*([a-f\d-]{36})\s*$/m)?.[1];
+          if (!token || !site) {
+              console.error('No deploy credentials for the previously configured Netlify site; not deploying.');
+              process.exit(1);
+          }
+          process.stdout.write('::add-mask::' + token + '\n');
+          fs.appendFileSync(process.env.GITHUB_ENV, 'NETLIFY_AUTH_TOKEN=' + token + '\nNETLIFY_SITE_ID=' + site + '\n');
+          NODE
+          rm -f /tmp/sketchbook-existing-netlify.yml
+      - name: Deploy to existing live Netlify site
+        id: deploy
+        uses: nwtgck/actions-netlify@v3.0
+        with:
+          publish-dir: "./site-dist"
+          production-branch: img2threejs-runner
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: "Sketchbook editor · Sketchfab and Fab picker from ${{ github.sha }}"
+          enable-pull-request-comment: false
+          enable-commit-comment: false
+          overwrites-pull-request-comment: false
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ env.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ env.NETLIFY_SITE_ID }}
+      - name: Verify public editor URLs
+        shell: bash
+        env:
+          DEPLOY_URL: ${{ steps.deploy.outputs.deploy-url }}
+          PREVIEW_URL: ${{ steps.deploy.outputs.preview-url }}
+        run: |
+          echo "Deploy URL: ${DEPLOY_URL:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Preview URL: ${PREVIEW_URL:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$DEPLOY_URL" ]; then
+            curl --fail --silent --show-error --location --retry 3 --max-time 25 "${DEPLOY_URL%/}/editor.html" >/tmp/sketchbook-online-editor.html
+            grep -q "src/editor/fab-client.js" /tmp/sketchbook-online-editor.html
+            grep -q "src/editor/sketchfab-client.js" /tmp/sketchbook-online-editor.html
+            echo "Editor served with Sketchfab + Fab picker scripts." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Action did not expose deploy URL. Verify the Netlify deploy log." >> "$GITHUB_STEP_SUMMARY"
+          fi
