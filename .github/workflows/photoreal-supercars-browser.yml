@@ -1,0 +1,34 @@
+name: Photoreal supercar real browser verification
+on:
+  push:
+    branches: [codex/sa-navigation-port]
+    paths: [".github/workflows/photoreal-supercars-browser.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated headless Chromium
+        run: |
+          npm install --prefix /tmp/photoreal-webgl --no-save --no-audit --no-fund playwright@1.56.0
+          /tmp/photoreal-webgl/node_modules/.bin/playwright install --with-deps chromium
+      - name: Open real Urban Photoreal City Player, check 3 cars and press E to drive
+        env:
+          NODE_PATH: /tmp/photoreal-webgl/node_modules
+          PHOTO_URL: https://6ad254d0bfe5508f774ea6ce--my-test-site3.netlify.app/editor.html?scene=urban-photoreal&cityBlocks=2&play=1
+        run: node tools/verify-photoreal-supercars.cjs
+      - name: Upload screenshot evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: urban-photoreal-bmw-ferrari-lamborghini
+          path: artifacts/urban-supercars/
+          if-no-files-found: warn
+          retention-days: 7
