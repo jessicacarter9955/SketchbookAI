@@ -9,6 +9,7 @@ import {SanAndreasRuntime} from './SanAndreasRuntime.js';
 import {mountStreetLabGarage} from './StreetLabGarage.js';
 import {StreetLabCrime} from './StreetLabCrime.js';
 import {mountUrbanMarketplaceGarage} from './UrbanMarketplaceGarage.js';
+import {installPhotorealSupercars} from './urban-supercars.mjs';
 
 globalThis.THREE = THREE; // shared by procedural weather and the 3D game
 const loading = document.getElementById('loading-screen');
@@ -138,7 +139,7 @@ function sceneControls(editor) {
         catch (error) { dialog.querySelector('[role=status]').textContent = error.message; }
     };
     const hud = document.createElement('div'); hud.className = 'city-hud';
-    hud.innerHTML = '<strong data-city-status></strong><span class="vehicle-prompt" data-vehicle-prompt></span><button data-board>Entra in auto · E</button><button data-reset>Riparti</button>';
+    hud.innerHTML = '<strong data-city-status></strong><span class="vehicle-prompt" data-vehicle-prompt></span><button data-board>Entra in auto · E</button><button data-supercars>🏎 BMW · Ferrari · Lambo</button><button data-reset>Riparti</button>';
     hud.querySelector('[data-city-status]').textContent = current.name;
     const nearestVehicle = (maxDistance = 8) => {
         const player = world.editorPlayer; if (!player || player.controlledObject) return null;
@@ -187,6 +188,23 @@ function sceneControls(editor) {
         if(editor.active||!['KeyF','KeyE'].includes(event.code)||event.repeat||event.target.closest?.('input,textarea,select,dialog,[contenteditable=true]'))return;
         event.preventDefault();event.stopImmediatePropagation();urbanVehicleAction();updateVehiclePrompt();
     },true);
+    hud.querySelector('[data-supercars]').onclick = async event => {
+        const button=event.currentTarget;
+        if(current.world!=='procedural-city'){editor.message('Le tre supercar sono per la mappa Urban Photoreal.');return;}
+        button.disabled=true;
+        const wasPlaying=!editor.active;
+        if(wasPlaying)editor.setActive(true);
+        try{
+            const result=await installPhotorealSupercars(world,editor,{
+                onStatus:message=>editor.message(message)
+            });
+            const total=result.imported.length+result.existing.length;
+            world.marketplaceGarage?.refresh?.();
+            editor.message(total+'/3 supercar Sketchfab pronte vicino al player. '+
+                (result.errors.length ? result.errors.join(' · ') : 'Avvicinati e premi E per guidare.'));
+        }catch(error){editor.message('Importazione supercar: '+error.message);}
+        finally{if(wasPlaying)editor.setActive(false);button.disabled=false;}
+    };
     hud.querySelector('[data-reset]').onclick = () => { world.actorLayer.resetPlayer(); if (!editor.active) { world.actorLayer.start(editor.items); world.renderer.domElement.focus(); } };
     if (world.levelRuntime) {
         const district = document.createElement('select'); district.setAttribute('aria-label', current.world==='liberty-city' ? 'Quartiere Liberty City' : 'Punto di partenza');
@@ -401,6 +419,16 @@ try {
         if(visual?.status!=='ready')
             throw new Error('Scena HD incompleta: '+(visual?.error||'un asset obbligatorio non disponibile'));
         report('Modelli e materiali HD pronti. Ultimo controllo della scena…');
+    }
+    if(current.world==='procedural-city' &&
+       ['urban-photoreal','urban-photoreal-dds','urban-photoreal-sunset'].includes(current.id) &&
+       query.get('supercars')!=='0') {
+        report('BMW, Ferrari e Lamborghini Sketchfab: parcheggio accanto al personaggio…');
+        const cars=await installPhotorealSupercars(world,sceneEditor,{onStatus:report});
+        world.marketplaceGarage?.refresh?.();
+        report(cars.errors.length
+          ? 'Supercar pronte '+(cars.imported.length+cars.existing.length)+'/3; usa il pulsante 🏎 per riprovare.'
+          : 'Tre supercar Sketchfab HD caricate vicino al giocatore.');
     }
     if(!minimalMobile)loading.style.display='none';
     if(current.id === 'portland-grass' && sceneEditor.mapEdits.length) {
