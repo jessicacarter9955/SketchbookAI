@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {URBAN_SIGNAL} from './urban-traffic-signals.mjs';
+import {urbanGroundHeight} from './urban-data.mjs';
 
 export function signalPhase(seconds){
  const t=((seconds%URBAN_SIGNAL.cycle)+URBAN_SIGNAL.cycle)%URBAN_SIGNAL.cycle;
@@ -39,13 +40,13 @@ export class UrbanSignals{
     const dz=direction==='east'?pad:direction==='west'?-pad:direction==='north'?-pad:pad;
     const heading=direction==='east'?Math.PI:direction==='west'?0:
       direction==='north'?Math.PI/2:-Math.PI/2;
-    const x=cx+dx,z=cz+dz;
-    o.position.set(x,1.85,z);o.rotation.set(0,0,0);o.scale.set(1,1,1);
+    const x=cx+dx,z=cz+dz,ground=urbanGroundHeight(x,z,config);
+    o.position.set(x,ground+1.85,z);o.rotation.set(0,0,0);o.scale.set(1,1,1);
     o.updateMatrix();this.posts.setMatrixAt(id,o.matrix);
-    o.position.set(x,3.75,z);o.rotation.y=heading;o.updateMatrix();this.housings.setMatrixAt(id,o.matrix);
+    o.position.set(x,ground+3.75,z);o.rotation.y=heading;o.updateMatrix();this.housings.setMatrixAt(id,o.matrix);
     for(let channel=0;channel<3;channel++){
       const offset=new THREE.Vector3(0,.37-channel*.37,.17).applyAxisAngle(new THREE.Vector3(0,1,0),heading);
-      o.position.set(x+offset.x,3.75+offset.y,z+offset.z);o.scale.set(1,1,.67);o.updateMatrix();
+      o.position.set(x+offset.x,ground+3.75+offset.y,z+offset.z);o.scale.set(1,1,.67);o.updateMatrix();
       this.leds.setMatrixAt(id*3+channel,o.matrix);
     }
     const axis=direction==='east'||direction==='west'?'eastWest':'northSouth';
@@ -60,14 +61,19 @@ export class UrbanSignals{
  update(seconds){
   if(!this.leds)return;
   const phase=signalPhase(seconds);
-  if(phase===this.lastPhase)return;
-  this.lastPhase=phase;
+  const time=((seconds%URBAN_SIGNAL.cycle)+URBAN_SIGNAL.cycle)%URBAN_SIGNAL.cycle;
+  const yellowEast=phase==='eastWest'&&time>URBAN_SIGNAL.eastWestGreen-1.2;
+  const yellowNorth=phase==='northSouth'&&time>URBAN_SIGNAL.eastWestGreen+URBAN_SIGNAL.allRed+URBAN_SIGNAL.northSouthGreen-1.2;
+  const key=phase+':'+yellowEast+':'+yellowNorth;
+  if(key===this.lastPhase)return;
+  this.lastPhase=key;
   const colors=[new THREE.Color(0xff2929),new THREE.Color(0xffbf3f),new THREE.Color(0x22f37b)];
   const dim=new THREE.Color(0x24282a);
   for(const head of this.heads){
-   const green=phase===head.axis,amber=phase==='allRed';
+   const caution=head.axis==='eastWest'?yellowEast:yellowNorth;
+   const green=phase===head.axis&&!caution,red=phase!==head.axis;
    for(let i=0;i<3;i++){
-    const active=i===0?!green&&!amber:i===1?amber:green;
+    const active=i===0?red:i===1?caution:green;
     this.leds.setColorAt(head.id*3+i,active?colors[i]:dim);
    }
   }

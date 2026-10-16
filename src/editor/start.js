@@ -276,8 +276,11 @@ try {
         // Generate only once: the previous 6x6 default city followed by a 4x4
         // scene regeneration overworked Android and held the main thread.
         const mobileCity=/Android|iPhone|iPad/i.test(navigator.userAgent);
+        const requestedBlocks=Number(query.get('cityBlocks'));
+        const cityBlocks=Number.isInteger(requestedBlocks)&&requestedBlocks>=2&&requestedBlocks<=6?
+           Math.min(requestedBlocks,mobileCity?4:6):mobileCity?2:4;
         const cityDefault={
-            seed:1847,blocksX:mobileCity?2:4,blocksZ:mobileCity?2:4,
+            seed:1847,blocksX:cityBlocks,blocksZ:cityBlocks,
             blockSize:42,roadWidth:10,sidewalkWidth:3.5,
             minFloors:3,maxFloors:7,buildingDensity:.9,terrain:'flat',
             sky:current.id==='urban-photoreal-sunset'?'sunset':'day'

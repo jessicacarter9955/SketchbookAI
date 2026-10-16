@@ -594,7 +594,7 @@ export class UrbanRuntime {
     this.world.urbanLighting?.update();
     this.streamPhotorealDetails();
     const now=performance.now();
-    if(now-this.lastOcclusionTick>320){this.lastOcclusionTick=now;this.updateBuildingOcclusion();}
+    if(now-this.lastOcclusionTick>(this.fps&&this.fps<40?540:320)){this.lastOcclusionTick=now;this.updateBuildingOcclusion();}
     if(now-this.lastFoliageTick>160){
       this.lastFoliageTick=now;
       const vegetation=this.root.getObjectByName('CC0 photoreal vegetation');
@@ -606,7 +606,7 @@ export class UrbanRuntime {
     if(now-this.lastHudTick>250){
       this.lastHudTick=now;
       const status=document.querySelector('[data-city-status]');
-      if(status)status.textContent=`Procedural City · ${this.fps||'…'} FPS · ${this.facadeStreamer?.assembled||0} facciate HD · ${this.occlusionStats.buildingsHidden} edifici coperti · ${this.occlusionStats.sectorsHidden} settori non disegnati · ${this.plan?.trees.length||0} alberi · ${Math.round(player?.controlledObject?.collision.velocity.length()*3.6||0)} km/h`;
+      if(status)status.textContent=`Procedural City · ${this.fps||'…'} FPS · ${this.world.renderer.info?.render?.calls||0} draw calls · ${this.facadeStreamer?.assembled||0} facciate HD · ${this.occlusionStats.buildingsHidden} edifici coperti · ${this.occlusionStats.sectorsHidden} settori non disegnati · ${this.plan?.trees.length||0} alberi · ${Math.round(player?.controlledObject?.collision.velocity.length()*3.6||0)} km/h`;
     }
   }
 }
