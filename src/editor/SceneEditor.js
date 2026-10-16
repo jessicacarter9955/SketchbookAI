@@ -172,7 +172,7 @@ export class SceneEditor {
         if (item.prefab === 'vehicle' && item.assetId) {
             const template = this.templates.get(item.assetId);
             if (!template) throw new Error('Modello veicolo non trovato. Ricarica la scena.');
-            object.add(fitVehicleVisual(template));
+            object.add(fitVehicleVisual(template, THREE));
         } else object.add(item.assetId ? clone(this.templates.get(item.assetId)) : this.prefab(item.prefab));
         object.traverse(node => { if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; for (const material of [].concat(node.material)) this.world.sky.csm.setupMaterial(material); } });
         object.userData.bounds = new THREE.Box3().setFromObject(object);
