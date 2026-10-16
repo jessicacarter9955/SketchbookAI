@@ -29,6 +29,17 @@ jobs:
       - name: Validate WorldBLD block design without Unreal or GPU
         run: |
           node tools/worldbld-browser/validate-block.cjs
+          node tools/worldbld-browser/generate-osm.cjs tools/worldbld-browser/results/worldbld-city-block.osm
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          root = ET.parse("tools/worldbld-browser/results/worldbld-city-block.osm").getroot()
+          ways = root.findall("way")
+          roads = [w for w in ways if any(t.attrib.get("k")=="highway" for t in w.findall("tag"))]
+          buildings = [w for w in ways if any(t.attrib.get("k")=="building" for t in w.findall("tag"))]
+          assert len(roads) == 4 and len(buildings) == 10, (len(roads), len(buildings))
+          assert all(len(w.findall("nd")) == 5 for w in buildings)
+          print("Native StreetMap XML parsed: 4 road ways and 10 building footprints. Unreal import still untested.")
+          PY
           python -m py_compile tools/worldbld-browser/lightning_runner.py
           python tools/worldbld-browser/lightning_runner.py
       - name: Inspect Lightning and WorldBLD without authentication or GPU
