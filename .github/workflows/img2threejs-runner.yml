@@ -7,6 +7,7 @@ on:
       - "img2three/input/**"
       - "img2three/rifle-superprompt.md"
       - "img2three/rifle-view-contract.json"
+      - "img2three/author_lime_rifle_spec.py"
       - "img2three/*.base64"
       - "img2three/tower-spec.json"
       - "img2three/viewer/**"
@@ -98,6 +99,20 @@ jobs:
             --image ../img2three/viewer/public/ref/rifle.webp \
             --assessment ../img2three/output/rifle-pre-spec-assessment.json \
             --out ../img2three/output/rifle-object-sculpt-spec.json --force
+          # Refine the scaffold from actual observed rifle-specific parts;
+          # strict validation is not allowed to accept a one-box placeholder.
+          python3 ../img2three/author_lime_rifle_spec.py \
+            ../img2three/output/rifle-object-sculpt-spec.json \
+            --out ../img2three/output/rifle-object-sculpt-spec.json
+          # Extract independent PBR evidence from the user-owned original.
+          # If the quality threshold rejects it, leave it rejected and report.
+          python3 forge/stage1_intake/extract_pbr_evidence.py \
+            ../img2three/viewer/public/ref/rifle.webp \
+            --out-dir ../img2three/output/rifle-reference-pbr \
+            --size 512 --material-id lime-coat \
+            --spec ../img2three/output/rifle-object-sculpt-spec.json --in-place \
+            --report ../img2three/output/rifle-reference-pbr-report.json \
+            > ../img2three/output/rifle-reference-pbr-extractor.log 2>&1 || true
           set +e
           python3 forge/stage2_spec/validate_sculpt_spec.py \
             ../img2three/output/rifle-object-sculpt-spec.json --strict-quality --json \
