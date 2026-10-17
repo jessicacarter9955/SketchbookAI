@@ -33,7 +33,7 @@ export class SceneEditor {
         this.gizmo.addEventListener('dragging-changed', e => { this.orbit.enabled = this.active && !e.value; if (!e.value) this.capture(); });
         this.gizmo.addEventListener('objectChange', () => { if (this.selected) { this.outline.setFromObject(this.objects.get(this.selected)); this.inspect(); } });
         this.mount(); this.bind(); world.sceneEditor = this; this.setActive(true);
-        if (world.levelRuntime?.surfaces) this.surfaceTool = new SurfaceTool(this);
+        if (worldId==='liberty-city' && typeof world.levelRuntime?.surfaces?.setEdits==='function') this.surfaceTool = new SurfaceTool(this);
         if (worldId === 'procedural-island') this.islandTool = new IslandTool(this);
         if (worldId === 'procedural-city') this.urbanTool = new UrbanTool(this);
         world.renderer.domElement.tabIndex = 0;
@@ -252,7 +252,7 @@ export class SceneEditor {
         if(this.worldId==='procedural-island') {this.world.levelRuntime.generate(scene.generator || DEFAULT_ISLAND);this.generator=copy(this.world.levelRuntime.config);this.islandTool?.refresh();}
         if(this.worldId==='procedural-city') {this.world.levelRuntime.generate(scene.generator || DEFAULT_URBAN);this.generator=copy(this.world.levelRuntime.config);this.urbanTool?.refresh();}
         this.select(null); [...this.objects.keys()].forEach(id => this.destroyObject(id)); this.items = copy(scene.objects); this.items.forEach(item => this.create(item));
-        this.mapEdits=copy(scene.mapEdits || []); this.world.levelRuntime?.surfaces?.setEdits(this.mapEdits); this.surfaceTool?.refreshList(); this.list(); this.save();
+        this.mapEdits=copy(scene.mapEdits || []); if(typeof this.world.levelRuntime?.surfaces?.setEdits==='function') this.world.levelRuntime.surfaces.setEdits(this.mapEdits); this.surfaceTool?.refreshList(); this.list(); this.save();
     }
     async importGeoJSON(data) {
         if(this.worldId!=='procedural-city') throw new Error('Apri una scena Città procedurale prima di importare dati OSM / GeoJSON.');
