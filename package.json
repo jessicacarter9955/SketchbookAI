@@ -17,7 +17,7 @@
     "test": "node --test tests/editor.test.mjs tests/surfaces.test.mjs tests/island.test.mjs tests/dds-game.test.mjs tests/city-streaming.test.mjs tests/fab-bridge.test.cjs tests/districts.test.mjs",
     "editor": "webpack-dev-server --config webpack.dev.js --host 127.0.0.1 --port 8401 --open /editor.html",
     "dev": "webpack-dev-server --config webpack.dev.js",
-    "build": "webpack --config webpack.prod.js",
+    "build": "webpack --config webpack.prod.js && webpack --config webpack.editor.bundle.js",
     "prod": "rmdir /s /q c:\\temp\\dist && xcopy /E /I /Y . c:\\temp\\dist /EXCLUDE:.gitignore && xcopy /E /I /Y node_modules\\@types c:\\temp\\dist\\node_modules\\@types && wrangler pages deploy c:\\temp\\dist",
     "fab:bridge": "node tools/fab-bridge.cjs"
   },
