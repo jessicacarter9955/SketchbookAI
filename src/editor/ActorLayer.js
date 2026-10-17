@@ -114,6 +114,19 @@ export class ActorLayer {
                         // irrespective of transient spring extension.
                         const visualBottom = new THREE.Box3().setFromObject(shell).min.y;
                         shell.position.y += -0.50 - visualBottom;
+                        // The imported cars are ~4.6m long and ~2m wide, while
+                        // Sketchbook's stock car has a much shorter, narrower
+                        // wheelbase. Map each Cannon tire to its ACTUAL wheel
+                        // arch instead of reusing the stock car coordinates.
+                        for (const binding of actor.userData.sketchfabWheelRig || []) {
+                            const physics = actor.rayCastVehicle.wheelInfos[binding.index];
+                            const anchor = binding.sourceCenter.clone().add(shell.position);
+                            binding.visualAnchor = anchor;
+                            physics.radius = binding.radius;
+                            physics.chassisConnectionPointLocal.set(
+                                anchor.x, anchor.y + physics.suspensionRestLength, anchor.z
+                            );
+                        }
                         shell.userData.sketchfabAsset=item.assetId;
                         actor.add(shell);
                     }
@@ -126,10 +139,10 @@ export class ActorLayer {
                     const x=item.position[0]+point.x,z=item.position[2]+point.z;
                     const estimate=this.terrainHeight(x,z,assumed);
                     const floor=this.physicsGround(x,z,estimate);
-                    return floor-w.chassisConnectionPointLocal.y+w.suspensionRestLength+w.radius-0.08;
+                    return floor-w.chassisConnectionPointLocal.y+w.suspensionRestLength+w.radius+0.06;
                 });
                 const ground = this.physicsGround(item.position[0],item.position[2],assumed);
-                const height=Math.max(chassisHeightForGround(ground,wheelInfo,-0.08),...heights);
+                const height=Math.max(chassisHeightForGround(ground,wheelInfo,0.06),...heights);
                 actor.setPosition(item.position[0],height,item.position[2]);
                 actor.userData.spawnGround=ground;
                 actor.userData.chassisRideHeight=height-ground;
@@ -180,7 +193,7 @@ export class ActorLayer {
             if (distance > 160 && !actor.userData.dormant) { this.world.remove(actor); actor.userData.dormant = true; }
             else if (distance < 100 && actor.userData.dormant) {
                 const home = actor.userData.home, floor = this.terrainHeight(home[0],home[2],home[1]);
-                const y=actor.rayCastVehicle ? chassisHeightForGround(floor,actor.rayCastVehicle.wheelInfos,-0.08)
+                const y=actor.rayCastVehicle ? chassisHeightForGround(floor,actor.rayCastVehicle.wheelInfos,0.06)
                     : floor+(actor.rayCastLength ?? 0.9)+0.08;
                 actor.setPosition(home[0],y,home[2]);
                 this.world.add(actor); actor.userData.dormant = false;
