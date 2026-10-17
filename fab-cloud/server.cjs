@@ -20,7 +20,8 @@ const calls = new Map();
 function isAllowedOrigin(origin) {
     // Exact production site or an immutable Netlify deployment of the same site.
     // Never trust arbitrary *.netlify.app origins.
-    return !origin || origin === ORIGIN || /^https:\/\/[a-z0-9-]+--my-test-site3\.netlify\.app$/.test(origin);
+    return !origin || origin === ORIGIN || /^https:\/\/[a-z0-9-]+--my-test-site3\.netlify\.app$/.test(origin) ||
+        /^http:\/\/(?:127\.0\.0\.1|localhost):8401$/.test(origin); // Fixed-port local CI only; private Fab routes still require bridge key.
 }
 function hasAccess(value) {
     if (!KEY || !value || typeof value !== 'string') return false;
