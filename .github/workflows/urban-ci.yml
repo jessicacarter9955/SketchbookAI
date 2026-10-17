@@ -148,6 +148,9 @@ jobs:
           done
           cat /tmp/sketchbook-editor.log
           exit 1
+      - name: Verify TRUE City vegetation readiness and copyable logs
+        if: env.RUN_CAPTURE == 'true'
+        run: node tools/verify-true-city-boot.mjs
       - name: Inspect individual assets and materials
         if: env.RUN_ASSET_SCREENSHOTS == 'true'
         run: node tools/capture-urban-assets.mjs
