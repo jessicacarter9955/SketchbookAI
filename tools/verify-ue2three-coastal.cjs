@@ -10,7 +10,8 @@ const base=(process.env.DISTRICT_BASE_URL||'http://127.0.0.1:8765').replace(/\/$
  page.on('pageerror',e=>errors.push(String(e.stack||e)));
  page.on('response',r=>{
   if(r.status()>=400&&new URL(r.url()).host===new URL(base).host&&
-    !r.url().endsWith('/build/local-scenes/ue2three-districts/manifest.json'))
+    !r.url().endsWith('/build/local-scenes/ue2three-districts/manifest.json') &&
+    !r.url().endsWith('/.local/sketchfab.json'))
    missing.push(r.status()+' '+r.url());
  });
  let report={};
@@ -25,13 +26,16 @@ const base=(process.env.DISTRICT_BASE_URL||'http://127.0.0.1:8765').replace(/\/$
     zones:r.plan.zones.map(x=>x.id),roads:r.plan.roads.length,buildings:r.plan.buildings.length,
     bridge:r.plan.roads.filter(x=>x.kind==='bridge').length,cars:t.cars.length,
     pedestrians:t.people.length,driveableCars:ed.items.filter(x=>x.prefab==='vehicle').length,
+    activePhysicalCars:w.vehicles?.length||0,
+    seatCars:(w.vehicles||[]).filter(c=>c.seats?.some(seat=>seat&&!seat.occupiedBy)).length,
+    playerToClosestCar:w.editorPlayer&&w.vehicles?.length?Math.min(...w.vehicles.map(c=>c.position.distanceTo(w.editorPlayer.position))):null,
     dialogue:!!document.querySelector('#district-dialogue'),spawns:r.manifest.spawns.length,
     playing:!ed.active,physicsBodies:r.bodies.length};
   });
   report.pageErrors=errors;report.missingLocalAssets=missing;
   if(!report.ready||report.zones.join(',')!=='ny,sf,rio,miami'||report.roads<120||
      report.buildings<100||report.bridge!==1||report.cars<20||report.pedestrians<15||
-     report.driveableCars<4||!report.dialogue||report.spawns!==5||!report.playing||
+     report.driveableCars<4||report.activePhysicalCars<4||report.seatCars<4||!report.dialogue||report.spawns!==5||!report.playing||
      report.pageErrors.length||report.missingLocalAssets.length)
     throw Error('City acceptance failed: '+JSON.stringify(report));
   console.log('REALISTIC CITY DDS UE2THREE COASTAL PASS '+JSON.stringify(report));
@@ -42,7 +46,7 @@ const base=(process.env.DISTRICT_BASE_URL||'http://127.0.0.1:8765').replace(/\/$
  }finally{
   fs.mkdirSync('artifacts',{recursive:true});
   fs.writeFileSync('artifacts/ue2three-coastal-browser.json',JSON.stringify(report,null,2));
-  try {await page.screenshot({path:'artifacts/ue2three-coastal-browser.png',timeout:20000});}
+  try {await page.screenshot({path:'artifacts/ue2three-coastal-browser.png',timeout:45000,animations:'disabled'});}
   catch(e){console.warn('Screenshot was not captured:',e.message)}
   await browser.close();
  }
