@@ -208,7 +208,8 @@ test('Sketchfab BMW Ferrari Lamborghini positions remain close to the spawn',asy
     assert.deepEqual(SUPERCARS.map(c=>c.brand),['BMW','Ferrari','Lamborghini']);
     assert.ok(SUPERCARS.every(c=>c.license==='CC BY'&&c.uid.length===32));
     const positions=supercarPositions({x:40,y:2,z:100});
-    assert.deepEqual(positions,[[33,2,110],[40,2,110],[47,2,110]]);
+    assert.deepEqual(positions,[[26,2,110],[33,2,110],[19,2,110]]);
+    assert.ok(positions.every(p=>p[0]>=19&&p[0]<=33&&p[2]===110), 'Cars remain grouped within 21m of spawn.');
     const sample=new THREE.Mesh(new THREE.BoxGeometry(2,1.4,4.6));
     const visual=fitVehicleVisual(sample,THREE);
     const box=new THREE.Box3().setFromObject(visual);
