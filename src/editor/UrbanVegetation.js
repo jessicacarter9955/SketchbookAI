@@ -25,16 +25,24 @@ export async function createVegetation(items,seed=0){
   };
   // Precreate authentic photoreal trees during the loading screen, not during
   // sprinting through the city. Geometry and textures remain shared.
-  layer.userData.prepareAll=async onProgress=>{
-    for(let i=0;i<items.length;i++){
-      if(!loaded.has(i))addTree(i,items[i]);
+  layer.userData.prepareAll=async (onProgress,camera)=>{
+    // Only the nearest authentic PBR LOD trees must be ready for the first frame.
+    // Cloning every distant tree here blocks the main thread and WebGL upload.
+    const origin=camera?.position || new THREE.Vector3();
+    const queue=items.map((t,i)=>({i,t,distance:Math.hypot(t.x-origin.x,t.z-origin.z)}))
+      .sort((a,b)=>a.distance-b.distance);
+    const initialCount=Math.min(items.length,48);
+    for(let j=0;j<initialCount;j++){
+      const {i,t}=queue[j];
+      if(!loaded.has(i))addTree(i,t);
       loaded.get(i).visible=false;
-      if(i%12===11){
-        onProgress?.(`Alberi fotorealistici ${i+1}/${items.length}`);
+      if(j%6===5){
+        onProgress?.(`Alberi HD vicini ${j+1}/${initialCount}; gli altri in streaming`);
         await new Promise(resolve=>setTimeout(resolve,0));
       }
     }
-    onProgress?.(`Alberi fotorealistici ${items.length}/${items.length}`);
+    onProgress?.(`Vegetazione HD pronta: ${initialCount} alberi autentici vicini; ${Math.max(0,items.length-initialCount)} in streaming`);
+    layer.userData.preparedCount=initialCount;
   };
   // Streaming density is unchanged at the camera: the full LOD models are
   // still used, but off-screen trees are not cloned or uploaded to the GPU.

@@ -354,8 +354,16 @@ export class UrbanRuntime {
           this.visualProgress.completed++;
           this.visualProgress.label='Edifici HD pronti, precompilazione shader…';
           this.onVisualProgress?.({...this.visualProgress});
-          if(typeof this.world.renderer.compileAsync==='function')
-            await this.world.renderer.compileAsync(this.world.graphicsWorld,this.world.camera);
+          if(typeof this.world.renderer.compileAsync==='function'){
+            globalThis.cityDiagnostics?.stage('Shader HD visibili');
+            const before=performance.now();
+            await Promise.race([
+              this.world.renderer.compileAsync(this.world.graphicsWorld,this.world.camera),
+              new Promise((_,reject)=>setTimeout(()=>reject(new Error('Timeout GPU shader HD')),30000))
+            ]);
+            globalThis.cityDiagnostics?.stage('Shader HD visibili','done');
+            globalThis.cityDiagnostics?.activity('Shader HD compilati in '+Math.round(performance.now()-before)+' ms');
+          }
           this.visualProgress.completed++;
           this.visualProgress.label='Shader preparati · scena HD completa';
           this.onVisualProgress?.({...this.visualProgress});
@@ -517,8 +525,10 @@ export class UrbanRuntime {
     const layer=this.root.getObjectByName('CC0 photoreal vegetation');
     if(!layer)throw new Error('Vegetazione fotorealistica non disponibile');
     await layer.userData.prepareAll?.(text=>{
-      this.visualProgress.label=text;this.onVisualProgress?.({...this.visualProgress});
-    });
+       this.visualProgress.label=text;
+       globalThis.cityDiagnostics?.activity('VEGETAZIONE: '+text);
+       this.onVisualProgress?.({...this.visualProgress});
+     },this.world.camera);
     this.streamPhotorealDetails(true);
   }
   async loadPhotorealVegetation(group,items,config){
