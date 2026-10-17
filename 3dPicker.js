@@ -104,7 +104,7 @@
         try {
             const data = await client.search(query, { animated: $('[name=animated]').checked, maxFaces: $('[name=faces]').value, next: more ? next : null, signal: controller.signal });
             if (request !== generation) return;
-            const relevantFerrari=/\\bferrari\\b|288\\s*gto/i.test(query);
+            const relevantFerrari=/\bferrari\b|288\s*gto/i.test(query);
             const incoming=Array.isArray(data.results)?data.results:[];
             const chosen=!more&&relevantFerrari?[featured288,...incoming.filter(m=>m.uid!==featured288.uid)]:incoming;
             models = more ? [...models,...chosen.filter(m=>!models.some(old=>old.uid===m.uid))] : chosen;
@@ -114,7 +114,7 @@
             if(request !== generation || error.name==='AbortError')return;
             // This model is already verified/licensed on Sketchbook's bridge.
             // Sketchfab public search downtime must not hide it or force a token.
-            if(/\\bferrari\\b|288\\s*gto/i.test(query)&&!more){
+            if(/\bferrari\b|288\s*gto/i.test(query)&&!more){
                 models=[featured288];next=null;render();
                 status('Catalogo Ferrari autorizzato disponibile; ricerca Sketchfab temporaneamente non raggiungibile.');
             }else status(error.message);
