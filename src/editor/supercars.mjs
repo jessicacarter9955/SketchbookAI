@@ -49,10 +49,20 @@ export async function downloadSupercar(model,fetcher=fetch) {
                 if(Number(response.headers.get('content-length'))>50*1024*1024)throw Error(model.brand+': asset troppo grande.');
                 const bytes=await response.arrayBuffer();
                 if(bytes.byteLength>50*1024*1024)throw Error(model.brand+': asset troppo grande.');
+                // The bridge occasionally replies HTTP 200 with a non-GLB body.
+                // Validate before persisting to IndexedDB: retry the transient
+                // response instead of showing an unrigged/missing supercar.
+                const valid=bytes.byteLength>=20 && (() => {
+                    const header=new DataView(bytes);
+                    return header.getUint32(0,true)===0x46546c67 &&
+                        header.getUint32(4,true)===2 &&
+                        header.getUint32(8,true)===bytes.byteLength;
+                })();
+                if(!valid)throw Error('TRANSIENT_GLTF: Sketchfab '+model.brand+' ha restituito dati non GLB.');
                 return bytes;
             }
         }catch(error) {
-            if(attempt===2 || !(error instanceof TypeError || /network|Failed to fetch/i.test(error.message)))throw error;
+            if(attempt===2 || !(error instanceof TypeError || /network|Failed to fetch|TRANSIENT_GLTF/i.test(error.message)))throw error;
         }
         await new Promise(done=>setTimeout(done,(attempt+1)*1250));
     }
