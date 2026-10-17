@@ -35,7 +35,7 @@ function samplePath(points,distance){
 }
 export class DistrictTraffic {
  constructor(world){
-  this.world=world;this.plan=world.levelRuntime.plan;this.time=0;this.cars=[];this.people=[];
+  this.world=world;this.plan=world.levelRuntime.plan;this.time=0;this.cars=[];this.people=[];this.updateOrder=6;
   this.group=new THREE.Group();this.group.name='Four-district autonomous traffic and pedestrians';world.graphicsWorld.add(this.group);
   this.makeAgents();this.mountDialogue();this.keydown=e=>this.onKey(e);
   window.addEventListener('keydown',this.keydown,true);
@@ -58,11 +58,17 @@ export class DistrictTraffic {
    }
   }
   // One local sidewalk loop per neighborhood plus fixed guides next to the spawn points.
-  for(const route of this.plan.pedRoutes.slice(0,18)){
+  const routes=this.plan.zones.flatMap(d=>this.plan.pedRoutes.filter(route=>{
+    const x=route.reduce((sum,p)=>sum+p[0],0)/route.length;
+    const z=route.reduce((sum,p)=>sum+p[1],0)/route.length;
+    return Math.hypot(x-d.center[0],z-d.center[1])<165;
+   }).slice(0,3));
+  for(const route of routes){
    if(route.length<4)continue;
    const centerX=route.reduce((n,p)=>n+p[0],0)/route.length;
-   const zone=this.plan.zones.find(d=>Math.abs(d.center[0]-centerX)<160)||
-     this.plan.zones[0],count=2;
+   const centerZ=route.reduce((n,p)=>n+p[1],0)/route.length;
+   const zone=this.plan.zones.reduce((best,d)=>!best||
+     Math.hypot(d.center[0]-centerX,d.center[1]-centerZ)<Math.hypot(best.center[0]-centerX,best.center[1]-centerZ)?d:best,null),count=2;
    const perimeter=route.reduce((n,p,i)=>n+length(p,route[(i+1)%route.length]),0);
    for(let j=0;j<count;j++){
     const npc=clone(person);npc.scale.setScalar(.96);this.group.add(npc);
