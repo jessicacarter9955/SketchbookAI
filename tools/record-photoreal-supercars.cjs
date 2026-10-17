@@ -69,7 +69,19 @@ async function drive(page,key,name){
     if(!car)throw Error('Car vanished while capturing driving');
     car.triggerAction('throttle',true);
   },info.asset);
-  await sleep(7000);
+  // Yield to the renderer between batches while stepping the genuine Cannon
+  // RaycastVehicle and original Car.update, never setting coordinates manually.
+  for(let batch=0;batch<10;batch++){
+    await page.evaluate(asset=>{
+      const w=globalThis.world;
+      const car=w.vehicles.find(v=>v.userData.importedCar===asset);
+      for(let i=0;i<12;i++){
+        car.update(1/60);
+        w.physicsWorld.step(1/60);
+      }
+    },info.asset);
+    await sleep(520);
+  }
   await page.keyboard.up('w');
   const result=await page.evaluate(asset=>{
     const car=globalThis.world.vehicles.find(v=>v.userData.importedCar===asset);
@@ -119,7 +131,22 @@ async function drive(page,key,name){
   console.log('DRIVE_PHOTOREAL_URL',LINK);
   await page.goto(LINK,{waitUntil:'domcontentloaded',timeout:80000});
   await page.waitForFunction(()=>Boolean(globalThis.urbanSupercarsStatus)||/Errore di avvio:/.test(document.querySelector('#city-load-message')?.textContent||''),null,{timeout:265000});
-  await page.waitForFunction(()=>globalThis.sceneEditor && !globalThis.sceneEditor.active && globalThis.world?.vehicles?.filter(v=>v.userData?.importedCar).length===3,null,{timeout:25000});
+  const beforeActivate=await page.evaluate(()=>({
+    status:globalThis.urbanSupercarsStatus,hasEditor:!!globalThis.sceneEditor,
+    active:globalThis.sceneEditor?.active,visual:globalThis.world?.levelRuntime?.visualProgress,
+    vehicles:globalThis.world?.vehicles?.filter(v=>v.userData?.importedCar).length||0,
+    loading:document.querySelector('#city-load-message')?.textContent
+  }));
+  console.log('CAR_LOADING_STATE',JSON.stringify(beforeActivate));
+  // The imported assets are present in editor mode, but their physics bodies
+  // are only built after setActive(false). An HD scene can need much longer than
+  // 25 seconds to switch modes on CPU-only WebGL.
+  await page.evaluate(()=>{
+    const ed=globalThis.sceneEditor;
+    if(!ed)throw Error('Photoreal editor missing');
+    if(ed.active)ed.setActive(false);
+  });
+  await page.waitForFunction(()=>globalThis.world?.vehicles?.filter(v=>v.userData?.importedCar).length===3,null,{timeout:180000});
   console.log('DRIVE_READY',JSON.stringify(await page.evaluate(()=>({
     cars:globalThis.urbanSupercarsStatus,
     graphics:globalThis.world.graphicsWorld.children.length,
@@ -135,6 +162,16 @@ async function drive(page,key,name){
  }catch(e){
   console.error('CAPTURE_FAILED',e.message);
   console.error('PAGE_ERRORS',JSON.stringify(pageErrors.slice(-15)));
+  const diagnostic=await page.evaluate(()=>({
+    status:globalThis.urbanSupercarsStatus,
+    editor:!!globalThis.sceneEditor,
+    active:globalThis.sceneEditor?.active,
+    cars:globalThis.world?.vehicles?.filter(v=>v.userData?.importedCar).length,
+    loading:document.querySelector('#city-load-message')?.textContent,
+    visual:globalThis.world?.levelRuntime?.visualProgress
+  })).catch(()=>({}));
+  console.error('CAPTURE_DIAGNOSTIC',JSON.stringify(diagnostic));
+  fs.writeFileSync(path.join(OUT,'capture-diagnostic.json'),JSON.stringify({error:e.message,diagnostic,pageErrors},null,2));
   try{await page.screenshot({path:path.join(OUT,'capture-failure.png'),timeout:10000});}catch{}
   await browser.close();process.exit(1);
  }
