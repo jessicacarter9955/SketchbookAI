@@ -26,6 +26,7 @@ const base=(process.env.DISTRICT_BASE_URL||'http://127.0.0.1:8765').replace(/\/$
     zones:r.plan.zones.map(x=>x.id),roads:r.plan.roads.length,buildings:r.plan.buildings.length,
     bridge:r.plan.roads.filter(x=>x.kind==='bridge').length,cars:t.cars.length,
     pedestrians:t.people.length,driveableCars:ed.items.filter(x=>x.prefab==='vehicle').length,
+    activeActors:w.actorLayer?.actors?.length||0,
     activePhysicalCars:w.vehicles?.length||0,
     seatCars:(w.vehicles||[]).filter(c=>c.seats?.some(seat=>seat&&!seat.occupiedBy)).length,
     playerToClosestCar:w.editorPlayer&&w.vehicles?.length?Math.min(...w.vehicles.map(c=>c.position.distanceTo(w.editorPlayer.position))):null,
