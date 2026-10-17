@@ -70,6 +70,17 @@ test('pagination cannot send the user token to another origin', async () => {
     await assert.rejects(client.search('car', { next: 'https://example.com/v3/search' }), /URL Sketchfab/);
     assert.equal(calls, 0);
 });
+test('Ferrari 288 GTO uses curated CC BY server download without a browser token',async()=>{
+    const client=new SketchfabClient(async()=>{throw Error('Browser should not request private Sketchfab token');});
+    const uid='e83da098149746b5a3ba6f1661645b09';
+    assert.equal(client.canDownloadWithoutBrowserToken(uid),true);
+    assert.equal(await client.download(uid),'https://sketchbook-fab-bridge.onrender.com/sketchfab/cars/ferrari288');
+    assert.equal(client.canDownloadWithoutBrowserToken('anotheruid'),false);
+    await assert.rejects(client.download('anotheruid'),/token JSON|Sketchfab personale/);
+    const ui=readFileSync(new URL('../3dPicker.js',import.meta.url),'utf8');
+    assert.match(ui,/!client\.token && !client\.canDownloadWithoutBrowserToken\(model\.uid\)/);
+    assert.match(ui,/Ferrari 288 GTO/);
+});
 test('download requires a user token and accepts glTF ZIP responses', async () => {
     const client = new SketchfabClient(async () => ({ ok: true, json: async () => ({ gltf: { url: 'https://example.com/model.zip' } }) }));
     await assert.rejects(client.download('model123'), /token/); client.token = 'test-only-token';
