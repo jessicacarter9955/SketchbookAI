@@ -1,0 +1,48 @@
+name: Record all three photoreal supercar driving videos
+on:
+  push:
+    branches: [codex/sa-navigation-port]
+    paths:
+      - '.github/workflows/photoreal-supercars-video.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  drive-and-film:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium and recording tools
+        run: |
+          npm install --prefix /tmp/photoreal-record --no-save --no-audit --no-fund playwright@1.56.0
+          /tmp/photoreal-record/node_modules/.bin/playwright install --with-deps chromium
+          ffmpeg -version | head -1
+      - name: Drive BMW Ferrari and Lamborghini and record real WebGL frames
+        env:
+          NODE_PATH: /tmp/photoreal-record/node_modules
+          PHOTO_URL: https://6ad259ad86251ebad353dc0c--my-test-site3.netlify.app/editor.html?scene=urban-photoreal&cityBlocks=2&play=1
+        run: node tools/record-photoreal-supercars.cjs
+      - name: Inspect all three encoded MP4 files
+        if: success()
+        run: |
+          set -eu
+          for model in bmw ferrari lamborghini; do
+            test -s "artifacts/photoreal-driving/${model}.mp4"
+            test -s "artifacts/photoreal-driving/${model}.png"
+            ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,width,height -of default=noprint_wrappers=1 "artifacts/photoreal-driving/${model}.mp4"
+          done
+      - name: Upload 3 MP4 videos and 3 photographic screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: urban-photoreal-three-supercars-driving-mp4
+          path: |
+            artifacts/photoreal-driving/*.mp4
+            artifacts/photoreal-driving/*.png
+            artifacts/photoreal-driving/*.json
+          if-no-files-found: error
+          retention-days: 14
