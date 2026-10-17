@@ -6,7 +6,8 @@ import { Character } from '../ts/characters/Character';
 import { Car } from '../ts/vehicles/Car';
 import { loadDdsPlayer } from './DdsAssets';
 import { DdsCharacter } from './DdsCharacter';
-import { fitVehicleVisual } from './supercars.mjs';
+import { fitVehicleVisual, SUPERCARS } from './supercars.mjs';
+import { rigImportedWheels, chassisHeightForGround } from './wheel-rig.mjs';
 
 export class ActorLayer {
     constructor(world) { this.world = world; this.actors = []; this.spawn = new THREE.Vector3(0, 2, -5); }
@@ -27,6 +28,19 @@ export class ActorLayer {
     terrainHeight(x, z, previous = 0) {
         const floor = this.world.levelRuntime?.groundAt(x, z, Math.max(previous + 4, 5));
         return Number.isFinite(floor) ? floor : previous;
+    }
+    physicsGround(x,z,fallback) {
+        const physics=this.world.physicsWorld;
+        if (!physics?.raycastClosest) return fallback;
+        const from=new CANNON.Vec3(x,Math.max(fallback+8,9),z);
+        const to=new CANNON.Vec3(x,fallback-25,z);
+        const hit=new CANNON.RaycastResult();
+        try {
+            if(physics.raycastClosest(from,to,{skipBackfaces:true},hit) &&
+                hit.hasHit && hit.body?.mass===0 && Math.abs(hit.hitPointWorld.y-fallback)<12)
+                return hit.hitPointWorld.y;
+        } catch { /* Fall back to streamed terrain elevation. */ }
+        return fallback;
     }
     resetPlayer() {
         const old = this.world.editorPlayer;
@@ -66,6 +80,13 @@ export class ActorLayer {
                             if (!isWheel) node.visible=false;
                         });
                         const shell = fitVehicleVisual(template, THREE);
+                        const asset = this.world.sceneEditor.assets.get(item.assetId);
+                        const brand = SUPERCARS.find(car=>car.uid===asset?.metadata?.uid);
+                        if (brand) {
+                            const result = rigImportedWheels(shell, brand.id, actor, THREE);
+                            actor.userData.rigStatus=result;
+                            if(!result.ready)console.warn('[Wheel rig]',brand.name,result.reason);
+                        }
                         shell.traverse(node => {
                             if (!node.isMesh) return;
                             node.castShadow=true;
@@ -76,8 +97,12 @@ export class ActorLayer {
                         actor.add(shell);
                     }
                 }
-                const ground = this.terrainHeight(item.position[0], item.position[2], item.position[1]);
-                actor.setPosition(item.position[0], ground + 0.9, item.position[2]);
+                const assumed = this.terrainHeight(item.position[0], item.position[2], item.position[1]);
+                const ground = this.physicsGround(item.position[0],item.position[2],assumed);
+                const height = chassisHeightForGround(ground,actor.rayCastVehicle.wheelInfos);
+                actor.setPosition(item.position[0],height,item.position[2]);
+                actor.userData.spawnGround=ground;
+                actor.userData.chassisRideHeight=height-ground;
                 actor.collision.quaternion.setFromEuler(...item.rotation);
                 actor.collision.initQuaternion.copy(actor.collision.quaternion);
                 // Cannon does not implement box/trimesh contacts. Rounded bumpers supply
@@ -121,7 +146,9 @@ export class ActorLayer {
             if (distance > 160 && !actor.userData.dormant) { this.world.remove(actor); actor.userData.dormant = true; }
             else if (distance < 100 && actor.userData.dormant) {
                 const home = actor.userData.home, floor = this.terrainHeight(home[0],home[2],home[1]);
-                actor.setPosition(home[0], floor + (actor.rayCastLength ?? 0.9) + 0.08, home[2]);
+                const y=actor.rayCastVehicle ? chassisHeightForGround(floor,actor.rayCastVehicle.wheelInfos)
+                    : floor+(actor.rayCastLength ?? 0.9)+0.08;
+                actor.setPosition(home[0],y,home[2]);
                 this.world.add(actor); actor.userData.dormant = false;
             }
         }
