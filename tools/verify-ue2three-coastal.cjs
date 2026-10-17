@@ -109,17 +109,18 @@ const base=(process.env.DISTRICT_BASE_URL||'http://127.0.0.1:8765').replace(/\/$
   if(report.nativeGeometry){
     // Isolated still uses the exact production UE-derived GLB. It is a
     // provenance/mesh close-up, not an invented Unreal level screenshot.
-    const nativePage=await browser.newPage({viewport:{width:1280,height:800}});
-    await nativePage.goto(base+'/ue2three-native-newyork.html',{waitUntil:'domcontentloaded'});
-    await nativePage.waitForFunction(()=>window.__unrealNativeViewer?.ready===true||
-      !!window.__unrealNativeViewer?.error,null,{timeout:60000,polling:250});
-    report.nativeIsolatedViewer=await nativePage.evaluate(()=>window.__unrealNativeViewer);
+    // One WebGL page at a time on SwiftShader: two heavy scenes can starve the
+    // Chromium renderer before DOMContentLoaded on the second tab.
+    await page.screenshot({path:'artifacts/ue2three-coastal-browser.png',timeout:45000,animations:'disabled'});
+    await page.goto(base+'/ue2three-native-newyork.html',{waitUntil:'commit',timeout:60000});
+    await page.waitForFunction(()=>window.__unrealNativeViewer?.ready===true||
+      !!window.__unrealNativeViewer?.error,null,{timeout:90000,polling:300});
+    report.nativeIsolatedViewer=await page.evaluate(()=>window.__unrealNativeViewer);
     if(!report.nativeIsolatedViewer.ready||report.nativeIsolatedViewer.meshCount<5)
       throw Error('Authentic Unreal static-mesh close-up viewer failed: '+JSON.stringify(report.nativeIsolatedViewer));
-    await nativePage.waitForTimeout(300);
-    await nativePage.screenshot({path:'artifacts/ue2three-native-newyork-closeup.png',
+    await page.waitForTimeout(300);
+    await page.screenshot({path:'artifacts/ue2three-native-newyork-closeup.png',
       timeout:45000,animations:'disabled'});
-    await nativePage.close();
   }
   console.log('REALISTIC CITY DDS UE2THREE COASTAL PASS '+JSON.stringify(report));
  }catch(error){
@@ -129,7 +130,8 @@ const base=(process.env.DISTRICT_BASE_URL||'http://127.0.0.1:8765').replace(/\/$
  }finally{
   fs.mkdirSync('artifacts',{recursive:true});
   fs.writeFileSync('artifacts/ue2three-coastal-browser.json',JSON.stringify(report,null,2));
-  try {await page.screenshot({path:'artifacts/ue2three-coastal-browser.png',timeout:45000,animations:'disabled'});}
+  try {if(!fs.existsSync('artifacts/ue2three-coastal-browser.png'))
+    await page.screenshot({path:'artifacts/ue2three-coastal-browser.png',timeout:45000,animations:'disabled'});}
   catch(e){console.warn('Screenshot was not captured:',e.message)}
   await browser.close();
  }
