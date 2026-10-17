@@ -71,6 +71,47 @@ test('typed array copies and struct writes retain original nonzero defaults with
     assert.throws(()=>executeBlueprint({...get,steps:[{...get.steps[1],value:{op:'constant',value:true}},get.steps[2]]},state,{Index:0}),/typed source member/);
 });
 
+
+test('source Array_Set writes typed instance arrays with source defaults and no aliasing', () => {
+    const item={type:'StructProperty',source:'/Game/Item',fields:{
+        ID:{type:'NameProperty',default:'None'}, Quantity:{type:'IntProperty',default:0}},
+        default:{ID:'None',Quantity:0}};
+    const array={type:'ArrayProperty',element:item,default:[]};
+    const expr={op:'array_set',target:{op:'get',scope:'self',field:'Items'},
+        index:{op:'get',scope:'local',field:'Index'},
+        item:{op:'get',scope:'local',field:'Item'},
+        size_to_fit:{op:'get',scope:'local',field:'Fit'},element:item};
+    const program={schema_version:1,status:'translated_straight_line',output_fields:[],
+        input_fields:['Index','Item','Fit'],field_types:{self:{Items:'ArrayProperty'},
+            local:{Index:'IntProperty',Item:'StructProperty',Fit:'BoolProperty'}},
+        schemas:{self:{Items:array},local:{Item:item}},steps:[
+            {op:'evaluate',source_index:4,value:expr},
+            {op:'return',source_index:5,value:{op:'constant',value:null}}]};
+    const original={Items:[{ID:'Original',Quantity:7}]};
+    const newItem={ID:'New',Quantity:3};
+    const update=(Index,Fit,Item=newItem)=>executeBlueprint(program,original,{Index,Fit,Item});
+    const valid=update(0,false);
+    assert.deepEqual(valid.state.Items,[newItem]);
+    assert.deepEqual(original.Items,[{ID:'Original',Quantity:7}]);
+    valid.state.Items[0].Quantity=99;
+    assert.equal(newItem.Quantity,3);
+    assert.equal(valid.trace[0].source_index,4);
+    assert.equal(valid.trace[0].applied,true);
+    assert.deepEqual(update(3,true).state.Items,[
+        {ID:'Original',Quantity:7},{ID:'None',Quantity:0},{ID:'None',Quantity:0},newItem]);
+    for (const Index of [-1,1,2147483647]) {
+        const result=update(Index,false);
+        assert.deepEqual(result.state,original);
+        assert.equal(result.trace[0].applied,false);
+    }
+    assert.throws(()=>update(100001,true),/maximum verified/);
+    assert.throws(()=>update(0,false,{ID:'Broken'}),/Missing typed source/);
+    assert.throws(()=>update(0,false,{ID:'Broken',Quantity:NaN}),/Invalid typed/);
+    assert.throws(()=>executeBlueprint(program,original,{Index:0,Fit:1,Item:newItem}),/BoolProperty|flag/);
+    assert.throws(()=>executeBlueprint(program,original,{Index:1.5,Fit:false,Item:newItem}),/IntProperty/);
+    assert.throws(()=>executeBlueprint({...program,steps:[{op:'evaluate',value:{...expr,element:{...item,source:'/Game/Foreign'}}},
+        program.steps[1]]},original,{Index:0,Fit:false,Item:newItem}),/element schema/);
+});
 test('event calls retain typed per-instance frames and execute the original flow stack', () => {
     const event = {schema_version: 1, status: 'translated_control_flow', source_export_index: 2, source_owner_index: 3,
         input_fields: [], output_fields: [], persistent_types: {'2': {Value: 'BoolProperty'}},

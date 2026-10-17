@@ -110,6 +110,38 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             if (!Array.isArray(array)) throw new Error('Invalid source Array_Length');
             return array.length;
         }
+        if (expression.op === 'array_set') {
+            const target = expression.target;
+            if (target?.op !== 'get' || target.scope !== 'self' || !safeField(target.field))
+                throw new Error('Unsupported Array_Set source destination');
+            const schema = program.schemas?.self?.[target.field];
+            if (!schema || schema.type !== 'ArrayProperty'
+                || JSON.stringify(schema.element) !== JSON.stringify(expression.element))
+                throw new Error('Unresolved original Array_Set element schema');
+            const array = evaluate(target, depth+1);
+            const index = evaluate(expression.index, depth+1);
+            const item = evaluate(expression.item, depth+1);
+            const sizeToFit = evaluate(expression.size_to_fit, depth+1);
+            if (!Array.isArray(array) || !validPrimitive('IntProperty', index) || typeof sizeToFit !== 'boolean')
+                throw new Error('Invalid original Array_Set index or size-to-fit flag');
+            validateSchema(schema.element, item);
+            // UE Set Array Elem writes only a valid nonnegative index. When
+            // Size to Fit is true, zero-initialize skipped elements using the
+            // *declared source element constructor*, never invented values.
+            if (index < 0 || (index >= array.length && !sizeToFit)) {
+                trace.push({source_index: sourceIndex, op: 'array_set', index, applied: false, size_to_fit: sizeToFit});
+                return null;
+            }
+            if (index >= 100000) throw new Error('Array_Set exceeds maximum verified array size');
+            if (index >= array.length) {
+                validateSchema(schema.element, schema.element.default);
+                while (array.length <= index) array.push(structuredClone(schema.element.default));
+            }
+            array[index] = structuredClone(item);
+            checkType('self', target.field, array);
+            trace.push({source_index: sourceIndex, op: 'array_set', index, applied: true, size_to_fit: sizeToFit});
+            return null;
+        }
         if (expression.op === 'array_get') {
             const array = evaluate(expression.array, depth+1), index = evaluate(expression.index, depth+1), target = expression.target;
             if (!Array.isArray(array) || !validPrimitive('IntProperty', index) || target?.op !== 'get'
