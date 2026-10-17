@@ -23,7 +23,7 @@ function extractMesh(mesh,container,THREE,buckets) {
      const key=(x<0?'left':'right')+':'+(z>=0?'front':'rear');
      if(!tables.has(key))tables.set(key,Object.fromEntries(attrs.map(([name])=>[name,[]])));
      const table=tables.get(key);
-     for(const [name,attr] of attrs)for(let v=i;v<i+3;v++)for(let j=0;j<attr.itemSize;j++)table[name].push(attr.getComponent(v,j));
+     for(const [name,attr] of attrs)for(let v=i;v<i+3;v++)for(let j=0;j<attr.itemSize;j++)table[name].push(attr.isInterleavedBufferAttribute?attr.data.array[v*attr.data.stride+attr.offset+j]:attr.array[v*attr.itemSize+j]);
    }
    for(const [key,table] of tables) {
      const part=new THREE.BufferGeometry();
