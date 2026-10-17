@@ -62,7 +62,7 @@ export function rigImportedWheels(shell,modelId,car,THREE) {
      if(!meshes.length||size.y<0.22||size.y>1.35||size.x>1.45||size.z>1.5||
         Math.abs(center.x)<0.35||Math.abs(center.z)<0.5)
        throw Error('Uncertain wheel segmentation '+key+' ('+size.toArray().map(n=>n.toFixed(2)).join(',')+').');
-     parts.push({key,meshes,center});
+     parts.push({key,meshes,center,radius:Math.min(0.46,Math.max(0.22,size.y/2))});
    }
    const mapped=[];
    for(const part of parts) {
@@ -79,13 +79,19 @@ export function rigImportedWheels(shell,modelId,car,THREE) {
        mesh.geometry.translate(-part.center.x,-part.center.y,-part.center.z);
        pivot.add(mesh);
      }
-     mapped.push({index,pivot});
+     mapped.push({index,pivot,sourceCenter:part.center.clone(),radius:part.radius});
    }
    for(const target of targets)target.visible=false;
+   // BMW has a separately exported wheel badge group. A static badge rotating
+   // nowhere on the body would visually betray the moving tires: hide it until
+   // it can be attached to the same per-wheel pivots.
+   if(modelId==='bmw') shell.traverse(o=>{
+     if(clean(o.name)==='wheelslogo')o.visible=false;
+   });
    for(const wheel of mapped)car.add(wheel.pivot);
    for(const wheel of car.wheels)wheel.wheelObject.visible=false;
    car.userData.sketchfabWheelRig=mapped;
-   return {ready:true,wheelCount:mapped.length,source:modelId};
+   return {ready:true,wheelCount:mapped.length,source:modelId,staticWheelsHidden:true};
  } catch(error) {
    for(const meshes of buckets.values())for(const mesh of meshes)mesh.geometry.dispose();
    return {ready:false,reason:String(error.message||error).slice(0,180),source:modelId};
