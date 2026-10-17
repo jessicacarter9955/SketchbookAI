@@ -77,7 +77,7 @@ test('Ferrari 288 GTO uses curated CC BY server download without a browser token
     assert.equal(await client.download(uid),'https://sketchbook-fab-bridge.onrender.com/sketchfab/cars/ferrari288');
     assert.equal(client.canDownloadWithoutBrowserToken('anotheruid'),false);
     await assert.rejects(client.download('anotheruid'),/token JSON|Sketchfab personale/);
-    const ui=readFileSync(new URL('../3dPicker.js',import.meta.url),'utf8');
+    const ui=await readFile(new URL('../3dPicker.js',import.meta.url),'utf8');
     assert.match(ui,/!client\.token && !client\.canDownloadWithoutBrowserToken\(model\.uid\)/);
     assert.match(ui,/Ferrari 288 GTO/);
 });
