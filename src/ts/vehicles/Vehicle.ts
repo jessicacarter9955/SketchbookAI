@@ -119,6 +119,21 @@ export abstract class Vehicle extends THREE.Object3D implements IWorldEntity
 			wheelObject.up.copy(Utils.threeVector(upAxisWorld));
 		}
 
+		// Real Sketchfab wheels use the same four Cannon raycast transforms as
+		// the original wheels: rotation, steering and independent suspension.
+		const branded = this.userData.sketchfabWheelRig as Array<{index: number, pivot: THREE.Group}> | undefined;
+		if (branded?.length === 4) {
+			const inverse = this.quaternion.clone().invert();
+			for(const {index, pivot} of branded) {
+				const physicsWheel = this.rayCastVehicle.wheelInfos[index]?.worldTransform;
+				if(!physicsWheel)continue;
+				pivot.position.set(physicsWheel.position.x, physicsWheel.position.y, physicsWheel.position.z)
+					.sub(this.position).applyQuaternion(inverse);
+				pivot.quaternion.set(physicsWheel.quaternion.x, physicsWheel.quaternion.y,
+					physicsWheel.quaternion.z, physicsWheel.quaternion.w).premultiply(inverse);
+			}
+		}
+
 		this.updateMatrixWorld();
 	}
 
