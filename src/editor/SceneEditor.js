@@ -326,8 +326,34 @@ export class SceneEditor {
     async importURL(url, metadata, options = {}) {
         if (this.busy) throw new Error('Attendi il completamento dell’operazione.');
         this.busy = true;
-        try { const response = await fetch(url, { signal: AbortSignal.timeout(120000) }); if (!response.ok) throw new Error(`Download: HTTP ${response.status}`); if (Number(response.headers.get('content-length')) > MAX_BYTES) throw new Error('Modello superiore a 50 MB.'); await this.importBytes(await response.arrayBuffer(), metadata, options); }
-        finally { this.busy = false; }
+        try {
+            const allowed = new URL(url);
+            if (allowed.protocol !== 'https:') throw Error('URL modello deve essere HTTPS.');
+            let bytes;
+            for(let attempt=0;attempt<3;attempt++){
+                try {
+                    const response=await fetch(allowed.href,{signal:AbortSignal.timeout(120000),cache:'no-store'});
+                    if(!response.ok){
+                        const reason=await response.json().catch(()=>({}));
+                        const err=new Error(reason.error||`Download: HTTP ${response.status}`);
+                        err.transient=[502,503,504].includes(response.status);
+                        throw err;
+                    }
+                    if(Number(response.headers.get('content-length'))>MAX_BYTES)
+                        throw Error('Modello superiore a 50 MB.');
+                    bytes=await response.arrayBuffer();
+                    if(bytes.byteLength>MAX_BYTES)throw Error('Modello superiore a 50 MB.');
+                    break;
+                }catch(error){
+                    if(attempt===2 || !(error.transient||error instanceof TypeError||error.name==='TimeoutError'))throw error;
+                    globalThis.cityDiagnostics?.activity?.('MODEL RETRY '+(attempt+2)+'/3: '+metadata.name+' ('+error.message+')');
+                    await new Promise(done=>setTimeout(done,1000*(attempt+1)));
+                }
+            }
+            if(!bytes?.byteLength)throw Error('Download incompleto: zero byte.');
+            // Model decode and scene insertion execute once, after a validated response.
+            await this.importBytes(bytes,metadata,options);
+        }finally { this.busy = false; }
     }
     async restoreSaved() {
         const saved = localStorage.getItem(this.storageKey); if (!saved) return;
