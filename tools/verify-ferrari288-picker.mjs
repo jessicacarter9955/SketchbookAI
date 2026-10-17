@@ -28,6 +28,18 @@ try{
       getComputedStyle(document.getElementById('loading-screen')).display==='none';
   },null,{timeout:180000,polling:700});
   const before=await page.evaluate(()=>globalThis.sceneEditor.items.length);
+  // A server-side token must never be copied into the visitor's personal field.
+  await page.waitForFunction(()=>{
+    const access=document.querySelector('[name=server-access]');
+    return !!access&&access.value.includes('Connesso');
+  },null,{timeout:30000});
+  const access=await page.evaluate(()=>({
+    server:document.querySelector('[name=server-access]').value,
+    personal:document.querySelector('[name=token]').value,
+    manual:document.querySelector('[name=tokens-json]').value
+  }));
+  if(access.personal||access.manual||!access.server.includes('token protetto'))
+    throw Error('Protected server access UI is not correctly separated: '+JSON.stringify(access));
   // The user starts a Ferrari search from the live city, not the test-only picker.
   await page.evaluate(()=>globalThis.sceneEditor.openModelLibrary('ferrari'));
   const card=page.locator('.asset-results article[data-model="'+uid+'"]');
@@ -37,7 +49,7 @@ try{
   // DOM button's click event after confirming it is visible and enabled.
   await page.evaluate(modelUid=>{
     const card=document.querySelector('.asset-results article[data-model="'+modelUid+'"]');
-    const button=[...card?.querySelectorAll('button')||[]].find(b=>b.textContent==='Aggiungi alla scena');
+    const button=[...card?.querySelectorAll('button')||[]].find(b=>b.textContent.startsWith('Aggiungi alla scena'));
     if(!button||button.disabled||getComputedStyle(button).visibility==='hidden')
       throw Error('Ferrari Add button missing or disabled');
     button.click();
