@@ -397,6 +397,17 @@ def translate_function(export, package=None, entry_offset=None):
                           'source_index': index})
         else:
             raise BlueprintTranslationError(f'Unsupported opcode: {token}')
+    # Mark mutations visible through nested EX_Context/array library calls.
+    # This is used by source-backed reports and transitive call-state checks.
+    def record_array_writes(node):
+        if isinstance(node, dict):
+            if node.get('op') in ('array_set', 'array_add'):
+                target = node.get('target', {})
+                if target.get('scope') == 'self': writes.add(target['field'])
+            for child in node.values(): record_array_writes(child)
+        elif isinstance(node, list):
+            for child in node: record_array_writes(child)
+    record_array_writes(steps)
     if reachable is not None:
         ended = kind(bytecode[-1]) == 'EX_EndOfScript'
     if not returned or not ended: raise BlueprintTranslationError('Complete return and EndOfScript are required')
@@ -451,7 +462,7 @@ def translate_package(package, structs=None, tables=None):
                 def local_reads(value):
                     if isinstance(value, dict):
                         target = value.get('target', {})
-                        if (value.get('op') in ('array_get', 'array_mutate', 'table_get', 'set_member') and target.get('scope') == 'local'
+                        if (value.get('op') in ('array_get', 'array_mutate', 'array_set', 'array_add', 'table_get', 'set_member') and target.get('scope') == 'local'
                                 and target.get('field') in const_inputs):
                             raise BlueprintTranslationError('Write through original const input')
                         if value.get('op') == 'array_mutate' and target.get('scope') == 'self':

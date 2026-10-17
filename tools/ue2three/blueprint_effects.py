@@ -44,6 +44,13 @@ def array_context(value, package, owner, reads, outputs, depth):
         if output['scope'] != 'local' or output_schema != schema['element']:
             raise Error('Array_Get output type or source owner differs')
         return {'op': 'array_get', 'array': target, 'index': expr(args[1]), 'target': output, 'element': schema['element']}
+    # Preserve the already published Set/Add IR for source instance arrays.
+    # The general mutation adapter also accepts source local arrays.
+    if target['scope'] == 'self' and name == 'Array_Set':
+        return {'op': 'array_set', 'target': target, 'element': schema['element'],
+                'index': expr(args[1]), 'item': expr(args[2]), 'size_to_fit': expr(args[3])}
+    if target['scope'] == 'self' and name == 'Array_Add':
+        return {'op': 'array_add', 'target': target, 'element': schema['element'], 'item': expr(args[1])}
     result = {'op': 'array_mutate', 'operation': name, 'target': target, 'element': schema['element']}
     if name in ('Array_Set', 'Array_Remove'): result['index'] = expr(args[1])
     if name == 'Array_Set': result.update(value=expr(args[2]), resize=expr(args[3]))

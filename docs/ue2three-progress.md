@@ -407,8 +407,8 @@ moved back to its original test and the complete suite passed after the fix.
 
 166 translated /334 blocked; 498 generic +498 source comparisons pass in the
 integrated browser. Scene verification passes 24 inputs, 35 metrics, 4 events,
-332 inventory cases and 31 character calculations. Horizontal movement: 0.6670.
-116 Python tests, 75 JS tests and editor build pass. Added strict generic array
+332 inventory cases and 31 character calculations. Horizontal movement: 0.7458.
+122 Python tests, 77 JS tests and editor build pass. Added strict generic array
 writes, source struct constants, dirty witnesses and transactional multicast
 emissions with optional translated same-instance listeners. Original merge,
 remove, weight/encumbrance, currency and weapon-mod rules are preserved.

@@ -1,5 +1,11 @@
 # ue2three saved handoff · 2026-10-17
 
+Remote integration: all nine newer branch commits were merged, preserving
+Drive staging, CI, Tripo connectivity and server-managed Sketchfab access.
+Published array_set/array_add IR and their regression tests remain supported.
+Merge conflicts in the compiler and runtime were resolved with both behaviors
+preserved; the integrated code passed the full suites and fresh visual QA.
+
 Latest batch: **166 translated /334 blocked**, 60 delegate declarations,
 six empty functions, 56 callbacks without effects, 64 event helpers,
 263 packages uncached. Original typed array Set/Remove/Clear/Add/Append and
@@ -21,14 +27,14 @@ The scene verifier omitted event helper dependencies; it now checks the combined
 function/event library. Effect comparison ignores object key order while
 preserving event/array order. Dashboard busy polling now records process exit
 before reporting idle, fixing a reproducible intermittent test race.
-Verification: 116 Python tests, 75 JS tests, editor build; browser audit 166
+Verification: 122 Python tests, 77 JS tests, editor build; browser audit 166
 functions /498 generic /498 independent source cases. Scene: 24 input /35
 metrics /4 events /332 inventory /31 character calculation cases, with
-0.6670339247183189 horizontal movement. Source checksum:
-b97e5a57d1fdfefbb2eb4b1b76501fbffddeffdb8c3a0257e0d05b0ca358b893.
+0.745766406456768 horizontal movement. Source checksum:
+6bbeb5af674a63d4f29f94f75edd06586c559b89cebf305676a900174e1027d7.
 Evidence: build/local-scenes/ue2three/verification/source-inventory-effects/.
 Project progress now has 13 scoped green checkpoints and 18 broad areas;
-full inventory remains yellow. Editor revision18 and optional chunk421 ship
+full inventory remains yellow. Editor revision19 and optional chunk421 ship
 together. Source package assets and generated project outputs remain local.
 Next: cross-object owner/component calls and original delegate wiring needed
 by SetSlotData/ClearSlot and full equip/transfer flows; then original combat

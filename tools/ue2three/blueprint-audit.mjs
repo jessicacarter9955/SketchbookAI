@@ -39,7 +39,7 @@ try {
                 for (const executed of result.trace.filter(step => step.op === 'set')) {
                     const step = program.steps.find(step => step.source_index === executed.source_index);
                     if (executed.scope === 'persistent' || step.value.op === 'get' && step.value.scope !== 'self') continue;
-                    if (['math', 'call', 'member', 'table_get', 'typed_literal', 'struct_literal', 'array_valid', 'array_mutate'].includes(step.value.op)) continue;
+                    if (['math', 'call', 'member', 'table_get', 'typed_literal', 'struct_literal', 'array_valid', 'array_mutate', 'array_set', 'array_add'].includes(step.value.op)) continue;
                     const expected = step.value.op === 'get' ? self[step.value.field] : step.value.value;
                     const actual = executed.value;
                     if ((step.scope === 'self' || program.output_fields.includes(step.field)) && JSON.stringify(actual) !== JSON.stringify(expected))

@@ -33,7 +33,7 @@ class SourceEffectsTests(unittest.TestCase):
         p = self.package(); e = self.array_call(p)
         p.exports[1]['ScriptBytecode'].insert(0, e)
         r = translate_package(p)['functions']['Change']
-        self.assertEqual(r['self_writes'], ['Items']); self.assertEqual(r['steps'][0]['value']['operation'], 'Array_Set')
+        self.assertEqual(r['self_writes'], ['Items']); self.assertEqual(r['steps'][0]['value']['op'], 'array_set')
         self.assertEqual(r['schemas']['self']['Items']['element']['type'], 'IntProperty')
 
     def test_array_adapter_rejects_wrong_owner_offset_arity_or_native_library(self):
