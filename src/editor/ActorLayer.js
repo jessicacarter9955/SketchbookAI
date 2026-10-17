@@ -64,6 +64,20 @@ export class ActorLayer {
             if (item.prefab === 'vehicle') {
                 actor = new Car({ ...this.car, scene: clone(this.car.scene) });
                 if (item.assetId) {
+                    // RaycastVehicle only tests suspensionRestLength + tire radius.
+                    // A 0.35m ray at previous spawn height left the tires airborne:
+                    // wheels rendered correctly but did not produce any traction.
+                    for (const wheel of actor.rayCastVehicle.wheelInfos) {
+                        wheel.suspensionRestLength=0.52;
+                        wheel.suspensionStiffness=28;
+                        wheel.dampingCompression=4;
+                        wheel.dampingRelaxation=2.8;
+                        wheel.maxSuspensionTravel=0.40;
+                        wheel.rollInfluence=0.18;
+                        wheel.frictionSlip=1.6;
+                    }
+                }
+                if (item.assetId) {
                     const template = this.world.sceneEditor?.templates.get(item.assetId);
                     if (template) {
                         // Retain the original rig, wheel transforms and seats for the real
@@ -95,9 +109,11 @@ export class ActorLayer {
                         });
                         // Calibrate the imported body against the actual suspension
                         // geometry; the old fixed -0.84 offset buried it as springs settle.
-                        const resting = chassisHeightForGround(0,actor.rayCastVehicle.wheelInfos,0.02);
+                        // The lowest underbody contact guard is at -0.52m.
+                        // Keep the visible shell slightly higher than that plane,
+                        // irrespective of transient spring extension.
                         const visualBottom = new THREE.Box3().setFromObject(shell).min.y;
-                        shell.position.y += -resting + 0.07 - visualBottom;
+                        shell.position.y += -0.50 - visualBottom;
                         shell.userData.sketchfabAsset=item.assetId;
                         actor.add(shell);
                     }
@@ -110,10 +126,10 @@ export class ActorLayer {
                     const x=item.position[0]+point.x,z=item.position[2]+point.z;
                     const estimate=this.terrainHeight(x,z,assumed);
                     const floor=this.physicsGround(x,z,estimate);
-                    return floor-w.chassisConnectionPointLocal.y+w.suspensionRestLength+w.radius+0.08;
+                    return floor-w.chassisConnectionPointLocal.y+w.suspensionRestLength+w.radius-0.08;
                 });
                 const ground = this.physicsGround(item.position[0],item.position[2],assumed);
-                const height=Math.max(chassisHeightForGround(ground,wheelInfo),...heights);
+                const height=Math.max(chassisHeightForGround(ground,wheelInfo,-0.08),...heights);
                 actor.setPosition(item.position[0],height,item.position[2]);
                 actor.userData.spawnGround=ground;
                 actor.userData.chassisRideHeight=height-ground;
