@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "source_type": "UNREAL_NATIVE_STATIC_MESH_COMPOSITION",
+  "source_project": "https://github.com/Erisbv-zz/UNREAL-Procedural-Cities",
+  "source_revision": "4b7ed44bd587e37aa03c452ec4c8b6161349e7a1",
+  "license": "MIT - provenance review required for third-party materials/models",
+  "texture": {
+    "source": "https://ambientcg.com/view?id=Bricks066",
+    "license": "CC0",
+    "status": "replacement texture; not source Unreal material graph"
+  },
+  "full_unreal_level": false,
+  "district": "ny",
+  "mesh": "ue-ny-native-streetfront.glb",
+  "sha256": "b0f742d138c4f1664e3dcd8deb10dad0a806b8251faea0aff5dba91040088b27",
+  "triangles": 79285,
+  "parts": [
+    {
+      "name": "door",
+      "uasset": "Content/Import/doorMesh_door006.uasset",
+      "triangles": 53524,
+      "source_sha256_not_available_in_subset": false,
+      "source_uri": "https://github.com/Erisbv-zz/UNREAL-Procedural-Cities/blob/4b7ed44bd587e37aa03c452ec4c8b6161349e7a1/Content/Import/doorMesh_door006.uasset"
+    },
+    {
+      "name": "awning",
+      "uasset": "Content/Import/street/awning.uasset",
+      "triangles": 1907,
+      "source_sha256_not_available_in_subset": false,
+      "source_uri": "https://github.com/Erisbv-zz/UNREAL-Procedural-Cities/blob/4b7ed44bd587e37aa03c452ec4c8b6161349e7a1/Content/Import/street/awning.uasset"
+    },
+    {
+      "name": "hydrant",
+      "uasset": "Content/Import/street/fireHydrant.uasset",
+      "triangles": 4702,
+      "source_sha256_not_available_in_subset": false,
+      "source_uri": "https://github.com/Erisbv-zz/UNREAL-Procedural-Cities/blob/4b7ed44bd587e37aa03c452ec4c8b6161349e7a1/Content/Import/street/fireHydrant.uasset"
+    },
+    {
+      "name": "fence",
+      "uasset": "Content/Import/street/fences/standardfence.uasset",
+      "triangles": 302,
+      "source_sha256_not_available_in_subset": false,
+      "source_uri": "https://github.com/Erisbv-zz/UNREAL-Procedural-Cities/blob/4b7ed44bd587e37aa03c452ec4c8b6161349e7a1/Content/Import/street/fences/standardfence.uasset"
+    },
+    {
+      "name": "bench",
+      "uasset": "Content/Import/street/sidewalk/bench.uasset",
+      "triangles": 18850,
+      "source_sha256_not_available_in_subset": false,
+      "source_uri": "https://github.com/Erisbv-zz/UNREAL-Procedural-Cities/blob/4b7ed44bd587e37aa03c452ec4c8b6161349e7a1/Content/Import/street/sidewalk/bench.uasset"
+    }
+  ]
+}
