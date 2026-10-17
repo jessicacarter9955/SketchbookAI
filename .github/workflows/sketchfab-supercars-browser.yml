@@ -1,4 +1,4 @@
-name: Verify Sketchfab cars in actual City Player browser
+name: Validate Realistic City and independent supercar wheel rigs
 on:
   push:
     branches: [img2threejs-runner]
@@ -7,6 +7,8 @@ on:
       - "tools/verify-supercars.cjs"
       - "src/editor/supercars.mjs"
       - "src/editor/ActorLayer.js"
+      - "src/editor/wheel-rig.mjs"
+      - "src/ts/vehicles/Vehicle.ts"
       - "src/editor/SceneEditor.js"
       - "src/editor/start.js"
   workflow_dispatch:
@@ -16,6 +18,14 @@ jobs:
   browser:
     runs-on: ubuntu-latest
     timeout-minutes: 11
+    strategy:
+      fail-fast: false
+      matrix:
+        # The City Realistic gate must FAIL rather than silently substitute
+        # the original Sketchbook map when the city manifest is missing.
+        scene: [urban-photoreal, sandbox]
+    env:
+      SKETCHBOOK_SCENE: ${{ matrix.scene }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -33,7 +43,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sketchfab-bmw-ferrari-lambo-browser
+          name: sketchfab-wheel-rig-${{ matrix.scene }}
           path: artifacts/supercars/
           if-no-files-found: warn
           retention-days: 7
