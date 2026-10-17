@@ -218,6 +218,30 @@ test('Sketchfab BMW Ferrari Lamborghini positions remain close to the spawn',asy
     assert.ok(Math.abs(box.min.y+0.84)<0.02);
 });
 
+test('real car GLB automatically tests 4 yaw rotations and points named front wheels forward',async()=>{
+    const {chooseVehicleYaw,fitVehicleVisual}=await import('../src/editor/supercars.mjs');
+    const THREE=await import('three');
+    const sideways=new THREE.Mesh(new THREE.BoxGeometry(4.6,1.4,2.0));
+    assert.ok(Math.abs(chooseVehicleYaw(sideways,THREE)-Math.PI/2)<.01);
+    const normal=new THREE.Group();
+    normal.add(new THREE.Mesh(new THREE.BoxGeometry(2,1.4,4.6)));
+    const front=new THREE.Group(),rear=new THREE.Group();
+    front.name='Front Wheels';rear.name='Back Wheels';
+    front.add(new THREE.Mesh(new THREE.SphereGeometry(.32)));
+    rear.add(new THREE.Mesh(new THREE.SphereGeometry(.32)));
+    // Source model points backwards; +Z must be the *front* of the car.
+    front.position.z=-1.4;rear.position.z=1.4;
+    normal.add(front,rear);
+    assert.ok(Math.abs(chooseVehicleYaw(normal,THREE)-Math.PI)<.01);
+    const correct=fitVehicleVisual(normal,THREE);
+    assert.ok(Math.abs(correct.userData.sketchfabOrientationYaw-Math.PI)<.01);
+    const frontAfter=correct.getObjectByName('Front Wheels');
+    const rearAfter=correct.getObjectByName('Back Wheels');
+    const a=new THREE.Box3().setFromObject(frontAfter).getCenter(new THREE.Vector3());
+    const b=new THREE.Box3().setFromObject(rearAfter).getCenter(new THREE.Vector3());
+    assert.ok(a.z>b.z,'The imported car moves nose-first, not backwards.');
+});
+
 test('automatic car wheel rig extracts four wheels, with separate steering and suspension pivots',async()=>{
  const THREE=await import('three');
  const {rigImportedWheels,chassisHeightForGround}=await import('../src/editor/wheel-rig.mjs');
