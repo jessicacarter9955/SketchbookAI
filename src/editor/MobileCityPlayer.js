@@ -6,13 +6,19 @@ export function mountMobileCityPlayer(world,editor){
   const canvas=world.renderer.domElement;
   const layer=document.createElement('div');
   layer.className='mobile-city-controls';
-  layer.innerHTML=`<form class="mobile-city-command" autocomplete="off" aria-label="Comando per il mondo"><input name="instruction" aria-label="Crea o cambia la scena" maxlength="160" enterkeyhint="go" placeholder="Scrivi: tramonto, neve, nebbia…"><span class="mobile-city-message" role="status" aria-live="polite"></span></form>
-    <form class="mobile-city-asset-search" autocomplete="off" aria-label="Ricerca modelli 3D"><input name="query" aria-label="Cerca modelli Sketchfab o Fab" maxlength="200" enterkeyhint="search" placeholder="Modelli 3D: car, @fab tree…"><button type="submit">Cerca</button><button type="button" data-mobile-place>Posiziona</button><span role="status" aria-live="polite" data-asset-status></span></form>
+  layer.innerHTML=`<form class="mobile-city-command" autocomplete="off" aria-label="Comando per il mondo"><input name="instruction" aria-label="Crea o cambia la scena" maxlength="160" enterkeyhint="go" placeholder="Comando: pioggia, tramonto, neve…"><button type="button" data-mobile-assets aria-label="Apri modelli Sketchfab e Fab" aria-expanded="false">3D</button><span class="mobile-city-message" role="status" aria-live="polite"></span></form>
+    <form class="mobile-city-asset-search" autocomplete="off" aria-label="Ricerca modelli 3D" hidden><input name="query" aria-label="Cerca modelli Sketchfab o Fab" maxlength="200" enterkeyhint="search" placeholder="Modelli 3D: car, @fab tree…"><button type="submit">Cerca</button><button type="button" data-mobile-place>Posiziona</button><span role="status" aria-live="polite" data-asset-status></span></form>
     <div class="mobile-city-joystick" role="group" aria-label="Joystick movimento"><div class="mobile-city-thumb"></div></div>
-    <div class="mobile-city-actions"><button type="button" data-mobile-talk hidden>Parla</button><button type="button" data-mobile-car hidden>Entra in auto</button></div>`;
+    <div class="mobile-city-actions"><button type="button" data-mobile-talk hidden>💬 Parla</button><button type="button" data-mobile-car aria-label="Tasto E: entra o esci dal veicolo">E · Entra</button></div>`;
   document.body.append(layer);
   const form=layer.querySelector('.mobile-city-command'),input=form.elements.namedItem('instruction'),status=layer.querySelector('.mobile-city-message');
   const assetForm=layer.querySelector('.mobile-city-asset-search');
+  const assetToggle=layer.querySelector('[data-mobile-assets]');
+  assetToggle.onclick=()=>{
+    assetForm.hidden=!assetForm.hidden;
+    assetToggle.setAttribute('aria-expanded',String(!assetForm.hidden));
+    if(!assetForm.hidden)assetForm.elements.namedItem('query').focus();
+  };
   const assetStatus=assetForm.querySelector('[data-asset-status]');
   assetForm.onsubmit=e=>{
     e.preventDefault();
@@ -68,7 +74,7 @@ export function mountMobileCityPlayer(world,editor){
   const nearestCar=()=>{
     const player=world.editorPlayer;if(!player||player.controlledObject)return null;
     const cars=(world.vehicles||[]).filter(car=>car.seats?.some(seat=>seat&&!seat.occupiedBy));
-    return cars.find(car=>car.position.distanceTo(player.position)<8)||null;
+    return cars.sort((a,b)=>a.position.distanceTo(player.position)-b.position.distanceTo(player.position)).find(car=>car.position.distanceTo(player.position)<8)||null;
   };
   talk.onclick=()=>{
     const dialogue=world.urbanDialogue;
@@ -79,12 +85,18 @@ export function mountMobileCityPlayer(world,editor){
   carButton.onclick=()=>{
     const player=world.editorPlayer;if(!player)return;
     if(player.controlledObject){
-      player.controlledObject.forceCharacterOut?.();player.takeControl?.();
+      stopStick();
+      player.controlledObject.forceCharacterOut?.();
+      player.takeControl?.();
+      showMessage('Sei sceso dall’auto.');
       return;
     }
     const target=nearestCar();
     const seat=target?.seats?.find(s=>s?.type==='driver'&&!s.occupiedBy)||target?.seats?.find(s=>s&&!s.occupiedBy);
-    if(seat){player.teleportToVehicle(target,seat);player.takeControl();}
+    if(!seat){showMessage('Avvicinati a un’auto, poi premi E.');return;}
+    stopStick();
+    player.teleportToVehicle(target,seat);player.takeControl();
+    showMessage('Al volante! Usa il joystick per accelerare e sterzare.');
   };
   const updateActions=()=>{
     if(!layer.isConnected)return;
@@ -93,21 +105,35 @@ export function mountMobileCityPlayer(world,editor){
     talk.hidden=!(dialogue?.active||hasNpc);
     talk.textContent=dialogue?.active?'Chiudi dialogo':'Parla';
     const driving=!!player?.controlledObject;
-    carButton.hidden=!(driving||nearestCar());
-    carButton.textContent=driving?'Esci dall’auto':'Entra in auto';
+    const nearest=nearestCar();
+    carButton.hidden=false;
+    carButton.disabled=!driving&&!nearest;
+    carButton.textContent=driving?'E · Esci':nearest?'E · Entra':'E · Avvicinati';
   };
   updateActions();const actionsInterval=setInterval(updateActions,250);
   const joy=layer.querySelector('.mobile-city-joystick');
   const thumb=joy.querySelector('.mobile-city-thumb');
-  let joyPointer=null,joyX=0,joyY=0,lastActions={};
+  let joyPointer=null,joyX=0,joyY=0,lastActions={},lastReceiver=null;
   const names=['up','down','left','right','run'];
   function act(){
     const player=world.editorPlayer;
     if(!player?.triggerAction)return;
-    const next={up:joyY<-.24,down:joyY>.24,left:joyX<-.24,right:joyX>.24,run:Math.hypot(joyX,joyY)>.86};
+    const vehicle=player.controlledObject;
+    const receiver=vehicle||player;
+    const next={up:joyY<-.22,down:joyY>.22,left:joyX<-.22,right:joyX>.22,run:!vehicle&&Math.hypot(joyX,joyY)>.82};
+    if(lastReceiver&&lastReceiver!==receiver) {
+      for(const [name,value] of Object.entries(lastActions))if(value){
+        const action=lastReceiver===player?name:{up:'throttle',down:'reverse',left:'left',right:'right'}[name];
+        if(action&&lastReceiver.actions?.[action])lastReceiver.triggerAction(action,false);
+      }
+      lastActions={};
+    }
+    lastReceiver=receiver;
     for(const name of names){
+      const action=vehicle?{up:'throttle',down:'reverse',left:'left',right:'right'}[name]:name;
+      if(!action)continue;
       const value=!!next[name];
-      if(lastActions[name]!==value){player.triggerAction(name,value);lastActions[name]=value;}
+      if(lastActions[name]!==value){receiver.triggerAction(action,value);lastActions[name]=value;}
     }
   }
   function moveStick(e){
