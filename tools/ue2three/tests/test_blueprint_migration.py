@@ -146,6 +146,7 @@ class BlueprintMigrationTests(unittest.TestCase):
             variable('EX_LocalVariable', 'Index'),
             variable('EX_LocalVariable', 'Item'),
             variable('EX_LocalVariable', 'Fit')])
+        call['Parameters'][0]['Variable']['New']['ResolvedOwner'] = 2
         context = node('EX_Context', ObjectExpression=node('EX_ObjectConst', Value=-4),
                        ContextExpression=call, Offset=memory_size(call))
         function = {'ObjectName': 'WriteSlot', 'OuterIndex': 2,
