@@ -77,6 +77,7 @@ class TruthLabTests(unittest.TestCase):
         self.assertEqual(r.exception.code,400)
 
     def test_browser_report_exactly_fifty_words(self):
+        self.post({"action":"browser_start"})
         self.post({"action":"browser_message","speaker":"Ari","text":"A proposed project with a measurable market test."})
         self.post({"action":"browser_report"})
         s=app.get_state()
