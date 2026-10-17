@@ -11,9 +11,10 @@
         <p class="asset-source-hint">Scrivi <strong>@fab</strong> per cercare su Fab, oppure scegli la fonte dal menu. Esempio: <code>@fab medieval house</code>.</p>
         <section class="asset-fab-tools" hidden><div class="asset-filters"><label><input type="checkbox" name="fab-free" checked> Solo gratuiti</label><label>Categoria <select name="fab-category"><option value="all">Tutte</option><option value="vehicles">Veicoli</option><option value="buildings">Edifici</option><option value="environments">Ambienti</option><option value="props">Oggetti</option></select></label></div><p>Fab apre il marketplace per scegliere il modello e accettare la licenza. Scarica il file GLB/ZIP compatibile, poi importalo qui.</p><button type="button" data-fab-open>Apri risultati su Fab ↗</button><label class="fab-drop">Importa un file scaricato da Fab<input type="file" name="fab-file" accept=".glb,.zip"></label></section>
         <div class="asset-filters asset-sketchfab-filters"><label><input type="checkbox" name="animated"> Animati</label><label>Geometria <select name="faces"><option value="">Tutti</option><option value="10000">≤ 10.000 facce</option><option value="50000">≤ 50.000 facce</option></select></label><button type="button" data-favorites>Preferiti</button></div>
-        <details class="asset-sketchfab-access"><summary>Accesso ai download</summary><label>API token Sketchfab <input type="password" name="token" autocomplete="off" placeholder="Solo per questa sessione"></label><p data-access>La ricerca è pubblica. Puoi usare la configurazione locale oppure inserire un token valido qui, solo per questa sessione. <a href="https://sketchfab.com/settings/password" target="_blank" rel="noopener noreferrer">Impostazioni Sketchfab ↗</a></p><label>Token o JSON con più token (salvataggio facoltativo)<textarea name="tokens-json" rows="2" spellcheck="false" autocomplete="off" placeholder="Un token oppure JSON con tokens"></textarea></label><p>I token salvati rimangono in IndexedDB su questo dispositivo e su questo dominio, non vengono pubblicati su GitHub.</p><button type="button" data-save-sketchfab>Salva accesso sul dispositivo</button><button type="button" data-retry hidden>Riprova modello selezionato</button></details>
+        <div class="asset-sketchfab-server-access"><label>Sketchfab · accesso automatico già configurato<input name="server-access" value="Verifica collegamento Sketchbook…" readonly aria-label="Stato accesso Sketchfab sul server"></label><p data-bridge-info>Il token reale è protetto sul server Render: non appare nel browser. Le auto autorizzate si importano direttamente; non serve compilare alcun campo.</p></div>
+        <details class="asset-sketchfab-access"><summary>Accesso personale opzionale · altri modelli</summary><label>API token Sketchfab personale<input type="password" name="token" autocomplete="off" placeholder="Solo per modelli non inclusi nel catalogo automatico"></label><p data-access>Hai già l'accesso automatico per Ferrari 288 GTO, Ferrari F40, BMW M4 e Lamborghini Aventador. Il tuo token personale è richiesto soltanto per altri modelli Sketchfab non autorizzati dal bridge. <a href="https://sketchfab.com/settings/password" target="_blank" rel="noopener noreferrer">Impostazioni Sketchfab ↗</a></p><label>Token o JSON con più token (salvataggio facoltativo)<textarea name="tokens-json" rows="2" spellcheck="false" autocomplete="off" placeholder="Un token oppure JSON con tokens"></textarea></label><p>I token personali salvati rimangono in IndexedDB su questo dispositivo/dominio. Il token del server non viene trasferito al browser.</p><button type="button" data-save-sketchfab>Salva accesso sul dispositivo</button><button type="button" data-retry hidden>Riprova modello selezionato</button></details>
         <p role="status" aria-live="polite" data-status>Cerca un modello scaricabile o apri i preferiti.</p>
-        <section class="asset-inline-preview" hidden><div class="asset-inline-preview-bar"><strong data-preview-title></strong><button type="button" data-preview-close>Chiudi anteprima</button></div><iframe title="Anteprima 3D interattiva Sketchfab" loading="lazy" allow="fullscreen; autoplay; xr-spatial-tracking" referrerpolicy="strict-origin-when-cross-origin"></iframe><p>Anteprima del modello originale su Sketchfab; il download richiede l’autorizzazione del proprietario e il tuo token.</p></section>
+        <section class="asset-inline-preview" hidden><div class="asset-inline-preview-bar"><strong data-preview-title></strong><button type="button" data-preview-close>Chiudi anteprima</button></div><iframe title="Anteprima 3D interattiva Sketchfab" loading="lazy" allow="fullscreen; autoplay; xr-spatial-tracking" referrerpolicy="strict-origin-when-cross-origin"></iframe><p>Anteprima Sketchfab originale. Le auto Sketchbook autorizzate si importano automaticamente; altri modelli possono richiedere il tuo accesso personale.</p></section>
         <div class="asset-results"></div><button type="button" data-more hidden>Altri risultati</button>`;
     document.body.appendChild(dialog);
     const $ = selector => dialog.querySelector(selector);
@@ -46,6 +47,18 @@
             const element=$('[data-status]');element.replaceChildren(document.createTextNode('Se Fab non si apre, usa questo link: '),a);
         }else status('Fab aperto. Dopo il download torna qui e importa il GLB/ZIP.');
     }
+    // Never expose an actual server credential in any HTML form or script.
+    // Show connection state separately from the personal-token input.
+    let bridgeState={configured:false,models:[]};
+    client.serverAccess().then(state=>{
+        bridgeState=state;
+        $('[name=server-access]').value=state.configured
+            ? 'Connesso · '+state.count+' modelli autorizzati · token protetto'
+            : 'Non verificato · '+(state.reason||'server senza credenziali');
+        $('[data-bridge-info]').textContent=state.configured
+            ? 'Server Render connesso. Ferrari 288 GTO, Ferrari F40, BMW M4 e Lamborghini Aventador si importano senza digitare alcun token. Il token vero rimane segreto sul server.'
+            : 'Connessione del server non confermata. I modelli autorizzati restano selezionabili e il download segnalerà eventuali errori; nessun token viene esposto.';
+    });
     const errors = new Map();
     let favorites;
     try { favorites = JSON.parse(localStorage.getItem('sketchbook.favorites') || '[]'); if (!Array.isArray(favorites)) favorites = []; } catch { favorites = []; }
@@ -77,7 +90,19 @@
             const info = document.createElement('p'); info.textContent = `${model.user?.displayName || model.user?.username || 'Autore sconosciuto'} · ${model.license?.label || 'Verifica licenza'} · ${(model.faceCount || 0).toLocaleString()} facce`;
             const link = document.createElement('a'); link.textContent = 'Modello e licenza ↗'; link.href = safeURL(model.viewerUrl) || `https://sketchfab.com/models/${encodeURIComponent(model.uid)}`; link.target = '_blank'; link.rel = 'noopener noreferrer';
             const preview = document.createElement('button'); preview.type='button'; preview.textContent='Anteprima 3D'; preview.onclick=()=>openPreview(model);
-            const add = document.createElement('button'); add.textContent = callback ? 'Aggiungi alla scena' : 'Scarica modello'; add.disabled = busy;
+            const autoAccess=client.canDownloadWithoutBrowserToken(model.uid);
+            if(autoAccess){
+                const mark=document.createElement('strong');mark.className='asset-server-ready';
+                mark.textContent='✓ Download automatico · token server configurato';
+                card.append(mark);
+            }
+            const add = document.createElement('button');
+            add.textContent = autoAccess
+                ? (callback?'Aggiungi alla scena · automatico':'Scarica modello · automatico')
+                : client.token
+                    ? (callback?'Aggiungi alla scena':'Scarica modello')
+                    : 'Richiede accesso personale';
+            add.disabled = busy;
             add.onclick = () => pick(model);
             const star = document.createElement('button'); star.textContent = favorites.some(f => f.uid === model.uid) ? '★ Salvato' : '☆ Preferito';
             star.onclick = () => { favorites = favorites.some(f => f.uid === model.uid) ? favorites.filter(f => f.uid !== model.uid) : [...favorites, model];
@@ -94,28 +119,54 @@
         if(parsed.source==='fab'){openFab();return;}
         const query=parsed.query; if (!query) return status('Scrivi cosa vuoi cercare.');
         closePreview();controller?.abort(); controller = new AbortController(); const request = ++generation;
-        status('Ricerca in corso…'); $('[data-more]').hidden = true;
+        const recommended=client.curatedModels(query);
+        if(!more&&recommended.length){
+            models=recommended;next=null;render();
+            status(recommended.length+' modelli disponibili subito tramite server Sketchbook; continuo la ricerca generale…');
+        }else status('Ricerca in corso…');
+        $('[data-more]').hidden = true;
         try {
             const data = await client.search(query, { animated: $('[name=animated]').checked, maxFaces: $('[name=faces]').value, next: more ? next : null, signal: controller.signal });
             if (request !== generation) return;
-            models = more ? [...models, ...data.results] : data.results; next = data.next;
+            const incoming=Array.isArray(data.results)?data.results:[];
+            const chosen=!more
+                ? [...recommended,...incoming.filter(m=>!recommended.some(verified=>verified.uid===m.uid))]
+                : incoming;
+            models = more ? [...models,...chosen.filter(m=>!models.some(old=>old.uid===m.uid))] : chosen;
+            next = data.next;
             render(); status(models.length ? `${models.length} modelli. Controlla autore e licenza prima dell’uso.` : 'Nessun risultato. Prova anche termini inglesi: tree, car, building.');
-        } catch (error) { if (request === generation && error.name !== 'AbortError') status(error.message); }
+        } catch (error) {
+            if(request !== generation || error.name==='AbortError')return;
+            // This model is already verified/licensed on Sketchbook's bridge.
+            // Sketchfab public search downtime must not hide it or force a token.
+            if(recommended.length&&!more){
+                models=recommended;next=null;render();
+                status('Catalogo autorizzato disponibile: '+recommended.length+' modelli automatici. Ricerca generale temporaneamente non raggiungibile.');
+            }else status(error.message);
+        }
     }
     async function pick(model) {
         if (busy) return;
         pendingModel = model; errors.delete(model.uid);
         busy = true;
         await localAccess;
-        if (!client.token) {
+        if (!client.token && !client.canDownloadWithoutBrowserToken(model.uid)) {
             busy = false;
-            const message = `Per aggiungere “${model.name}” inserisci il tuo token in Accesso ai download, poi premi Riprova. Nessun oggetto è stato aggiunto.`;
-            errors.set(model.uid, message); render(); status(message);
-            $('details').open = true; $('[data-retry]').hidden = false; $('[name=token]').focus(); $('[name=token]').scrollIntoView({block:'center'}); return;
+            const alternative=client.curatedModels(model.name)[0] ||
+                (/ferrari/i.test(model.name)?client.curatedModels('ferrari')[0]:null);
+            const message = '“'+model.name+'” non è nel catalogo automatico autorizzato. '+
+                (alternative?'Puoi scegliere “'+alternative.name+'” (download automatico) nella lista. ':'')+
+                'Per scaricare esattamente questo modello occorre un accesso personale con i relativi permessi.';
+            errors.set(model.uid,message);render();status(message);
+            // Do not send users back into a seemingly mandatory blank token field.
+            // Instead explicitly distinguish a different third-party model.
+            return;
         }
         busy = true; render(); status(`Download e importazione di “${model.name}”…`);
         const onPick = callback;
         try {
+            if(client.canDownloadWithoutBrowserToken(model.uid))
+                status(model.name+': download automatico dal server Sketchbook, token non necessario…');
             const url = await client.download(model.uid);
             if (onPick) await onPick(url, { uid: model.uid, name: model.name, author: model.user?.displayName || model.user?.username || '', license: model.license?.label || '', licenseUrl: safeURL(model.license?.url), source: safeURL(model.viewerUrl) });
             else { const a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.click(); }
@@ -123,7 +174,9 @@
         } catch (error) {
             const message = `“${model.name}”: ${error.message}`; errors.set(model.uid, message); status(message);
             $('[data-retry]').hidden = false;
-            if (/token|account/i.test(error.message)) { $('details').open = true; $('[name=token]').focus(); }
+            if (/token|account/i.test(error.message)&&!client.canDownloadWithoutBrowserToken(model.uid)) {
+                $('details').open = true;
+            }
         }
         finally { busy = false; render(); }
     }
