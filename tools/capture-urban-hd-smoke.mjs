@@ -24,7 +24,22 @@ try{
       w?.actorLayer?.urbanPopulation?.pedestrians?.length>0)||
       w?.levelRuntime?.visualState?.status==='partial';
   },null,{timeout:300000,polling:500});
-  const report=await page.evaluate(()=>{
+  // First frame must not wait for trees; full-HD evidence DOES wait for the
+  // authentic GLTF decoder in the background. Keep these two checks separate.
+  try {
+    await page.waitForFunction(()=>{
+      const v=globalThis.world?.levelRuntime?.visualState?.vegetation;
+      return v?.ready===true||v?.status==='unavailable';
+    },null,{timeout:90000,polling:500});
+  } catch(error) {
+    const info=await page.evaluate(()=>({
+      vegetation:globalThis.world?.levelRuntime?.visualState?.vegetation,
+      stage:globalThis.cityDiagnostics?.snapshot?.(),
+      progress:globalThis.world?.levelRuntime?.visualProgress
+    }));
+    throw Error('HD TREE DECODER DID NOT FINISH: '+JSON.stringify(info)+' | '+error.message);
+  }
+    const report=await page.evaluate(()=>{
     const w=globalThis.world,r=w.levelRuntime,scene=r.root;
     const facade=r.facadeStreamer?.clusters||[];
     let pbrMeshes=0,pbrTextured=0,visiblePlaceholders=0;
