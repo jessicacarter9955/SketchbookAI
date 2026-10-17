@@ -40,6 +40,7 @@ function placeRoads(group,plan,bodies){
  const deck=new THREE.BoxGeometry(1,.26,1);
  for(const road of roadSurfaceData(plan)){
   const slab=mesh(deck,mats[road.kind],group,road.center.toArray());
+  slab.userData.surfaceTag='street';
   slab.scale.set(road.width,1,road.length+.22);slab.quaternion.copy(road.rotation);
   const shape=new CANNON.Box(new CANNON.Vec3(road.width/2,.13,(road.length+.22)/2));
   const body=new CANNON.Body({mass:0,shape,position:new CANNON.Vec3(...road.center.toArray())});
@@ -203,7 +204,9 @@ function applyCoastalPBR(group){
    const map=await loader.loadAsync(url);map.wrapS=map.wrapT=THREE.RepeatWrapping;map.repeat.set(6,6);
    map.colorSpace=THREE.SRGBColorSpace;map.anisotropy=4;
    if(!group.parent)return;
-   group.traverse(o=>{if(o.isMesh&&o.userData.surfaceTag===key){o.material=o.material.clone();o.material.map=map;o.material.needsUpdate=true;}});
+   const updated=new Set();group.traverse(o=>{if(o.isMesh&&o.userData.surfaceTag===key&&!updated.has(o.material)){
+    updated.add(o.material);o.material.map=map;o.material.needsUpdate=true;
+   }});
   }catch(error){console.info('[Districts] CC0 texture not cached; physical fallback kept:',key,error.message);}
  };
  apply('https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/asphalt_02/asphalt_02_diff_1k.jpg','street');
