@@ -6,6 +6,7 @@ import { loadCatalog, createScene } from './scene-catalog.mjs';
 import { sceneStorageKey, loadRevisions, saveRevision, forkScene } from './scene-revisions.mjs';
 import {localDdsManifest,importLocalDdsFiles} from './dds-local-assets.mjs';
 import {SanAndreasRuntime} from './SanAndreasRuntime.js';
+import {requireSaGeometry} from './sa-import-recovery.mjs';
 import {mountStreetLabGarage} from './StreetLabGarage.js';
 import {StreetLabCrime} from './StreetLabCrime.js';
 import {mountUrbanMarketplaceGarage} from './UrbanMarketplaceGarage.js';
@@ -277,6 +278,9 @@ try {
         await world.initialize(undefined, false); loading.style.display = 'flex';
         await world.levelRuntime.initialize(report);
     } else if(current.world === 'san-andreas') {
+        // An empty IndexedDB is an import step, not a broken scene or a fake GTA map.
+        // Files selected here remain on exactly this Netlify hostname for future visits.
+        await requireSaGeometry({loading,sceneId:current.id,report,diagnostics:globalThis.cityDiagnostics});
         report('San Andreas: carico esclusivamente settori GLB originali salvati nel browser…');
         world.levelRuntime=new SanAndreasRuntime(world);
         await world.initialize(undefined,false);loading.style.display='flex';
@@ -490,7 +494,7 @@ try {
     loading.style.cssText='display:flex!important;z-index:99999!important;background:#13232e!important';
     const panel=loading.querySelector('.city-loading-panel');
     if(current.world==='san-andreas'&&panel){
-      const anchor=document.createElement('a');anchor.href='sa-navigation.html';anchor.textContent='Importa la mappa GTA SA originale (GLB e nodes*.dat)';
+      const anchor=document.createElement('a');anchor.href='sa-navigation.html?scene='+encodeURIComponent(current.id);anchor.textContent='Controlla o reimporta la mappa GTA SA originale (GLB e nodes*.dat)';
       anchor.style.cssText='display:block;color:#9de9ff;padding:14px;text-decoration:underline';panel.append(anchor);
     }
     if(panel){

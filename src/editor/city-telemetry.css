@@ -28,3 +28,16 @@
 .dds-local-import .dds-import-file-label{display:block;padding:10px;margin:8px 0;border-radius:8px;border:1px solid #6dabb5;background:#1b4355;color:#f5fcff;font:600 13px system-ui}
 .dds-local-import input[type=file]{display:block;width:100%;margin-top:7px;cursor:pointer;color:#e3f8fd;font:12px system-ui}
 .dds-local-import [data-dds-import-status]{overflow-wrap:anywhere}
+
+/* The asset picker must remain clickable even with persistent debug logs enabled. */
+#loading-screen .sa-local-recovery{position:relative;z-index:10025;pointer-events:auto!important;
+  margin-top:14px;padding:14px;border:1px solid #73acbd;border-radius:9px;text-align:left;
+  background:#102c3d;color:#e8f7ff;font:13px/1.5 system-ui}
+#loading-screen .sa-local-recovery *{pointer-events:auto!important}
+#loading-screen .sa-local-recovery h2{font:700 17px system-ui;margin:0 0 8px}
+#loading-screen .sa-local-recovery p{margin:8px 0}
+#loading-screen .sa-local-recovery label{display:block;margin:10px 0;padding:11px;
+  border:1px solid #5c9aab;border-radius:8px;background:#174257}
+#loading-screen .sa-local-recovery input{display:block;width:100%;margin-top:8px;cursor:pointer}
+#loading-screen .sa-local-recovery a{color:#9de9ff;text-decoration:underline}
+#loading-screen .sa-local-recovery [data-sa-import-status]{overflow-wrap:anywhere;color:#b9eecf}

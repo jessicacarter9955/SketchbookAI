@@ -5,6 +5,13 @@ import {parseSanAndreasNodeFile,buildSanAndreasNetwork} from './sa-paths.mjs';
 import {saveSanAndreasFiles,saveSanAndreasGeometryMetadata,clearSanAndreasFiles,listSanAndreasFiles} from './sa-local-map.mjs';
 
 const mount=document.getElementById('sa-viewport'),stats=document.getElementById('sa-stats');
+// Return to the exact SA scene that sent the user here, not a different playtest.
+const returnScene=new URLSearchParams(location.search).get('scene');
+if(['san-andreas-local','san-andreas-streetlab'].includes(returnScene)){
+  const play=document.getElementById('sa-play');
+  play.href='editor.html?scene='+encodeURIComponent(returnScene)+'&play=1';
+  if(returnScene==='san-andreas-streetlab')play.textContent='▶ Avvia San Andreas StreetLab con i tuoi GLB';
+}
 const logBox=document.getElementById('sa-log'),entries=[];
 const log=(msg,error=false)=>{
   entries.push('['+new Date().toLocaleTimeString()+'] '+msg);

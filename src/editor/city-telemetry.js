@@ -2,7 +2,7 @@
 (function(){
   'use strict';
   const pending=new Map(),stages=new Map(),history=[];let sequence=0,lastTick=performance.now(),bootFailed=false;
-  let started=performance.now(),lastActivity=started,lastStage='Avvio JavaScript',lastCompleted='nessuno';
+  let started=performance.now(),lastActivity=started,lastStage='Avvio JavaScript',lastCompleted='nessuno',waitingForUser='';
   const label=url=>{
     try {const u=new URL(url,location.href);return decodeURI(u.pathname).split('/').slice(-4).join('/').slice(-135);}
     catch {return String(url).slice(0,135);}
@@ -81,6 +81,8 @@
         state==='error'?'error':'');
     },
     activity(msg){line(msg);},
+    waitingForUser(message){waitingForUser=String(message);this.stage('Importazione SA richiesta');line('ATTESA FILE LOCALI: '+waitingForUser);},
+    resumeUser(){waitingForUser='';this.stage('Importazione SA completata','done');line('IMPORT SA OK: proseguo il caricamento dei settori originali.');},
     problem(err,area='Errore JS'){line(area+': '+String(err?.message||err),'error');},
     fatal(err){
       if(bootFailed)return;
@@ -137,7 +139,12 @@
     },err=>{finish(id,err?.message||String(err));throw err;});
   };
   function heartbeat(){
-    if(bootFailed)return; // terminal error: no misleading elapsed timer or endless download report
+    if(bootFailed)return;
+    if(waitingForUser){
+      if(summary)summary.textContent='IN ATTESA DI FILE ORIGINALI: '+waitingForUser+
+        '\nNon è un download bloccato. I GLB devono essere scelti sullo stesso dominio Netlify.';
+      return;
+    } // terminal error: no misleading elapsed timer or endless download report
     const nowMs=performance.now(),gap=Math.round(nowMs-lastTick);lastTick=nowMs;
     const active=[...pending.values()].sort((a,b)=>a.start-b.start);
     const most=active.slice(0,3).map(v=>v.url+' '+Math.round((nowMs-v.start)/1000)+'s'+(v.total?' '+Math.round(100*v.loaded/v.total)+'%':'')).join(' | ');
