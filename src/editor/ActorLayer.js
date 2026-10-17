@@ -51,7 +51,7 @@ export class ActorLayer {
     }
     start(items) {
         this.stop(false);
-        const urban=Boolean(this.world.levelRuntime?.plan?.roads);
+        const urban=Boolean(this.world.levelRuntime?.plan?.roads && !this.world.levelRuntime.isDistrictCity);
         if(urban)this.urbanPopulation=new UrbanPopulation(this.world,this.playerProfile==='dds'?this.playerModel.scene:this.person.scene,this.car.scene);
         if(this.world.levelRuntime?.navigation?.vehicle?.nodes.length||this.world.levelRuntime?.navigation?.pedestrian?.nodes.length)
             this.saPopulation=new SanAndreasPopulation(this.world,this.playerProfile==='dds'?this.playerModel.scene:this.person.scene,this.car.scene);
