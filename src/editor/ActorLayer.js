@@ -53,7 +53,7 @@ export class ActorLayer {
     // Imported GLBs are body skins around the existing raycast-based Car rig;
     // this retains functioning seats, steering, suspension and F to enter.
     createVehicleActor(item) {
-        const actor=new Car({...this.car,scene:clone(this.car.scene)});
+        const actor = new Car({ ...this.car, scene: clone(this.car.scene) });
         const template=item.assetId&&this.world.sceneEditor?.templates.get(item.assetId);
         if(item.assetId&&!template)throw Error('GLB guidabile assente dal catalogo: '+item.assetId);
         if(template){
