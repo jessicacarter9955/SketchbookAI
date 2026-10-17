@@ -281,7 +281,7 @@ try {
         // An empty IndexedDB is an import step, not a broken scene or a fake GTA map.
         // Files selected here remain on exactly this Netlify hostname for future visits.
         await requireSaGeometry({loading,sceneId:current.id,report,diagnostics:globalThis.cityDiagnostics});
-        report('San Andreas: carico esclusivamente settori GLB originali salvati nel browser…');
+        report('StreetLab: avvio dai settori presenti nel browser; eventuale demo Sketchbook è segnalata a schermo, non rappresenta la mappa GTA originale.');
         world.levelRuntime=new SanAndreasRuntime(world);
         await world.initialize(undefined,false);loading.style.display='flex';
         await world.levelRuntime.initialize(report);
