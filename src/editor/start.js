@@ -11,6 +11,8 @@ import {mountStreetLabGarage} from './StreetLabGarage.js';
 import {StreetLabCrime} from './StreetLabCrime.js';
 import {mountUrbanMarketplaceGarage} from './UrbanMarketplaceGarage.js';
 import {installPhotorealSupercars} from './urban-supercars.mjs';
+import {MultiDistrictRuntime} from './MultiDistrictRuntime.js';
+import {DistrictTraffic} from './DistrictTraffic.js';
 
 globalThis.THREE = THREE; // shared by procedural weather and the 3D game
 const loading = document.getElementById('loading-screen');
@@ -286,9 +288,9 @@ try {
         await world.initialize(undefined,false);loading.style.display='flex';
         await world.levelRuntime.initialize(report);
     } else if(current.world === 'procedural-island') {
-        world.levelRuntime = new IslandRuntime(world);
+        world.levelRuntime = current.id==='coastal-districts' ? new MultiDistrictRuntime(world) : new IslandRuntime(world);
         await world.initialize(undefined, false); loading.style.display = 'flex';
-        await world.levelRuntime.initialize();
+        await world.levelRuntime.initialize(report);
     } else if(current.world === 'procedural-city') {
         if(current.playerProfile==='dds') {
             report('DDS: controllo file build/local-scenes/dds/manifest.json prima del mondo HD');
@@ -391,7 +393,16 @@ try {
           rotation:[0,0,0],scale:[1,1,1],collider:false}));
         sceneEditor.restore({version:1,world:'san-andreas',objects});sceneEditor.commit();
     }
-    if (!hadSaved && current.world === 'procedural-island') {
+    if (!hadSaved && current.id === 'coastal-districts') {
+        const objects=[];
+        for(const [i,sp] of world.levelRuntime.manifest.spawns.slice(0,4).entries()) {
+            const [x,y,z]=sp.position;
+            objects.push({id:crypto.randomUUID(),prefab:'vehicle',name:'Auto guidabile · '+sp.name,
+                position:[x+6,world.levelRuntime.groundAt(x+6,z)+.12,z],rotation:[0,i*Math.PI/2,0],scale:[1,1,1],collider:false});
+        }
+        sceneEditor.restore({version:1,world:current.world,objects}); sceneEditor.commit();
+    }
+    if (!hadSaved && current.world === 'procedural-island' && current.id!=='coastal-districts') {
         const objects=[];
         const add=(prefab,name,x,z,rotation=0)=>objects.push({id:crypto.randomUUID(),prefab,name,position:[x,world.levelRuntime.groundAt(x,z,50)+.04,z],rotation:[0,rotation,0],scale:[1,1,1],collider:prefab==='lamp'});
         add('vehicle','Auto per attraversare il ponte',4,-2,Math.PI/2);
@@ -402,6 +413,7 @@ try {
     }
     report('Attivazione menu, dialoghi e modelli…');
     sceneControls(sceneEditor);
+    if(current.id==='coastal-districts') world.districtTraffic=new DistrictTraffic(world);
     if(current.id==='san-andreas-streetlab'){
        mountStreetLabGarage(world,sceneEditor);
        world.streetLabCrime=new StreetLabCrime(world,sceneEditor,storageKey);
@@ -439,7 +451,7 @@ try {
         const select=sceneEditor.surfaceTool.$('[data-layers]'); select.value=sceneEditor.mapEdits[0].id;
         select.dispatchEvent(new Event('change')); sceneEditor.surfaceTool.cancel();
     }
-    sceneEditor.islandTool?.focus();
+    if(current.id!=='coastal-districts')sceneEditor.islandTool?.focus();
     sceneEditor.urbanTool?.focus();
     // Deep links open the actual City Player and apply one preset after assets load.
     // Example: editor.html?scene=urban-photoreal&play=1&weather=storm
@@ -481,6 +493,7 @@ try {
         document.title='Sketchbook City · Mobile Player';
     }
     if(current.world==='san-andreas' && query.get('play')==='1')sceneEditor.message('San Andreas · mappa GLB originale caricata dal browser · WASD muovi · F guida vicino a un veicolo · F2 editor. I dati GTA non sono pubblicati.');
+    if(current.id==='coastal-districts' && query.get('play')==='1') sceneEditor.message('Quattro quartieri collegati · WASD guida · E/T parla con NPC · F2 editor · UE: '+(world.levelRuntime.unreal?.items.length||0)+'/4 zone importate.');
     if(current.world==='procedural-city' && query.get('play')==='1') sceneEditor.message('Free roam · WASD muovi · E parla con un abitante · 1-4 scegli risposta · F entra in auto · F2 editor.');
     document.title = `${current.name} · Sketchbook`;
 } catch (error) {
