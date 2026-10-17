@@ -1,0 +1,65 @@
+name: Export real UE4 city architecture from public native UAssets
+
+on:
+  push:
+    branches: [codex/ue2three-realistic-districts]
+    paths: ['.github/workflows/unreal-native-asset-export.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout real MIT-licensed Unreal project asset packages
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/Erisbv-zz/UNREAL-Procedural-Cities.git /tmp/unreal-city
+          cd /tmp/unreal-city
+          git sparse-checkout set Content/Import/street/awning.uasset Content/Import/doorMesh_door006.uasset Content/Import/street/fireHydrant.uasset Content/Import/street/sidewalk/bench.uasset Content/Import/stairmesh.uasset Content/Import/sidewalk2.uasset Content/Import/awning2.uasset Content/Import/street/fences/standardfence.uasset
+          for p in Content/Import/street/awning.uasset Content/Import/doorMesh_door006.uasset Content/Import/street/fireHydrant.uasset; do
+            test -s "$p" || exit 1
+            sha256sum "$p"
+          done
+      - name: Obtain open-source Unreal UModel glTF exporter
+        run: |
+          git clone --depth 1 https://github.com/gildor2/UEViewer.git /tmp/ueviewer
+          file /tmp/ueviewer/umodel
+          chmod +x /tmp/ueviewer/umodel
+          /tmp/ueviewer/umodel -version || true
+      - name: Export ACTUAL Unreal .uasset static meshes as glTF
+        run: |
+          mkdir -p artifacts/unreal-native
+          for asset in \
+            Content/Import/street/awning.uasset \
+            Content/Import/doorMesh_door006.uasset \
+            Content/Import/street/fireHydrant.uasset \
+            Content/Import/street/sidewalk/bench.uasset \
+            Content/Import/stairmesh.uasset \
+            Content/Import/sidewalk2.uasset \
+            Content/Import/awning2.uasset \
+            Content/Import/street/fences/standardfence.uasset; do
+            echo "=== ORIGINAL UNREAL UASSET: $asset"
+            /tmp/ueviewer/umodel -export -gltf -png -path=/tmp/unreal-city -out="$PWD/artifacts/unreal-native" "$asset" || true
+          done
+          find artifacts/unreal-native -maxdepth 7 -type f -printf '%p %s bytes\n' | head -80
+          count=$(find artifacts/unreal-native -type f -name '*.gltf' | wc -l)
+          echo "ORIGINAL_UNREAL_GLTF_COUNT=$count"
+          if [ "$count" -lt 1 ]; then
+            echo 'No native UE4 mesh was successfully decoded. Check converter logs; never substitute pre-made generic GLB.' >&2
+            exit 1
+          fi
+      - name: Record original-source provenance
+        if: always()
+        run: |
+          mkdir -p artifacts/unreal-native
+          git -C /tmp/unreal-city rev-parse HEAD > artifacts/unreal-native/SOURCE_COMMIT.txt
+          printf '%s\n' 'Source: Erisbv-zz/UNREAL-Procedural-Cities (MIT project)' 'Native source: .uasset, not FBX or GLB' 'Conversion: gildor2/UEViewer -export -gltf' 'Visual fidelity must be checked; third-party content provenance requires individual review before publishing' > artifacts/unreal-native/PROVENANCE.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-unreal-uasset-extraction-proof
+          path: artifacts/unreal-native/
