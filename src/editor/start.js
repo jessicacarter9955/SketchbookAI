@@ -228,7 +228,7 @@ function sceneControls(editor) {
         };
         hud.prepend(district);
     }
-    if (current.world==='procedural-city') {
+    if (current.world==='procedural-city' || current.id==='coastal-districts') {
         const weather = new WorldWeather(world);
         globalThis.worldWeather = world.worldWeather = weather;
         const form=document.createElement('form');
@@ -455,7 +455,7 @@ try {
     sceneEditor.urbanTool?.focus();
     // Deep links open the actual City Player and apply one preset after assets load.
     // Example: editor.html?scene=urban-photoreal&play=1&weather=storm
-    if(current.world==='procedural-city'&&query.has('weather')){
+    if((current.world==='procedural-city'||current.id==='coastal-districts')&&query.has('weather')){
         const aliases={storm:'temporale',heavyRain:'pioggia intensa',rain:'fai piovere',
           drizzle:'pioggia leggera',snow:'fai nevicare',lightSnow:'nevicata leggera',
           blizzard:'bufera di neve',fog:'nebbia',clear:'sereno',cloudy:'cielo nuvoloso',
