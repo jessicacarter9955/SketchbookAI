@@ -44,7 +44,7 @@ export function configureUrbanTreeMaterial(mat){
         const marker='#include <map_fragment>';
         if(shader.fragmentShader.includes(marker)){
           shader.fragmentShader=shader.fragmentShader.replace(marker,
-            marker+'\\nif (diffuseColor.r > 0.92 && diffuseColor.g > 0.92 && diffuseColor.b > 0.92 && abs(diffuseColor.r-diffuseColor.g)<0.045 && abs(diffuseColor.g-diffuseColor.b)<0.045) discard;');
+            marker+String.fromCharCode(10)+'if (diffuseColor.r > 0.92 && diffuseColor.g > 0.92 && diffuseColor.b > 0.92 && abs(diffuseColor.r-diffuseColor.g)<0.045 && abs(diffuseColor.g-diffuseColor.b)<0.045) discard;');
         }
       };
       const priorKey=mat.customProgramCacheKey?.bind(mat);
