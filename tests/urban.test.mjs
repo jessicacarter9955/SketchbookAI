@@ -65,3 +65,22 @@ test('TRUE City vegetation prewarms a bounded set of authentic HD tree LODs and 
  assert.match(runtime,/VEGETAZIONE:/);
  assert.match(runtime,/this\.world\.camera\);/);
 });
+
+test('Poly Haven tree leaf cards recover alpha-mask cutout instead of solid white rectangles',async()=>{
+ const THREE=await import('three');
+ const {configureUrbanTreeMaterial}=await import('../src/editor/UrbanVegetation.js');
+ const leaf=new THREE.MeshStandardMaterial({name:'Leaves.001',map:new THREE.Texture()});
+ assert.equal(configureUrbanTreeMaterial(leaf),true);
+ assert.ok(leaf.alphaTest>=0.45);
+ assert.equal(leaf.transparent,false);
+ assert.equal(leaf.depthWrite,true);
+ assert.equal(leaf.userData.foliageWhiteCutout,true);
+ const shader={fragmentShader:'void main() {\n#include <map_fragment>\n}'};
+ leaf.onBeforeCompile(shader);
+ assert.match(shader.fragmentShader,/diffuseColor\\.r > 0\\.92/);
+ assert.match(shader.fragmentShader,/discard/);
+ const bark=new THREE.MeshStandardMaterial({name:'Tree trunk',roughness:0.6,map:new THREE.Texture()});
+ assert.equal(configureUrbanTreeMaterial(bark),false);
+ assert.equal(bark.alphaTest,0);
+ assert.equal(bark.userData.foliageWhiteCutout,undefined);
+});
