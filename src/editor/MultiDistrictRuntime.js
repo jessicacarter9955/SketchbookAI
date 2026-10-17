@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import {IslandRuntime} from './IslandRuntime.js';
 import {DISTRICT_PRESET,generateDistrictPlan,districtGround,districtDeckHeight,districtHash} from './district-data.mjs';
-import {loadUnrealDistricts,UE_DISTRICTS} from './UeDistrictImport.js';
+import {loadUnrealDistricts,loadNativeUnrealStreetfront,UE_DISTRICTS} from './UeDistrictImport.js';
 
 // City-scale coast, road collision, four distinct architectural/vegetation palettes.
 // Retains Sketchbook's Water, World physics, ActorLayer, editor, controllable vehicles and camera.
@@ -248,10 +248,14 @@ export class MultiDistrictRuntime extends IslandRuntime {
  }
  async initialize(report=()=>{}){
    this.unreal=await loadUnrealDistricts({report});
+   this.native=await loadNativeUnrealStreetfront({report}).catch(error=>{report('Dettagli UE: '+error.message);return {scene:null,error:error.message};});
    this.generate(DISTRICT_PRESET);
    globalThis.coastalDistrictEvidence={mode:this.unreal.items.length===4?'unreal-four-districts':this.unreal.items.length?'mixed-unreal':'procedural-preview',
     districts:UE_DISTRICTS, imported:this.unreal.items.map(x=>({id:x.id,meshes:x.meshes,pbr:x.pbr})),
-    failed:this.unreal.errors,missingManifest:this.unreal.missing};
+    failed:this.unreal.errors,missingManifest:this.unreal.missing,
+    nativeAssets:this.native?.scene?{source:this.native.manifest.source_project,revision:this.native.manifest.source_revision,
+      assetCount:this.native.manifest.parts.length,triangles:this.native.manifest.triangles,
+      fullUnrealLevel:false,replacementCC0Texture:true}:null};
    report('Coastal City: '+this.unreal.items.length+'/4 quartieri Unreal realmente importati.');
   }
  generate(raw=DISTRICT_PRESET){
@@ -259,6 +263,18 @@ export class MultiDistrictRuntime extends IslandRuntime {
   const real=new Set((this.unreal?.items||[]).filter(item=>item.coverage==='architecture-only').map(item=>item.id));
   terrain(group,bodies,plan);architecture(group,plan,bodies,real);
   for(const item of this.unreal?.items||[])group.add(item.scene);
+  if(this.native?.scene){
+    // Preserve procedural collision and road AI: this is a real UE mesh overlay,
+    // NOT the complete Unreal-authored New York level or its native materials.
+    const nySpawn=plan.spawns.find(s=>s.id==='district-ny')?.position||[-182,0,-172];
+    const front=plan.buildings.filter(b=>b.district==='ny').sort((a,b)=>
+      Math.hypot(a.x-nySpawn[0],a.z-nySpawn[2])-Math.hypot(b.x-nySpawn[0],b.z-nySpawn[2]))[0];
+    if(front){
+      const visual=this.native.scene;
+      visual.position.set(front.x,districtGround(front.x,front.z)+.05,front.z+front.d/2+.42);
+      group.add(visual);
+    }
+  }
   placeRoads(group,plan,bodies);buildBeaches(group,plan);vegetation(group,plan);
   // Pier-side boardwalk: above the beach, away from the bridge navigation corridor.
   const boardwalk=mesh(new THREE.BoxGeometry(255,.25,7),m(0xaa9781),group,[175,2.2,200]);
@@ -282,7 +298,7 @@ export class MultiDistrictRuntime extends IslandRuntime {
   }
   const speed=Math.round(player?.controlledObject?.collision.velocity.length()*3.6||0);
   const el=document.querySelector('[data-city-status]');
-  if(el)el.textContent='COASTAL DISTRICTS · UE '+(this.unreal?.items?.length||0)+'/4 · '+(near?.name||'Viadotto')+
+  if(el)el.textContent='COASTAL DISTRICTS · livelli UE '+(this.unreal?.items?.length||0)+'/4 · dettagli UE '+(this.native?.manifest?.parts?.length||0)+' · '+(near?.name||'Viadotto')+
    ' · '+speed+' km/h · '+(this.world.districtTraffic?.cars.length||0)+' auto AI';
  }
  async ensure(){this.ready=true;}
