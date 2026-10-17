@@ -1,0 +1,51 @@
+name: Film 3 Sketchfab sports cars individually
+on:
+  push:
+    branches: [codex/sa-navigation-port]
+    paths:
+      - ".github/workflows/film-urban-supercars.yml"
+      - "tools/film-one-urban-supercar.cjs"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  film:
+    runs-on: ubuntu-latest
+    timeout-minutes: 19
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        car: [bmw, ferrari, lamborghini]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Chromium and ffmpeg
+        run: |
+          npm install --prefix /tmp/one-car --no-save --no-audit --no-fund playwright@1.56.0
+          /tmp/one-car/node_modules/.bin/playwright install --with-deps chromium
+          if ! command -v ffmpeg >/dev/null; then sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg; fi
+      - name: Drive and film ${{ matrix.car }} with original Three.js and Cannon engine
+        env:
+          NODE_PATH: /tmp/one-car/node_modules
+          CAR_ID: ${{ matrix.car }}
+          PHOTO_URL: https://6ad259fa343e72e0db919829--my-test-site3.netlify.app/editor.html?scene=urban-photoreal&cityBlocks=2&play=1
+        run: node tools/film-one-urban-supercar.cjs
+      - name: Check playable movie and frame for ${{ matrix.car }}
+        if: success()
+        env:
+          CAR_ID: ${{ matrix.car }}
+        run: |
+          test -s "artifacts/car-shots/$CAR_ID/$CAR_ID.mp4"
+          test -s "artifacts/car-shots/$CAR_ID/$CAR_ID.png"
+          node -e 'const d=require("./artifacts/car-shots/"+process.env.CAR_ID+"/report.json");if(!d.ok||d.meters<.5)process.exit(1)'
+      - name: Upload real videos and pictures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: urban-photoreal-${{ matrix.car }}-video-photos
+          path: artifacts/car-shots/${{ matrix.car }}/
+          if-no-files-found: warn
+          retention-days: 14
