@@ -81,6 +81,36 @@ test('Ferrari 288 GTO uses curated CC BY server download without a browser token
     assert.match(ui,/!client\.token && !client\.canDownloadWithoutBrowserToken\(model\.uid\)/);
     assert.match(ui,/Ferrari 288 GTO/);
 });
+test('Four Sketchfab licensed cars use configured server access, while other downloads stay private',async()=>{
+    const client=new SketchfabClient(async (url)=>{
+        if(url.includes('/sketchfab/showcase'))return {ok:true,json:async()=>({
+          configured:true,vehicles:[
+            {id:'ferrari288',uid:'e83da098149746b5a3ba6f1661645b09'},
+            {id:'ferrari',uid:'52a66c41cfcd4f999fb1b1c49bf24d70'},
+            {id:'bmw',uid:'5a9007d569a846548dbf352877550c4e'},
+            {id:'lamborghini',uid:'4350c8de8fd740f582bd316c1fa010ff'}
+          ]})};
+        throw Error('Unexpected use of personal Sketchfab API');
+    });
+    const access=await client.serverAccess();
+    assert.equal(access.configured,true);
+    assert.equal(access.count,4);
+    assert.deepEqual(client.curatedModels('ferrari').map(x=>x.name),['Ferrari 288 GTO','Ferrari F40']);
+    assert.deepEqual(client.curatedModels('bmw').map(x=>x.name),['BMW M4 G82']);
+    assert.deepEqual(client.curatedModels('lamborghini').map(x=>x.name),['Lamborghini Aventador SV']);
+    for (const model of client.curatedModels()){
+      assert.equal(client.canDownloadWithoutBrowserToken(model.uid),true);
+      assert.match(await client.download(model.uid),/^https:\/\/sketchbook-fab-bridge\.onrender\.com\/sketchfab\/cars\/(ferrari288|ferrari|bmw|lamborghini)$/);
+    }
+    const ui=await readFile(new URL('../3dPicker.js',import.meta.url),'utf8');
+    assert.match(ui,/data-bridge-info/);
+    assert.match(ui,/name="server-access"/);
+    assert.match(ui,/token vero rimane segreto sul server/);
+    assert.match(ui,/const recommended=client\.curatedModels\(query\)/);
+    assert.match(ui,/!client\.token && !client\.canDownloadWithoutBrowserToken\(model\.uid\)/);
+    assert.doesNotMatch(ui,/Per aggiungere.*inserisci il tuo token in Accesso ai download/);
+});
+
 test('download requires a user token and accepts glTF ZIP responses', async () => {
     const client = new SketchfabClient(async () => ({ ok: true, json: async () => ({ gltf: { url: 'https://example.com/model.zip' } }) }));
     await assert.rejects(client.download('model123'), /token/); client.token = 'test-only-token';
