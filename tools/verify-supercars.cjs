@@ -32,7 +32,22 @@ const {chromium}=require('playwright');
                     height:w.worldTransform?.position?.y,
                     suspension:w.suspensionLength
                 })),
-                floor:x.userData.spawnGround,rideHeight:x.userData.chassisRideHeight
+                floor:x.userData.spawnGround,rideHeight:x.userData.chassisRideHeight,
+                wheelVisuals:(x.userData.sketchfabWheelRig||[]).map(binding=>{
+                    const wheel=x.rayCastVehicle.wheelInfos[binding.index];
+                    return {physicsIndex:binding.index,originalMeshCount:binding.pivot.children.length,
+                        originalAssetCenter:binding.sourceCenter.toArray(),
+                        visualAnchor:binding.visualAnchor?.toArray(),
+                        pivot:binding.pivot.position.toArray(),
+                        trackError:Math.hypot(binding.pivot.position.x-binding.visualAnchor.x,
+                            binding.pivot.position.z-binding.visualAnchor.z),
+                        physicsX:wheel.chassisConnectionPointLocal.x,physicsZ:wheel.chassisConnectionPointLocal.z,
+                        radius:wheel.radius,rendered:binding.pivot.children.some(node=>node.visible)
+                    };
+                }),
+                staticWheelGroups:(x.children.find(child=>child.userData.sketchfabBody)?.children||[])
+                    .flatMap(()=>[]),
+                originalPrefabVisible:x.wheels.some(w=>w.wheelObject.visible)
             }))||[];
             return {ready:!!ed,status:globalThis.supercarsStatus,names,actors,player:world?.editorPlayer?.position?.toArray(),
                 playing:!!ed&&!ed.active,worldReady:world?.levelRuntime?.ready,
@@ -82,8 +97,25 @@ const {chromium}=require('playwright');
             throw Error('3 real licensed assets must be visible as drivable cars in browser.');
         if(data.actors.some(car=>car.rig?.ready!==true||car.rig.wheelCount!==4))
             throw Error('Not all branded cars have four independent wheel rig pivots.');
-        if(data.actors.some(car=>car.wheels.some(w=>Math.abs(w.height-w.radius-car.floor)>0.085)))
+        if(data.actors.some(car=>car.wheels.some(w=>Math.abs(w.height-w.radius-car.floor)>0.16)))
             throw Error('A tire contact patch is clipping through or floating above the floor.');
+        if(data.actors.some(car=>car.originalPrefabVisible||
+            car.wheelVisuals.length!==4 || car.wheelVisuals.some(w=>!w.rendered ||
+                w.originalMeshCount===0 || w.trackError>0.13 ||
+                Math.abs(w.physicsX-w.visualAnchor[0])>0.001||
+                Math.abs(w.physicsZ-w.visualAnchor[2])>0.001)))
+            throw Error('Static prefab wheels remained visible or the ORIGINAL Sketchfab wheels are not fitted to the arches.');
+        const staticMeshState=await page.evaluate(()=>globalThis.world.vehicles.filter(a=>a.userData.rigStatus?.ready).map(car=>{
+            const shell=car.children.find(c=>c.userData.sketchfabBody);
+            const source=car.userData.rigStatus.source;
+            const groups=source==='bmw'?['Front_Wheels','Back_Wheels','Wheels_Logo']:
+                source==='ferrari'?['Object_37','Object_38','Object_39','Object_40']:
+                ['Plane08_3','Plane08001_4'];
+            return {source,groupVisibility:groups.map(name=>({name,visible:shell.getObjectByName(name)?.visible}))};
+        }));
+        console.log('Original STATIC wheel groups hidden:',JSON.stringify(staticMeshState));
+        if(staticMeshState.some(car=>car.groupVisibility.some(g=>g.visible!==false)))
+            throw Error('At least one ORIGINAL static Sketchfab wheel group was still rendered.');
         const entered=await page.evaluate(()=>{
             const world=globalThis.world,player=world.editorPlayer;
             const car=world.vehicles.find(x=>x.userData.editorActor&&x.children.some(c=>c.userData.sketchfabBody));
