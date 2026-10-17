@@ -48,6 +48,33 @@ const {chromium}=require('playwright');
             });
         });
         console.log('GLTFLoader wheel node names:',JSON.stringify(nodeNames));
+        const wheelVisuals=await page.evaluate(()=>{
+            const world=globalThis.world;
+            const THREE=world?.THREE||null;
+            return world.vehicles.filter(a=>a.userData.rigStatus?.ready).map(car=>{
+                const shell=car.children.find(x=>x.userData.sketchfabBody);
+                const rig=car.userData.sketchfabWheelRig;
+                shell.updateMatrixWorld(true);car.updateMatrixWorld(true);
+                return {brand:car.userData.rigStatus.source,shellOffset:shell.position.toArray(),
+                    wheelGroups:rig.map(({index,pivot})=>{
+                        const meshes=[];pivot.traverse(o=>{if(o.isMesh)meshes.push(o);});
+                        return {index,local:pivot.position.toArray(),meshCount:meshes.length,
+                            bounds:meshes.slice(0,1).map(o=>({
+                                min:o.geometry.boundingBox?.min?.toArray(),
+                                max:o.geometry.boundingBox?.max?.toArray()
+                            }))};
+                    }),
+                    sourceTargets:(car.userData.rigStatus.source==='bmw'?['Front_Wheels','Back_Wheels','Wheels_Logo']:
+                        car.userData.rigStatus.source==='lamborghini'?['Plane08_3','Plane08001_4']:
+                        ['Object_37','Object_38','Object_39','Object_40']).map(name=>{
+                            const target=shell.getObjectByName(name);
+                            return {name,exists:!!target,visible:target?.visible,position:target?.position.toArray()};
+                        }),
+                    prefabWheels:car.wheels.map(w=>({visible:w.wheelObject.visible,position:w.position.toArray()}))
+                };
+            });
+        });
+        console.log('Branded wheel visual alignment:',JSON.stringify(wheelVisuals));
         console.log('Page errors:',JSON.stringify(errors.slice(0,12)));
         console.log('Failed requests:',JSON.stringify(failed.slice(0,15)));
         await page.screenshot({path:'artifacts/supercars/sketchfab-three-cars.png',fullPage:true});
