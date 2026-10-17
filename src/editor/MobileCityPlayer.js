@@ -9,7 +9,7 @@ export function mountMobileCityPlayer(world,editor){
   layer.innerHTML=`<form class="mobile-city-command" autocomplete="off" aria-label="Comando per il mondo"><input name="instruction" aria-label="Crea o cambia la scena" maxlength="160" enterkeyhint="go" placeholder="Comando: pioggia, tramonto, neve…"><button type="button" data-mobile-assets aria-label="Apri modelli Sketchfab e Fab" aria-expanded="false">3D</button><span class="mobile-city-message" role="status" aria-live="polite"></span></form>
     <form class="mobile-city-asset-search" autocomplete="off" aria-label="Ricerca modelli 3D" hidden><input name="query" aria-label="Cerca modelli Sketchfab o Fab" maxlength="200" enterkeyhint="search" placeholder="Modelli 3D: car, @fab tree…"><button type="submit">Cerca</button><button type="button" data-mobile-place>Posiziona</button><span role="status" aria-live="polite" data-asset-status></span></form>
     <div class="mobile-city-joystick" role="group" aria-label="Joystick movimento"><div class="mobile-city-thumb"></div></div>
-    <div class="mobile-city-actions"><button type="button" data-mobile-talk hidden>💬 Parla</button><button type="button" data-mobile-car aria-label="Tasto E: entra o esci dal veicolo">E · Entra</button></div>`;
+    <div class="mobile-city-actions"><button type="button" data-mobile-talk hidden>💬 Parla</button><button type="button" data-mobile-brake hidden aria-label="Frena il veicolo">🛑 Freno</button><button type="button" data-mobile-car aria-label="Tasto E: entra o esci dal veicolo">E · Entra</button></div><span class="mobile-city-help" data-mobile-help>🕹 Muoviti · tocca E vicino all’auto</span>`;
   document.body.append(layer);
   const form=layer.querySelector('.mobile-city-command'),input=form.elements.namedItem('instruction'),status=layer.querySelector('.mobile-city-message');
   const assetForm=layer.querySelector('.mobile-city-asset-search');
@@ -71,6 +71,8 @@ export function mountMobileCityPlayer(world,editor){
   };
   const talk=layer.querySelector('[data-mobile-talk]');
   const carButton=layer.querySelector('[data-mobile-car]');
+  const brakeButton=layer.querySelector('[data-mobile-brake]');
+  const help=layer.querySelector('[data-mobile-help]');
   const nearestCar=()=>{
     const player=world.editorPlayer;if(!player||player.controlledObject)return null;
     const cars=(world.vehicles||[]).filter(car=>car.seats?.some(seat=>seat&&!seat.occupiedBy));
@@ -109,8 +111,10 @@ export function mountMobileCityPlayer(world,editor){
     carButton.hidden=false;
     carButton.disabled=!driving&&!nearest;
     carButton.textContent=driving?'E · Esci':nearest?'E · Entra':'E · Avvicinati';
+    brakeButton.hidden=!driving;
+    help.textContent=driving?'🕹 Su accelera · giù retro · lati sterzano':'🕹 Cammina e guarda trascinando · avvicinati alle auto';
   };
-  updateActions();const actionsInterval=setInterval(updateActions,250);
+  updateActions();const actionsInterval=setInterval(()=>{updateActions();if(joyPointer!==null)act();},250);
   const joy=layer.querySelector('.mobile-city-joystick');
   const thumb=joy.querySelector('.mobile-city-thumb');
   let joyPointer=null,joyX=0,joyY=0,lastActions={},lastReceiver=null;
@@ -136,6 +140,13 @@ export function mountMobileCityPlayer(world,editor){
       if(lastActions[name]!==value){receiver.triggerAction(action,value);lastActions[name]=value;}
     }
   }
+  let brakePressed=false;
+  function brake(pressed){
+    brakePressed=pressed;
+    world.editorPlayer?.controlledObject?.triggerAction?.('brake',pressed);
+  }
+  brakeButton.addEventListener('pointerdown',e=>{e.preventDefault();brake(true);brakeButton.setPointerCapture(e.pointerId);});
+  for(const type of ['pointerup','pointercancel','lostpointercapture'])brakeButton.addEventListener(type,()=>brake(false));
   function moveStick(e){
     const rect=joy.getBoundingClientRect();
     const cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;
@@ -165,8 +176,10 @@ export function mountMobileCityPlayer(world,editor){
     world.cameraOperator.move(dx*.45,dy*.45);e.preventDefault();
   });
   for(const type of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(type,e=>{if(e.pointerId===lookPointer)lookPointer=null;});
-  window.addEventListener('blur',stopStick);
+  const releaseControls=()=>{stopStick();brake(false);};
+  window.addEventListener('blur',releaseControls);
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)releaseControls();});
   // Prevent accidental scrolling/zoom during simultaneous touch movement.
   document.addEventListener('contextmenu',e=>{if(e.target===canvas||joy.contains(e.target))e.preventDefault();});
-  return {layer,showMessage,stopStick,dispose(){clearInterval(actionsInterval);stopStick();layer.remove();}};
+  return {layer,showMessage,stopStick,dispose(){clearInterval(actionsInterval);releaseControls();window.removeEventListener('blur',releaseControls);layer.remove();}};
 }
