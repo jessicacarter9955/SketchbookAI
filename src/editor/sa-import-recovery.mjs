@@ -1,7 +1,7 @@
 // Recover a San Andreas scene on the SAME Netlify origin used for the eventual play session.
 // Never fetch or ship proprietary GTA geometry: only user-selected, local, embedded-texture GLBs.
 import * as THREE from 'three';
-import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader';
+import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {parseSanAndreasNodeFile,buildSanAndreasNetwork} from './sa-paths.mjs';
 import {
   listSanAndreasFiles,saveSanAndreasFiles,saveSanAndreasGeometryMetadata,
