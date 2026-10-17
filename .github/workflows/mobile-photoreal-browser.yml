@@ -1,0 +1,36 @@
+name: Verify Android Urban Photoreal touch gameplay
+on:
+  push:
+    branches: [codex/sa-navigation-port]
+    paths:
+      - '.github/workflows/mobile-photoreal-browser.yml'
+      - 'tools/verify-mobile-photoreal.cjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android-touch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Chromium Android emulation
+        run: |
+          npm install --prefix /tmp/mobile-photoreal --no-save --no-audit --no-fund playwright@1.56.0
+          /tmp/mobile-photoreal/node_modules/.bin/playwright install --with-deps chromium
+      - name: Verify touchscreen joystick, E car entry, hidden desktop bars and three imported supercars
+        env:
+          NODE_PATH: /tmp/mobile-photoreal/node_modules
+          MOBILE_URL: https://6ad311f07a38efd6930e1c38--my-test-site3.netlify.app/mobile.html
+        run: node tools/verify-mobile-photoreal.cjs
+      - name: Upload Android gameplay screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: urban-photoreal-android-touch-screenshot
+          path: artifacts/mobile-city/
+          if-no-files-found: warn
+          retention-days: 7
