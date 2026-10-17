@@ -5,9 +5,9 @@ import subprocess
 root=Path(__file__).resolve().parents[1]
 out=root/'artifacts'/'urban-playable'
 out.mkdir(parents=True,exist_ok=True)
-for name in ['editor.html','mobile.html','sa-navigation.html','urban-examples.html','urban-assets.html','urban-webgpu.html','3dPicker.js','city-assets-sw.js','_headers']:
+for name in ['editor.html','mobile.html','sa-navigation.html','urban-examples.html','urban-assets.html','urban-webgpu.html','ue2three-native-newyork.html','3dPicker.js','city-assets-sw.js','_headers']:
     shutil.copy2(root/name,out/name)
-for name in ['src/editor','build/assets','assets/roadforge','assets/urban-kits','node_modules/three']:
+for name in ['src/editor','build/assets','assets/roadforge','assets/urban-kits','node_modules/three','tools/ue2three']:
     shutil.copytree(root/name,out/name,dirs_exist_ok=True,ignore=shutil.ignore_patterns('*.part','__pycache__'))
 # Isolated renderer experiment: keep modern Three separate from the legacy
 # game's 0.152 bundle. This exact distribution is served without an external CDN.
