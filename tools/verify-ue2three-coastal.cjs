@@ -106,6 +106,21 @@ const base=(process.env.DISTRICT_BASE_URL||'http://127.0.0.1:8765').replace(/\/$
     await page.waitForTimeout(400);
     await page.screenshot({path:'artifacts/ue2three-native-newyork-browser.png',timeout:45000,animations:'disabled'});
   }
+  if(report.nativeGeometry){
+    // Isolated still uses the exact production UE-derived GLB. It is a
+    // provenance/mesh close-up, not an invented Unreal level screenshot.
+    const nativePage=await browser.newPage({viewport:{width:1280,height:800}});
+    await nativePage.goto(base+'/ue2three-native-newyork.html',{waitUntil:'domcontentloaded'});
+    await nativePage.waitForFunction(()=>window.__unrealNativeViewer?.ready===true||
+      !!window.__unrealNativeViewer?.error,null,{timeout:60000,polling:250});
+    report.nativeIsolatedViewer=await nativePage.evaluate(()=>window.__unrealNativeViewer);
+    if(!report.nativeIsolatedViewer.ready||report.nativeIsolatedViewer.meshCount<5)
+      throw Error('Authentic Unreal static-mesh close-up viewer failed: '+JSON.stringify(report.nativeIsolatedViewer));
+    await nativePage.waitForTimeout(300);
+    await nativePage.screenshot({path:'artifacts/ue2three-native-newyork-closeup.png',
+      timeout:45000,animations:'disabled'});
+    await nativePage.close();
+  }
   console.log('REALISTIC CITY DDS UE2THREE COASTAL PASS '+JSON.stringify(report));
  }catch(error){
   report={error:String(error.stack||error),...report,pageErrors:errors,missingLocalAssets:missing,
