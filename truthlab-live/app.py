@@ -52,7 +52,7 @@ def initialize():
         CREATE TABLE IF NOT EXISTS calls(id INTEGER PRIMARY KEY, day TEXT, ts TEXT, model TEXT);
         CREATE TABLE IF NOT EXISTS errors(id INTEGER PRIMARY KEY, ts TEXT, body TEXT);
         """)
-        for key, val in {"status":"paused", "goal":DEFAULT_GOAL, "charter":DEFAULT_CHARTER,
+        for key, val in {"status":"paused", "ari_enabled":"1", "noor_enabled":"1", "goal":DEFAULT_GOAL, "charter":DEFAULT_CHARTER,
                          "traits":json.dumps(DEFAULT_TRAITS), "last_run":"", "next_run":"", "cycles":"0"}.items():
             db.execute("INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)", (key,val))
 
@@ -61,6 +61,7 @@ def settings():
         cfg = {r["key"]:r["value"] for r in db.execute("SELECT * FROM settings")}
     cfg["traits"] = json.loads(cfg["traits"])
     cfg["cycles"] = int(cfg["cycles"])
+    cfg["agents_enabled"] = {"Ari":cfg.get("ari_enabled","1") == "1", "Noor":cfg.get("noor_enabled","1") == "1"}
     return cfg
 
 def save_setting(key, value):
@@ -80,8 +81,9 @@ def get_state():
                 "config":cfg, "messages":list(reversed(messages)), "reports":reports,
                 "errors":errors, "running_cycle":working,
                 "model_ready":bool(MODEL and API_KEY), "model":MODEL or "Not configured",
+                "browser_model_available": True, "browser_model_name":"onnx-community/Qwen2.5-0.5B-Instruct",
                 "daily_calls":used, "daily_cap":MAX_DAILY,
-                "tools":{"web_search":"not connected", "email":"not connected to worker",
+                "tools":{"browser_qwen":"Available with active browser WebGPU, no key", "web_search":"not connected", "email":"not connected to worker",
                          "github":"not connected to worker", "wallet":"not connected"},
                 "wallet_address":None,"contact_email":None,
                 "hosting_note":"Free hosting sleeps after inactivity and loses SQLite state on restart; not an always-on durable worker."}
@@ -100,7 +102,7 @@ def report50(cycle, mode):
              "a hypothesis with reliable evidence.").split()
     assert len(words) == 50, len(words)
     with connect() as db:
-        db.execute("INSERT INTO reports(ts,cycle,body,mode) VALUES(?,?,?,?)",
+        db.execute("INSERT INTO reports(ts,cycle,body,mode) VALUES(?,?,?,?)"
                    (now(),cycle," ".join(words),mode))
 
 def note_error(message):
@@ -145,7 +147,7 @@ def demo_cycle(cycle):
     publish("Ari","[SIMULATED EXAMPLE] Agreed. Candidate next action: prepare a one-page problem statement and interview script. Our success measure should be real voluntary interest, not simulated agreement.","demo",cycle)
     publish("Noor","[SIMULATED EXAMPLE] I'd assess whether the interview questions are unbiased and whether findings justify further effort. Without a connected model or tools, these messages only demonstrate the interface.","demo",cycle)
 
-def cycle(demo=False):
+def cycle(demo=False, manual=False):
     global working
     try:
         with lock:
@@ -156,11 +158,22 @@ def cycle(demo=False):
             mode="demo"
         else:
             mode="live"
-            context=[]
+            with connect() as db:
+                history=[dict(r) for r in db.execute("SELECT speaker,body FROM messages WHERE mode!='demo' ORDER BY id DESC LIMIT 12")]
+            context=list(reversed(history))
+            emitted=0
             for agent in ("Ari","Noor","Ari","Noor"):
-                msg=ai_reply(agent,context,cfg)
+                latest=settings()
+                if latest["status"]!="active" and not manual:
+                    break
+                if not latest["agents_enabled"][agent]:
+                    continue
+                msg=ai_reply(agent,context,latest)
                 publish(agent,msg,mode,num)
                 context.append({"speaker":agent,"body":msg})
+                emitted += 1
+            if not emitted:
+                raise RuntimeError("No active agent delivered a response")
         report50(num,mode)
         with lock:
             save_setting("cycles",num)
@@ -180,9 +193,11 @@ def spawn(demo=False):
         if working:
             raise ValueError("A conversation cycle is already running")
         if not demo and not (MODEL and API_KEY):
-            raise ValueError("No real model is configured. Demo is available, but is explicitly simulated.")
+            raise ValueError("No real model is configured. Browser Qwen is an alternative that needs an open WebGPU browser tab.")
+        if not demo and not any(settings()["agents_enabled"].values()):
+            raise ValueError("Both agents are paused; resume an agent first")
         working=True
-    thread=threading.Thread(target=cycle,args=(demo,),daemon=True)
+    thread=threading.Thread(target=cycle,args=(demo, not demo and settings()["status"]!="active"),daemon=True)
     thread.start()
 
 def scheduler():
@@ -255,6 +270,38 @@ class Handler(BaseHTTPRequestHandler):
                 spawn()
             elif action=="demo":
                 spawn(demo=True)
+            elif action=="set_agent":
+                agent=body.get("agent")
+                enabled=body.get("enabled")
+                if agent not in ("Ari","Noor") or type(enabled)!=bool: raise ValueError("Invalid agent toggle")
+                save_setting(agent.lower()+"_enabled","1" if enabled else "0")
+            elif action=="message":
+                target=body.get("target","Both")
+                text=body.get("text","")
+                if target not in ("Ari","Noor","Both") or not isinstance(text,str) or not (1 <= len(text.strip()) <= 1800):
+                    raise ValueError("Invalid operator message")
+                with lock:
+                    n=settings()["cycles"]
+                    publish("Operator", "[For "+target+"] "+text.strip(), "operator", n)
+            elif action=="browser_message":
+                speaker=body.get("speaker")
+                text=body.get("text","")
+                if speaker not in ("Ari","Noor") or type(text)!=str or not (1<=len(text.strip())<=4500):
+                    raise ValueError("Invalid browser message")
+                if not settings()["agents_enabled"][speaker]:
+                    raise ValueError("This agent is paused")
+                with lock:
+                    n=settings()["cycles"]+1
+                    publish(speaker,text.strip(),"browser-qwen-unverified",n)
+            elif action=="browser_report":
+                with lock:
+                    n=settings()["cycles"]+1
+                    with connect() as db:
+                        count=db.execute("SELECT COUNT(*) FROM messages WHERE cycle=? AND mode='browser-qwen-unverified'",(n,)).fetchone()[0]
+                    if count<1: raise ValueError("No browser model output to summarize")
+                    report50(n,"browser-qwen-unverified")
+                    save_setting("cycles",n)
+                    save_setting("last_run",now())
             elif action=="configure":
                 goal=body.get("goal","")
                 if not isinstance(goal,str) or not 12<=len(goal)<=700: raise ValueError("Invalid goal")
