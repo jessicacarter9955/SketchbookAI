@@ -46,7 +46,13 @@
             const element=$('[data-status]');element.replaceChildren(document.createTextNode('Se Fab non si apre, usa questo link: '),a);
         }else status('Fab aperto. Dopo il download torna qui e importa il GLB/ZIP.');
     }
-    const errors = new Map();
+    // Fixed CC BY catalog entry; users searching "ferrari" can select the
+    // exact validated 288 GTO even if Sketchfab ranks it below page one.
+    const featured288={uid:'e83da098149746b5a3ba6f1661645b09',
+        name:'Ferrari 288 GTO',user:{displayName:'Randomness'},
+        license:{label:'CC BY'},faceCount:101500,
+        viewerUrl:'https://sketchfab.com/3d-models/ferrari-288-gto-e83da098149746b5a3ba6f1661645b09'};
+        const errors = new Map();
     let favorites;
     try { favorites = JSON.parse(localStorage.getItem('sketchbook.favorites') || '[]'); if (!Array.isArray(favorites)) favorites = []; } catch { favorites = []; }
     const status = message => $('[data-status]').textContent = message;
@@ -98,7 +104,11 @@
         try {
             const data = await client.search(query, { animated: $('[name=animated]').checked, maxFaces: $('[name=faces]').value, next: more ? next : null, signal: controller.signal });
             if (request !== generation) return;
-            models = more ? [...models, ...data.results] : data.results; next = data.next;
+            const relevantFerrari=/\\bferrari\\b|288\\s*gto/i.test(query);
+            const incoming=Array.isArray(data.results)?data.results:[];
+            const chosen=!more&&relevantFerrari?[featured288,...incoming.filter(m=>m.uid!==featured288.uid)]:incoming;
+            models = more ? [...models,...chosen.filter(m=>!models.some(old=>old.uid===m.uid))] : chosen;
+            next = data.next;
             render(); status(models.length ? `${models.length} modelli. Controlla autore e licenza prima dell’uso.` : 'Nessun risultato. Prova anche termini inglesi: tree, car, building.');
         } catch (error) { if (request === generation && error.name !== 'AbortError') status(error.message); }
     }
