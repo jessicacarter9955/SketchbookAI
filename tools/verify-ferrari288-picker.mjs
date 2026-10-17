@@ -70,14 +70,32 @@ try{
       sceneId:item.id,meshCount,source:asset?.metadata?.source,
       sizeBytes:asset?.bytes?.byteLength||0,
       modelVisible:!!editor.objects.get(item.id),
+      driveable:item.prefab==='vehicle',
+      carPresent:globalThis.world.vehicles.some(car=>car.userData.importedModel===item.assetId),
+      carWheels:globalThis.world.vehicles.find(car=>car.userData.importedModel===item.assetId)?.rayCastVehicle?.wheelInfos?.length||0,
+      carSeats:globalThis.world.vehicles.find(car=>car.userData.importedModel===item.assetId)?.seats?.length||0,
       loadingState:globalThis.world.levelRuntime.visualState.status,
       tokenRequiredMessage:document.querySelector('[data-status]')?.textContent||''};
   });
   proof.responses=responses;proof.pageErrors=pageErrors;
   if(proof.assetUid!==uid||proof.meshCount<10||proof.sizeBytes<1000000||
-     !proof.modelVisible||proof.loadingState!=='ready'||
+     !proof.modelVisible||!proof.driveable||!proof.carPresent||
+     proof.carWheels!==4||proof.carSeats<1||proof.loadingState!=='ready'||
      !responses.some(r=>r.status===200))
     throw Error('Ferrari GLB inserted incorrectly: '+JSON.stringify(proof));
+  // Verify the existing character can sit in the new physics vehicle.
+  proof.driver=await page.evaluate(()=>{
+    const world=globalThis.world,item=world.sceneEditor.items.find(i=>i.name==='Ferrari 288 GTO');
+    const car=world.vehicles.find(v=>v.userData.importedModel===item.assetId);
+    const seat=car.seats.find(s=>s?.type==='driver'&&!s.occupiedBy)||car.seats.find(s=>!s.occupiedBy);
+    if(!seat)throw Error('Ferrari physically instantiated but driver seat missing');
+    const player=world.editorPlayer;
+    player.teleportToVehicle(car,seat);player.takeControl();
+    return {inCar:player.controlledObject===car,seatOccupied:seat.occupiedBy===player,
+      chassisMass:car.collision.mass,raycast:car.rayCastVehicle.wheelInfos.length};
+  });
+  if(!proof.driver.inCar||!proof.driver.seatOccupied||proof.driver.chassisMass<=0)
+    throw Error('Ferrari cannot be entered and controlled: '+JSON.stringify(proof.driver));
   if(/inserisci il tuo token|poi premi riprova/i.test(proof.tokenRequiredMessage))
     throw Error('Picker still requires a browser token: '+proof.tokenRequiredMessage);
   // The 10M-triangle photoreal scene can make SwiftShader screenshot/readback
