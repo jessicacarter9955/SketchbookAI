@@ -12,6 +12,21 @@ const {chromium}=require('playwright');
     console.log('Browser test:',target);
     fs.mkdirSync('artifacts/supercars',{recursive:true});
     try {
+        // Deploy and browser workflows run independently. Verify that Netlify
+        // serves the revised physics code before launching a test; otherwise
+        // a successful GitHub push can be tested against the previous build.
+        let current=false;
+        for(let attempt=0;attempt<20;attempt++){
+            const response=await page.request.get(
+                'https://my-test-site3.netlify.app/src/editor/ActorLayer.js?v=wheel-rig'+Date.now(),
+                {timeout:12000}).catch(()=>null);
+            const source=response?.ok() ? await response.text() : '';
+            if(source.includes('new CANNON.Sphere(0.28), new CANNON.Vec3(x,0,z)')){
+                current=true; break;
+            }
+            await page.waitForTimeout(6500);
+        }
+        if(!current) throw Error('Latest wheel rig/ground fix not yet deployed on Netlify.');
         await page.goto(target,{waitUntil:'domcontentloaded',timeout:65000});
         await page.waitForFunction(()=>Boolean(globalThis.supercarsStatus) ||
             /Impossibile avviare la scena/.test(document.querySelector('#loading-screen')?.textContent||''),
