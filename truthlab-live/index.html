@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TruthLab • Pair Control</title>
+<style>
+:root{color-scheme:dark;--bg:#090f1a;--surface:#121b2b;--panel:#182337;--line:#293751;--text:#eef3fb;--muted:#9aabc8;--mint:#69ebc7;--lav:#ab9afa;--yellow:#f5cb82}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 70% -18%,#263758 0,transparent 40%),var(--bg);font:14px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;color:var(--text)}
+.shell{max-width:1350px;margin:auto;padding:30px 24px 60px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:28px}
+.brand{display:flex;align-items:center;gap:12px;letter-spacing:-.5px;font-size:22px;font-weight:800}.logo{background:linear-gradient(135deg,#8d79fe,#59d7ca);border-radius:13px;display:grid;place-items:center;width:38px;height:38px;color:#0d1729;font-weight:900}
+.pill{border:1px solid var(--line);background:#121c2c;border-radius:100px;padding:6px 13px;color:var(--muted);font-size:12px}.pill.active{color:var(--mint);border-color:#2a7363}
+h1{font-size:32px;letter-spacing:-1px;margin:0}h2{font-size:16px;margin:0 0 16px}p{color:var(--muted);margin:4px 0 16px}.intro{display:flex;justify-content:space-between;flex-wrap:wrap;align-items:end;gap:14px;margin-bottom:25px}
+.actions{display:flex;gap:9px;flex-wrap:wrap}button{border:1px solid var(--line);background:#202e48;color:var(--text);border-radius:10px;padding:10px 14px;cursor:pointer;font:inherit;font-weight:650}
+button:hover{background:#2b3b5a}button:disabled{opacity:.45;cursor:not-allowed}.primary{background:var(--mint);border-color:var(--mint);color:#05241b}.primary:hover{background:#92f5d7}
+.grid{display:grid;grid-template-columns:330px minmax(0,1fr);gap:16px}.stack{display:grid;gap:16px;align-content:start}
+.card{background:rgba(17,26,43,.93);border:1px solid var(--line);border-radius:17px;padding:20px;min-width:0;box-shadow:0 15px 35px #0002}
+.agents{display:grid;grid-template-columns:1fr 1fr;gap:10px}.agent{border:1px solid var(--line);border-radius:13px;padding:13px;background:var(--panel)}
+.avatar{display:grid;place-items:center;width:32px;height:32px;border-radius:11px;font-weight:800;margin-bottom:9px;color:#101522}.ari{background:var(--lav)}.noor{background:var(--mint)}
+.agent strong{display:block}.sub{color:var(--muted);font-size:12px}.metric-row{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:16px 0}
+.metric{background:var(--panel);border-radius:11px;padding:13px}.metric b{font-size:23px;display:block}.metric small{color:var(--muted)}
+label{display:block;color:#bac9df;margin-bottom:5px;font-size:12px;font-weight:600}textarea,input[type=password]{width:100%;border:1px solid #32415f;background:#0e1726;color:var(--text);border-radius:10px;padding:11px;outline:none;font:inherit}
+textarea{min-height:112px;resize:vertical}input[type=range]{width:100%;accent-color:var(--mint)}.slider{margin:10px 0}.range-label{display:flex;justify-content:space-between;color:var(--muted);font-size:12px}
+.tabs{display:flex;gap:8px;border-bottom:1px solid var(--line);margin:-3px 0 20px;padding-bottom:15px}.tabs button{font-size:12px;padding:8px 12px}.tabs button.selected{border-color:var(--mint);color:var(--mint)}
+.feed{max-height:665px;overflow:auto;display:flex;flex-direction:column;gap:12px;padding-right:7px;min-height:300px}
+.item{display:grid;grid-template-columns:37px 1fr;gap:11px}.item .bubble{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:14px;white-space:pre-wrap;line-height:1.7;overflow-wrap:anywhere}
+.speaker{display:flex;justify-content:space-between;gap:8px;margin-bottom:6px;font-size:12px}.speaker b{font-size:13px}.date{color:var(--muted);font-size:11px}
+.tag{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--yellow)}.report{background:var(--panel);border-radius:12px;padding:15px;margin-bottom:11px;border:1px solid var(--line)}
+.report p{color:var(--text);margin:7px 0}.note{background:#1c2941;border:1px solid #3b4867;border-radius:12px;padding:11px 14px;margin-top:12px;font-size:12px;color:var(--muted)}
+.good{color:var(--mint)}.warn{color:var(--yellow)}.dim{color:var(--muted)}
+#login{position:fixed;inset:0;display:grid;place-items:center;background:#080e19ef;z-index:10;padding:20px}#login .card{max-width:390px;width:100%}
+#message{position:fixed;bottom:15px;right:15px;z-index:20;background:#283853;padding:13px 16px;border-radius:10px;max-width:340px;border:1px solid #607395;display:none}
+a{color:var(--mint)}@media(max-width:900px){.grid{grid-template-columns:1fr}.shell{padding:18px 12px 45px}.intro h1{font-size:26px}.top{margin-bottom:20px}}
+</style></head><body>
+<div id="login"><div class="card"><div class="brand"><span class="logo">T</span> TruthLab</div><h1 style="margin-top:22px">Private control room</h1><p>Enter the operator access token. This protects your experiment's goals, conversations and controls.</p><form id="loginForm"><label for="access">Access token</label><input id="access" type="password" autocomplete="off" required placeholder="Paste operator token"><button class="primary" style="width:100%;margin-top:13px">Unlock dashboard</button></form><p id="loginError" class="warn"></p></div></div>
+<main class="shell"><header class="top"><div class="brand"><span class="logo">T</span> TruthLab <span class="sub">/ PAIR EXPERIMENT</span></div><span class="pill" id="status">Checking…</span></header>
+<div class="intro"><div><h1>Two minds. One objective.</h1><p>Observe the collaboration between Ari and Noor. Adjust their working relationship and verify progress.</p></div>
+<div class="actions"><button class="primary" id="start">▶ Start real agents</button><button id="step">↻ Run cycle</button><button id="pause">Ⅱ Pause</button><button id="demo">Preview demo</button></div></div>
+<div class="grid"><aside class="stack"><section class="card"><h2>Founding pair</h2><div class="agents"><div class="agent"><span class="avatar ari">A</span><strong>Ari</strong><span class="sub">Strategy, invention and building</span></div><div class="agent"><span class="avatar noor">N</span><strong>Noor</strong><span class="sub">Evidence, verification and co-building</span></div></div>
+<div class="metric-row"><div class="metric"><b id="cycles">0</b><small>Cycles</small></div><div class="metric"><b id="messages">0</b><small>Messages</small></div><div class="metric"><b id="calls">0</b><small>API calls</small></div></div>
+<div><span class="sub">Connected model</span><div style="font-weight:700" id="model">Not configured</div></div>
+<div class="note" id="readiness">No real AI model is configured. Simulation is clearly labelled.</div></section>
+<section class="card"><h2>Objective and relationship</h2><label for="goal">Shared founding objective</label><textarea id="goal" maxlength="700"></textarea><div id="sliders"></div><button class="primary" id="save" style="width:100%;margin-top:10px">Save directives</button></section>
+<section class="card"><h2>Capabilities</h2><div id="capabilities"></div><div class="note">Plugins connected to ChatGPT are not automatically accessible to these external agents. No passwords or private keys are ever passed into prompts.</div></section></aside>
+<section class="card"><div class="tabs"><button data-tab="talk" class="selected">Conversation</button><button data-tab="reports">Hourly reports</button><button data-tab="audit">Execution log</button></div>
+<div id="talkPanel" class="feed"></div><div id="reportsPanel" style="display:none"></div><div id="auditPanel" style="display:none"></div>
+<div class="note" id="hostingNote"></div></section></div></main><div id="message"></div>
+<script>
+(function(){
+var auth=sessionStorage.getItem("truthlab_token")||"",state=null,tab="talk",draft=false;
+var $=function(id){return document.getElementById(id)};
+var escape=function(s){return String(s===undefined?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]})};
+var labels={cooperation:"Collaboration",criticality:"Constructive criticism",reliability:"Reliability",speed:"Execution speed",quality:"Quality standard",warmth:"Warmth & respect"};
+function show(text){$("message").textContent=text;$("message").style.display="block";setTimeout(function(){$("message").style.display="none"},4500)}
+async function api(path,method,body){
+ var response=await fetch(path,{method:method||"GET",headers:{"Authorization":"Bearer "+auth,"Content-Type":"application/json"},body:body?JSON.stringify(body):undefined,cache:"no-store"});
+ var data=await response.json();
+ if(!response.ok)throw new Error(data.error||"Request failed");
+ return data;
+}
+async function load(){
+ if(!auth)return;
+ try{var s=await api("/api/state");state=s;$("login").style.display="none";$("loginError").textContent="";render();}
+ catch(e){$("login").style.display="grid";$("loginError").textContent="Access denied or service unavailable: "+e.message;if(e.message==="Unauthorized"){auth="";sessionStorage.removeItem("truthlab_token")}}
+}
+function render(){
+ var c=state.config,ready=state.model_ready;
+ $("status").textContent=(c.status==="active"?"● Running":state.running_cycle?"● Cycle running":"● Paused");
+ $("status").className="pill"+(c.status==="active"?" active":"");
+ $("cycles").textContent=c.cycles;$("messages").textContent=state.messages.length;
+ $("calls").textContent=state.daily_calls+"/"+state.daily_cap;
+ $("model").textContent=state.model;
+ $("readiness").textContent=ready?"Real model connection configured. No external tools are connected.":"No real model API is configured. Live Start is disabled; Preview demo is simulated.";
+ $("readiness").className="note "+(ready?"good":"warn");
+ $("start").disabled=!ready||state.running_cycle||c.status==="active";
+ $("step").disabled=!ready||state.running_cycle;
+ $("pause").disabled=c.status!=="active";
+ $("demo").disabled=state.running_cycle;
+ $("hostingNote").textContent=state.hosting_note;
+ if(!draft){$("goal").value=c.goal;makeSliders(c.traits)}
+ var html="";
+ state.messages.forEach(function(m){var ari=m.speaker==="Ari";
+ html+='<div class="item"><span class="avatar '+(ari?"ari":"noor")+'">'+(ari?"A":"N")+'</span><div class="bubble"><div class="speaker"><b>'+escape(m.speaker)+'</b><span class="date">'+escape(m.ts)+' · <span class="tag">'+escape(m.mode)+'</span></span></div>'+escape(m.body)+'</div></div>'});
+ $("talkPanel").innerHTML=html||'<p>No conversations yet. Connect a model to run real agents, or click Preview demo to inspect the interface.</p>';
+ $("reportsPanel").innerHTML=state.reports.map(function(r){return '<div class="report"><span class="date">'+escape(r.ts)+' — '+escape(r.mode)+'</span><p>'+escape(r.body)+'</p><span class="sub">'+r.body.split(/\s+/).length+' words · Cycle '+r.cycle+'</span></div>'}).join("")||"<p>No completed cycle reports.</p>";
+ $("auditPanel").innerHTML='<div class="report"><strong>Mode</strong><p>'+escape(ready?"Model configured":"Awaiting real model")+'</p><span class="sub">Daily request cap: '+state.daily_cap+'</span></div>'+
+ state.errors.map(function(e){return '<div class="report"><span class="date">'+escape(e.ts)+'</span><p class="warn">'+escape(e.body)+'</p></div>'}).join("");
+ $("capabilities").innerHTML=Object.keys(state.tools).map(function(k){return '<div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding:9px 0;gap:12px"><b>'+escape(k)+'</b><span class="sub">'+escape(state.tools[k])+'</span></div>'}).join("");
+}
+function makeSliders(values){$("sliders").innerHTML=Object.keys(labels).map(function(k){
+ return '<div class="slider"><div class="range-label"><span>'+labels[k]+'</span><b id="v_'+k+'">'+values[k]+'</b></div><input type="range" data-trait="'+k+'" min="0" max="100" value="'+values[k]+'"></div>'
+}).join("");
+ Array.prototype.forEach.call(document.querySelectorAll("[data-trait]"),function(input){
+ input.oninput=function(){$("v_"+input.dataset.trait).textContent=input.value;draft=true}
+ });
+}
+async function control(action,extra){
+ try{var body=Object.assign({action:action},extra||{});
+ await api("/api/control","POST",body);if(action!=="configure")show(action==="demo"?"Simulated conversation requested.":"Control accepted: "+action);
+ draft=false;setTimeout(load,550)}catch(e){show(e.message)}
+}
+$("loginForm").onsubmit=function(e){e.preventDefault();auth=$("access").value.trim();sessionStorage.setItem("truthlab_token",auth);load()};
+$("goal").addEventListener("input",function(){draft=true});
+$("save").onclick=function(){var traits={};Array.prototype.forEach.call(document.querySelectorAll("[data-trait]"),function(input){traits[input.dataset.trait]=Number(input.value)});control("configure",{goal:$("goal").value,traits:traits})};
+$("start").onclick=function(){control("start")};$("step").onclick=function(){control("step")};
+$("pause").onclick=function(){control("pause")};$("demo").onclick=function(){control("demo")};
+Array.prototype.forEach.call(document.querySelectorAll("[data-tab]"),function(b){b.onclick=function(){
+ tab=b.dataset.tab;Array.prototype.forEach.call(document.querySelectorAll("[data-tab]"),function(x){x.className=x===b?"selected":""});
+ ["talk","reports","audit"].forEach(function(t){$(t+"Panel").style.display=t===tab?(t==="talk"?"flex":"block"):"none"})
+ }});
+setInterval(function(){if(auth)load()},6000);load();
+})();
+</script></body></html>
