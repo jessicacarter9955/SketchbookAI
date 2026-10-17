@@ -23,12 +23,17 @@ const {chromium}=require('playwright');
                 'https://my-test-site3.netlify.app/src/editor/ActorLayer.js?v=wheel-rig'+Date.now(),
                 {timeout:12000}).catch(()=>null);
             const source=response?.ok() ? await response.text() : '';
-            if(source.includes('wheel.maxSuspensionTravel=0.12;')){
+            const positionsResponse=await page.request.get(
+                'https://my-test-site3.netlify.app/src/editor/supercars.mjs?v=positions'+Date.now(),
+                {timeout:12000}).catch(()=>null);
+            const positionsSource=positionsResponse?.ok() ? await positionsResponse.text() : '';
+            if(source.includes('wheel.maxSuspensionTravel=0.12;') &&
+               positionsSource.includes('[-14,10],[-7,10],[-21,10]')){
                 current=true; break;
             }
             await page.waitForTimeout(6500);
         }
-        if(!current) throw Error('Latest wheel rig/ground fix not yet deployed on Netlify.');
+        if(!current) throw Error('Latest Ferrari-safe parking positions and suspension code not yet deployed on Netlify.');
         await page.goto(target,{waitUntil:'domcontentloaded',timeout:65000});
         await page.waitForFunction(()=>Boolean(globalThis.supercarsStatus) ||
             /Impossibile avviare la scena/.test(document.querySelector('#loading-screen')?.textContent||''),
