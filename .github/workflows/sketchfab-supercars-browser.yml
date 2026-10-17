@@ -26,6 +26,7 @@ jobs:
         scene: [urban-photoreal, sandbox]
     env:
       SKETCHBOOK_SCENE: ${{ matrix.scene }}
+      SKETCHBOOK_FIRST_CAR: ${{ matrix.scene == 'sandbox' && 'ferrari' || 'bmw' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
