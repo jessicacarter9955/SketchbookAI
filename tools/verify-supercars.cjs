@@ -39,6 +39,15 @@ const {chromium}=require('playwright');
                 message:ed?.root?.querySelector('[data-status]')?.textContent||''};
         });
         console.log('Result:',JSON.stringify(data));
+        const nodeNames=await page.evaluate(()=>{
+            const editor=globalThis.sceneEditor;
+            return (editor?.items||[]).filter(x=>x.name.startsWith('Sketchfab · ')).map(item=>{
+                const template=editor.templates.get(item.assetId),matches=[];
+                template?.traverse(o=>{if(/wheel|plane08|object_3[789]|object_40/i.test(o.name))matches.push(o.name);});
+                return {model:item.name,matchingNodes:matches.slice(0,55)};
+            });
+        });
+        console.log('GLTFLoader wheel node names:',JSON.stringify(nodeNames));
         console.log('Page errors:',JSON.stringify(errors.slice(0,12)));
         console.log('Failed requests:',JSON.stringify(failed.slice(0,15)));
         await page.screenshot({path:'artifacts/supercars/sketchfab-three-cars.png',fullPage:true});
