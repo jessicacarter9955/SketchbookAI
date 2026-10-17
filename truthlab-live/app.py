@@ -124,6 +124,9 @@ def report50(cycle, mode):
     with connect() as db:
         db.execute("INSERT INTO reports(ts,cycle,body,mode) VALUES(?,?,?,?)",
                    (now(),cycle,message,mode))
+    # Render logs are private to the operator workspace. This explicit marker
+    # supports the hourly ChatGPT reporting task without exposing API tokens.
+    print("TRUTHLAB_50_WORD_REPORT "+json.dumps({"cycle":cycle,"mode":mode,"text":message}),flush=True)
 
 def note_error(message):
     with connect() as db:
