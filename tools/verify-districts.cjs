@@ -1,7 +1,7 @@
 // Browser-level proof of editor boot, autonomous traffic and physical viaduct.
 const {chromium}=require('playwright');
 const fs=require('fs');
-const base=(process.env.DISTRICT_BASE_URL||'http://127.0.0.1:8401').replace(/\\/$/,'');
+const base=(process.env.DISTRICT_BASE_URL||'http://127.0.0.1:8401').replace(/\/$/,'');
 const host=new URL(base).host;
 (async()=>{
 const browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
