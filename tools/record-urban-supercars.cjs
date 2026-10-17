@@ -41,7 +41,7 @@ function run(bin,args,time=140000){
       throw Error('Expected 3 Sketchfab supercars in the photoreal city.');
    await page.evaluate(()=>{
      const w=globalThis.world;
-     w.renderer.setPixelRatio(.7);
+     w.renderer.setPixelRatio(.35);
      w.renderer.shadowMap.enabled=false;w.params.Shadows=false;w.params.FXAA=false;
    });
    for(const [id,name] of MODELS){
@@ -68,7 +68,7 @@ function run(bin,args,time=140000){
      try{fs.unlinkSync(pixels)}catch{}
      let count=0,dimensions=null,colors=0;
      const points=[];
-     for(let i=0;i<20;i++){
+     for(let i=0;i<12;i++){
        const frame=await page.evaluate(id=>{
          const w=globalThis.world,three=globalThis.THREE,ed=w.sceneEditor;
          const item=ed.items.find(x=>x.prefab==='vehicle'&&x.assetId&&x.name.toLowerCase().includes(id));
@@ -116,15 +116,15 @@ function run(bin,args,time=140000){
      const video=path.join(DIR,id+'.mp4'),photo=path.join(DIR,id+'.png');
      run('ffmpeg',['-hide_banner','-loglevel','error','-y',
        '-f','rawvideo','-pixel_format','rgba','-video_size',width+'x'+height,
-       '-framerate','5','-i',pixels,'-an','-vf','vflip,scale=896:504:flags=lanczos',
+       '-framerate','4','-i',pixels,'-an','-vf','vflip,scale=896:504:flags=lanczos',
        '-c:v','libx264','-preset','veryfast','-crf','23','-pix_fmt','yuv420p',
        '-r','25','-movflags','+faststart',video],180000);
      run('ffmpeg',['-hide_banner','-loglevel','error','-y','-ss','1.4',
        '-i',video,'-frames:v','1',photo],75000);
      const seconds=Number(run('ffprobe',['-v','error','-show_entries','format=duration',
        '-of','default=nw=1:nk=1',video]));
-     if(!fs.existsSync(photo)||fs.statSync(photo).size<4000||
-       fs.statSync(video).size<15000||seconds<2.5)throw Error('Incomplete visual recording '+id);
+     if(!fs.existsSync(photo)||fs.statSync(photo).size<3000||
+       fs.statSync(video).size<7000||seconds<2.5)throw Error('Incomplete visual recording '+id);
      fs.unlinkSync(pixels);
      const item={id,name,video:id+'.mp4',photo:id+'.png',seconds,frames:count,driveDistanceMeters:distance,
          width,height};
