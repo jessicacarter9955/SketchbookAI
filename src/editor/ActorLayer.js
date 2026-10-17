@@ -119,9 +119,13 @@ export class ActorLayer {
                 actor.userData.chassisRideHeight=height-ground;
                 actor.collision.quaternion.setFromEuler(...item.rotation);
                 actor.collision.initQuaternion.copy(actor.collision.quaternion);
-                // Cannon does not implement box/trimesh contacts. Rounded bumpers supply
-                // sphere/trimesh wall contacts while the original raycast wheels drive.
-                for (const x of [-0.55, 0.55]) for (const z of [-1.1, 0, 1.1]) actor.collision.addShape(new CANNON.Sphere(0.38), new CANNON.Vec3(x, 0.45, z));
+                // Spheres are required for mesh/ground chassis collisions in Cannon.
+                // The former +0.45 bumper offset allowed the shell to sink ~20cm
+                // through the road as the wheel springs compressed. These guards
+                // keep the chassis undercarriage at ride height while the four
+                // raycast tires remain independently suspended and driven.
+                for (const x of [-0.48,0.48]) for (const z of [-1.02,0,1.02])
+                    actor.collision.addShape(new CANNON.Sphere(0.32), new CANNON.Vec3(x,-0.20,z));
             } else {
                 actor = new Character(this.person.scene);
                 if (this.playerProfile === 'dds') {
