@@ -7,6 +7,8 @@ import { Car } from '../ts/vehicles/Car';
 import { loadDdsPlayer } from './DdsAssets';
 import { DdsCharacter } from './DdsCharacter';
 import { UrbanPopulation } from './UrbanPopulation.js';
+import {fitVehicleVisual,SUPERCARS} from './supercars.mjs';
+import {rigImportedWheels,chassisHeightForGround} from './wheel-rig.mjs';
 
 export class ActorLayer {
     constructor(world) { this.world = world; this.actors = []; this.spawn = new THREE.Vector3(0, 2, -5); }
@@ -47,6 +49,85 @@ export class ActorLayer {
         this.world.add(player); player.takeControl(); this.world.editorPlayer = player;
         return player;
     }
+
+    // Imported GLBs are body skins around the existing raycast-based Car rig;
+    // this retains functioning seats, steering, suspension and F to enter.
+    createVehicleActor(item) {
+        const actor=new Car({...this.car,scene:clone(this.car.scene)});
+        const template=item.assetId&&this.world.sceneEditor?.templates.get(item.assetId);
+        if(item.assetId&&!template)throw Error('GLB guidabile assente dal catalogo: '+item.assetId);
+        if(template){
+            const sourceScene=actor.children[0]?.children[0];
+            sourceScene?.traverse(node=>{
+                if(!node.isMesh)return;
+                let ancestor=node,isWheel=false;
+                while(ancestor&&ancestor!==sourceScene){
+                    if(ancestor.userData?.data==='wheel'){isWheel=true;break;}
+                    ancestor=ancestor.parent;
+                }
+                if(!isWheel)node.visible=false;
+            });
+            const shell=fitVehicleVisual(template,THREE);
+            const model=this.world.sceneEditor?.assets.get(item.assetId);
+            const brand=SUPERCARS.find(car=>car.uid===model?.metadata?.uid);
+            if(brand){
+                const rig=rigImportedWheels(shell,brand.id,actor,THREE);
+                actor.userData.rigStatus=rig;
+                if(!rig.ready)globalThis.cityDiagnostics?.activity?.(
+                    'AUTO '+brand.name+': ruote originali non identificabili: '+rig.reason);
+            } else actor.userData.rigStatus={
+                ready:false,reason:'Ruote reali non riconosciute; usa il telaio fisico Sketchbook.'
+            };
+            const lowest=new THREE.Box3().setFromObject(shell).min.y;
+            shell.position.y+=-0.50-lowest;
+            if(actor.userData.sketchfabWheelRig?.length===4){
+                for(const binding of actor.userData.sketchfabWheelRig){
+                    const wheel=actor.rayCastVehicle.wheelInfos[binding.index];
+                    const anchor=binding.sourceCenter.clone().add(shell.position);
+                    wheel.radius=binding.radius;
+                    wheel.suspensionRestLength=0.52;
+                    wheel.maxSuspensionTravel=0.12;
+                    wheel.suspensionStiffness=32;
+                    wheel.dampingCompression=4.8;
+                    wheel.dampingRelaxation=3.6;
+                    wheel.frictionSlip=1.6;
+                    wheel.chassisConnectionPointLocal.set(anchor.x,
+                        anchor.y+wheel.suspensionRestLength,anchor.z);
+                }
+            }
+            shell.userData.sketchfabAsset=item.assetId;
+            shell.traverse(node=>{
+                if(!node.isMesh)return;
+                node.castShadow=true;node.receiveShadow=true;
+                for(const mat of [].concat(node.material||[]))
+                    if(mat&&!actor.materials.includes(mat))actor.materials.push(mat);
+            });
+            actor.add(shell);
+            actor.userData.importedModel=item.assetId;
+        }
+        const floor=this.ground(item.position[0],item.position[2],item.position[1]);
+        const y=template?chassisHeightForGround(floor,actor.rayCastVehicle.wheelInfos,0.06):floor+0.9;
+        actor.setPosition(item.position[0],y,item.position[2]);
+        actor.collision.quaternion.setFromEuler(...item.rotation);
+        actor.collision.initQuaternion.copy(actor.collision.quaternion);
+        for(const x of [-0.55,0.55])for(const z of [-1.1,0,1.1])
+            actor.collision.addShape(new CANNON.Sphere(0.33),new CANNON.Vec3(x,0.26,z));
+        return actor;
+    }
+    spawnImportedVehicle(item) {
+        if(item.prefab!=='vehicle'||!item.assetId)return null;
+        const existing=this.actors.find(a=>a.userData.editorItemId===item.id);
+        if(existing)return existing;
+        const actor=this.createVehicleActor(item);
+        actor.userData.editorActor=true;
+        actor.userData.editorItemId=item.id;
+        actor.userData.home=[...item.position];
+        this.world.add(actor);
+        this.actors.push(actor);
+        globalThis.cityDiagnostics?.activity?.('AUTO GUIDABILE: '+item.name+
+            ' · F per entrare · fisica Cannon attiva.');
+        return actor;
+    }
     start(items) {
         this.stop(false);
         const urban=Boolean(this.world.levelRuntime?.plan?.roads);
@@ -56,13 +137,7 @@ export class ActorLayer {
             if (!['vehicle', 'pedestrian'].includes(item.prefab)) continue;
             let actor;
             if (item.prefab === 'vehicle') {
-                actor = new Car({ ...this.car, scene: clone(this.car.scene) });
-                actor.setPosition(item.position[0], this.ground(item.position[0],item.position[2],item.position[1]) + 0.9, item.position[2]);
-                actor.collision.quaternion.setFromEuler(...item.rotation);
-                actor.collision.initQuaternion.copy(actor.collision.quaternion);
-                // Cannon does not implement box/trimesh contacts. Rounded bumpers supply
-                // sphere/trimesh wall contacts while the original raycast wheels drive.
-                for (const x of [-0.55, 0.55]) for (const z of [-1.1, 0, 1.1]) actor.collision.addShape(new CANNON.Sphere(0.38), new CANNON.Vec3(x, 0.45, z));
+                actor=this.createVehicleActor(item);
             } else {
                 actor = new Character(this.person.scene);
                 actor.setPosition(item.position[0], this.ground(item.position[0],item.position[2],item.position[1])+actor.rayCastLength+0.08, item.position[2]);
@@ -79,7 +154,7 @@ export class ActorLayer {
                     if (actor.position.distanceTo(home) > 25) actor.setPosition(home.x, this.ground(home.x,home.z,home.y)+actor.rayCastLength+0.08, home.z);
                 } });
             }
-            actor.userData.editorActor = true; actor.userData.home = [...item.position]; this.world.add(actor); this.actors.push(actor);
+            actor.userData.editorActor = true; actor.userData.editorItemId=item.id; actor.userData.home = [...item.position]; this.world.add(actor); this.actors.push(actor);
         }
     }
     stop(resetPlayer = true) {
