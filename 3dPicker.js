@@ -110,7 +110,15 @@
             models = more ? [...models,...chosen.filter(m=>!models.some(old=>old.uid===m.uid))] : chosen;
             next = data.next;
             render(); status(models.length ? `${models.length} modelli. Controlla autore e licenza prima dell’uso.` : 'Nessun risultato. Prova anche termini inglesi: tree, car, building.');
-        } catch (error) { if (request === generation && error.name !== 'AbortError') status(error.message); }
+        } catch (error) {
+            if(request !== generation || error.name==='AbortError')return;
+            // This model is already verified/licensed on Sketchbook's bridge.
+            // Sketchfab public search downtime must not hide it or force a token.
+            if(/\\bferrari\\b|288\\s*gto/i.test(query)&&!more){
+                models=[featured288];next=null;render();
+                status('Catalogo Ferrari autorizzato disponibile; ricerca Sketchfab temporaneamente non raggiungibile.');
+            }else status(error.message);
+        }
     }
     async function pick(model) {
         if (busy) return;
