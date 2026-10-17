@@ -91,7 +91,7 @@
             const parsed = new URL(url);
             if (parsed.origin !== 'https://api.sketchfab.com' || !parsed.pathname.startsWith('/v3/')) throw new Error('URL Sketchfab non valida.');
             const pool = this._manualToken ? [this._manualToken] :
-                [...new Set(this._localTokens.length ? this._localTokens : this._savedTokens)];
+                [...new Set([...this._localTokens, ...this._savedTokens])];
             if (!pool.length) pool.push('');
             let unauthorized = false;
             for (const credential of pool) {
@@ -131,7 +131,7 @@
                     return response.json();
                 }
             }
-            if (unauthorized) throw new Error('Tutti i token Sketchfab salvati sono stati rifiutati (HTTP 401). Aggiorna la configurazione.');
+            if (unauthorized) throw new Error('Nessun token Sketchfab valido: tutte le credenziali salvate sono state rifiutate (HTTP 401). Aggiorna la configurazione.');
             throw new Error('Sketchfab non raggiungibile.');
         }
         search(query, { animated = false, maxFaces = '', next = null, signal } = {}) {
