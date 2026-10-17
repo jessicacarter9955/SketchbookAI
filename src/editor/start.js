@@ -1,6 +1,8 @@
 import { loadCatalog, createScene } from './scene-catalog.mjs';
 import { sceneStorageKey, loadRevisions, saveRevision, forkScene } from './scene-revisions.mjs';
 import { SUPERCARS, supercarPositions, downloadSupercar } from './supercars.mjs';
+import { MultiDistrictRuntime } from './MultiDistrictRuntime.js';
+import { DistrictTraffic } from './DistrictTraffic.js';
 
 const loading = document.getElementById('loading-screen');
 const query = new URLSearchParams(location.search);
@@ -129,7 +131,7 @@ try {
         await world.initialize(undefined, false); loading.style.display = 'flex';
         await world.levelRuntime.initialize(report, current.spawn);
     } else if(current.world === 'procedural-island') {
-        world.levelRuntime = new IslandRuntime(world);
+        world.levelRuntime = current.id === 'coastal-districts' ? new MultiDistrictRuntime(world) : new IslandRuntime(world);
         await world.initialize(undefined, false); loading.style.display = 'flex';
         await world.levelRuntime.initialize();
     } else await world.initialize('build/assets/world.glb');
@@ -172,7 +174,22 @@ try {
             bounds:[-15,-6,-60,15,-2,-30],seed:42,density:30,height:0.5
         }]}); sceneEditor.commit();
     }
-    if (!hadSaved && current.world === 'procedural-island') {
+    if (!hadSaved && current.id === 'coastal-districts') {
+        const objects = [];
+        const add = (prefab, name, x, z, yaw=0) => {
+            const y = world.levelRuntime.groundAt(x,z);
+            objects.push({id:crypto.randomUUID(),prefab,name,position:[x,y+.1,z],
+                rotation:[0,yaw,0],scale:[1,1,1],collider:false});
+        };
+        const plan=world.levelRuntime.plan;
+        for (const d of plan.zones) {
+            const spawn=plan.spawns.find(s=>s.id==='district-'+d.id).position;
+            add('vehicle','Auto guidabile · '+d.name,spawn[0]+9,spawn[2]+4);
+            add('pedestrian','Abitante · '+d.name,spawn[0]-7,spawn[2]+5);
+        }
+        sceneEditor.restore({version:1,world:current.world,objects}); sceneEditor.commit();
+    }
+    if (!hadSaved && current.world === 'procedural-island' && current.id !== 'coastal-districts') {
         const objects=[];
         const add=(prefab,name,x,z,rotation=0)=>objects.push({id:crypto.randomUUID(),prefab,name,position:[x,world.levelRuntime.groundAt(x,z,50)+.04,z],rotation:[0,rotation,0],scale:[1,1,1],collider:prefab==='lamp'});
         add('vehicle','Auto per attraversare il ponte',4,-2,Math.PI/2);
@@ -181,9 +198,13 @@ try {
         for(const x of [-12,12]) add('pedestrian','Abitante',x,-12);
         sceneEditor.restore({version:1,world:current.world,objects,generator:{...sceneEditor.generator,sky:current.id==='island-sunset'?'sunset':'day'}});sceneEditor.commit();
     }
-    if (query.get('cars') !== '0') {
+    if (query.get('cars') !== '0' && current.id !== 'coastal-districts') {
         const result = await ensureSketchfabSupercars(sceneEditor);
         if (result.errors.length) report('Supercar Sketchfab parziali: '+result.imported.length+'/3. Usa il pulsante Supercar per riprovare.');
+    }
+    if (current.id === 'coastal-districts') {
+        globalThis.districtTraffic = new DistrictTraffic(world);
+        report('Quattro distretti, traffico stradale, pedoni e dialoghi pronti');
     }
     report('Preparazione interfaccia e controlli');
     sceneControls(sceneEditor);
