@@ -4,6 +4,7 @@ on:
     branches: [codex/sa-navigation-port]
     paths:
       - '.github/workflows/photoreal-supercars-video.yml'
+      - 'tools/record-photoreal-supercars.cjs'
   workflow_dispatch:
 permissions:
   contents: read
