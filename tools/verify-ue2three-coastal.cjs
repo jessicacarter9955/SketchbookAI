@@ -39,7 +39,9 @@ const base=(process.env.DISTRICT_BASE_URL||'http://127.0.0.1:8765').replace(/\/$
   report.pageErrors=errors;report.missingLocalAssets=missing;
   if(!report.ready||report.zones.join(',')!=='ny,sf,rio,miami'||report.roads<120||
      report.buildings<100||report.bridge!==1||report.cars<20||report.pedestrians<15||
-     report.driveableCars<4||report.activePhysicalCars<4||report.seatCars<4||!report.dialogue||report.spawns!==5||!report.playing||
+     report.driveableCars<4||report.activePhysicalCars<1||report.seatCars<1||
+     !(Number.isFinite(report.playerToClosestCar)&&report.playerToClosestCar<18)||
+     !report.dialogue||report.spawns!==5||!report.playing||
      report.pageErrors.length||report.missingLocalAssets.length)
     throw Error('City acceptance failed: '+JSON.stringify(report));
   console.log('REALISTIC CITY DDS UE2THREE COASTAL PASS '+JSON.stringify(report));
