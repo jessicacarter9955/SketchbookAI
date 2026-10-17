@@ -37,6 +37,23 @@ const base=(process.env.DISTRICT_BASE_URL||'http://127.0.0.1:8765').replace(/\/$
     playing:!ed.active,physicsBodies:r.bodies.length};
   });
   report.pageErrors=errors;report.missingLocalAssets=missing;
+  // If the actual native Unreal GLB is present in the checkout, loading it
+  // successfully in Chromium is a release gate, not merely a unit test.
+  const expectedNative=fs.existsSync('build/local-scenes/ue2three-districts/native-meshes.json');
+  if(expectedNative){
+    const native=report.unreal?.nativeAssets;
+    const live=await page.evaluate(()=>{
+      const c=window.world?.levelRuntime?.native;
+      if(!c?.scene)return null;
+      const box=new window.THREE.Box3().setFromObject(c.scene);
+      return {meshes:c.meshes,textured:c.textured,bounds:box.getSize(new window.THREE.Vector3()).toArray(),
+        source:c.manifest?.source_project,parts:c.manifest?.parts?.length};
+    });
+    report.nativeGeometry=live;
+    if(!native||native.assetCount<5||native.fullUnrealLevel!==false||!live||live.parts<5||
+       live.meshes<5||live.textured<1||!live.bounds.every(x=>Number.isFinite(x)))
+      throw Error('Genuine Unreal .uasset meshes are in Git but failed real-browser load: '+JSON.stringify(report));
+  }
   if(!report.ready||report.zones.join(',')!=='ny,sf,rio,miami'||report.roads<120||
      report.buildings<100||report.bridge!==1||report.cars<20||report.pedestrians<15||
      report.driveableCars<4||report.activePhysicalCars<1||report.seatCars<1||
@@ -75,6 +92,20 @@ const base=(process.env.DISTRICT_BASE_URL||'http://127.0.0.1:8765').replace(/\/$
   report.vehicleInteraction=vehicle;
   if(!vehicle.boarded||!vehicle.physicsRaycast||vehicle.wheels<4)
     throw Error('Driveable car entry did not connect original physics rig');
+  if(report.nativeGeometry){
+    await page.evaluate(()=>{
+      const w=window.world,ed=window.sceneEditor,visual=w.levelRuntime.native.scene;
+      ed.setActive(true);
+      const center=new window.THREE.Box3().setFromObject(visual).getCenter(new window.THREE.Vector3());
+      ed.orbit.target.copy(center);
+      w.camera.position.copy(center).add(new window.THREE.Vector3(8,4,11));
+      ed.orbit.update();
+      // Screenshot is actual native GLB geometry loaded by Three.js, not a mock.
+      document.querySelector('#scene-editor')?.style.setProperty('opacity','.15');
+    });
+    await page.waitForTimeout(400);
+    await page.screenshot({path:'artifacts/ue2three-native-newyork-browser.png',timeout:45000,animations:'disabled'});
+  }
   console.log('REALISTIC CITY DDS UE2THREE COASTAL PASS '+JSON.stringify(report));
  }catch(error){
   report={error:String(error.stack||error),...report,pageErrors:errors,missingLocalAssets:missing,
