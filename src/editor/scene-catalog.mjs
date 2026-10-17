@@ -10,7 +10,7 @@ export const BUILTIN_SCENES = [
     { id: 'island-bridge', name: 'Isola · ponte e costa', world: 'procedural-island', spawn:'island-west' },
     { id: 'island-sunset', name: 'Isola · tramonto', world: 'procedural-island', spawn:'island-west' },
     { id: 'urban-procedural', name: 'Procedural City · drive test', world: 'procedural-city', spawn:'urban-center', playerProfile:'mannequin' },
-    { id: 'urban-photoreal', name: 'Urban Photoreal · boulevard', world: 'procedural-city', spawn:'urban-center', playerProfile:'mannequin' },
+    { id: 'urban-photoreal', name: 'TRUE Realistic City · HD + meteo + log', world: 'procedural-city', spawn:'urban-center', playerProfile:'mannequin' },
     { id: 'urban-photoreal-dds', name: 'Urban Photoreal · DDS armed mannequin', world: 'procedural-city', spawn:'urban-center', playerProfile:'dds' },
     { id: 'urban-photoreal-sunset', name: 'Urban Photoreal · sunset', world: 'procedural-city', spawn:'urban-center', playerProfile:'mannequin' }
 ];

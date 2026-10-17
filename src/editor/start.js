@@ -18,6 +18,13 @@ if('serviceWorker' in navigator && location.protocol!=='file:'){
 if(minimalMobile)document.body.classList.add('mobile-city-boot');
 const catalog = loadCatalog(localStorage);
 const current = catalog.find(s => s.id === query.get('scene')) || catalog[0];
+// Distinct identity for the photoreal procedural city with weather and live asset logs.
+// This is NOT the separate Liberty City scene which has no city sector manifest.
+if(current.id==='urban-photoreal'){
+    const title=loading?.querySelector('.city-loading-panel h1');
+    if(title)title.textContent=current.name;
+    document.title=current.name+' · Sketchbook';
+}
 const storageKey = sceneStorageKey(current.id);
 const loadingMessage=loading?.querySelector('#city-load-message');
 const loadingProgress=loading?.querySelector('#city-load-progress');

@@ -120,3 +120,12 @@ test('urban drive scene keeps mannequin player profile through catalog load', ()
     const urban=loadCatalog(storage).find(s=>s.id==='urban-procedural');
     assert.equal(urban.world,'procedural-city'); assert.equal(urban.playerProfile,'mannequin');
 });
+
+
+test('TRUE Realistic City identifies the HD weather-and-logs world, never Liberty City', () => {
+    const trueCity=BUILTIN_SCENES.find(scene=>scene.id==='urban-photoreal');
+    assert.equal(trueCity.name,'TRUE Realistic City · HD + meteo + log');
+    assert.equal(trueCity.world,'procedural-city');
+    assert.equal(BUILTIN_SCENES.find(scene=>scene.id==='liberty-city').world,'liberty-city');
+    assert.ok(!BUILTIN_SCENES.find(scene=>scene.id==='liberty-city').name.startsWith('TRUE'));
+});
