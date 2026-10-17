@@ -65,3 +65,9 @@ test('StreetLab automatically bootstraps honest Sketchbook demo from already bun
  assert.equal(header.toString('ascii',0,4),'glTF');
  assert.equal(header.readUInt32LE(8),stats.size);
 });
+
+test('StreetLab Mesh surface array never activates Liberty City exclusive SurfaceTool',()=>{
+  const editor=source('src/editor/SceneEditor.js');
+  assert.match(editor,/worldId==='liberty-city' && typeof world\.levelRuntime\?\.surfaces\?\.setEdits==='function'/);
+  assert.match(editor,/typeof this\.world\.levelRuntime\?\.surfaces\?\.setEdits==='function'/);
+});
