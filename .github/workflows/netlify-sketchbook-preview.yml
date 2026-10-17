@@ -117,3 +117,19 @@ jobs:
           else
             echo "Action did not expose deploy URL. Verify the Netlify deploy log." >> "$GITHUB_STEP_SUMMARY"
           fi
+      - name: Install Chromium for actual interactive district check
+        run: |
+          npm install --no-save playwright@1.58.0
+          npx playwright install --with-deps chromium
+      - name: Verify four-district street, bridge, vehicles and pedestrian interaction
+        env:
+          DISTRICT_BASE_URL: ${{ steps.deploy.outputs.deploy_url }}
+        run: node tools/verify-districts.cjs
+      - name: Archive real browser screenshot and diagnostics
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: district-city-playable-proof
+          path: |
+            artifacts/district-browser-report.json
+            artifacts/district-browser.png
