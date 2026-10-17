@@ -372,7 +372,19 @@ export class SceneEditor {
         const saved = localStorage.getItem(this.storageKey); if (!saved) return;
         const scene = validateScene(JSON.parse(saved));
         if (scene.world && scene.world !== this.worldId) throw new Error('La scena salvata appartiene a un’altra mappa.');
-        for (const id of new Set(scene.objects.map(i => i.assetId).filter(Boolean))) { const asset = await this.store.get(id); if (!asset) throw new Error('Asset locale mancante. Reimporta il pacchetto scena esportato.'); const template = await this.prepareAsset(asset); this.assets.set(id, asset); this.templates.set(id, template); }
+        for (const id of new Set(scene.objects.map(i => i.assetId).filter(Boolean))) {
+            const asset=await this.store.get(id);
+            if(!asset)throw Error('Asset locale mancante. Reimporta il pacchetto scena esportato.');
+            // Upgrade cars imported by earlier builds that stored only assetId
+            // (no vehicle prefab) instead of forcing people to re-download GLBs.
+            const items=scene.objects.filter(item=>item.assetId===id);
+            if(isImportedVehicle({...asset.metadata,name:items[0]?.name||asset.metadata?.name})){
+                asset.metadata={...asset.metadata,role:'vehicle'};
+                for(const item of items){item.prefab='vehicle';item.collider=false;item.scale=[1,1,1];}
+            }
+            const template=await this.prepareAsset(asset);
+            this.assets.set(id,asset);this.templates.set(id,template);
+        }
         this.history = new History(scene); this.restore(scene); this.message('Ultima scena ripristinata.');
     }
     packageScene() {
