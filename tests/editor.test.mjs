@@ -150,6 +150,21 @@ test('invalid pooled Sketchfab token is removed after 401 without rate-limit ret
     assert.equal(requests, 1);
 });
 
+test('Sketchfab automatically tries a saved authorized token after an invalid local token', async () => {
+    const bad='b'.repeat(32),good='g'.repeat(32),seen=[];
+    const client=new SketchfabClient(async (url,options) => {
+        if(url==='/.local/sketchfab.json')return {ok:true,json:async()=>({token:bad})};
+        seen.push(options.headers.Authorization);
+        if(options.headers.Authorization==='Token '+bad)return {ok:false,status:401};
+        return {ok:true,json:async()=>({results:[]})};
+    });
+    const store={load:async()=>[good]};
+    assert.equal(await client.loadLocalToken({hostname:'localhost'}),true);
+    assert.equal(await client.loadSavedTokens(store),true);
+    await client.search('ferrari');
+    assert.deepEqual(seen,['Token '+bad,'Token '+good]);
+    assert.equal(client.credentialCount,1);
+});
 test('one-time JSON setup persists across new Sketchfab clients and can be revoked', async () => {
     const saved = { value: [] };
     const store = { load: async () => saved.value, save: async tokens => { saved.value = [...tokens]; },
