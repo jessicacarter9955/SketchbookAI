@@ -90,20 +90,49 @@
         async request(url, signal) {
             const parsed = new URL(url);
             if (parsed.origin !== 'https://api.sketchfab.com' || !parsed.pathname.startsWith('/v3/')) throw new Error('URL Sketchfab non valida.');
-            // Pick only from locally configured credentials. Never retry rate limits or ownership errors.
-            const pool = this._localTokens.length ? this._localTokens : this._savedTokens;
-            const credential = this._manualToken || (pool.length ? pool[Math.floor(Math.random() * pool.length)] : '');
-            const response = await this.fetcher(parsed.href, { signal: signal || AbortSignal.timeout(30000),
-                headers: credential ? { Authorization: `Token ${credential}` } : {} });
-            if (response.status === 401 && !this._manualToken && credential) {
-                if (this._localTokens.length) this._localTokens = this._localTokens.filter(t => t !== credential);
-                else this._savedTokens = this._savedTokens.filter(t => t !== credential);
+            const pool = this._manualToken ? [this._manualToken] :
+                [...new Set(this._localTokens.length ? this._localTokens : this._savedTokens)];
+            if (!pool.length) pool.push('');
+            let unauthorized = false;
+            for (const credential of pool) {
+                // Invalid (401) credentials can be replaced with the next one the user
+                // explicitly configured. Do not rotate 403 permissions or 429 rate limits.
+                for (let attempt = 0; attempt < 3; attempt++) {
+                    let response;
+                    try {
+                        response = await this.fetcher(parsed.href, {
+                            signal: signal || AbortSignal.timeout(30000),
+                            headers: credential ? { Authorization: `Token ${credential}` } : {}
+                        });
+                    } catch (error) {
+                        if (error?.name === 'AbortError' || error?.name === 'TimeoutError' ||
+                            attempt === 2 || !(error instanceof TypeError)) throw error;
+                        await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)));
+                        continue;
+                    }
+                    if (response.status === 401 && credential && !this._manualToken) {
+                        unauthorized = true;
+                        this._localTokens = this._localTokens.filter(t => t !== credential);
+                        this._savedTokens = this._savedTokens.filter(t => t !== credential);
+                        break;
+                    }
+                    if ([502,503,504].includes(response.status) && attempt < 2) {
+                        await new Promise(resolve => setTimeout(resolve, 300 * (attempt + 1)));
+                        continue;
+                    }
+                    if (!response.ok) {
+                        const messages = {
+                            401: 'Inserisci un token Sketchfab valido.',
+                            403: 'Questo account non può scaricare il modello.',
+                            429: 'Limite Sketchfab raggiunto. Riprova tra poco.'
+                        };
+                        throw new Error(messages[response.status] || `Sketchfab: errore HTTP ${response.status}.`);
+                    }
+                    return response.json();
+                }
             }
-            if (!response.ok) {
-                const messages = { 401: 'Inserisci un token Sketchfab valido.', 403: 'Questo account non può scaricare il modello.', 429: 'Limite Sketchfab raggiunto. Riprova tra poco.' };
-                throw new Error(messages[response.status] || `Sketchfab: errore HTTP ${response.status}.`);
-            }
-            return response.json();
+            if (unauthorized) throw new Error('Tutti i token Sketchfab salvati sono stati rifiutati (HTTP 401). Aggiorna la configurazione.');
+            throw new Error('Sketchfab non raggiungibile.');
         }
         search(query, { animated = false, maxFaces = '', next = null, signal } = {}) {
             const aliases = { albero: 'tree', alberi: 'trees', macchina: 'car', auto: 'car', macchine: 'cars', edificio: 'building', edifici: 'buildings', lampione: 'street lamp', strada: 'road' };
