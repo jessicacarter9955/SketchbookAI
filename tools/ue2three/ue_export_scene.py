@@ -70,8 +70,10 @@ def export_level(unreal_api, params=os.environ):
     options = unreal.GLTFExportOptions()
     options.export_hidden_in_game = False
     start = time.monotonic()
-    ok = unreal.GLTFExporter.export_to_gltf(world, str(dest), options, set())
-    if not ok or not dest.is_file() or dest.stat().st_size < 32:
+    # Python UE 5.x API can return GLTFExportMessages or None, unlike the
+    # C++ bool overload. The on-disk artifact is the verifiable success gate.
+    unreal.GLTFExporter.export_to_gltf(world, str(dest), options, set())
+    if not dest.is_file() or dest.stat().st_size < 32:
         raise RuntimeError("GLTFExporter did not create a usable scene.glb")
     meta = {
         "schema": 1, "tool": "ue2three", "stage": "unreal-native-gltf-export",
