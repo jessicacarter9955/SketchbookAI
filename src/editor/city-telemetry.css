@@ -1,1 +1,15 @@
 .city-telemetry{margin:12px 0 0;text-align:left;color:#d5e5ee;font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;max-width:min(720px,90vw)}.city-telemetry summary{cursor:pointer;color:#ade8df;font:600 13px system-ui}.city-telemetry #city-debug-summary{white-space:pre-wrap;overflow-wrap:anywhere;background:#0b1723;padding:9px;border:1px solid #344a59;border-radius:6px;margin-top:8px}.city-telemetry #city-debug-log{height:190px;overflow-y:auto;white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0 0;padding:8px;background:#09131c;color:#aaccdf;border:1px solid #344a59;border-radius:6px;font:11px/1.55 ui-monospace,monospace}.city-telemetry .log-error{color:#ff9d93}.city-telemetry .log-warn{color:#ffe39d}.city-debug-always #loading-screen .city-telemetry{position:fixed;bottom:12px;left:12px;z-index:10020;background:#142433ef;box-shadow:0 8px 28px #0008;padding:10px;max-height:65vh;width:min(690px,92vw);border-radius:8px;pointer-events:auto}.city-debug-always #loading-screen{pointer-events:none!important;background:transparent!important}.city-debug-always #loading-screen>.city-loading-panel{pointer-events:none!important}.city-debug-always #loading-screen .city-telemetry{pointer-events:auto!important}#loading-screen[style*="display: none"] .city-telemetry{display:none!important}
+/* TRUE City debug log: selectable even after the loading screen closes. */
+.city-telemetry,.city-telemetry *,#city-debug-log,#city-debug-summary{
+  user-select:text!important;-webkit-user-select:text!important;pointer-events:auto!important}
+.city-telemetry .city-debug-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:7px 0}
+.city-telemetry .city-debug-actions button{background:#1e5365;color:#fff;border:1px solid #83cce0;
+  border-radius:6px;padding:8px 10px;font:600 12px system-ui;cursor:pointer;user-select:none!important}
+.city-telemetry [data-city-copy-status]{font:12px system-ui;color:#b6f7c3}
+body.city-debug-always >.city-telemetry{position:fixed;z-index:100050;bottom:12px;left:12px;
+  width:min(690px,92vw);max-height:min(70vh,570px);overflow-y:auto;margin:0;
+  background:#142433f4;box-shadow:0 8px 28px #0009;padding:12px;border:1px solid #426478;
+  border-radius:8px;pointer-events:auto!important}
+body.city-debug-always >.city-telemetry[open] #city-debug-log{height:min(31vh,230px)}
+@media(max-width:650px){body.city-debug-always >.city-telemetry{bottom:4px;left:2vw;
+  max-height:50vh;width:96vw;padding:8px}body.city-debug-always >.city-telemetry[open] #city-debug-log{height:18vh}}

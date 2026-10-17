@@ -11,14 +11,21 @@
   const panel=document.getElementById('loading-screen');
   const details=document.createElement('details');
   details.className='city-telemetry';details.open=true;
-  details.innerHTML='<summary>Diagnostica in tempo reale · ogni 2,5 secondi</summary><div id="city-debug-summary">Preparazione monitor…</div><pre id="city-debug-log" aria-live="off"></pre>';
-  panel?.querySelector('.city-loading-panel')?.append(details);
+  details.innerHTML='<summary>Diagnostica in tempo reale · ogni 2,5 secondi</summary>'+
+    '<div class="city-debug-actions"><button type="button" data-city-copy-log>Copia log completo</button>'+
+    '<button type="button" data-city-download-log>Salva log .txt</button>'+
+    '<span data-city-copy-status role="status" aria-live="polite"></span></div>'+
+    '<div id="city-debug-summary">Preparazione monitor…</div><pre id="city-debug-log" tabindex="0" aria-label="Log eventi selezionabile" aria-live="off"></pre>';
+  // debug=1 keeps diagnostics outside loading-screen, usable after the 3D canvas opens.
+  const debugAlways=new URLSearchParams(location.search).get('debug')==='1';
+  if(debugAlways)document.body.append(details);
+  else panel?.querySelector('.city-loading-panel')?.append(details);
   const summary=details.querySelector('#city-debug-summary'),logEl=details.querySelector('#city-debug-log');
   function line(s,type='',activity=true){
     const txt='['+new Date().toLocaleTimeString()+'] '+s;
-    history.push(txt);if(history.length>100)history.shift();
+    history.push(txt);if(history.length>1500)history.shift();
     if(logEl){const span=document.createElement('div');span.textContent=txt;if(type)span.className='log-'+type;logEl.append(span);
-      while(logEl.children.length>100)logEl.firstChild.remove();logEl.scrollTop=logEl.scrollHeight;}
+      while(logEl.children.length>250)logEl.firstChild.remove();logEl.scrollTop=logEl.scrollHeight;}
     if(type==='error')console.error('[CITY DIAG]',txt);else console.info('[CITY DIAG]',txt);
     if(activity)lastActivity=performance.now();
   }
@@ -34,6 +41,40 @@
     activity(msg){line(msg);},
     problem(err,area='Errore JS'){line(area+': '+String(err?.message||err),'error');},
     snapshot(){return {elapsed:now(),stages:[...stages],pending:[...pending.values()].map(v=>({url:v.url,seconds:Math.round((performance.now()-v.start)/1000),loaded:v.loaded,total:v.total})),recent:history.slice(-25)};}
+  };
+  function exportLog(){return [
+    'TRUE Realistic City · Diagnostica avvio',
+    'Scena: '+(new URLSearchParams(location.search).get('scene')||'non specificata'),
+    'Pagina: '+location.origin+location.pathname,
+    'Stato attuale: '+(summary?.textContent||'in preparazione'),
+    'Snapshot: '+JSON.stringify(api.snapshot(),null,2),
+    'Eventi in ordine cronologico:',
+    ...history
+  ].join('\n');}
+  api.exportLog=exportLog;
+  const copyStatus=details.querySelector('[data-city-copy-status]');
+  details.querySelector('[data-city-copy-log]').onclick=async()=>{
+    const report=exportLog();
+    try{
+      if(!navigator.clipboard?.writeText)throw Error('Clipboard API non disponibile');
+      await navigator.clipboard.writeText(report);
+      copyStatus.textContent='Copiato: '+history.length+' eventi';
+    }catch(error){
+      const field=document.createElement('textarea');
+      field.value=report;field.readOnly=true;field.style.cssText='position:fixed;top:0;left:0;width:1px;height:1px;opacity:.01;z-index:100055';
+      document.body.append(field);field.focus();field.select();
+      const copied=document.execCommand?.('copy');field.remove();
+      copyStatus.textContent=copied?'Copiato: '+history.length+' eventi':
+        'Copia automatica non disponibile: seleziona il log qui sotto.';
+      if(!copied&&logEl){logEl.focus();const range=document.createRange();range.selectNodeContents(logEl);getSelection()?.removeAllRanges();getSelection()?.addRange(range);}
+    }
+  };
+  details.querySelector('[data-city-download-log]').onclick=()=>{
+    const blob=new Blob([exportLog()],{type:'text/plain;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const link=document.createElement('a');link.href=url;link.download='true-realistic-city-log-'+new Date().toISOString().replace(/[:.]/g,'-')+'.txt';
+    document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);
+    copyStatus.textContent='Log salvato ('+history.length+' eventi)';
   };
   globalThis.cityDiagnostics=api;
   function register(url,kind){
@@ -100,6 +141,6 @@
   addEventListener('unhandledrejection',e=>api.problem(e.reason,'Promise non gestita'));
   addEventListener('error',e=>{if(e.error)api.problem(e.error,'Eccezione');},true);
   addEventListener('keydown',e=>{if(e.code==='F8'){e.preventDefault();details.open=!details.open;document.body.classList.toggle('city-debug-always',details.open);}});
-  if(new URLSearchParams(location.search).get('debug')==='1')document.body.classList.add('city-debug-always');
+  if(debugAlways)document.body.classList.add('city-debug-always');
   api.stage('Avvio editor e caricamento motore');
 })();
