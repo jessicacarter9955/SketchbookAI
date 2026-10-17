@@ -45,7 +45,7 @@ function call(bin,args,timeout=120000){const r=spawnSync(bin,args,{encoding:'utf
   if(initialized.totalVehicles!==3||!initialized.control||!initialized.occupant)
       throw Error('Three cars not loaded / not controlling car');
   const frames=8;
-  let dimensions;
+  const dimensions=[448,252];
   const raw=path.join(dest,car+'.rgba');try{fs.unlinkSync(raw)}catch{}
   const traces=[],colorSamples=[];
   for(let n=0;n<frames;n++){
@@ -72,9 +72,17 @@ function call(bin,args,timeout=120000){const r=spawnSync(bin,args,{encoding:'utf
     },car);
     const buf=Buffer.from(data.pixel,'base64');
     if(buf.length!==data.width*data.height*4)throw Error('Frame size wrong');
-    if(!dimensions)dimensions=[data.width,data.height];
-    if(dimensions[0]!==data.width||dimensions[1]!==data.height)throw Error('Dynamic WebGL buffer changed');
-    fs.appendFileSync(raw,buf);
+    const target=Buffer.alloc(448*252*4);
+    for(let y=0;y<252;y++){
+      const sy=Math.min(data.height-1,Math.floor(y*data.height/252));
+      for(let x=0;x<448;x++){
+        const sx=Math.min(data.width-1,Math.floor(x*data.width/448));
+        const src=(sy*data.width+sx)*4,dst=(y*448+x)*4;
+        target[dst]=buf[src];target[dst+1]=buf[src+1];
+        target[dst+2]=buf[src+2];target[dst+3]=buf[src+3];
+      }
+    }
+    fs.appendFileSync(raw,target);
     traces.push({x:data.x,y:data.y,z:data.z,speed:data.speed});
     colorSamples.push(data.colors);
     console.log('REAL_RENDERED_FRAME',car,n+1,JSON.stringify(traces.at(-1)));
