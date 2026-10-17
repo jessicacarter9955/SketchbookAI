@@ -131,19 +131,50 @@ export class ActorLayer {
                         actor.add(shell);
                     }
                 }
-                const assumed = this.terrainHeight(item.position[0], item.position[2], item.position[1]);
                 const yaw=new THREE.Quaternion().setFromEuler(new THREE.Euler(0,item.rotation[1],0));
                 const wheelInfo=actor.rayCastVehicle.wheelInfos;
-                const heights=wheelInfo.map(w=>{
-                    const point=new THREE.Vector3(w.chassisConnectionPointLocal.x,0,w.chassisConnectionPointLocal.z).applyQuaternion(yaw);
-                    const x=item.position[0]+point.x,z=item.position[2]+point.z;
-                    const estimate=this.terrainHeight(x,z,assumed);
-                    const floor=this.physicsGround(x,z,estimate);
-                    return floor-w.chassisConnectionPointLocal.y+w.suspensionRestLength+w.radius+0.06;
-                });
-                const ground = this.physicsGround(item.position[0],item.position[2],assumed);
-                const height=Math.max(chassisHeightForGround(ground,wheelInfo,0.06),...heights);
-                actor.setPosition(item.position[0],height,item.position[2]);
+                const measureSpot=(x,z)=>{
+                    const estimate=this.terrainHeight(x,z,item.position[1]);
+                    const center=this.physicsGround(x,z,estimate);
+                    const floors=wheelInfo.map(w=>{
+                        const point=new THREE.Vector3(w.chassisConnectionPointLocal.x,0,w.chassisConnectionPointLocal.z).applyQuaternion(yaw);
+                        const sampleX=x+point.x,sampleZ=z+point.z;
+                        return this.physicsGround(sampleX,sampleZ,this.terrainHeight(sampleX,sampleZ,center));
+                    });
+                    const clearance=Math.max(chassisHeightForGround(center,wheelInfo,0.06),
+                        ...wheelInfo.map((w,i)=>floors[i]-w.chassisConnectionPointLocal.y+
+                            w.suspensionRestLength+w.radius+0.06));
+                    return {x,z,center,floors,clearance,
+                        uneven:Math.max(center,...floors)-Math.min(center,...floors)};
+                };
+                const x0=item.position[0],z0=item.position[2];
+                let spot=null;
+                for(const [dx,dz] of [[0,0],[0,4],[0,-4],[4,0],[-4,0],[4,4],[-4,4],
+                    [4,-4],[-4,-4],[0,8],[-8,0],[8,0]]) {
+                    const x=x0+dx,z=z0+dz;
+                    if(this.actors.some(other=>other.userData.editorActor &&
+                        Math.hypot(x-other.position.x,z-other.position.z)<4.5))continue;
+                    const candidate=measureSpot(x,z);
+                    if(candidate.uneven<=0.35){spot=candidate;break;}
+                }
+                // Never lift the whole car metres into the air because one wheel
+                // sampled an isolated ramp or decoration rather than the road.
+                if(!spot){
+                    spot=measureSpot(x0,z0);
+                    spot.clearance=Math.min(spot.clearance,
+                        chassisHeightForGround(spot.center,wheelInfo,0.10)+0.25);
+                    console.warn('[Supercar spawn] No flat nearby ground patch; using road-level fallback.');
+                }
+                if(spot.x!==x0||spot.z!==z0){
+                    item.position[0]=spot.x;
+                    item.position[2]=spot.z;
+                    const preview=this.world.sceneEditor?.objects.get(item.id);
+                    if(preview)preview.position.set(spot.x,spot.center+0.04,spot.z);
+                }
+                const ground=spot.center;
+                actor.setPosition(spot.x,spot.clearance,spot.z);
+                actor.userData.spawnAdjusted=spot.x!==x0||spot.z!==z0;
+                actor.userData.groundSpread=spot.uneven;
                 actor.userData.spawnGround=ground;
                 actor.userData.chassisRideHeight=height-ground;
                 actor.collision.quaternion.setFromEuler(...item.rotation);
