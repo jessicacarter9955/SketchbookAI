@@ -112,6 +112,40 @@ test('source Array_Set writes typed instance arrays with source defaults and no 
     assert.throws(()=>executeBlueprint({...program,steps:[{op:'evaluate',value:{...expr,element:{...item,source:'/Game/Foreign'}}},
         program.steps[1]]},original,{Index:0,Fit:false,Item:newItem}),/element schema/);
 });
+
+test('source Array_Add appends a typed copy and returns the original new index', () => {
+    const element={type:'StructProperty',source:'/Game/InventoryItem',fields:{
+        ItemID:{type:'NameProperty',default:'None'},Quantity:{type:'IntProperty',default:0}},
+        default:{ItemID:'None',Quantity:0}};
+    const array={type:'ArrayProperty',element,default:[]};
+    const expr={op:'array_add',target:{op:'get',scope:'self',field:'Items'},
+        item:{op:'get',scope:'local',field:'NewItem'},element};
+    const program={schema_version:1,status:'translated_straight_line',input_fields:['NewItem'],
+        output_fields:['Result'],field_types:{self:{Items:'ArrayProperty'},
+            local:{NewItem:'StructProperty',Result:'IntProperty'}},
+        schemas:{self:{Items:array},local:{NewItem:element}},steps:[
+            {op:'set',scope:'local',field:'Result',source_index:8,value:expr},
+            {op:'return',source_index:9,value:{op:'get',scope:'local',field:'Result'}}]};
+    const initial={Items:[{ItemID:'Existing',Quantity:2}]};
+    const added={ItemID:'SourceNew',Quantity:1};
+    const result=executeBlueprint(program,initial,{NewItem:added});
+    assert.equal(result.value,1);
+    assert.equal(result.outputs.Result,1);
+    assert.equal(result.trace[0].index,1);
+    assert.deepEqual(result.state.Items,[initial.Items[0],added]);
+    assert.equal(initial.Items.length,1);
+    result.state.Items[1].Quantity=77;
+    assert.equal(added.Quantity,1);
+    const empty=executeBlueprint(program,{Items:[]},{NewItem:added});
+    assert.equal(empty.value,0);
+    assert.deepEqual(empty.state.Items,[added]);
+    assert.throws(()=>executeBlueprint(program,initial,{NewItem:{ItemID:'Broken'}}),/Missing typed/);
+    assert.throws(()=>executeBlueprint(program,initial,{NewItem:{ItemID:'Broken',Quantity:true}}),/Invalid typed/);
+    assert.throws(()=>executeBlueprint({...program,steps:[
+        {...program.steps[0],value:{...expr,element:{...element,source:'/Game/Foreign'}}},
+        program.steps[1]]},initial,{NewItem:added}),/element schema/);
+});
+
 test('event calls retain typed per-instance frames and execute the original flow stack', () => {
     const event = {schema_version: 1, status: 'translated_control_flow', source_export_index: 2, source_owner_index: 3,
         input_fields: [], output_fields: [], persistent_types: {'2': {Value: 'BoolProperty'}},

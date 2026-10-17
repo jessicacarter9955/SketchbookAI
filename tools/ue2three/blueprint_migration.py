@@ -203,6 +203,26 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
                     'item': expression(args[2], reads, outputs, depth+1, package, owner),
                     'size_to_fit': expression(args[3], reads, outputs, depth+1, package, owner),
                     'element': schema['element']}
+        if (kind(obj) == 'EX_ObjectConst' and import_path(package, obj.get('Value')) == ('/Script/Engine', 'Default__KismetArrayLibrary')
+                and kind(call) == 'EX_FinalFunction'
+                and import_path(package, call.get('StackNode')) == ('/Script/Engine', 'KismetArrayLibrary', 'Array_Add')):
+            args = call.get('Parameters', [])
+            if len(args) != 2 or kind(args[0]) != 'EX_InstanceVariable':
+                raise BlueprintTranslationError('Unsupported original Array_Add arguments')
+            name = field(args[0].get('Variable'))
+            cls = package.export(owner)
+            prop = next((p for p in (cls or {}).get('LoadedProperties', []) if p.get('Name') == name), {})
+            schema = property_schema(package, prop)
+            if (not cls or not schema or schema.get('type') != 'ArrayProperty'
+                    or args[0].get('Variable', {}).get('New', {}).get('ResolvedOwner') != owner
+                    or value.get('Offset') != memory_size(call, package=package)):
+                raise BlueprintTranslationError('Unresolved original Array_Add source type, owner or context offset')
+            target = expression(args[0], reads, outputs, depth+1, package, owner)
+            if target.get('op') != 'get' or target.get('scope') != 'self':
+                raise BlueprintTranslationError('Unsupported Array_Add destination')
+            return {'op': 'array_add', 'target': target,
+                    'item': expression(args[1], reads, outputs, depth+1, package, owner),
+                    'element': schema['element']}
         raise BlueprintTranslationError('Unsupported opcode: EX_Context')
     if token in ('EX_LocalVirtualFunction', 'EX_LocalFinalFunction', 'EX_FinalFunction'):
         return local_call(value, package, owner, reads, outputs, depth)
@@ -440,7 +460,7 @@ def translate_function(export, package=None, entry_offset=None):
     # This is used by source-backed reports and transitive call-state checks.
     def record_array_writes(node):
         if isinstance(node, dict):
-            if node.get('op') == 'array_set':
+            if node.get('op') in ('array_set', 'array_add'):
                 target = node.get('target', {})
                 if target.get('scope') == 'self': writes.add(target['field'])
             for child in node.values(): record_array_writes(child)

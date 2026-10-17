@@ -184,6 +184,46 @@ class BlueprintMigrationTests(unittest.TestCase):
                 self.assertEqual(translate_package(package())['counts']['translated'], 0)
                 cls['LoadedProperties'][0]['Inner'] = {'SerializedType': 'NameProperty'}
 
+
+    def test_source_array_add_preserves_returned_index_and_original_array_owner(self):
+        imports = [
+            {'ObjectName': 'Array_Add', 'ClassName': 'Function', 'OuterIndex': -2},
+            {'ObjectName': 'KismetArrayLibrary', 'OuterIndex': -3},
+            {'ObjectName': '/Script/Engine', 'ClassName': 'Package'},
+            {'ObjectName': 'Default__KismetArrayLibrary', 'OuterIndex': -3},
+        ]
+        args = [variable('EX_InstanceVariable', 'Items'), variable('EX_LocalVariable', 'Item')]
+        args[0]['Variable']['New']['ResolvedOwner'] = 2
+        call = node('EX_FinalFunction', StackNode=-1, Parameters=args)
+        context = node('EX_Context', ObjectExpression=node('EX_ObjectConst', Value=-4),
+                       ContextExpression=call, Offset=memory_size(call))
+        function = {'ObjectName': 'AddSlot', 'OuterIndex': 2,
+                    'LoadedProperties': [{'Name': 'Item', 'SerializedType': 'NameProperty', 'PropertyFlags': 'CPF_Parm'},
+                                         {'Name': 'Result', 'SerializedType': 'IntProperty', 'PropertyFlags': 'CPF_Parm, CPF_OutParm'}],
+                    'ScriptBytecode': [
+                        node('EX_Let', Variable=variable('EX_LocalOutVariable', 'Result'), Expression=context),
+                        node('EX_Return', ReturnExpression=variable('EX_LocalOutVariable', 'Result')),
+                        node('EX_EndOfScript')]}
+        cls = {'ObjectName': 'Inventory_C', 'LoadedProperties': [{
+            'Name': 'Items', 'SerializedType': 'ArrayProperty', 'Inner': {'SerializedType': 'NameProperty'}}]}
+        def translate(imps=imports):
+            return translate_package(Package({'Exports': [function, cls], 'Imports': imps}))
+        result = translate()
+        self.assertEqual(result['counts']['translated'], 1)
+        program = result['functions']['AddSlot']
+        self.assertEqual(program['self_writes'], ['Items'])
+        self.assertEqual(program['steps'][0]['value']['op'], 'array_add')
+        self.assertEqual(program['output_fields'], ['Result'])
+        self.assertEqual(program['steps'][0]['value']['element']['default'], 'None')
+        bad_imports = [dict(i) for i in imports]
+        bad_imports[1]['ObjectName'] = 'CustomArrayLibrary'
+        self.assertEqual(translate(bad_imports)['counts']['translated'], 0)
+        context['Offset'] += 1
+        self.assertEqual(translate()['counts']['translated'], 0)
+        context['Offset'] -= 1
+        cls['LoadedProperties'][0]['Inner'] = {'SerializedType': 'UnresolvedProperty'}
+        self.assertEqual(translate()['counts']['translated'], 0}
+
     def call_package(self):
         caller = {'ObjectName': 'Caller', 'OuterIndex': 3, 'LoadedProperties': [
             {'Name': 'Result', 'SerializedType': 'BoolProperty', 'PropertyFlags': 'CPF_None'}],

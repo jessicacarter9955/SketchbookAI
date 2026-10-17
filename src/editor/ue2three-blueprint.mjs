@@ -110,6 +110,25 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             if (!Array.isArray(array)) throw new Error('Invalid source Array_Length');
             return array.length;
         }
+        if (expression.op === 'array_add') {
+            const target = expression.target;
+            if (target?.op !== 'get' || target.scope !== 'self' || !safeField(target.field))
+                throw new Error('Unsupported Array_Add source destination');
+            const schema = program.schemas?.self?.[target.field];
+            if (!schema || schema.type !== 'ArrayProperty'
+                || JSON.stringify(schema.element) !== JSON.stringify(expression.element))
+                throw new Error('Unresolved original Array_Add element schema');
+            const array = evaluate(target, depth+1);
+            const item = evaluate(expression.item, depth+1);
+            if (!Array.isArray(array)) throw new Error('Invalid original Array_Add source array');
+            validateSchema(schema.element, item);
+            if (array.length >= 100000) throw new Error('Array_Add exceeds maximum verified array size');
+            const index = array.length;
+            array.push(structuredClone(item));
+            checkType('self', target.field, array);
+            trace.push({source_index: sourceIndex, op: 'array_add', index, value: structuredClone(item)});
+            return index;
+        }
         if (expression.op === 'array_set') {
             const target = expression.target;
             if (target?.op !== 'get' || target.scope !== 'self' || !safeField(target.field))
