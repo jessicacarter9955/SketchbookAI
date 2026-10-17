@@ -9,6 +9,7 @@ const {chromium}=require('playwright');
     page.on('pageerror',e=>errors.push(e.message.slice(0,230)));
     page.on('requestfailed',req=>failed.push(req.url().slice(0,170)+' '+req.failure()?.errorText));
     const scene=process.env.SKETCHBOOK_SCENE==='sandbox' ? 'sandbox' : 'urban-photoreal';
+    const firstBrand=process.env.SKETCHBOOK_FIRST_CAR||'bmw';
     const target='https://my-test-site3.netlify.app/editor.html?scene='+scene+'&play=1';
     console.log('Browser test:',target);
     fs.mkdirSync('artifacts/supercars',{recursive:true});
@@ -157,14 +158,14 @@ const {chromium}=require('playwright');
         console.log('Original STATIC wheel groups hidden:',JSON.stringify(staticMeshState));
         if(staticMeshState.some(car=>car.groupVisibility.some(g=>g.visible!==false)))
             throw Error('At least one ORIGINAL static Sketchfab wheel group was still rendered.');
-        const entered=await page.evaluate(()=>{
+        const entered=await page.evaluate(firstBrand=>{
             const world=globalThis.world,player=world.editorPlayer;
-            const car=world.vehicles.find(x=>x.userData.editorActor&&x.children.some(c=>c.userData.sketchfabBody));
+            const car=world.vehicles.find(x=>x.userData.rigStatus?.source===firstBrand);
             player.teleportToVehicle(car,car.seats[0]);
             player.takeControl();
             return {occupied:car.seats[0].occupiedBy===player,control:player.controlledObject===car,
                 throttle:!!car.actions?.throttle,engine:!!car.rayCastVehicle};
-        });
+        },firstBrand);
         console.log('Vehicle driving:',JSON.stringify(entered));
         await page.locator('canvas').first().focus().catch(()=>{});
         const before=await page.evaluate(()=>{
@@ -206,10 +207,10 @@ const {chromium}=require('playwright');
         // The previous green test only drove the BMW. Test Ferrari and
         // Lamborghini individually and measure real wheel-mesh pivot movement,
         // not merely the physics wheel's internal rotation counter.
-        const individualDrives=[{brand:'bmw',spinDelta:Math.max(...animated.spins.map((s,i)=>Math.abs(s-before[i]))),
+        const individualDrives=[{brand:firstBrand,spinDelta:Math.max(...animated.spins.map((s,i)=>Math.abs(s-before[i]))),
             velocity:animated.moved,steering:Math.max(...animated.steering.map(Math.abs)),
             wheelsOnGround:animated.groundCount}];
-        for(const brand of ['ferrari','lamborghini']){
+        for(const brand of ['bmw','ferrari','lamborghini'].filter(x=>x!==firstBrand)){
             const initial=await page.evaluate(brand=>{
                 const world=globalThis.world,player=world.editorPlayer;
                 player.stopControllingVehicle();
@@ -232,6 +233,11 @@ const {chromium}=require('playwright');
                     pivot:car.userData.sketchfabWheelRig.map(w=>w.pivot.quaternion.toArray()),
                     velocity:car.collision.velocity.length(),
                     wheelsOnGround:car.rayCastVehicle.numWheelsOnGround,
+                    engineForces:car.rayCastVehicle.wheelInfos.map(w=>w.engineForce),
+                    brake:car.rayCastVehicle.wheelInfos.map(w=>w.brake),
+                    sleep:car.collision.sleepState,gear:car.gear,
+                    controller:car.controllingCharacter===globalThis.world.editorPlayer,
+                    frames:globalThis.world.physicsWorld?.stepnumber,
                     driving:car.actions.throttle.isPressed,
                     source:car.userData.rigStatus.source};
             });
@@ -243,7 +249,9 @@ const {chromium}=require('playwright');
                 return 2*Math.acos(Math.min(1,dot));
             }));
             const result={brand,spinDelta:delta,pivotAngle,velocity:driven.velocity,
-                steering:Math.max(...driven.steer.map(Math.abs)),wheelsOnGround:driven.wheelsOnGround};
+                steering:Math.max(...driven.steer.map(Math.abs)),wheelsOnGround:driven.wheelsOnGround,
+                engineForces:driven.engineForces,brake:driven.brake,sleep:driven.sleep,
+                controller:driven.controller,gear:driven.gear,frames:driven.frames};
             individualDrives.push(result);
             console.log('Individual supercar driving:',JSON.stringify(result));
             if(driven.source!==brand || !driven.driving || driven.wheelsOnGround<1 ||
