@@ -2,7 +2,7 @@ name: Audit Sketchfab car wheel hierarchy
 on:
   push:
     branches: [img2threejs-runner]
-    paths: [".github/workflows/supercar-rig-audit.yml"]
+    paths: [".github/workflows/supercar-rig-audit.yml", "tools/audit-supercar-glb.cjs"]
   workflow_dispatch:
 permissions:
   contents: read
