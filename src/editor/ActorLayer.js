@@ -78,6 +78,11 @@ export class ActorLayer {
                     actor.userData.importedCar=item.assetId;
                 }
                 actor.setPosition(item.position[0], this.ground(item.position[0],item.position[2],item.position[1]) + 0.9, item.position[2]);
+                // The Car physics chassis is positioned before its Three.js Object3D is
+                // updated. Populate the visual transform NOW: otherwise the city's
+                // initial distance streaming treats ALL real cars as located at [0,0,0]
+                // and immediately removes even a vehicle parked 6m from the player.
+                actor.position.set(actor.collision.position.x,actor.collision.position.y,actor.collision.position.z);
                 actor.collision.quaternion.setFromEuler(...item.rotation);
                 actor.collision.initQuaternion.copy(actor.collision.quaternion);
                 // Cannon does not implement box/trimesh contacts. Rounded bumpers supply
@@ -113,10 +118,16 @@ export class ActorLayer {
         if(this.saPopulation&&!this.world.sceneEditor?.active)this.saPopulation.update(this.world.requestDelta||1/60);
         for (const actor of this.actors) {
             if (actor.controllingCharacter === this.world.editorPlayer) continue;
-            const distance = Math.hypot(actor.position.x - position.x, actor.position.z - position.z);
+            // Physics vehicles expose an initial Cannon chassis transform before the
+            // first visual update. Dormant cars must be tested at their HOME position,
+            // not at the visual object's last position (often origin after streaming).
+            const here=actor.userData.dormant ? {x:actor.userData.home[0],z:actor.userData.home[2]} :
+                (actor.collision?.position || actor.position);
+            const distance = Math.hypot(here.x - position.x, here.z - position.z);
             if (distance > 160 && !actor.userData.dormant) { this.world.remove(actor); actor.userData.dormant = true; }
             else if (distance < 100 && actor.userData.dormant) {
                 const home = actor.userData.home; actor.setPosition(home[0], this.ground(home[0],home[2],home[1])+(actor.rayCastLength??0.9)+0.08, home[2]);
+                if(actor.collision)actor.position.set(actor.collision.position.x,actor.collision.position.y,actor.collision.position.z);
                 this.world.add(actor); actor.userData.dormant = false;
             }
         }
