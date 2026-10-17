@@ -24,7 +24,7 @@ export class SceneEditor {
         this.worldId = worldId;
         this.world = world; this.active = false; this.busy = false; this.items = []; this.objects = new Map(); this.templates = new Map(); this.assetClips = new Map(); this.assets = new Map(); this.logs = [];
         this.mapEdits = [];
-        this.generator = worldId === 'procedural-island' ? copy(world.levelRuntime.config || DEFAULT_ISLAND) : worldId === 'procedural-city' ? copy(world.levelRuntime.config || DEFAULT_URBAN) : undefined;
+        this.generator = worldId === 'procedural-island' && !world.levelRuntime?.isDistrictCity ? copy(world.levelRuntime.config || DEFAULT_ISLAND) : worldId === 'procedural-city' ? copy(world.levelRuntime.config || DEFAULT_URBAN) : undefined;
         this.store = new AssetStore(); this.loader = new GLTFLoader(); this.history = new History(this.scene());
         this.group = new THREE.Group(); this.group.name = 'Editor objects'; world.graphicsWorld.add(this.group);
         this.orbit = new OrbitControls(world.camera, world.renderer.domElement); this.orbit.enabled = false; this.orbit.maxDistance = 400;
@@ -34,7 +34,7 @@ export class SceneEditor {
         this.gizmo.addEventListener('objectChange', () => { if (this.selected) { this.outline.setFromObject(this.objects.get(this.selected)); this.inspect(); } });
         this.mount(); this.bind(); world.sceneEditor = this; this.setActive(true);
         if (worldId==='liberty-city' && typeof world.levelRuntime?.surfaces?.setEdits==='function') this.surfaceTool = new SurfaceTool(this);
-        if (worldId === 'procedural-island') this.islandTool = new IslandTool(this);
+        if (worldId === 'procedural-island' && !world.levelRuntime?.isDistrictCity) this.islandTool = new IslandTool(this);
         if (worldId === 'procedural-city') this.urbanTool = new UrbanTool(this);
         world.renderer.domElement.tabIndex = 0;
     }
