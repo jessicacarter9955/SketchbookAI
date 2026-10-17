@@ -1,0 +1,28 @@
+name: Verify Android Urban Photoreal touch controls
+on:
+  push:
+    branches: [codex/sa-navigation-port]
+    paths:
+      - ".github/workflows/mobile-urban-smoke.yml"
+      - "tools/verify-urban-mobile.cjs"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Android-emulated Chromium
+        run: |
+          npm install --prefix /tmp/urban-android --no-save --no-audit --no-fund playwright@1.56.0
+          /tmp/urban-android/node_modules/.bin/playwright install --with-deps chromium
+      - name: Verify mobile fullscreen joystick E driving and brake
+        env:
+          NODE_PATH: /tmp/urban-android/node_modules
+          MOBILE_URL: https://6ad3120297717e49ea613fd6--my-test-site3.netlify.app
+        run: node tools/verify-urban-mobile.cjs
