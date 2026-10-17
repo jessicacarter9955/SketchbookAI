@@ -19,7 +19,7 @@ jobs:
         run: |
           git clone --depth 1 --filter=blob:none --sparse https://github.com/Erisbv-zz/UNREAL-Procedural-Cities.git /tmp/unreal-city
           cd /tmp/unreal-city
-          git sparse-checkout set Content/Import/street/awning.uasset Content/Import/doorMesh_door006.uasset Content/Import/street/fireHydrant.uasset Content/Import/street/sidewalk/bench.uasset Content/Import/stairmesh.uasset Content/Import/sidewalk2.uasset Content/Import/awning2.uasset Content/Import/street/fences/standardfence.uasset
+          git sparse-checkout set --no-cone Content/Import/street/awning.uasset Content/Import/doorMesh_door006.uasset Content/Import/street/fireHydrant.uasset Content/Import/street/sidewalk/bench.uasset Content/Import/stairmesh.uasset Content/Import/sidewalk2.uasset Content/Import/awning2.uasset Content/Import/street/fences/standardfence.uasset
           for p in Content/Import/street/awning.uasset Content/Import/doorMesh_door006.uasset Content/Import/street/fireHydrant.uasset; do
             test -s "$p" || exit 1
             sha256sum "$p"
