@@ -9,6 +9,7 @@ export const BUILTIN_SCENES = [
     { id: 'staunton-lab', name: 'Staunton · laboratorio', world: 'liberty-city', spawn: 'spawn_staunton_island' },
     { id: 'island-bridge', name: 'Isola · ponte e costa', world: 'procedural-island', spawn:'island-west' },
     { id: 'island-sunset', name: 'Isola · tramonto', world: 'procedural-island', spawn:'island-west' },
+    { id: 'coastal-districts', name: 'Unreal Coastal Districts · New York / SF / Rio / Miami', world: 'procedural-island', spawn: 'district-ny', playerProfile: 'mannequin' },
     { id: 'urban-procedural', name: 'Procedural City · drive test', world: 'procedural-city', spawn:'urban-center', playerProfile:'mannequin' },
     { id: 'urban-photoreal', name: 'Urban Photoreal · boulevard', world: 'procedural-city', spawn:'urban-center', playerProfile:'mannequin' },
     { id: 'urban-photoreal-dds', name: 'Urban Photoreal · DDS armed mannequin', world: 'procedural-city', spawn:'urban-center', playerProfile:'dds' },
