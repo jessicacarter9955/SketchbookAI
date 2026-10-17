@@ -30,6 +30,9 @@ const base=(process.env.DISTRICT_BASE_URL||'http://127.0.0.1:8765').replace(/\/$
     activePhysicalCars:w.vehicles?.length||0,
     seatCars:(w.vehicles||[]).filter(c=>c.seats?.some(seat=>seat&&!seat.occupiedBy)).length,
     playerToClosestCar:w.editorPlayer&&w.vehicles?.length?Math.min(...w.vehicles.map(c=>c.position.distanceTo(w.editorPlayer.position))):null,
+    playerPosition:w.editorPlayer?.position?.toArray(),actorSpawn:w.actorLayer?.spawn?.toArray(),
+    savedCarSpawn:ed.items.filter(x=>x.prefab==='vehicle').map(x=>x.position),
+    trackedCarPositions:w.actorLayer?.actors?.filter(x=>x.userData?.editorActor).map(x=>({p:x.position.toArray(),dormant:x.userData.dormant})),
     dialogue:!!document.querySelector('#district-dialogue'),spawns:r.manifest.spawns.length,
     playing:!ed.active,physicsBodies:r.bodies.length};
   });
