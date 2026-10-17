@@ -74,7 +74,13 @@ async function captureRuntime(){
     throw new Error(`Photoreal runtime error: ${state?.error||'unknown'}`);
   }
 
-  const proof=await page.evaluate(()=>{
+  // The browser becomes playable before the independent tree GLTF decoder
+  // completes. For original-HD screenshots, wait for the real CC0 tree layer.
+  await page.waitForFunction(()=>{
+    const v=globalThis.world?.levelRuntime?.visualState?.vegetation;
+    return v?.ready===true||v?.status==='unavailable';
+  },null,{timeout:90000,polling:800});
+    const proof=await page.evaluate(()=>{
     const world=globalThis.world,editor=globalThis.sceneEditor;
     editor?.setActive?.(true);
     if(editor?.orbit)editor.orbit.enabled=false;
@@ -156,7 +162,11 @@ async function captureFreeRoam(){
     await fs.writeFile(`${out}/urban-dialogue-init-error.json`,JSON.stringify({diagnostic,consoleErrors},null,2));
     throw error;
   }
-  const initial=await page.evaluate(()=>{
+  await page.waitForFunction(()=>{
+    const v=globalThis.world?.levelRuntime?.visualState?.vegetation;
+    return v?.ready===true||v?.status==='unavailable';
+  },null,{timeout:90000,polling:800});
+    const initial=await page.evaluate(()=>{
     const world=globalThis.world,player=world.editorPlayer,skyline=world.levelRuntime.root.getObjectByName('Distant skyline');
     const runtime=world.levelRuntime;
     let fallbackVisible=0;runtime.root.traverse(node=>{if(node.userData?.urbanBuildingVisual&&node.visible)fallbackVisible++;});
