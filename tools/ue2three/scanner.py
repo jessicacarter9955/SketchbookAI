@@ -127,7 +127,7 @@ def inventory(snapshot):
             "dependency_coverage": "Unknown without Asset Registry metadata; filenames do not reveal package dependencies."}
 
 
-def import_registry(snapshot, source_inventory):
+def import_registry(snapshot, source_inventory, verified_engine=False):
     if not snapshot["registry_path"]:
         return {"available": False, "assets": [], "dependency_coverage": "unknown", "freshness": "unavailable"}
     data = read_json(snapshot["registry_path"])
@@ -147,7 +147,7 @@ def import_registry(snapshot, source_inventory):
         if not isinstance(dependencies, list) or any(not isinstance(dep, str) or not dep.startswith("/") for dep in dependencies):
             raise ValueError("Registry dependencies must be package path strings")
         seen.add(package)
-        assets.append({"package": package, "class": kind, "dependencies": sorted(set(dependencies))})
+        assets.append({**entry, "package": package, "class": kind, "dependencies": sorted(set(dependencies))})
     known = {item["package"] for item in source_inventory["assets"]}
     local_mounts = {"Game", *(item["name"] for item in source_inventory["project_plugins"])}
     missing, external = [], []
@@ -162,7 +162,7 @@ def import_registry(snapshot, source_inventory):
             "classes": dict(sorted(Counter(item["class"] for item in assets).items())),
             "matched_filesystem_packages": sum(item["package"] in known for item in assets),
             "dependency_coverage": "declared_asset_registry_package_dependencies_only",
-            "freshness": "unverified", "source_sha256": snapshot["registry_sha256"],
+            "freshness": "verified_snapshot" if verified_engine and data.get("source_snapshot_hash") == digest(snapshot["files"]) else "unverified", "source_sha256": snapshot["registry_sha256"],
             "warning": "Imported metadata freshness is not proven. Regenerate after source changes; dynamic runtime references may be absent."}
 
 
@@ -194,8 +194,9 @@ def diagnostics(project, engine, inv, registry):
         add("warning", "UNCLASSIFIED_SOURCE_FILES", f"Retained and hashed {len(inv['unclassified_files'])} files without an inspection adapter; see inventory.unclassified_files.")
     if not registry["available"]:
         add("warning", "REGISTRY_ABSENT", "Asset classes and package dependencies are unknown for .uasset files. Optional registry extraction improves diagnostics.")
-    else:
+    elif registry.get("freshness") != "verified_snapshot":
         add("warning", "REGISTRY_FRESHNESS", registry["warning"])
+    if registry["available"]:
         if registry.get("missing_references"):
             add("warning", "MISSING_REFERENCE", f"{len(registry['missing_references'])} declared local package references have no inventoried source file. Registry freshness is unverified; see registry.missing_references.")
         if registry.get("unverified_external_references"):
@@ -207,6 +208,7 @@ def diagnostics(project, engine, inv, registry):
         add("info", "PLUGIN_REQUIREMENTS", f"Project declares {len(enabled)} enabled plugins; availability/API compatibility was not validated by loading them.")
     add("info", "NO_CONVERSION", "Stage 1 inspects source and plans work. It produces no converted assets or playable game.")
     return {"diagnostics": messages, "enabled_plugins": enabled,
+            "asset_classes": registry.get("classes", {}), "registry_freshness": registry.get("freshness"),
             "processing": {"inspection_complete": True, "inventory_counts": inv["counts"]},
             "fidelity": {"status": "not_evaluated", "converted_assets": 0, "validated_runtime_assets": 0,
                          "playable_game": False, "percentage": None,

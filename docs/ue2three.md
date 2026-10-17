@@ -1,23 +1,146 @@
 # ue2three: offline migration toolkit
 
-## Current release: 0.1, inspection foundation
+## Current release: one-click project analysis and supported GLB migration
 
-This is stage 1 of the reusable toolkit. It scans editable Unreal projects,
-detects their engine association/installed version, inventories maps and plugins,
-hashes source inputs, records diagnostics, and maintains resumable inspection
-jobs. A local dashboard displays those jobs and invokes the real CLI.
+The local manager scans an editable Unreal project, extracts its Asset Registry,
+automatically prepares a character when it can match a mesh and animation set,
+and exports inventoried levels through Unreal's glTF exporter. Valid level GLBs
+are cached by their source dependencies, engine version, and exporter settings;
+an unchanged project can reuse those outputs. The DDS character profile is only
+used when its mesh exists in the selected project. Other projects use generic
+asset detection.
 
-**This release does not convert arbitrary projects or generate playable games.**
-The existing DDS exporter and playable Portland integration remain the validated
-reference for the next conversion adapters. They are not yet generic ue2three
-converters. All conversion stages are explicitly reported as unsupported.
-100% inspected is deliberately separate from visual/gameplay fidelity.
+Map exports contain only content the Unreal glTF exporter can represent, such as
+supported geometry, transforms, materials, cameras, and lights. This does not
+translate Blueprint execution, widget screens, dialogue, shops, inventory rules,
+AI, networking, or physics/collision into Three.js behavior. The migration report
+lists exported, reused, and failed maps and identifies unsupported content.
+Processing completion remains separate from visual/gameplay fidelity.
+
+### Independent map export and offline correction caches
+
+New exports keep immutable raw GLBs under `maps/raw/<fingerprint>.glb` in the
+inspection workspace. Export fingerprints cover source dependencies (including
+package sidecars), project/configuration and native/shader source, engine version
+and export implementation. Editing offline corrections no longer forces
+another Unreal export. Processing starts from those raw bytes, checks their
+checksum and source dependencies, and caches the corrected GLB plus its source
+and validation sidecars independently. Corrupt outputs or missing diagnostics
+are reprocessed; corrupt raw exports and changed source dependencies are refused.
+Source project files are never used as output destinations.
+
+`migrate-maps --offline` permits only cache reuse and offline processing. It
+fails explicitly when a matching raw export is unavailable, without starting
+Unreal. Legacy export fingerprints are not silently treated as the new contract.
+The DDS verification below uses its earlier cached export with explicit legacy
+provenance, rather than asserting a new source export took place.
+
+Selective exports retain the other map catalog entries. Each completed map is
+checkpointed, and retained entries have `verified_in_run: false`: they remain
+selectable but are not presented as freshly verified or sent through another
+screenshot job. Report counts describe only the selected batch.
+
+The lightweight DDS replay checked 152 explicitly authored actor transforms,
+found zero mismatches and skipped one actor requiring a world-space comparison.
+These checks cover stored local translation/rotation/scale values, not inherited
+Blueprint defaults or every mesh in the level. The preview exposes the counts
+under **Controlli della scena**, alongside the 3,072 repaired terrain vertices,
+eight material fallbacks and approximate lighting.
+
+Two local measurements of offline processing showed reductions of roughly
+75–86% on the cached second pass (0.66→0.09 seconds when idle, 4.05→1.03 seconds
+while tests were running). These are observations of this phase on this laptop,
+not a total migration speed estimate. No Unreal or external parser process was
+allowed during this DDS replay.
+
+Material inspection identified 91 expression nodes in `M_Grid`, but its root
+connections remain an undecoded `MaterialEditorOnlyData` raw export. Parameter
+tints are therefore still fallbacks; shader composition and lighting fidelity
+remain open. Windows JSON reads now briefly retry transient sharing errors,
+matching the existing atomic-write retry. Persistent errors and invalid JSON
+still raise errors instead of becoming successful empty state.
+
+This batch passed 61 Python tests and 36 JavaScript tests. The published DDS
+GLB loaded in the integrated browser in overview, ground and material-detail
+views with no captured console errors. Local screenshots are stored under
+`build/local-scenes/ue2three/verification/offline-cache/`. This verifies loading
+and the visible checks panel; it does not establish complete shader fidelity.
+
+### Visual map verification
+
+Map exports now run an offline source check using the cached UAssetAPI reader.
+Landscape vertices outside the authored `CachedLocalBox` are repaired only when
+the source bounds are almost flat, at least 75% of exported heights are valid,
+and all valid heights agree. Non-flat or insufficient data is reported and left
+unchanged. The GLB and `.validation.json` retain the repair diagnostics.
+
+Mesh-dependent material baking preserves world-aligned patterns. Eight materials
+in the local DDS RaidMapTest bake returned magenta constants; source parameter
+tints are used as an explicitly reported fallback for those failed bakes.
+Successful textured bakes are preserved without applying the source tint twice.
+This does not establish shader fidelity for the fallback materials.
+
+After migration, the manager runs Chrome screenshot verification at 1120×700
+in three fixed views: overview, source player spawn (when available), and detail.
+It checks browser/resource failures, non-finite vertices, empty/uniform renders
+and views that are more than 85% nearly black. Each scene has a local screenshot
+gallery and JSON report in its `verification` directory, selectable in the
+manager. Status `captured` means these checks completed, not full Unreal fidelity.
+Punctual source lights and shadows are retained in the map viewer; Unreal
+SkyLight/Lumen, exposure and postprocessing are not fully translated and the
+viewer explicitly identifies its ambient-light approximation. A neutral reflection
+environment keeps reflective PBR surfaces visible; it is not an exported SkyLight
+capture. Detail cameras select nearby colored props and check sight lines without
+relying on DDS actor names.
+
+Screenshots are cached by GLB, viewer and audit-script hashes and validated by
+their own checksums. No repeated Unreal run is needed to verify a cached GLB.
+The browser audit reuses an installed Chrome and Playwright package (project
+installation, `UE2THREE_PLAYWRIGHT_PATH`, or the Codex bundled runtime). It does
+not download software. Missing browser dependencies produce a visible failure
+report, never a successful verification. Browser startup/timeout failures also
+replace any stale gallery rather than displaying old screenshots as new evidence.
+The preview server serves the existing bundles without starting a webpack watcher.
+
+#### DDS evidence, 2026-10-11
+
+The cached mesh-dependent RaidMapTest export was corrected and published without
+launching Unreal: 6 shared landscape position buffers contained 3,072 invalid
+heights (instanced across 12 components). Authored flat bounds allowed their
+replacement; the scene minimum Y changed from -256 m to approximately -0.56 m.
+The reused bake contains 214 embedded images, with 8 reported tint fallbacks.
+Three Chrome views loaded without browser/resource errors; a second verification
+reused the checksummed screenshots. This is a static map preview, not proof of a
+complete playable game or equivalent Unreal lighting. The local evidence is in
+`build/local-scenes/ue2three/projects/<project-id>/verification/<map-name>/`.
+Windows dashboard polling also exposed a transient `WinError 5` on state-file
+replacement; atomic JSON writes now retry sharing failures briefly while keeping
+the prior state intact. Persistent failures are still raised. The batch passed
+48 Python tests and 29 JavaScript tests.
+The integrated browser exposed an additional stale-model cache issue: changing
+the page URL did not invalidate the GLB request. Asset URLs now include the
+published content revision; links opened without a revision resolve it from the
+local map manifest. Source exports remain cached on disk.
 
 No upload, AI, account, API key, network call, or package installation is needed.
 Use Python 3.12+ and files already on disk. Unreal itself will be required for
 engine package extraction; Blender will be optional for formats needing it.
 
 ## Run locally
+
+### Web manager (Windows)
+
+Double-click `tools/ue2three/start-web.vbs` to open the local project manager in
+Chrome without showing a terminal. The `.uproject` field defaults to the DDS sample
+path and **Sfoglia…** selects a different project. Press **Avvia** once. The
+manager shows analysis, character preparation, map export, and the activity log;
+when done, its scene list opens migrated Unreal levels or the playable Sketchbook
+character scene as an alternative. No character recipe selection is required.
+
+The manager listens only on `127.0.0.1:8766`; the Three.js preview server listens
+on `127.0.0.1:8401`. The browser sends the selected project path to that local
+server; it does not upload project files. Map previews are orbitable scene views,
+not recreated Unreal game logic.
 
 From this repository in PowerShell:
 
@@ -122,12 +245,21 @@ automated fixture coverage.
 ## Incremental roadmap / acceptance gates
 
 1. **Done:** scan, diagnostics, engine discovery, resumable graph and initial job UI.
-2. **Next:** recipe-driven character export through Unreal, skeleton/mesh/material
-   validation, cache dependencies and a generated playable Three.js test scene.
-3. Animation mappings, root motion/retargeting and sustained runtime pose tests.
-4. Weapons, sockets, attachment transforms, animation events and shooting tests.
-5. Maps: actor hierarchy/transforms, static meshes, collisions, lights, cameras,
-   instanced foliage, streaming and explicit material/landscape limitations.
+2. **Done and validated against local DDS UE 5.7:** generic configuration-driven character
+   export through Unreal, source-byte fingerprints, staged resume, GLB validation,
+   required-bone/attachment validation, root-motion policy, animation aliases,
+   declared engine-plugin requirements, local runtime publishing and a playable
+   Sketchbook `ue2three` profile.
+3. **Character runtime verified:** root-motion filtering, aliases and 60-frame
+   animation sampling for each of 23 DDS clips (with the generic runtime loader).
+   Cross-skeleton retargeting and configurable semantic action maps remain open.
+4. **Generic asset mounting implemented:** SkeletalMesh/StaticMesh attachments can
+   be exported from config and mounted to a declared bone with a local transform;
+   DDS rifle and pistol exports were validated against UE 5.7. Animation events,
+   attachment calibration and shooting behavior remain open.
+5. **Initial map export implemented:** UE glTF level export, a cached scene list,
+   and per-map failure reports. DDS UE 5.7 testing is in progress; Blueprints,
+   collisions, streaming and gameplay behavior remain outside this conversion.
 6. Common gameplay object adapters with explicit reconstruction reports.
 7. Blueprint metadata/dependencies, native modules and plugin compatibility analysis.
 8. Conversion-quality validation, richer dashboard and multi-project regressions.
@@ -141,6 +273,53 @@ both converted assets and matching runtime behavior; "complete game" is a
 project-specific acceptance test, not a file-count percentage.
 
 ## Verification
+
+### Cached material graphs and project checklist · 2026-10-12
+
+The generic offline reader recovers native material input connections omitted
+from cached package JSON. DDS M_Grid now has 66 direct connections preserved in
+the source sidecar; nested functions and shader execution remain unsupported.
+The manager and level preview link to a generated checklist of 18 project areas
+and scoped completed checkpoints. Lighting is the last priority.
+See the [complete checklist and verification scope](ue2three-progress.md).
+
+Generate it from existing metadata without opening Unreal or rescanning:
+
+```powershell
+python tools/ue2three/ue2three.py progress --workspace WORKSPACE --publish-dir PUBLISHED_PROJECT --character-dir PUBLISHED_CHARACTER
+```
+
+Missing/corrupt published files or changed report code invalidate the checklist
+cache. Source graph reading changes invalidate only offline map processing;
+existing raw exports remain reusable. A checklist green is a completed scoped
+checkpoint; full-game fidelity is a separate acceptance gate.
+
+### Lightweight map presentation batch · 2026-10-11
+
+The level preview and playable imported level share `map-presentation.mjs`.
+Both use the exported map checksum to version GLB requests, source punctual
+lights, ACES exposure 1, sRGB output, and the same explicitly approximate neutral
+reflection/ambient environment. The playable level hides the playground sky and
+its lights. Shadows are limited to one source directional light at 2048 pixels;
+other source lights retain their color and intensity without shadow allocations.
+
+Native browser screenshots exposed an additional playable-rendering discrepancy:
+the FXAA composer returned linear pixels without final sRGB encoding, making the
+level much darker than the direct-rendered preview. A final gamma correction pass
+now encodes the output once. Direct rendering with FXAA disabled already encodes
+via the renderer. This batch reuses existing exports and does not launch Unreal.
+
+| Area | Status | Remaining acceptance work |
+| --- | --- | --- |
+| Map geometry | Partial | Full source transform/dimension comparison; the bounded flat-landscape spike repair is retained |
+| Materials/textures | Partial | Translate missing shaders beyond the eight parameter tint fallbacks |
+| Lighting | Partial | Source SkyLight, exposure, postprocessing and lighting fidelity; shared presentation is implemented |
+| Cache/output regression checks | Passed | Checksum URL, missing manifest fallback, shadow budget and single output encoding have automated coverage |
+
+Screenshot cache fingerprints include the shared presentation module, so a
+lighting change cannot reuse old visual evidence. Browser screenshots confirm
+appearance for the tested map; they do not prove complete Unreal fidelity or
+correctness of the character's materials, animations and weapon attachments.
 
 ```powershell
 python -m unittest discover -s tools/ue2three/tests -v

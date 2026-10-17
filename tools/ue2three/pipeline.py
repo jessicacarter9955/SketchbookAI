@@ -7,10 +7,17 @@ from scanner import diagnostics, import_registry, inspect_project, inventory
 
 TASKS = {
     "project": (), "engine": (), "inventory": ("project",),
-    "registry": ("inventory",), "diagnostics": ("project", "engine", "inventory", "registry"),
+    "engine_metadata": ("project", "engine", "inventory"),
+    "registry": ("inventory", "engine_metadata"), "diagnostics": ("project", "engine", "inventory", "registry"),
     "report": ("project", "inventory", "diagnostics"),
 }
 STATUSES = {"pending", "running", "succeeded", "failed", "skipped", "blocked"}
+
+
+def task_graph(state):
+    enabled = state["config"].get("extract_engine", False)
+    return {name: tuple(dep for dep in deps if enabled or dep != "engine_metadata")
+            for name, deps in TASKS.items() if enabled or name != "engine_metadata"}
 
 
 def new_state(config):
@@ -64,7 +71,7 @@ def verify_state(directory, state, logger):
 
 def invalidate_dependents(state, names):
     affected = set(names)
-    for name, deps in TASKS.items():
+    for name, deps in task_graph(state).items():
         if any(dep in affected for dep in deps):
             affected.add(name)
             task = state["tasks"].get(name)
@@ -74,15 +81,16 @@ def invalidate_dependents(state, names):
 
 
 def plan(state, snapshot):
-    implementation = {name: file_hash(Path(__file__).with_name(name)) for name in ("core.py", "pipeline.py", "scanner.py", "adapters.py")}
+    implementation = {name: file_hash(Path(__file__).with_name(name)) for name in ("core.py", "pipeline.py", "scanner.py", "adapters.py", "engine_runner.py", "registry_extract.py")}
     inputs = {
         "project": {"project": snapshot["project"], "descriptor": snapshot["descriptor"]},
         "engine": snapshot["engine"],
         "inventory": {"files": snapshot["files"], "omitted_links": snapshot["omitted_links"]},
         "registry": {"path": snapshot["registry_path"], "hash": snapshot["registry_sha256"]},
+        "engine_metadata": {"files": snapshot["files"], "engine": snapshot["engine"]},
         "diagnostics": {}, "report": {},
     }
-    for name, deps in TASKS.items():
+    for name, deps in task_graph(state).items():
         fingerprint = digest({"task": name, "implementation": implementation, "tool_version": TOOL_VERSION, "schema": SCHEMA,
                               "options": inputs[name], "dependencies": {dep: state["tasks"][dep]["input_hash"] for dep in deps}})
         task = state["tasks"].get(name)
@@ -102,7 +110,7 @@ def plan(state, snapshot):
 
 
 def retry_task(state, name):
-    selected = list(TASKS) if name == "all" else [name]
+    selected = list(task_graph(state)) if name == "all" else [name]
     for task_name in selected:
         if task_name not in state["tasks"]:
             raise ValueError(f"Task not planned: {task_name}")
@@ -126,15 +134,25 @@ def skip_task(state, name, reason):
 def run(directory, state, snapshot, logger, handlers=None):
     def output(name):
         return read_json(artifact_path(directory, name))
+    def engine_metadata():
+        from engine_runner import run_engine
+        return run_engine(directory, snapshot, logger)
+    def registry_import():
+        if state["config"].get("extract_engine"):
+            path = artifact_path(directory, "engine_metadata")
+            adjusted = {**snapshot, "registry_path": str(path), "registry_sha256": file_hash(path)}
+            return import_registry(adjusted, output("inventory"), verified_engine=True)
+        return import_registry(snapshot, output("inventory"))
     handlers = handlers or {
         "project": lambda: inspect_project(snapshot),
         "engine": lambda: snapshot["engine"],
         "inventory": lambda: inventory(snapshot),
-        "registry": lambda: import_registry(snapshot, output("inventory")),
+        "engine_metadata": engine_metadata,
+        "registry": registry_import,
         "diagnostics": lambda: diagnostics(output("project"), output("engine"), output("inventory"), output("registry")),
         "report": lambda: {"schema_version": SCHEMA, "project": output("project")["name"], **output("diagnostics")},
     }
-    for name, deps in TASKS.items():
+    for name, deps in task_graph(state).items():
         task = state["tasks"][name]
         if task["status"] in {"succeeded", "skipped"}:
             logger.event("reuse" if task["status"] == "succeeded" else "skipped", f"{name}: {task['status']}", task=name)
@@ -157,8 +175,8 @@ def run(directory, state, snapshot, logger, handlers=None):
             task.update(status="succeeded", artifact_sha256=file_hash(path), finished=utc(), seconds=elapsed(start))
             logger.event("task-done", name, task=name, seconds=task["seconds"])
         except Exception as exc:
-            task.update(status="failed", error=f"{type(exc).__name__}: {exc}", finished=utc(), seconds=elapsed(start))
-            logger.event("task-failed", task["error"], task=name)
+            task.update(status="failed", error_code=getattr(exc, "code", "TASK_FAILED"), error=f"{type(exc).__name__}: {exc}", finished=utc(), seconds=elapsed(start))
+            logger.event("task-failed", task["error"], task=name, code=task["error_code"])
         save_state(directory, state)
     return all(task["status"] == "succeeded" for task in state["tasks"].values())
 
@@ -170,7 +188,7 @@ def build_report(directory, state):
               "source_project": state["config"]["project"], "last_source_verification": state.get("last_source_verification"),
               "source_verification_status": state.get("source_verification_status", "unverified"),
               "last_error": state.get("last_error"),
-              "processing": {"tasks": tasks, "counts": counts, "complete": bool(tasks) and counts["succeeded"] == len(TASKS) and state.get("source_verification_status") == "verified"},
+              "processing": {"tasks": tasks, "counts": counts, "complete": bool(tasks) and counts["succeeded"] == len(task_graph(state)) and state.get("source_verification_status") == "verified"},
               "fidelity": {"status": "not_evaluated", "converted_assets": 0, "playable_game": False, "percentage": None},
               "report_note": "Task completion is inspection processing, never conversion fidelity. Source freshness is the last verification timestamp."}
     for name, key in (("diagnostics", "inspection"), ("engine", "engine")):
@@ -180,7 +198,7 @@ def build_report(directory, state):
     atomic_json(directory / "report.json", report)
     lines = ["# ue2three inspection report", "", f"Generated: {report['generated']}", "",
              f"Source: `{report['source_project']}`", "",
-             f"Inspection tasks succeeded: {counts['succeeded']}/{len(TASKS)}. "
+             f"Inspection tasks succeeded: {counts['succeeded']}/{len(task_graph(state))}. "
              f"Failed: {counts['failed']}; skipped: {counts['skipped']}; blocked: {counts['blocked']}.", "",
              "Converted assets: **0**. Fidelity: **not evaluated**. Playable game: **no**.", "",
              f"Source verification: **{report['source_verification_status']}**. Last error: {report['last_error'] or 'none'}.", "",

@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 SCHEMA = 1
-TOOL_VERSION = "0.1.0"
+TOOL_VERSION = "0.2.0"
 
 
 def utc():
@@ -32,8 +32,17 @@ def file_hash(path):
 
 
 def read_json(path):
-    with Path(path).open("r", encoding="utf-8-sig") as stream:
-        return json.load(stream)
+    # Destination replacement can briefly deny an open on Windows as well.
+    # Retry only sharing/access errors; malformed JSON and persistent failures
+    # must remain visible to callers rather than becoming empty state.
+    for attempt in range(8):
+        try:
+            with Path(path).open("r", encoding="utf-8-sig") as stream:
+                return json.load(stream)
+        except PermissionError as error:
+            if getattr(error, 'winerror', None) not in (5, 32) or attempt == 7:
+                raise
+            time.sleep(min(0.01 * 2 ** attempt, 0.1))
 
 
 def atomic_json(path, value):
@@ -45,7 +54,16 @@ def atomic_json(path, value):
         stream.write("\n")
         stream.flush()
         os.fsync(stream.fileno())
-    os.replace(temp, path)
+    # Windows readers can briefly prevent replacement of an open destination.
+    # Keep the complete temporary file and retry; never truncate the live state.
+    for attempt in range(8):
+        try:
+            os.replace(temp, path)
+            break
+        except PermissionError as error:
+            if getattr(error, 'winerror', None) not in (5, 32) or attempt == 7:
+                raise
+            time.sleep(min(0.01 * 2 ** attempt, 0.1))
 
 
 class Logger:
@@ -61,7 +79,7 @@ class Logger:
             stream.write(json.dumps(record, ensure_ascii=True, sort_keys=True) + "\n")
         with (self.directory / "run.log").open("a", encoding="utf-8") as stream:
             stream.write(line + "\n")
-        if event in {"hash-start", "hash-progress", "hash-done", "task-start", "task-done", "task-failed", "complete", "incomplete", "error"}:
+        if event in {"hash-start", "hash-progress", "hash-done", "task-start", "task-done", "task-failed", "engine-start", "engine-progress", "engine-done", "complete", "incomplete", "error"}:
             atomic_json(self.directory / "progress.json", record)
 
 

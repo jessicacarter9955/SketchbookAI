@@ -9,15 +9,15 @@ from scanner import collect_snapshot
 
 
 def parser():
-    result = argparse.ArgumentParser(description="ue2three: offline Unreal project inspection and resumable task planning (stage 1)")
+    result = argparse.ArgumentParser(description="ue2three: offline Unreal inspection and migration toolkit")
     result.add_argument("--version", action="version", version=TOOL_VERSION)
     commands = result.add_subparsers(dest="command", required=True)
-    for name in ("scan", "plan", "resume", "retry", "skip", "revalidate", "report", "status", "dashboard"):
+    for name in ("scan", "extract", "plan", "resume", "retry", "skip", "revalidate", "report", "status", "dashboard"):
         cmd = commands.add_parser(name)
         cmd.add_argument("--workspace", type=Path, help="Local task state directory, separate from source project")
-        if name in {"scan", "plan"}:
+        if name in {"scan", "extract", "plan"}:
             cmd.add_argument("project", type=Path, nargs="?", help="Editable .uproject; required for a new workspace")
-        if name in {"scan", "plan", "resume", "retry", "revalidate"}:
+        if name in {"scan", "extract", "plan", "resume", "retry", "revalidate"}:
             cmd.add_argument("--engine", help="Engine installation root; 'auto' restores discovery")
             reg = cmd.add_mutually_exclusive_group()
             reg.add_argument("--registry", type=Path, help="Optional JSON from registry_extract.py; never executes Unreal")
@@ -28,6 +28,48 @@ def parser():
             cmd.add_argument("--reason", required=True)
         if name == "dashboard":
             cmd.add_argument("--port", type=int, default=8766)
+            cmd.add_argument("--open", action="store_true", help="Open the local Migration Manager in the default browser")
+
+    character = commands.add_parser("migrate-character", help="Export one recipe-defined Unreal skeletal character to validated GLB")
+    character.add_argument("project", type=Path, help="Editable Unreal .uproject")
+    character.add_argument("--recipe", type=Path, required=True, help="Character migration recipe JSON")
+    character.add_argument("--workspace", type=Path, help="Local migration workspace, separate from source project")
+    character.add_argument("--engine", help="Optional Unreal Engine installation root")
+    character.add_argument("--force", action="store_true", help="Ignore a valid cached character export")
+    character.add_argument("--publish-dir", type=Path,
+                           help="Optional local directory to mirror the validated runtime assets")
+    maps = commands.add_parser("migrate-maps", help="Export inventoried Unreal levels to cached, validated GLB scenes")
+    maps.add_argument("project", type=Path, help="Editable Unreal .uproject")
+    maps.add_argument("--workspace", type=Path, required=True, help="Verified ue2three scan and Asset Registry workspace")
+    maps.add_argument("--publish-dir", type=Path, required=True, help="Local output directory, outside the source project")
+    maps.add_argument("--engine", help="Optional matching Unreal Engine installation root")
+    maps.add_argument("--force", action="store_true", help="Re-export maps even when a valid cached GLB exists")
+    maps.add_argument("--timeout", type=int, default=3600, help="Maximum seconds per map export (shader compilation included)")
+    maps.add_argument("--map-package", help="Export only this inventoried Unreal level package, e.g. /Game/Fixers/Maps/LV_Fixers_RaidMapTest")
+    maps.add_argument('--offline', action='store_true', help='Reuse verified raw exports and apply corrections without launching Unreal')
+    ui = commands.add_parser("migrate-ui", help="Translate a map-referenced Unreal widget layout into a Three.js preview")
+    ui.add_argument("project", type=Path, help="Editable Unreal .uproject")
+    ui.add_argument("--workspace", type=Path, required=True, help="Verified ue2three scan and Asset Registry workspace")
+    ui.add_argument("--publish-dir", type=Path, required=True, help="Local output directory, outside the source project")
+    ui.add_argument("--force", action="store_true", help="Re-read source Widget Blueprints instead of reusing cached JSON")
+    controls = commands.add_parser("migrate-controls", help="Extract original Enhanced Input mappings and Blueprint event entries")
+    controls.add_argument("project", type=Path, help="Editable Unreal .uproject")
+    controls.add_argument("--workspace", type=Path, required=True, help="Verified ue2three scan workspace")
+    controls.add_argument("--publish-dir", type=Path, required=True, help="Local output directory, outside the source project")
+    controls.add_argument("--force", action="store_true", help="Re-read source assets instead of reusing cached JSON")
+    progress = commands.add_parser('progress', help='Build a cached project checklist without scanning or starting Unreal')
+    progress.add_argument('--workspace', type=Path, required=True)
+    progress.add_argument('--publish-dir', type=Path, required=True)
+    progress.add_argument('--character-dir', type=Path)
+    blueprints = commands.add_parser('migrate-blueprints', help='Translate supported cached Blueprint functions without launching Unreal')
+    blueprints.add_argument('project', type=Path)
+    blueprints.add_argument('--workspace', type=Path, required=True)
+    blueprints.add_argument('--publish-dir', type=Path, required=True)
+    blueprints.add_argument('--package', help='Optional inventoried Blueprint package; otherwise inspect available caches')
+    blueprints.add_argument('--read-package', action='append', default=[], help='Read this inventoried package into the parser cache without starting Unreal; repeat for a bounded batch')
+    plan = commands.add_parser('plan-blueprints', help='Rank shared cached Blueprint blockers and prepare local work packets')
+    plan.add_argument('--workspace', type=Path, required=True)
+    plan.add_argument('--publish-dir', type=Path, required=True)
     return result
 
 
@@ -36,39 +78,121 @@ def default_workspace(project):
 
 
 def execute(args):
+    if args.command == 'migrate-blueprints':
+        from blueprint_migration import migrate_blueprints
+        report = migrate_blueprints(args.project, args.workspace, args.publish_dir, args.package, args.read_package)
+        print(f"Blueprint functions: {report['counts']}; uncached packages: {len(report['missing_cached_packages'])}")
+        from blueprint_planning import build_blueprint_plan
+        build_blueprint_plan(args.workspace, args.publish_dir)
+        print(f"Shared blocker plan: {args.publish_dir / 'blueprint-plan.html'}")
+        return 0
+    if args.command == 'plan-blueprints':
+        from blueprint_planning import build_blueprint_plan
+        report = build_blueprint_plan(args.workspace, args.publish_dir)
+        print(f"Blueprint plan: {report['blocked_functions']} blocked functions; {report['event_entry_wrappers']} event wrappers")
+        return 0
+    if args.command == 'progress':
+        from progress_report import project_progress
+        report = project_progress(args.workspace, args.publish_dir, args.character_dir)
+        print(f"Project checklist: {args.publish_dir / 'progress.html'}")
+        print(f"Areas: {len(report['rows'])}; completed scoped checkpoints: {len(report['milestones'])}")
+        return 0
     project = getattr(args, "project", None)
     if project:
         project = project.resolve(strict=True)
         if project.suffix.lower() != ".uproject" or not project.is_file():
             raise ValueError("Expected an editable .uproject file")
+
     latest = Path.cwd() / ".local" / "ue2three" / "last-workspace.json"
     directory = args.workspace.resolve() if args.workspace else default_workspace(project) if project else None
     if directory is None and latest.is_file():
-        directory = Path(read_json(latest)["workspace"]).resolve()
+        try:
+            directory = Path(read_json(latest)["workspace"]).resolve()
+        except (OSError, ValueError, KeyError):
+            directory = None
+
+    if args.command == "dashboard":
+        if directory is None:
+            directory = Path.cwd() / ".local" / "ue2three"
+        if not (directory / "state.json").is_file():
+            from manager import serve
+            return serve(directory, args.port)
+        from dashboard import serve
+        return serve(directory, args.port, args.open)
+
     if directory is None:
         raise ValueError("Provide --workspace from the initial scan (or a project path for scan/plan)")
+
+    if args.command == "migrate-character":
+        from character import migrate_character
+        directory = prepare_workspace(directory, project)
+        atomic_json(latest, {"workspace": str(directory)})
+        logger = Logger(directory)
+        with workspace_lock(directory):
+            result = migrate_character(project, args.recipe, directory, args.engine, args.force, logger, args.publish_dir)
+            atomic_json(directory / "character-last.json", result)
+        print(f"Character {result['status']}: {result['output']}")
+        if result.get("published"):
+            print(f"Published runtime assets: {result['published']}")
+        return 0
+
+    if args.command == "migrate-maps":
+        from map_migration import migrate_maps
+        if not directory.is_dir():
+            raise ValueError("Map export requires a completed scan workspace")
+        logger = Logger(directory)
+        with workspace_lock(directory):
+            report = migrate_maps(project, directory, args.publish_dir, logger,
+                                  engine_override=args.engine, force=args.force, map_package=args.map_package,
+                                  timeout=args.timeout, allow_engine=not args.offline)
+        print(f"Unreal maps exported: {report['counts']['exported']}; reused: {report['counts']['reused']}; failed: {report['counts']['failed']}")
+        print(f"Map report: {Path(args.publish_dir) / 'migration-report.json'}")
+        return 0 if report["counts"]["exported"] + report["counts"]["reused"] else 1
+
+    if args.command == "migrate-ui":
+        from umg_migration import migrate_ui
+        if not directory.is_dir():
+            raise ValueError("UI migration requires a completed scan workspace")
+        logger = Logger(directory)
+        with workspace_lock(directory):
+            manifest = migrate_ui(project, directory, args.publish_dir, logger, force=args.force)
+        print(f"Source Widget Blueprints: {len(manifest['widget_blueprints'])}; root: {manifest['root_widget']}")
+        print(f"UI manifest: {Path(args.publish_dir) / 'ui-manifest.json'}")
+        return 0
+
+    if args.command == "migrate-controls":
+        from controls_migration import migrate_controls
+        if not directory.is_dir():
+            raise ValueError("Control extraction requires a completed scan workspace")
+        logger = Logger(directory)
+        with workspace_lock(directory):
+            report = migrate_controls(project, directory, args.publish_dir, logger, force=args.force)
+        print(f"Source controls: {len(report['default_key_mappings'])} key mappings; "
+              f"{len(report['blueprint_input_events'])} Blueprint events")
+        print(f"Control manifest: {Path(args.publish_dir) / 'character-controls.json'}")
+        return 0
+
     if (directory / "state.json").exists():
         state = load_state(directory)
         existing_project = Path(state["config"]["project"]).resolve()
         if project and project != existing_project:
             raise ValueError("Workspace belongs to another project. Choose a different --workspace.")
         project = existing_project
-    elif project and args.command in {"scan", "plan"}:
+    elif project and args.command in {"scan", "extract", "plan"}:
         state = new_state({"project": str(project), "engine": None, "registry": None})
     else:
         raise ValueError("No state.json found. Start with scan PROJECT --workspace DIRECTORY")
+
     directory = prepare_workspace(directory, project)
-    if args.command in {"scan", "plan"}:
+    if args.command in {"scan", "extract", "plan"}:
         atomic_json(latest, {"workspace": str(directory)})
-    if args.command == "dashboard":
-        from dashboard import serve
-        return serve(directory, args.port)
     logger = Logger(directory)
     with workspace_lock(directory):
-        # Reload under the lock to avoid overwriting another process's transitions.
         if (directory / "state.json").exists():
             state = load_state(directory)
         config = state["config"]
+        if args.command == "extract":
+            config["extract_engine"] = True
         if getattr(args, "engine", None):
             config["engine"] = None if args.engine == "auto" else str(Path(args.engine).resolve())
         if getattr(args, "without_registry", False):
@@ -80,6 +204,7 @@ def execute(args):
         verify_state(directory, state, logger)
         save_state(directory, state)
         logger.event("command", f"{args.command}: {directory}", command=args.command)
+
         if args.command in {"status", "report", "skip"}:
             if args.command == "skip":
                 skip_task(state, args.task, args.reason)
@@ -91,6 +216,7 @@ def execute(args):
             else:
                 print(f"Report: {directory / 'report.md'}")
             return 0
+
         try:
             state["source_verification_status"] = "running"
             save_state(directory, state)
@@ -107,12 +233,14 @@ def execute(args):
                 return 0
             ok = run(directory, state, snapshot, logger)
             build_report(directory, state)
-            logger.event("complete" if ok else "incomplete", f"Inspection {'complete' if ok else 'incomplete'}; converted assets: 0; fidelity: not evaluated")
+            logger.event("complete" if ok else "incomplete",
+                         f"Inspection {'complete' if ok else 'incomplete'}; converted assets: 0; fidelity: not evaluated")
             print(f"Report: {directory / 'report.md'}")
             return 0 if ok else 1
         except (OSError, ValueError, RuntimeError) as exc:
             state["source_verification_status"] = "failed"
-            state["last_error"] = {"time": utc(), "code": "SOURCE_SCAN_FAILED", "error": f"{type(exc).__name__}: {exc}"}
+            state["last_error"] = {"time": utc(), "code": "SOURCE_SCAN_FAILED",
+                                   "error": f"{type(exc).__name__}: {exc}"}
             save_state(directory, state)
             logger.event("error", state["last_error"]["error"], code="SOURCE_SCAN_FAILED")
             build_report(directory, state)

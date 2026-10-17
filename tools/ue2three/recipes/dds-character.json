@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "id": "dds-player",
+  "mesh": "/Game/Characters/UEFN_Mannequin/Meshes/SKM_UEFN_Mannequin",
+  "clips": {
+    "idle": "/Game/Characters/UEFN_Mannequin/Animations/Idle/M_Relaxed_Stand_Idle_Loop",
+    "walk": "/Game/Characters/UEFN_Mannequin/Animations/Walk/M_Relaxed_Walk_Loop_F",
+    "run": "/Game/Characters/UEFN_Mannequin/Animations/Run/M_Relaxed_Run_Loop_F",
+    "sprint": "/Game/Characters/UEFN_Mannequin/Animations/Sprint/M_Relaxed_Sprint_Loop_F",
+    "falling": "/Game/Characters/UEFN_Mannequin/Animations/Jump/M_Relaxed_Jump_Loop_Fall",
+    "jump_idle": "/Game/Characters/UEFN_Mannequin/Animations/Jump/M_Relaxed_Jump_F_Start_Stand_Rfoot",
+    "jump_running": "/Game/Characters/UEFN_Mannequin/Animations/Jump/M_Relaxed_Jump_F_Start_Run_Rfoot",
+    "drop_idle": "/Game/Characters/UEFN_Mannequin/Animations/Jump/M_Relaxed_Jump_F_Land_Stand_Light_Rfoot",
+    "rotate_left": "/Game/Characters/UEFN_Mannequin/Animations/Idle/M_Relaxed_Stand_Turn_090_L",
+    "rotate_right": "/Game/Characters/UEFN_Mannequin/Animations/Idle/M_Relaxed_Stand_Turn_090_R",
+    "rifle_ready": "/Game/Fixers/Animations/Mover/WeaponPoses/Rifle/Rifle_Stand_Ready_Idle",
+    "rifle_aim": "/Game/Fixers/Animations/Mover/WeaponPoses/Rifle/Rifle_Stand_Aim_Idle",
+    "rifle_fire": "/Game/Fixers/Animations/Mover/FixersWeapons/ArSharkCharacterAnims/NEWArShark_CharacterFireAnimation1",
+    "rifle_reload": "/Game/Fixers/Weapons/GenericWeapons/Rifle/Animations/AS_AR_ReloadEmpty",
+    "rifle_unequip": "/Game/Fixers/Animations/Mover/EquipsUnequips/Mover_UnEquipRifle_Stand",
+    "pistol_ready": "/Game/Fixers/Animations/Mover/WeaponPoses/Pistol1H/Pistol1H_Stand_Ready_Idle",
+    "pistol_aim": "/Game/Fixers/Animations/Mover/WeaponPoses/Pistol1H/Pistol1H_Stand_Aim_Idle",
+    "pistol_fire": "/Game/Fixers/Animations/Mover/FixersWeapons/Bull9CharacterAnims/Bull9FireFIXED",
+    "pistol_reload": "/Game/Fixers/Weapons/GenericWeapons/Pistol/Animations/AS_Reload_Pistol",
+    "pistol_equip": "/Game/Fixers/Animations/Mover/EquipsUnequips/Mover_Equip_Pistol_1H_Stand",
+    "crouch_idle": "/Game/Characters/UEFN_Mannequin/Animations/Idle/M_Neutral_Crouch_Idle_Loop",
+    "crouch_walk": "/Game/Characters/UEFN_Mannequin/Animations/Crouch/M_Neutral_Crouch_Loop_F",
+    "heal": "/Game/Fixers/Animations/Mover/Injector/Mover_Injector_Use",
+    "start_forward": "/Game/Characters/UEFN_Mannequin/Animations/Run/M_Relaxed_Run_Start_F_Rfoot",
+    "start_left": "/Game/Characters/UEFN_Mannequin/Animations/Run/M_Relaxed_Run_Reface_Start_090_L_Rfoot",
+    "start_right": "/Game/Characters/UEFN_Mannequin/Animations/Run/M_Relaxed_Run_Reface_Start_090_R_Rfoot",
+    "start_back_left": "/Game/Characters/UEFN_Mannequin/Animations/Run/M_Relaxed_Run_Reface_Start_180_L_Rfoot",
+    "start_back_right": "/Game/Characters/UEFN_Mannequin/Animations/Run/M_Relaxed_Run_Reface_Start_180_R_Rfoot",
+    "stop": "/Game/Characters/UEFN_Mannequin/Animations/Run/M_Relaxed_Run_Stop_F_Rfoot",
+    "drop_running": "/Game/Characters/UEFN_Mannequin/Animations/Jump/M_Relaxed_Jump_F_Land_Run_Light_Rfoot",
+    "weapon_equip": "/Game/Fixers/Animations/Mover/EquipsUnequips/Mover_Equip_Item_V3",
+    "rifle_move": "/Game/Fixers/Animations/Mover/WeaponPoses/Rifle/Rifle_Stand_Ready_Move",
+    "rifle_sprint": "/Game/Fixers/Animations/Mover/WeaponPoses/Rifle/Rifle_Sprint",
+    "rifle_crouch_ready": "/Game/Fixers/Animations/Mover/WeaponPoses/Rifle/Rifle_Crouch_Ready",
+    "rifle_crouch_aim": "/Game/Fixers/Animations/Mover/WeaponPoses/Rifle/Rifle_Crouch_Aim",
+    "pistol_move": "/Game/Fixers/Animations/Mover/WeaponPoses/Pistol1H/Pistol1H_Stand_Ready_Move",
+    "pistol_sprint": "/Game/Fixers/Animations/Mover/WeaponPoses/Pistol1H/Pistol1H_Stand_Sprint",
+    "pistol_crouch_ready": "/Game/Fixers/Animations/Mover/WeaponPoses/Pistol1H/Pistol1H_Crouch_Ready",
+    "pistol_crouch_aim": "/Game/Fixers/Animations/Mover/WeaponPoses/Pistol1H/Pistol1H_Crouch_Aim",
+    "vault_stand": "/Game/Characters/UEFN_Mannequin/Animations/Traversal/Vault/M_Neutral_Traversal_Vault_1_0_stand_F_Lfoot",
+    "vault_walk": "/Game/Characters/UEFN_Mannequin/Animations/Traversal/Vault/M_Relaxed_Traversal_Vault_1_0_walk_F_Rfoot",
+    "vault_run": "/Game/Characters/UEFN_Mannequin/Animations/Traversal/Vault/M_Relaxed_Traversal_Vault_1_0_run_F_Lfoot",
+    "mantle_stand": "/Game/Characters/UEFN_Mannequin/Animations/Traversal/Mantle/M_Relaxed_Traversal_Mantle_1_0_stand_F_Lfoot",
+    "mantle_walk": "/Game/Characters/UEFN_Mannequin/Animations/Traversal/Mantle/M_Relaxed_Traversal_Mantle_1_0_walk_F_Rfoot",
+    "mantle_run": "/Game/Characters/UEFN_Mannequin/Animations/Traversal/Mantle/M_Relaxed_Traversal_Mantle_1_0_run_F_Lfoot"
+  },
+  "attachment_assets": {
+    "rifle": {
+      "asset": "/Game/Fixers/Weapons/GenericWeapons/Rifle/Mesh/SK_Rifle",
+      "bone": "palm_r_Socket",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    },
+    "pistol": {
+      "asset": "/Game/Fixers/Weapons/GenericWeapons/Pistol/Mesh/SK_Pistol",
+      "bone": "palm_r_Socket",
+      "transform": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0
+        ],
+        "scale": [
+          1,
+          1,
+          1
+        ]
+      }
+    }
+  },
+  "runtime": {
+    "root_motion": "strip_root_transform",
+    "root_bone": "root",
+    "required_bones": [
+      "root",
+      "pelvis",
+      "spine_01",
+      "spine_03",
+      "hand_r"
+    ],
+    "attachments": {
+      "weapon": "hand_r"
+    },
+    "animation_aliases": {
+      "reset": "idle",
+      "drop_running_roll": "drop_idle",
+      "driving": "idle",
+      "sitting": "idle",
+      "sitting_shift_left": "idle",
+      "sitting_shift_right": "idle",
+      "sit_down_left": "idle",
+      "sit_down_right": "idle",
+      "stand_up_left": "idle",
+      "stand_up_right": "idle"
+    }
+  },
+  "export": {
+    "uniform_scale": 0.01,
+    "required_engine_plugins": [
+      "PoseSearch"
+    ]
+  }
+}
