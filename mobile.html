@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#122d40">
+<title>SketchbookAI · Urban Photoreal Mobile</title>
+<style>
+html,body{margin:0;height:100%;background:#112633;color:#fff;font:16px system-ui;}
+main{display:flex;align-items:center;justify-content:center;flex-direction:column;height:100dvh;text-align:center;padding:24px;box-sizing:border-box}
+a{color:#b1f1e2}
+</style>
+</head>
+<body><main><strong>SKETCHBOOK · CITY PLAYER</strong><p>Avvio Urban Photoreal per telefono…</p><a id="launch" href="editor.html?scene=urban-photoreal&amp;cityBlocks=2&amp;play=1&amp;mobile=1">Tocca per giocare</a></main>
+<script>
+(function(){
+  const u=new URL('editor.html',location.href);
+  u.searchParams.set('scene','urban-photoreal');
+  u.searchParams.set('cityBlocks','2');
+  u.searchParams.set('play','1');
+  u.searchParams.set('mobile','1');
+  for(const [key,value] of new URLSearchParams(location.search)) {
+    if(['scene','cityBlocks','play','mobile','supercars'].includes(key) && /^[a-z0-9-]{1,30}$/.test(value))u.searchParams.set(key,value);
+  }
+  document.getElementById('launch').href=u.href;
+  location.replace(u.href);
+})();
+</script></body></html>
