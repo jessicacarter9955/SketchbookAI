@@ -66,23 +66,28 @@ const {chromium}=require('playwright');
                 throttle:!!car.actions?.throttle,engine:!!car.rayCastVehicle};
         });
         console.log('Vehicle driving:',JSON.stringify(entered));
+        await page.locator('canvas').first().focus().catch(()=>{});
         const before=await page.evaluate(()=>{
             const car=globalThis.world.editorPlayer.controlledObject;
-            const initial=car.rayCastVehicle.wheelInfos.map(w=>w.rotation);
-            car.userData.testInitialSpin=initial;
-            car.triggerAction('throttle',true);
-            car.triggerAction('right',true);
-            return initial;
+            return car.rayCastVehicle.wheelInfos.map(w=>w.rotation);
         });
-        await page.waitForTimeout(1900);
+        await page.keyboard.down('w');
+        await page.keyboard.down('d');
+        await page.waitForTimeout(1950);
         const animated=await page.evaluate(()=>{
             const car=globalThis.world.editorPlayer.controlledObject;
             const spins=car.rayCastVehicle.wheelInfos.map(w=>w.rotation);
             const steering=car.rayCastVehicle.wheelInfos.map(w=>w.steering);
-            car.triggerAction('throttle',false);
-            car.triggerAction('right',false);
-            return {spins,steering,moved:car.collision.velocity.length(),rigs:car.userData.sketchfabWheelRig?.length};
+            return {spins,steering,moved:car.collision.velocity.length(),
+                throttleHeld:car.actions.throttle.isPressed,steeringHeld:car.actions.right.isPressed,
+                groundCount:car.rayCastVehicle.numWheelsOnGround,
+                wheelBodies:car.rayCastVehicle.wheelInfos.map(w=>Boolean(w.raycastResult.body)),
+                suspension:car.rayCastVehicle.wheelInfos.map(w=>w.suspensionLength),
+                appliedEngine:car.rayCastVehicle.wheelInfos.map(w=>w.engineForce),
+                rigs:car.userData.sketchfabWheelRig?.length};
         });
+        await page.keyboard.up('w');
+        await page.keyboard.up('d');
         console.log('Wheel spin and steering physics:',JSON.stringify({before,animated}));
         if(animated.rigs!==4 || !animated.spins.some((v,i)=>Math.abs(v-before[i])>0.05) ||
            !animated.steering.some(v=>Math.abs(v)>0.01))
