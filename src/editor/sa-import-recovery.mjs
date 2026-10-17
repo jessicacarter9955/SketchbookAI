@@ -84,8 +84,67 @@ export async function importSaNodesFromBrowser(files,report=()=>{}){
   return {files:list.length,pedestrians:pedestrian.nodes.length,vehicles:vehicle.nodes.length};
 }
 
+// Sketchbook ships this freely redistributable demo scene with the application.
+// It is NOT a Rockstar / GTA San Andreas game asset or a substitute claim.
+const DEMO_NAME='sketchbook-demo-world.glb';
+const DEMO_URL='build/assets/world.glb';
+export const isSketchbookSaDemo = keys => Array.from(keys||[]).includes(DEMO_NAME);
+function showDemoNotice(report=()=>{},diagnostics){
+  const message='STREETLAB DEMO SKETCHBOOK · Geometria GTA San Andreas originale non disponibile. '+
+    'La scena di prova è stata caricata automaticamente dal progetto.';
+  if(!document.getElementById('sa-demo-notice')){
+    const notice=document.createElement('aside');
+    notice.id='sa-demo-notice';
+    notice.setAttribute('role','status');
+    notice.textContent=message;
+    Object.assign(notice.style,{position:'fixed',zIndex:'10012',right:'12px',bottom:'12px',
+      maxWidth:'min(440px,90vw)',padding:'9px 12px',borderRadius:'7px',
+      border:'1px solid #78aec8',background:'rgba(12,31,43,.9)',
+      color:'#f5faff',font:'600 12px/1.45 system-ui',pointerEvents:'none'});
+    document.body.append(notice);
+  }
+  diagnostics?.activity?.(message);report(message);
+}
+export async function tryAutoLoadSketchbookDemo({sceneId,report=()=>{},diagnostics}){
+  // The genuine-SA import scene stays strict; only StreetLab provides a demo
+  // fallback. ?sa=original opts out without disabling the local importer.
+  if(sceneId!=='san-andreas-streetlab'||
+    new URLSearchParams(location.search).get('sa')==='original')return false;
+  const keys=await listSanAndreasFiles('geometry');
+  if(keys.length){
+    if(isSketchbookSaDemo(keys))showDemoNotice(report,diagnostics);
+    return true;
+  }
+  diagnostics?.stage?.('StreetLab · download automatico demo Sketchbook');
+  report('StreetLab: nessun settore originale disponibile, preparo demo Sketchbook inclusa nel sito…');
+  try{
+    const response=await fetch(new URL(DEMO_URL,location.href),{
+      signal:AbortSignal.timeout(60000),cache:'force-cache'
+    });
+    if(!response.ok)throw Error('Demo Sketchbook HTTP '+response.status);
+    const blob=await response.blob();
+    if(blob.size<100000||blob.size>256*1024*1024)
+      throw Error('GLB demo troppo piccolo o non valido: '+blob.size+' byte');
+    const file=new File([blob],DEMO_NAME,{type:'model/gltf-binary'});
+    // Same validated import path as user-selected original GLBs. Cache it for
+    // future visits on this hostname. Never upload any user's files.
+    await importSaGeometryFromBrowser([file],msg=>{
+      report('StreetLab AUTO: '+msg);
+      diagnostics?.activity?.('SA DEMO: '+msg);
+    });
+    showDemoNotice(report,diagnostics);
+    diagnostics?.stage?.('StreetLab · download automatico demo Sketchbook','done');
+    return true;
+  }catch(error){
+    diagnostics?.problem?.(error,'Download automatico demo StreetLab');
+    report('StreetLab: demo automatica indisponibile ('+error.message+'), apro diagnostica importazione.');
+    return false;
+  }
+}
+
 // Missing locally imported geometry is an expected user-input state, NOT a fatal app crash.
 export async function requireSaGeometry({loading,sceneId,report,diagnostics}){
+  if(await tryAutoLoadSketchbookDemo({sceneId,report,diagnostics}))return;
   if((await listSanAndreasFiles('geometry')).length)return;
   const panel=loading?.querySelector('.city-loading-panel');
   if(!panel)throw Error('Schermata di importazione SA non disponibile.');
