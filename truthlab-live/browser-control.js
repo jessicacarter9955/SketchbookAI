@@ -120,6 +120,9 @@ async function singleCycle(){
   const answer=await reply(system, "Recent conversation:\n"+history+
    "\nYou are "+agent+". Respond to the other agent or to an Operator request addressed to you.");
   if(stopping)break;
+  const fresh=await request("GET");
+  if(fresh.config.status!=="active" || fresh.config.engine!=="browser")break;
+  if(!fresh.config.agents_enabled[agent])continue;
   await request("POST","browser_message",{speaker:agent,text:answer});
   completed++;
  }
