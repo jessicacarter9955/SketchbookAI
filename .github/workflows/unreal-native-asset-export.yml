@@ -24,16 +24,17 @@ jobs:
             test -s "$p" || exit 1
             sha256sum "$p"
           done
-      - name: Install 32-bit compatibility libraries for prebuilt native exporter
+      - name: Install current Linux native exporter build dependencies
         run: |
-          sudo dpkg --add-architecture i386
           sudo apt-get update -qq
-          sudo apt-get install -y zlib1g:i386 libpng16-16:i386 libsdl2-2.0-0:i386
+          sudo apt-get install -y libsdl2-dev libpng-dev zlib1g-dev build-essential perl
       - name: Obtain open-source Unreal UModel glTF exporter
         run: |
           git clone --depth 1 https://github.com/gildor2/UEViewer.git /tmp/ueviewer
+          (cd /tmp/ueviewer && bash ./build.sh)
           file /tmp/ueviewer/umodel
           chmod +x /tmp/ueviewer/umodel
+          ldd /tmp/ueviewer/umodel || true
           /tmp/ueviewer/umodel -version || true
       - name: Export ACTUAL Unreal .uasset static meshes as glTF
         run: |
