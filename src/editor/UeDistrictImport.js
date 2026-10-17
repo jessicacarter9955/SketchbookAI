@@ -79,8 +79,8 @@ export async function loadNativeUnrealStreetfront({fetcher=fetch,loader=new GLTF
  const m=await response.json();
  if(!m||m.version!==1||m.source_type!=='UNREAL_NATIVE_STATIC_MESH_COMPOSITION'||
     m.district!=='ny'||m.full_unreal_level!==false||!Array.isArray(m.parts)||
-    m.parts.length<4||!/^ue-ny-native-[a-z0-9-]+\\.glb$/.test(m.mesh)|| 
-    !/^[a-f0-9]{64}$/.test(m.sha256)||!/^https:\/\/github\\.com\//.test(m.source_project||''))
+    m.parts.length<4||!/^ue-ny-native-[a-z0-9-]+\.glb$/.test(m.mesh)|| 
+    !/^[a-f0-9]{64}$/.test(m.sha256)||!/^https:\/\/github\.com\//.test(m.source_project||''))
    throw new Error('Unreal native streetfront manifest violates authenticated geometry schema');
  if(!m.parts.every(x=>typeof x.uasset==='string'&&x.uasset.endsWith('.uasset')&&
    Number.isInteger(x.triangles)&&x.triangles>=12))
