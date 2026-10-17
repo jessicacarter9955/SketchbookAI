@@ -46,6 +46,7 @@ jobs:
           path: |
             artifacts/ue2three-coastal-browser.json
             artifacts/ue2three-coastal-browser.png
+            artifacts/ue2three-native-newyork-browser.png
       - name: Report actual export availability, no false photoreal claim
         if: always()
         run: |
