@@ -8,7 +8,8 @@ const {chromium}=require('playwright');
     const errors=[],failed=[];
     page.on('pageerror',e=>errors.push(e.message.slice(0,230)));
     page.on('requestfailed',req=>failed.push(req.url().slice(0,170)+' '+req.failure()?.errorText));
-    const target='https://my-test-site3.netlify.app/editor.html?scene=urban-photoreal&play=1';
+    const scene=process.env.SKETCHBOOK_SCENE==='sandbox' ? 'sandbox' : 'urban-photoreal';
+    const target='https://my-test-site3.netlify.app/editor.html?scene='+scene+'&play=1';
     console.log('Browser test:',target);
     fs.mkdirSync('artifacts/supercars',{recursive:true});
     try {
@@ -21,7 +22,7 @@ const {chromium}=require('playwright');
                 'https://my-test-site3.netlify.app/src/editor/ActorLayer.js?v=wheel-rig'+Date.now(),
                 {timeout:12000}).catch(()=>null);
             const source=response?.ok() ? await response.text() : '';
-            if(source.includes('new CANNON.Sphere(0.28), new CANNON.Vec3(x,0,z)')){
+            if(source.includes('wheel.maxSuspensionTravel=0.12;')){
                 current=true; break;
             }
             await page.waitForTimeout(6500);
@@ -38,7 +39,7 @@ const {chromium}=require('playwright');
         const data=await page.evaluate(()=>{
             const ed=globalThis.sceneEditor,world=globalThis.world;
             const names=ed?.items?.filter(x=>x.name?.startsWith('Sketchfab · ')).map(x=>({name:x.name,prefab:x.prefab,assetId:x.assetId,position:x.position}))||[];
-            const actors=world?.vehicles?.filter(x=>x.userData?.editorActor).map(x=>({
+            const actors=world?.vehicles?.filter(x=>x.userData?.rigStatus?.source).map(x=>({
                 isCar:x.constructor?.name,position:x.position.toArray(),seats:x.seats?.length,
                 branded:!!x.children?.some(c=>c.userData?.sketchfabBody),
                 rig:x.userData.rigStatus||null,
@@ -202,7 +203,57 @@ const {chromium}=require('playwright');
         console.log('Rig details:',JSON.stringify(physics));
         if(!entered.occupied || !entered.control || !entered.throttle || !entered.engine)
             throw Error('Car seat driving controls not connected.');
-        console.log('PASS: 3 Sketchfab branded cars and real driveable seat/controls.');
+        // The previous green test only drove the BMW. Test Ferrari and
+        // Lamborghini individually and measure real wheel-mesh pivot movement,
+        // not merely the physics wheel's internal rotation counter.
+        const individualDrives=[{brand:'bmw',spinDelta:Math.max(...animated.spins.map((s,i)=>Math.abs(s-before[i]))),
+            velocity:animated.moved,steering:Math.max(...animated.steering.map(Math.abs)),
+            wheelsOnGround:animated.groundCount}];
+        for(const brand of ['ferrari','lamborghini']){
+            const initial=await page.evaluate(brand=>{
+                const world=globalThis.world,player=world.editorPlayer;
+                player.stopControllingVehicle();
+                player.leaveSeat();
+                const car=world.vehicles.find(x=>x.userData.rigStatus?.source===brand);
+                if(!car?.seats?.[0])throw Error('Missing driving seat '+brand);
+                player.teleportToVehicle(car,car.seats[0]);
+                player.takeControl();
+                return {brand,spin:car.rayCastVehicle.wheelInfos.map(w=>w.rotation),
+                    pivot:car.userData.sketchfabWheelRig.map(w=>w.pivot.quaternion.toArray())};
+            },brand);
+            await page.locator('canvas').first().focus();
+            await page.keyboard.down('w');
+            await page.keyboard.down('d');
+            await page.waitForTimeout(1950);
+            const driven=await page.evaluate(()=>{
+                const car=globalThis.world.editorPlayer.controlledObject;
+                return {spin:car.rayCastVehicle.wheelInfos.map(w=>w.rotation),
+                    steer:car.rayCastVehicle.wheelInfos.map(w=>w.steering),
+                    pivot:car.userData.sketchfabWheelRig.map(w=>w.pivot.quaternion.toArray()),
+                    velocity:car.collision.velocity.length(),
+                    wheelsOnGround:car.rayCastVehicle.numWheelsOnGround,
+                    driving:car.actions.throttle.isPressed,
+                    source:car.userData.rigStatus.source};
+            });
+            await page.keyboard.up('w');
+            await page.keyboard.up('d');
+            const delta=Math.max(...driven.spin.map((s,i)=>Math.abs(s-initial.spin[i])));
+            const pivotAngle=Math.max(...driven.pivot.map((q,i)=>{
+                const dot=Math.abs(q.reduce((sum,v,j)=>sum+v*initial.pivot[i][j],0));
+                return 2*Math.acos(Math.min(1,dot));
+            }));
+            const result={brand,spinDelta:delta,pivotAngle,velocity:driven.velocity,
+                steering:Math.max(...driven.steer.map(Math.abs)),wheelsOnGround:driven.wheelsOnGround};
+            individualDrives.push(result);
+            console.log('Individual supercar driving:',JSON.stringify(result));
+            if(driven.source!==brand || !driven.driving || driven.wheelsOnGround<1 ||
+                driven.velocity<0.15 || delta<0.05 || pivotAngle<0.05 ||
+                result.steering<0.015){
+                throw Error(brand+' has NOT passed wheel rotation, visual pivot, traction and steering test: '+JSON.stringify(result));
+            }
+        }
+        console.log('PASS: all three branded cars independently accelerate, steer and animate their original wheel geometry.');
+
         await page.evaluate(()=>{
             const editor=globalThis.sceneEditor,world=globalThis.world;
             editor.setActive(true);
