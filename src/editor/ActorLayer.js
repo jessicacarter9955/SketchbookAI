@@ -93,13 +93,27 @@ export class ActorLayer {
                             node.receiveShadow=true;
                             for (const mat of [].concat(node.material||[])) if(mat && !actor.materials.includes(mat)) actor.materials.push(mat);
                         });
+                        // Calibrate the imported body against the actual suspension
+                        // geometry; the old fixed -0.84 offset buried it as springs settle.
+                        const resting = chassisHeightForGround(0,actor.rayCastVehicle.wheelInfos,0.02);
+                        const visualBottom = new THREE.Box3().setFromObject(shell).min.y;
+                        shell.position.y += -resting + 0.07 - visualBottom;
                         shell.userData.sketchfabAsset=item.assetId;
                         actor.add(shell);
                     }
                 }
                 const assumed = this.terrainHeight(item.position[0], item.position[2], item.position[1]);
+                const yaw=new THREE.Quaternion().setFromEuler(new THREE.Euler(0,item.rotation[1],0));
+                const wheelInfo=actor.rayCastVehicle.wheelInfos;
+                const heights=wheelInfo.map(w=>{
+                    const point=new THREE.Vector3(w.chassisConnectionPointLocal.x,0,w.chassisConnectionPointLocal.z).applyQuaternion(yaw);
+                    const x=item.position[0]+point.x,z=item.position[2]+point.z;
+                    const estimate=this.terrainHeight(x,z,assumed);
+                    const floor=this.physicsGround(x,z,estimate);
+                    return floor-w.chassisConnectionPointLocal.y+w.suspensionRestLength+w.radius+0.08;
+                });
                 const ground = this.physicsGround(item.position[0],item.position[2],assumed);
-                const height = chassisHeightForGround(ground,actor.rayCastVehicle.wheelInfos);
+                const height=Math.max(chassisHeightForGround(ground,wheelInfo),...heights);
                 actor.setPosition(item.position[0],height,item.position[2]);
                 actor.userData.spawnGround=ground;
                 actor.userData.chassisRideHeight=height-ground;
