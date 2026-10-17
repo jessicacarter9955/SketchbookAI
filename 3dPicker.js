@@ -11,7 +11,7 @@
         <p class="asset-source-hint">Scrivi <strong>@fab</strong> per cercare su Fab, oppure scegli la fonte dal menu. Esempio: <code>@fab medieval house</code>.</p>
         <section class="asset-fab-tools" hidden><div class="asset-filters"><label><input type="checkbox" name="fab-free" checked> Solo gratuiti</label><label>Categoria <select name="fab-category"><option value="all">Tutte</option><option value="vehicles">Veicoli</option><option value="buildings">Edifici</option><option value="environments">Ambienti</option><option value="props">Oggetti</option></select></label></div><p>Fab apre il marketplace per scegliere il modello e accettare la licenza. Scarica il file GLB/ZIP compatibile, poi importalo qui.</p><button type="button" data-fab-open>Apri risultati su Fab ↗</button><label class="fab-drop">Importa un file scaricato da Fab<input type="file" name="fab-file" accept=".glb,.zip"></label></section>
         <div class="asset-filters asset-sketchfab-filters"><label><input type="checkbox" name="animated"> Animati</label><label>Geometria <select name="faces"><option value="">Tutti</option><option value="10000">≤ 10.000 facce</option><option value="50000">≤ 50.000 facce</option></select></label><button type="button" data-favorites>Preferiti</button></div>
-        <details class="asset-sketchfab-access"><summary>Accesso ai download</summary><label>API token Sketchfab <input type="password" name="token" autocomplete="off" placeholder="Solo per questa sessione"></label><p data-access>La ricerca è pubblica. Puoi usare la configurazione locale oppure inserire un token valido qui, solo per questa sessione. <a href="https://sketchfab.com/settings/password" target="_blank" rel="noopener noreferrer">Impostazioni Sketchfab ↗</a></p><label>Token o JSON con più token (salvataggio facoltativo)<textarea name="tokens-json" rows="2" spellcheck="false" autocomplete="off" placeholder="Un token oppure JSON con tokens"></textarea></label><p>I token salvati rimangono in IndexedDB su questo dispositivo e su questo dominio, non vengono pubblicati su GitHub.</p><button type="button" data-save-sketchfab>Salva accesso sul dispositivo</button><button type="button" data-retry hidden>Riprova modello selezionato</button></details>
+        <details class="asset-sketchfab-access"><summary>Accesso ai download</summary><label>API token Sketchfab <input type="password" name="token" autocomplete="off" placeholder="Solo per questa sessione"></label><p data-access>Ferrari 288 GTO (Randomness, CC BY) si importa automaticamente dal bridge Sketchbook, senza token nel browser. Per gli altri modelli Sketchfab puoi salvare il tuo token o JSON personale qui. <a href="https://sketchfab.com/settings/password" target="_blank" rel="noopener noreferrer">Impostazioni Sketchfab ↗</a></p><label>Token o JSON con più token (salvataggio facoltativo)<textarea name="tokens-json" rows="2" spellcheck="false" autocomplete="off" placeholder="Un token oppure JSON con tokens"></textarea></label><p>I token salvati rimangono in IndexedDB su questo dispositivo e su questo dominio, non vengono pubblicati su GitHub.</p><button type="button" data-save-sketchfab>Salva accesso sul dispositivo</button><button type="button" data-retry hidden>Riprova modello selezionato</button></details>
         <p role="status" aria-live="polite" data-status>Cerca un modello scaricabile o apri i preferiti.</p>
         <section class="asset-inline-preview" hidden><div class="asset-inline-preview-bar"><strong data-preview-title></strong><button type="button" data-preview-close>Chiudi anteprima</button></div><iframe title="Anteprima 3D interattiva Sketchfab" loading="lazy" allow="fullscreen; autoplay; xr-spatial-tracking" referrerpolicy="strict-origin-when-cross-origin"></iframe><p>Anteprima del modello originale su Sketchfab; il download richiede l’autorizzazione del proprietario e il tuo token.</p></section>
         <div class="asset-results"></div><button type="button" data-more hidden>Altri risultati</button>`;
@@ -107,7 +107,7 @@
         pendingModel = model; errors.delete(model.uid);
         busy = true;
         await localAccess;
-        if (!client.token) {
+        if (!client.token && !client.canDownloadWithoutBrowserToken(model.uid)) {
             busy = false;
             const message = `Per aggiungere “${model.name}” inserisci il tuo token in Accesso ai download, poi premi Riprova. Nessun oggetto è stato aggiunto.`;
             errors.set(model.uid, message); render(); status(message);
@@ -116,6 +116,8 @@
         busy = true; render(); status(`Download e importazione di “${model.name}”…`);
         const onPick = callback;
         try {
+            if(client.canDownloadWithoutBrowserToken(model.uid))
+                status('Ferrari 288 GTO: download automatico tramite server Sketchbook, token non necessario…');
             const url = await client.download(model.uid);
             if (onPick) await onPick(url, { uid: model.uid, name: model.name, author: model.user?.displayName || model.user?.username || '', license: model.license?.label || '', licenseUrl: safeURL(model.license?.url), source: safeURL(model.viewerUrl) });
             else { const a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.click(); }
