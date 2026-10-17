@@ -2,7 +2,7 @@
 (function () {
     const client = new SketchfabClient();
     const fabClient = typeof FabClient === 'function' ? new FabClient() : null;
-    const localAccess = client.loadLocalToken();
+    const localAccess = Promise.all([client.loadLocalToken(), client.loadSavedTokens().catch(() => false)]).then(states => states.some(Boolean));
     const dialog = document.createElement('dialog');
     dialog.className = 'asset-picker';
     dialog.setAttribute('aria-label', 'Libreria modelli Sketchfab e Fab');
@@ -11,7 +11,7 @@
         <p class="asset-source-hint">Scrivi <strong>@fab</strong> per cercare su Fab, oppure scegli la fonte dal menu. Esempio: <code>@fab medieval house</code>.</p>
         <section class="asset-fab-tools" hidden><div class="asset-filters"><label><input type="checkbox" name="fab-free" checked> Solo gratuiti</label><label>Categoria <select name="fab-category"><option value="all">Tutte</option><option value="vehicles">Veicoli</option><option value="buildings">Edifici</option><option value="environments">Ambienti</option><option value="props">Oggetti</option></select></label></div><p>Fab apre il marketplace per scegliere il modello e accettare la licenza. Scarica il file GLB/ZIP compatibile, poi importalo qui.</p><button type="button" data-fab-open>Apri risultati su Fab ↗</button><label class="fab-drop">Importa un file scaricato da Fab<input type="file" name="fab-file" accept=".glb,.zip"></label></section>
         <div class="asset-filters asset-sketchfab-filters"><label><input type="checkbox" name="animated"> Animati</label><label>Geometria <select name="faces"><option value="">Tutti</option><option value="10000">≤ 10.000 facce</option><option value="50000">≤ 50.000 facce</option></select></label><button type="button" data-favorites>Preferiti</button></div>
-        <details class="asset-sketchfab-access"><summary>Accesso ai download</summary><label>API token Sketchfab <input type="password" name="token" autocomplete="off" placeholder="Solo per questa sessione"></label><p data-access>La ricerca è pubblica. Puoi usare la configurazione locale oppure inserire un token valido qui, solo per questa sessione. <a href="https://sketchfab.com/settings/password" target="_blank" rel="noopener noreferrer">Impostazioni Sketchfab ↗</a></p><button type="button" data-retry hidden>Riprova modello selezionato</button></details>
+        <details class="asset-sketchfab-access"><summary>Accesso ai download</summary><label>API token Sketchfab <input type="password" name="token" autocomplete="off" placeholder="Solo per questa sessione"></label><p data-access>La ricerca è pubblica. Puoi usare la configurazione locale oppure inserire un token valido qui, solo per questa sessione. <a href="https://sketchfab.com/settings/password" target="_blank" rel="noopener noreferrer">Impostazioni Sketchfab ↗</a></p><label>Token o JSON con più token (salvataggio facoltativo)<textarea name="tokens-json" rows="2" spellcheck="false" autocomplete="off" placeholder="Un token oppure JSON con tokens"></textarea></label><p>I token salvati rimangono in IndexedDB su questo dispositivo e su questo dominio, non vengono pubblicati su GitHub.</p><button type="button" data-save-sketchfab>Salva accesso sul dispositivo</button><button type="button" data-retry hidden>Riprova modello selezionato</button></details>
         <p role="status" aria-live="polite" data-status>Cerca un modello scaricabile o apri i preferiti.</p>
         <section class="asset-inline-preview" hidden><div class="asset-inline-preview-bar"><strong data-preview-title></strong><button type="button" data-preview-close>Chiudi anteprima</button></div><iframe title="Anteprima 3D interattiva Sketchfab" loading="lazy" allow="fullscreen; autoplay; xr-spatial-tracking" referrerpolicy="strict-origin-when-cross-origin"></iframe><p>Anteprima del modello originale su Sketchfab; il download richiede l’autorizzazione del proprietario e il tuo token.</p></section>
         <div class="asset-results"></div><button type="button" data-more hidden>Altri risultati</button>`;
@@ -152,6 +152,17 @@
     $('[name=faces]').onchange = () => search();
     $('[name=token]').oninput = e => client.token = e.target.value.trim();
     localAccess.then(loaded => { if (loaded) { $('[name=token]').placeholder = 'Accesso locale configurato'; $('[data-access]').textContent = 'Accesso locale ripristinato: puoi aggiungere direttamente i modelli. La configurazione resta su questo PC ed è esclusa da Git.'; } });
+    $('[data-save-sketchfab]').onclick = async () => {
+        const chosen = $('[name=tokens-json]').value.trim() || $('[name=token]').value.trim();
+        try {
+            const count = await client.saveSavedTokens(chosen);
+            $('[name=token]').value = ''; $('[name=tokens-json]').value = '';
+            $('[name=token]').placeholder = 'Accesso già salvato';
+            $('[data-access]').textContent = 'Accesso Sketchfab automatico: '+count+' credenziale/i nel browser (solo questo dominio).';
+            status('Accesso salvato. '+(pendingModel?'Riprendo il modello selezionato…':'Puoi importare i modelli senza reinserire il token.'));
+            if (pendingModel && !busy) pick(pendingModel);
+        } catch (error) { status('Salvataggio Sketchfab: '+error.message); }
+    };
     $('[data-retry]').onclick = () => { if (pendingModel) pick(pendingModel); };
     $('[data-close]').onclick = () => { if (!busy) dialog.close(); };
     dialog.addEventListener('cancel', e => { if (busy) e.preventDefault(); });
