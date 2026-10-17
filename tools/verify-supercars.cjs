@@ -53,6 +53,10 @@ const {chromium}=require('playwright');
         await page.screenshot({path:'artifacts/supercars/sketchfab-three-cars.png',fullPage:true});
         if(data.names.length!==3 || data.actors.filter(x=>x.branded&&x.seats>0).length!==3 || !data.playing)
             throw Error('3 real licensed assets must be visible as drivable cars in browser.');
+        if(data.actors.some(car=>car.rig?.ready!==true||car.rig.wheelCount!==4))
+            throw Error('Not all branded cars have four independent wheel rig pivots.');
+        if(data.actors.some(car=>car.wheels.some(w=>Math.abs(w.height-w.radius-car.floor)>0.085)))
+            throw Error('A tire contact patch is clipping through or floating above the floor.');
         const entered=await page.evaluate(()=>{
             const world=globalThis.world,player=world.editorPlayer;
             const car=world.vehicles.find(x=>x.userData.editorActor&&x.children.some(c=>c.userData.sketchfabBody));
@@ -62,6 +66,27 @@ const {chromium}=require('playwright');
                 throttle:!!car.actions?.throttle,engine:!!car.rayCastVehicle};
         });
         console.log('Vehicle driving:',JSON.stringify(entered));
+        const before=await page.evaluate(()=>{
+            const car=globalThis.world.editorPlayer.controlledObject;
+            const initial=car.rayCastVehicle.wheelInfos.map(w=>w.rotation);
+            car.userData.testInitialSpin=initial;
+            car.triggerAction('throttle',true);
+            car.triggerAction('right',true);
+            return initial;
+        });
+        await page.waitForTimeout(1900);
+        const animated=await page.evaluate(()=>{
+            const car=globalThis.world.editorPlayer.controlledObject;
+            const spins=car.rayCastVehicle.wheelInfos.map(w=>w.rotation);
+            const steering=car.rayCastVehicle.wheelInfos.map(w=>w.steering);
+            car.triggerAction('throttle',false);
+            car.triggerAction('right',false);
+            return {spins,steering,moved:car.collision.velocity.length(),rigs:car.userData.sketchfabWheelRig?.length};
+        });
+        console.log('Wheel spin and steering physics:',JSON.stringify({before,animated}));
+        if(animated.rigs!==4 || !animated.spins.some((v,i)=>Math.abs(v-before[i])>0.05) ||
+           !animated.steering.some(v=>Math.abs(v)>0.01))
+            throw Error('Driving physics did not animate the real wheel spin and steering transforms.');
         const physics=await page.evaluate(()=>{
             const actor=globalThis.world.vehicles.find(x=>x.userData.rigStatus?.ready);
             return actor?{name:actor.userData.rigStatus?.source,
