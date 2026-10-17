@@ -69,10 +69,14 @@ export class ActorLayer {
                     // wheels rendered correctly but did not produce any traction.
                     for (const wheel of actor.rayCastVehicle.wheelInfos) {
                         wheel.suspensionRestLength=0.52;
-                        wheel.suspensionStiffness=28;
-                        wheel.dampingCompression=4;
-                        wheel.dampingRelaxation=2.8;
-                        wheel.maxSuspensionTravel=0.40;
+                        // Sports-car bump stops: the previous 0.40 m travel
+                        // let the imported tires rise through their fenders.
+                        // Keep the actual Cannon suspension within the arches,
+                        // not just the rendered wheel pivot.
+                        wheel.suspensionStiffness=32;
+                        wheel.dampingCompression=4.8;
+                        wheel.dampingRelaxation=3.6;
+                        wheel.maxSuspensionTravel=0.12;
                         wheel.rollInfluence=0.18;
                         wheel.frictionSlip=1.6;
                     }
@@ -98,6 +102,12 @@ export class ActorLayer {
                         const brand = SUPERCARS.find(car=>car.uid===asset?.metadata?.uid);
                         if (brand) {
                             const result = rigImportedWheels(shell, brand.id, actor, THREE);
+                            // The BMW front tire must never pop through the front
+                            // fender on a bump; the F40/Aventador allow a little more.
+                            const travel = brand.id === 'bmw' ? 0.09 : 0.12;
+                            for (const wheel of actor.rayCastVehicle.wheelInfos) {
+                                wheel.maxSuspensionTravel = travel;
+                            }
                             actor.userData.rigStatus=result;
                             if(!result.ready)console.warn('[Wheel rig]',brand.name,result.reason);
                         }
