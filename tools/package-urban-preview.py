@@ -24,10 +24,10 @@ if (modern/'LICENSE').is_file():
 
 # Include verified UE2Three district assets if a licensed Unreal exporter populated the cache.
 ue_districts=root/'build/local-scenes/ue2three-districts'
-if (ue_districts/'manifest.json').is_file():
+if (ue_districts/'manifest.json').is_file() or (ue_districts/'native-meshes.json').is_file():
     shutil.copytree(ue_districts,out/'build/local-scenes/ue2three-districts',dirs_exist_ok=True)
 else:
-    print('No genuine UE2Three building exports: coastal mode explicitly reports procedural preview.')
+    print('No genuine Unreal level or static-mesh architectural exports: coastal mode explicitly reports procedural preview.')
 
 # Include original DDS mannequin, weapon meshes and animation exports when supplied.
 # Keep the Sketchbook variant deployable when DDS exports are not available.
