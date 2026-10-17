@@ -208,3 +208,35 @@ body.mobile-city-player #scene-editor .editor-footer{display:none!important}
   .mobile-city-asset-search{top:max(48px,calc(env(safe-area-inset-top) + 46px));}
   .mobile-city-actions [data-mobile-car]{min-height:52px}
 }
+
+/* Dedicated phone gameplay: one compact command row, no desktop overlays. */
+body.mobile-city-player .urban-marketplace-garage,
+body.mobile-city-player .city-world-command,
+body.mobile-city-player .city-asset-command,
+body.mobile-city-player .city-telemetry,
+body.mobile-city-player .city-perf,
+body.mobile-city-player .city-performance,
+body.mobile-city-player .city-diagnostics,
+body.mobile-city-player .city-load-counter,
+body.mobile-city-player .urban-dialogue-hint:not(.urban-rpg-dialogue),
+body.mobile-city-player .editor-help,
+body.mobile-city-player .editor-toolbar,
+body.mobile-city-player .editor-panel,
+body.mobile-city-player .editor-footer,
+body.mobile-city-player .city-hud { display:none!important; }
+.mobile-city-asset-search[hidden],
+.mobile-city-actions [hidden] { display:none!important; }
+body.mobile-city-player .mobile-city-controls {padding:0;touch-action:none;}
+.mobile-city-command {top:max(4px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));display:flex;flex-direction:row;align-items:center;gap:6px;padding:3px 7px;min-height:44px;}
+.mobile-city-command input {min-height:38px;flex:1;min-width:0;padding:3px 4px;}
+.mobile-city-command [data-mobile-assets] {pointer-events:auto;flex:0 0 46px;min-width:46px;min-height:37px;border-radius:9px;background:#1a6183;color:#fff;font-weight:800;}
+.mobile-city-message:not(:empty) {position:absolute;top:calc(100% + 4px);left:0;right:0;background:#102331e8;padding:7px 10px;border-radius:9px;}
+.mobile-city-help {position:absolute;bottom:max(3px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);max-width:53vw;text-align:center;pointer-events:none;font:11px system-ui;color:#f4faff;text-shadow:0 1px 5px #000,0 0 10px #000;white-space:normal;}
+.mobile-city-actions button:disabled {opacity:.65;background:#344657;}
+.mobile-city-actions [data-mobile-brake] {background:#7b3030ed;border-color:#ffc2c2;touch-action:none;}
+body.mobile-city-player .mobile-city-asset-search {top:max(55px,calc(env(safe-area-inset-top) + 52px));}
+@media(orientation:landscape) {
+ .mobile-city-command {left:22%;right:22%;top:max(3px,env(safe-area-inset-top));}
+ .mobile-city-asset-search {left:22%!important;right:22%!important;top:max(53px,calc(env(safe-area-inset-top) + 50px))!important;}
+ .mobile-city-help{bottom:4px;max-width:42vw;}
+}
