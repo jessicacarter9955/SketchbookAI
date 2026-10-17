@@ -1,7 +1,7 @@
 // Integration boundary for verifiable UNREAL-native map exports from DDS UE2Three.
 // No user-side upload: a GitHub/Unreal export runner publishes licensed GLBs
 // and this file loads them from the same host as the Realistic City.
-import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader';
+import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 export const UE_DISTRICTS=['ny','sf','rio','miami'];
 export const UE_DISTRICT_MANIFEST='build/local-scenes/ue2three-districts/manifest.json';
