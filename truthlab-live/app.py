@@ -104,7 +104,7 @@ def report50(cycle, mode):
              "a hypothesis with reliable evidence.").split()
     assert len(words) == 50, len(words)
     with connect() as db:
-        db.execute("INSERT INTO reports(ts,cycle,body,mode) VALUES(?,?,?,?)"
+        db.execute("INSERT INTO reports(ts,cycle,body,mode) VALUES(?,?,?,?)",
                    (now(),cycle," ".join(words),mode))
 
 def note_error(message):
