@@ -24,7 +24,8 @@ jobs:
         run: |
           mkdir -p artifacts/sa-smoke/build
           cp editor.html 3dPicker.js city-assets-sw.js artifacts/sa-smoke/
-          cp -r src/editor artifacts/sa-smoke/src
+          mkdir -p artifacts/sa-smoke/src
+          cp -r src/editor artifacts/sa-smoke/src/
           cp -r build/assets artifacts/sa-smoke/build/
           cp build/editor.bundle.js build/sketchbook.min.js artifacts/sa-smoke/build/
           sed -i 's#<script type="module" src="src/editor/start.js"></script>#<script defer src="build/editor.bundle.js"></script>#' artifacts/sa-smoke/editor.html
