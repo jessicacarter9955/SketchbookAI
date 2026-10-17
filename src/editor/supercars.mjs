@@ -10,19 +10,52 @@ export function supercarPositions(base) {
         base.x+x,base.y,base.z+z
     ]);
 }
+// Align the car's longitudinal axis with +Z. When the source GLB labels
+// both "Front Wheels" and "Back Wheels", also orient its actual front to +Z.
+// Try all four quarter turns rather than guessing a single 90-degree rotation.
+export function chooseVehicleYaw(source, THREE = globalThis.THREE) {
+    if(!THREE?.Group)throw Error('Motore Three.js non inizializzato.');
+    const shell=new THREE.Group(),probe=source.clone(true);
+    shell.add(probe);
+    const originalYaw=probe.rotation.y;
+    let front=null,rear=null;
+    probe.traverse(node=>{
+        const key=String(node.name||'').replace(/[_-]+/g,' ').trim().toLowerCase();
+        if(key==='front wheels'||key==='front tires')front=node;
+        if(key==='back wheels'||key==='rear wheels'||key==='rear tires')rear=node;
+    });
+    let best=null;
+    const box=new THREE.Box3(),size=new THREE.Vector3(),frontCenter=new THREE.Vector3(),rearCenter=new THREE.Vector3();
+    for(const turn of [0,1,2,3]){
+        probe.rotation.y=originalYaw+turn*Math.PI/2;
+        probe.updateMatrixWorld(true);
+        box.setFromObject(shell);box.getSize(size);
+        if(!Number.isFinite(size.x)||!Number.isFinite(size.y)||!Number.isFinite(size.z)||
+            Math.min(size.x,size.y,size.z)<=0)continue;
+        // A recognizable car is longer than it is wide, but do not use that
+        // length as a cue for 180° front/back reversal.
+        let score=size.z/(size.x+.001);
+        if(front&&rear){
+            new THREE.Box3().setFromObject(front).getCenter(frontCenter);
+            new THREE.Box3().setFromObject(rear).getCenter(rearCenter);
+            const delta=frontCenter.z-rearCenter.z;
+            if(Math.abs(delta)>.12)score+=delta>0?10:-10;
+        }
+        if(!best||score>best.score+.001)best={yaw:turn*Math.PI/2,score,turn};
+    }
+    if(!best)throw Error('Geometria del veicolo non valida, impossibile orientare il GLB.');
+    return best.yaw;
+}
 export function fitVehicleVisual(source, THREE = globalThis.THREE) {
     if (!THREE?.Group) throw Error('Motore Three.js non inizializzato.');
     const holder=new THREE.Group();
+    const yaw=chooseVehicleYaw(source,THREE);
     const mesh=source.clone(true);
+    mesh.rotation.y+=yaw;
     holder.add(mesh);
     holder.updateMatrixWorld(true);
     let box=new THREE.Box3().setFromObject(holder);
     let dims=box.getSize(new THREE.Vector3());
-    // Most Sketchfab cars are aligned with +X or +Z. The car prefab uses +Z forward.
-    if(dims.x > dims.z * 1.15) mesh.rotation.y = Math.PI/2;
-    holder.updateMatrixWorld(true);
-    box=new THREE.Box3().setFromObject(holder);
-    dims=box.getSize(new THREE.Vector3());
     const factor=Math.min(4.6/Math.max(0.01,dims.z),2.1/Math.max(0.01,dims.x),2.1/Math.max(0.01,dims.y));
     if(!Number.isFinite(factor)||factor<=0) throw Error('Dimensioni modello auto non valide.');
     mesh.scale.multiplyScalar(factor);
@@ -33,6 +66,7 @@ export function fitVehicleVisual(source, THREE = globalThis.THREE) {
     // Physics chassis origin sits roughly 0.9m above the asphalt.
     mesh.position.y -= box.min.y+0.84;
     holder.userData.sketchfabBody=true;
+    holder.userData.sketchfabOrientationYaw=yaw;
     return holder;
 }
 export async function downloadSupercar(model,fetcher=fetch) {
