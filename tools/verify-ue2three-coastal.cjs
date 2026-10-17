@@ -44,6 +44,37 @@ const base=(process.env.DISTRICT_BASE_URL||'http://127.0.0.1:8765').replace(/\/$
      !report.dialogue||report.spawns!==5||!report.playing||
      report.pageErrors.length||report.missingLocalAssets.length)
     throw Error('City acceptance failed: '+JSON.stringify(report));
+  // Check that this is an interactive game, not merely a rendered editor scene.
+  // The conversation hint is local and works without an external LLM key.
+  const spoken=await page.evaluate(()=>{
+    const t=window.world?.districtTraffic;
+    const npc=t?.nearest?.();
+    if(!npc)return {near:false,dialogueOpen:false};
+    t.interact();
+    const opened=t.activeNpc===npc && t.dialogue?.style.display==='block';
+    const text=t.dialogue?.querySelector('[data-line]')?.textContent;
+    t.closeDialogue();
+    return {near:true,dialogueOpen:opened,hasText:!!text};
+  });
+  report.conversationInteraction=spoken;
+  if(spoken.near && (!spoken.dialogueOpen||!spoken.hasText))
+    throw Error('District NPC dialogue failed to open or close');
+  // Nearby original Sketchbook cars must use a real Cannon raycast suspension,
+  // an occupied driver seat, and the original character control handoff.
+  await page.evaluate(()=>{
+    const button=document.querySelector('[data-board]');
+    if(button?.disabled)throw Error('Nearby driveable car button is disabled');
+    button.click();
+  });
+  await page.waitForFunction(()=>!!window.world?.editorPlayer?.controlledObject,null,{timeout:12000,polling:200});
+  const vehicle=await page.evaluate(()=>{
+    const player=window.world.editorPlayer,car=player.controlledObject;
+    return {boarded:!!car,physicsRaycast:!!car?.rayCastVehicle?.chassisBody,
+      wheels:car?.rayCastVehicle?.wheelInfos?.length||0,hasDriver:!!car?.seats?.find(s=>s.occupiedBy===player)};
+  });
+  report.vehicleInteraction=vehicle;
+  if(!vehicle.boarded||!vehicle.physicsRaycast||vehicle.wheels<4)
+    throw Error('Driveable car entry did not connect original physics rig');
   console.log('REALISTIC CITY DDS UE2THREE COASTAL PASS '+JSON.stringify(report));
  }catch(error){
   report={error:String(error.stack||error),...report,pageErrors:errors,missingLocalAssets:missing,
