@@ -1,0 +1,35 @@
+name: Check archived Realistic City sector availability
+on:
+  push:
+    branches: [img2threejs-runner]
+    paths: [".github/workflows/realistic-city-manifest-probe.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  city-archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check prior immutable deploy for original City Player content
+        shell: bash
+        run: |
+          set -eu
+          for base in \
+            "https://6acb81ba21f9d0c7e0a825d6--my-test-site3.netlify.app" \
+            "https://my-test-site3.netlify.app" \
+            "https://img2threejs-runner--my-test-site3.netlify.app"; do
+            for path in \
+              "build/local-scenes/liberty-city/manifest.json" \
+              "local-scenes/liberty-city/manifest.json"; do
+              file="$(mktemp)"
+              code=$(curl -L -sS --max-time 18 -o "$file" -w '%{http_code}' "$base/$path" || true)
+              if [ "$code" = 200 ] && node -e "try {const v=require(process.argv[1]);if(!Array.isArray(v.sectors)||!Array.isArray(v.spawns))process.exit(1)} catch{process.exit(1)}" "$file"; then
+                echo "AVAILABLE_CITY_MANIFEST base=$base path=$path bytes=$(wc -c < "$file")"
+                node -e "const v=require(process.argv[1]);console.log('SECTORS',v.sectors.length,'SPAWNS',v.spawns.length)" "$file"
+              else
+                echo "MISSING_CITY_MANIFEST base=$base path=$path http=$code"
+              fi
+              rm -f "$file"
+            done
+          done
