@@ -46,7 +46,9 @@ export function rigImportedWheels(shell,modelId,car,THREE) {
  const names=TARGETS[modelId];
  if(!names||car.wheels.length!==4)return {ready:false,reason:'Unsupported wheel layout.'};
  const targets=[];
- shell.traverse(o=>{if(names.includes(o.name))targets.push(o);});
+ const clean=name=>String(name||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+ const expected=names.map(clean);
+ shell.traverse(o=>{if(expected.includes(clean(o.name)))targets.push(o);});
  if(targets.length!==names.length)return {ready:false,reason:'Wheel subtrees not found.'};
  shell.updateMatrixWorld(true);
  const buckets=new Map();
