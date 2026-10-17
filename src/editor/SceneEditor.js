@@ -20,7 +20,7 @@ export class SceneEditor {
         this.worldId = worldId;
         this.world = world; this.active = false; this.busy = false; this.items = []; this.objects = new Map(); this.templates = new Map(); this.assets = new Map();
         this.mapEdits = [];
-        this.generator = worldId === 'procedural-island' ? copy(world.levelRuntime.config || DEFAULT_ISLAND) : undefined;
+        this.generator = worldId === 'procedural-island' && !world.levelRuntime?.isDistrictCity ? copy(world.levelRuntime.config || DEFAULT_ISLAND) : undefined;
         this.store = new AssetStore(); this.loader = new GLTFLoader(); this.history = new History(this.scene());
         this.group = new THREE.Group(); this.group.name = 'Editor objects'; world.graphicsWorld.add(this.group);
         this.orbit = new OrbitControls(world.camera, world.renderer.domElement); this.orbit.enabled = false; this.orbit.maxDistance = 400;
@@ -221,7 +221,7 @@ export class SceneEditor {
     remove() { if (!this.selected) return; const id = this.selected; this.select(null); this.destroyObject(id); this.items = this.items.filter(i => i.id !== id); this.commit(); }
     restore(scene) {
         if (!scene) return;
-        if(this.worldId==='procedural-island') {this.world.levelRuntime.generate(scene.generator || DEFAULT_ISLAND);this.generator=copy(this.world.levelRuntime.config);this.islandTool?.refresh();}
+        if(this.worldId==='procedural-island' && !this.world.levelRuntime?.isDistrictCity) {this.world.levelRuntime.generate(scene.generator || DEFAULT_ISLAND);this.generator=copy(this.world.levelRuntime.config);this.islandTool?.refresh();}
         this.select(null); [...this.objects.keys()].forEach(id => this.destroyObject(id)); this.items = copy(scene.objects); this.items.forEach(item => this.create(item));
         this.mapEdits=copy(scene.mapEdits || []); this.world.levelRuntime?.surfaces?.setEdits(this.mapEdits); this.surfaceTool?.refreshList(); this.list(); this.save();
     }
