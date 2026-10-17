@@ -196,6 +196,26 @@ function terrain(group,bodies,plan){
  const hbody=new CANNON.Body({mass:0,shape:hshape,position:new CANNON.Vec3(x0,0,z0)});
  hbody.quaternion.setFromEuler(-Math.PI/2,0,0);bodies.push(hbody);
 }
+function buildBeaches(group,plan){
+ const sand=m(0xe0ceb0,{roughness:1});
+ for(const spot of plan.beaches){
+  const gridX=16,gridZ=10,vertices=[],uv=[],triangles=[];
+  for(let ix=0;ix<=gridX;ix++)for(let iz=0;iz<=gridZ;iz++){
+   const x=spot.x-spot.width/2+spot.width*ix/gridX;
+   const z=spot.z-spot.depth/2+spot.depth*iz/gridZ;
+   vertices.push(x,districtGround(x,z)+.065,z);uv.push(ix/gridX,iz/gridZ);
+   if(ix<gridX&&iz<gridZ){
+    const a=ix*(gridZ+1)+iz,b=a+gridZ+1;triangles.push(a,b,a+1,b,b+1,a+1);
+   }
+  }
+  const geometry=new THREE.BufferGeometry();
+  geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
+  geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geometry.setIndex(triangles);
+  geometry.computeVertexNormals();
+  const beach=mesh(geometry,sand,group,[0,0,0]);
+  beach.name='Coastal beach · '+spot.x;beach.userData.surfaceTag='sand';
+ }
+}
 function applyCoastalPBR(group){
  // Optional CC0 photographed ground material. Missing CDN access never blocks play.
  const loader=new THREE.TextureLoader();
@@ -210,6 +230,7 @@ function applyCoastalPBR(group){
   }catch(error){console.info('[Districts] CC0 texture not cached; physical fallback kept:',key,error.message);}
  };
  apply('https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/asphalt_02/asphalt_02_diff_1k.jpg','street');
+ apply('https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/coast_sand_01/coast_sand_01_diff_1k.jpg','sand');
 }
 export class MultiDistrictRuntime extends IslandRuntime {
  constructor(world){
@@ -221,7 +242,7 @@ export class MultiDistrictRuntime extends IslandRuntime {
  generate(raw=DISTRICT_PRESET){
   const plan=generateDistrictPlan(raw),group=new THREE.Group(),bodies=[];
   terrain(group,bodies,plan);architecture(group,plan,bodies);
-  placeRoads(group,plan,bodies);vegetation(group,plan);
+  placeRoads(group,plan,bodies);buildBeaches(group,plan);vegetation(group,plan);
   // Pier-side boardwalk: above the beach, away from the bridge navigation corridor.
   const boardwalk=mesh(new THREE.BoxGeometry(255,.25,7),m(0xaa9781),group,[175,2.2,200]);
   boardwalk.userData.boardwalk=true;
