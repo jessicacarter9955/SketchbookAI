@@ -180,7 +180,7 @@ export class ActorLayer {
             if (distance > 160 && !actor.userData.dormant) { this.world.remove(actor); actor.userData.dormant = true; }
             else if (distance < 100 && actor.userData.dormant) {
                 const home = actor.userData.home, floor = this.terrainHeight(home[0],home[2],home[1]);
-                const y=actor.rayCastVehicle ? chassisHeightForGround(floor,actor.rayCastVehicle.wheelInfos)
+                const y=actor.rayCastVehicle ? chassisHeightForGround(floor,actor.rayCastVehicle.wheelInfos,-0.08)
                     : floor+(actor.rayCastLength ?? 0.9)+0.08;
                 actor.setPosition(home[0],y,home[2]);
                 this.world.add(actor); actor.userData.dormant = false;
