@@ -37,13 +37,24 @@ export function fitVehicleVisual(source, THREE = globalThis.THREE) {
 }
 export async function downloadSupercar(model,fetcher=fetch) {
     if(!SUPERCARS.some(c=>c.id===model.id)) throw Error('Supercar non autorizzata.');
-    const response=await fetcher(API+'/sketchfab/cars/'+model.id,{signal:AbortSignal.timeout(95000)});
-    if(!response.ok) {
-        const message=(await response.json().catch(()=>({}))).error || 'HTTP '+response.status;
-        throw Error('Sketchfab '+model.brand+': '+message);
+    for(let attempt=0; attempt<3; attempt++) {
+        try {
+            const response=await fetcher(API+'/sketchfab/cars/'+model.id,{signal:AbortSignal.timeout(95000)});
+            if(!response.ok) {
+                const message=(await response.json().catch(()=>({}))).error || 'HTTP '+response.status;
+                const error=new Error('Sketchfab '+model.brand+': '+message);
+                if(response.status!==502 && response.status!==503 && response.status!==504)throw error;
+                if(attempt===2)throw error;
+            } else {
+                if(Number(response.headers.get('content-length'))>50*1024*1024)throw Error(model.brand+': asset troppo grande.');
+                const bytes=await response.arrayBuffer();
+                if(bytes.byteLength>50*1024*1024)throw Error(model.brand+': asset troppo grande.');
+                return bytes;
+            }
+        }catch(error) {
+            if(attempt===2 || !(error instanceof TypeError || /network|Failed to fetch/i.test(error.message)))throw error;
+        }
+        await new Promise(done=>setTimeout(done,(attempt+1)*1250));
     }
-    if(Number(response.headers.get('content-length'))>50*1024*1024)throw Error(model.brand+': asset troppo grande.');
-    const bytes=await response.arrayBuffer();
-    if(bytes.byteLength>50*1024*1024)throw Error(model.brand+': asset troppo grande.');
-    return bytes;
+    throw Error('Download supercar non disponibile.');
 }
