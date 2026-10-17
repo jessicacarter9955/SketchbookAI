@@ -96,16 +96,34 @@ def publish(speaker, body, mode, cycle):
                    (now(),cycle,speaker,body[:4500],mode))
 
 def report50(cycle, mode):
-    # This reports dialogue activity only; external achievements require independent tool evidence.
-    words = ("Ari and Noor completed a discussion of their shared objective. "
-             "They exchanged proposals, challenged assumptions constructively, and identified next steps. "
-             "No tools were connected, so no public posts, income, wallet transactions, "
-             "emails, or independent research results have been verified. Their next step is to test "
-             "a hypothesis with reliable evidence.").split()
-    assert len(words) == 50, len(words)
+    """Generate exactly 50 words, using actual transcript excerpts, not claims of success."""
+    with connect() as db:
+        rows = [dict(r) for r in db.execute(
+            "SELECT speaker,body FROM messages WHERE cycle=? AND mode=? ORDER BY id",
+            (cycle, mode))]
+    def excerpt(speaker, count):
+        texts = [r["body"] for r in rows if r["speaker"] == speaker]
+        if not texts:
+            return "No recorded contribution"
+        return " ".join(" ".join(texts).split()[:count])
+    objective = " ".join(settings()["goal"].split()[:9])
+    message = (
+        "Goal: " + objective + ". "
+        "Ari discussed: " + excerpt("Ari", 10) + ". "
+        "Noor discussed: " + excerpt("Noor", 10) + ". "
+        "Verified accomplishment: conversation recorded locally. "
+        "No revenue, purchases, online research, emails, wallet transfers, "
+        "or external community participation are independently verified. "
+        "Next: investigate and test the strongest proposal using authorized tools."
+    )
+    words = message.split()
+    if len(words) < 50:
+        words += ("Additional independent evidence is still required before claiming progress.").split()[:50-len(words)]
+    message = " ".join(words[:50])
+    assert len(message.split()) == 50
     with connect() as db:
         db.execute("INSERT INTO reports(ts,cycle,body,mode) VALUES(?,?,?,?)",
-                   (now(),cycle," ".join(words),mode))
+                   (now(),cycle,message,mode))
 
 def note_error(message):
     with connect() as db:
@@ -307,6 +325,8 @@ class Handler(BaseHTTPRequestHandler):
                     raise ValueError("Invalid browser message")
                 if not settings()["agents_enabled"][speaker]:
                     raise ValueError("This agent is paused")
+                if settings()["status"]!="active" or settings().get("engine")!="browser":
+                    raise ValueError("Browser conversation is globally paused")
                 with lock:
                     n=settings()["cycles"]+1
                     publish(speaker,text.strip(),"browser-qwen-unverified",n)
