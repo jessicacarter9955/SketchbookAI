@@ -1,0 +1,33 @@
+name: TruthLab Pair CI
+on:
+  push:
+    branches:
+      - img2threejs-runner
+    paths:
+      - 'truthlab-live/**'
+      - '.github/workflows/truthlab-pair-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  truthlab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Python syntax
+        run: python -m compileall -q truthlab-live
+      - name: Test agent controls and authorization
+        run: python -m unittest discover -s truthlab-live -p 'test_*.py' -v
+      - name: Validate frontend JavaScript syntax
+        run: |
+          node --check truthlab-live/browser-control.js
+          node --check truthlab-live/browser-worker.js
