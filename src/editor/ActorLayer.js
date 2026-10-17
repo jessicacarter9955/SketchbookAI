@@ -141,9 +141,9 @@ export class ActorLayer {
                         const sampleX=x+point.x,sampleZ=z+point.z;
                         return this.physicsGround(sampleX,sampleZ,this.terrainHeight(sampleX,sampleZ,center));
                     });
-                    const clearance=Math.max(chassisHeightForGround(center,wheelInfo,0.06),
+                    const clearance=Math.max(chassisHeightForGround(center,wheelInfo,-0.02),
                         ...wheelInfo.map((w,i)=>floors[i]-w.chassisConnectionPointLocal.y+
-                            w.suspensionRestLength+w.radius+0.06));
+                            w.suspensionRestLength+w.radius-0.02));
                     return {x,z,center,floors,clearance,
                         uneven:Math.max(center,...floors)-Math.min(center,...floors)};
                 };
@@ -162,7 +162,7 @@ export class ActorLayer {
                 if(!spot){
                     spot=measureSpot(x0,z0);
                     spot.clearance=Math.min(spot.clearance,
-                        chassisHeightForGround(spot.center,wheelInfo,0.10)+0.25);
+                        chassisHeightForGround(spot.center,wheelInfo,-0.02)+0.25);
                     console.warn('[Supercar spawn] No flat nearby ground patch; using road-level fallback.');
                 }
                 if(spot.x!==x0||spot.z!==z0){
@@ -185,7 +185,7 @@ export class ActorLayer {
                 // keep the chassis undercarriage at ride height while the four
                 // raycast tires remain independently suspended and driven.
                 for (const x of [-0.48,0.48]) for (const z of [-1.02,0,1.02])
-                    actor.collision.addShape(new CANNON.Sphere(0.32), new CANNON.Vec3(x,-0.20,z));
+                    actor.collision.addShape(new CANNON.Sphere(0.28), new CANNON.Vec3(x,0,z));
             } else {
                 actor = new Character(this.person.scene);
                 if (this.playerProfile === 'dds') {
@@ -224,7 +224,7 @@ export class ActorLayer {
             if (distance > 160 && !actor.userData.dormant) { this.world.remove(actor); actor.userData.dormant = true; }
             else if (distance < 100 && actor.userData.dormant) {
                 const home = actor.userData.home, floor = this.terrainHeight(home[0],home[2],home[1]);
-                const y=actor.rayCastVehicle ? chassisHeightForGround(floor,actor.rayCastVehicle.wheelInfos,0.06)
+                const y=actor.rayCastVehicle ? chassisHeightForGround(floor,actor.rayCastVehicle.wheelInfos,-0.02)
                     : floor+(actor.rayCastLength ?? 0.9)+0.08;
                 actor.setPosition(home[0],y,home[2]);
                 this.world.add(actor); actor.userData.dormant = false;
