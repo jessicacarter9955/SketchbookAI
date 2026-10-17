@@ -311,7 +311,6 @@ export class UrbanRuntime {
     this.visualState={status:'loading',architecture:[],vegetation:null,error:null,progress:this.visualProgress};
     const stages=[
       ['Facciate fotorealistiche',()=>this.loadPhotorealArchitecture(group,plan,config)],
-      ['Vegetazione',()=>this.loadPhotorealVegetation(group,treeItems,config)],
       ['Strade e materiali',()=>this.loadPhotorealSurfaces(group,matRoad,matSidewalk,matGrass)],
       ['Cielo e illuminazione',()=>photographicLighting(this.world,config.sky)],
       ['Lampioni e arredi',()=>this.loadStreetProps(group,plan,config)]
@@ -374,16 +373,22 @@ export class UrbanRuntime {
       this.visualState={
         status:errors.length?'partial':'ready',
         architecture:results[0].ok?results[0].value:[],
-        vegetation:results[1].ok?results[1].value:null,
-        lighting:results[3].ok?results[3].value:null,
-        props:results[4].ok?results[4].value:null,
+        vegetation:{status:'streaming',assetId:'tree_small_02',count:treeItems.length,source:'Poly Haven CC0',ready:false},
+        lighting:results[2].ok?results[2].value:null,
+        props:results[3].ok?results[3].value:null,
         assembledBuildings:plan.buildings.length,skyline,hdCacheHit:Boolean(this.facadeStreamer?.fromCache),
         error:errors.length?errors.join(' | '):null,
         progress:{...this.visualProgress}
       };
       group.userData.photorealReady=errors.length===0;
       this.loadingHeavy=false;
-      // Never expose partially loaded geometry: callers await visualPromise.
+      // Preserve the initial tree silhouettes while the original CC0 HD LODs
+      // finish decoding. No missing asset may indefinitely lock the controls.
+      // The real model replaces the silhouettes automatically once ready.
+      if(!errors.length){
+        globalThis.cityDiagnostics?.activity('VEGETAZIONE HD: caricamento in background dopo avvio; alberi originali in arrivo');
+        setTimeout(()=>this.startStreamingPhotorealVegetation(group,treeItems,config),0);
+      }
       this.onVisualProgress?.({...this.visualProgress});
       return this.visualState;
     });
@@ -522,14 +527,51 @@ export class UrbanRuntime {
       this.onVisualProgress?.({...this.visualProgress});
       await saveUrbanFacades(streamer.config,streamer.clusters);
     }
-    const layer=this.root.getObjectByName('CC0 photoreal vegetation');
-    if(!layer)throw new Error('Vegetazione fotorealistica non disponibile');
-    await layer.userData.prepareAll?.(text=>{
-       this.visualProgress.label=text;
-       globalThis.cityDiagnostics?.activity('VEGETAZIONE: '+text);
-       this.onVisualProgress?.({...this.visualProgress});
-     },this.world.camera);
+    // The full-size photoreal trees are prepared independently after the first
+    // playable frame, so a stalled GLTF texture decoder cannot block boot.
     this.streamPhotorealDetails(true);
+  }
+  startStreamingPhotorealVegetation(group,items,config){
+    if(group.parent!==this.root)return;
+    const diag=globalThis.cityDiagnostics;
+    const started=performance.now();
+    diag?.stage('Vegetazione HD in streaming');
+    // When image decode stalls, leave the city playable and keep attempting
+    // to load original PBR models. The timer is diagnostic, not a fatal gate.
+    const warning=setTimeout(()=>{
+      if(group.parent===this.root)
+        diag?.activity('VEGETAZIONE: parsing GLTF oltre 20s, gioco già disponibile; nessun blocco avvio');
+    },20000);
+    this.vegetationPromise=this.loadPhotorealVegetation(group,items,config).then(async value=>{
+      if(group.parent!==this.root)return;
+      const layer=group.getObjectByName('CC0 photoreal vegetation');
+      if(!layer||!value)throw Error('Alberi HD caricati ma layer non installato');
+      await layer.userData.prepareAll?.(message=>{
+        diag?.activity('VEGETAZIONE: '+message);
+      },this.world.camera);
+      if(group.parent!==this.root)return;
+      layer.userData.stream?.(this.world.camera);
+      this.visualState.vegetation={...value,status:'ready',ready:true};
+      this.visualProgress.completed++;
+      this.visualProgress.label='Alberi HD originali pronti';
+      this.visualState.progress={...this.visualProgress};
+      this.onVisualProgress?.({...this.visualProgress});
+      diag?.stage('Vegetazione HD in streaming','done');
+      diag?.activity('Vegetazione HD completata dopo '+Math.round((performance.now()-started)/1000)+'s; alberi originali visibili');
+    }).catch(error=>{
+      if(group.parent!==this.root)return;
+      // The original source is unavailable/failed: retain procedural tree
+      // silhouettes and report it clearly instead of a false full-HD success.
+      this.visualState.vegetation={status:'unavailable',ready:false,assetId:'tree_small_02',
+        error:String(error?.message||error)};
+      this.visualProgress.completed++;
+      this.visualProgress.failed++;
+      this.visualProgress.label='Vegetazione HD non disponibile, riprova con ricarica';
+      this.visualState.progress={...this.visualProgress};
+      this.onVisualProgress?.({...this.visualProgress});
+      diag?.stage('Vegetazione HD in streaming','error');
+      diag?.problem(error,'Vegetazione CC0 (non blocca il gioco)');
+    }).finally(()=>clearTimeout(warning));
   }
   async loadPhotorealVegetation(group,items,config){
     globalThis.cityDiagnostics?.activity('Vegetazione LOD: attesa tree_small_02/scene-lod0.gltf e scene-lod1.gltf con .bin e texture');
