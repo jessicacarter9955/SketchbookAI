@@ -11,6 +11,7 @@ const base=(process.env.DISTRICT_BASE_URL||'http://127.0.0.1:8765').replace(/\/$
  page.on('response',r=>{
   if(r.status()>=400&&new URL(r.url()).host===new URL(base).host&&
     !r.url().endsWith('/build/local-scenes/ue2three-districts/manifest.json') &&
+    !r.url().endsWith('/build/local-scenes/ue2three-districts/native-meshes.json') &&
     !r.url().endsWith('/.local/sketchfab.json'))
    missing.push(r.status()+' '+r.url());
  });
@@ -46,12 +47,24 @@ const base=(process.env.DISTRICT_BASE_URL||'http://127.0.0.1:8765').replace(/\/$
       const c=window.world?.levelRuntime?.native;
       if(!c?.scene)return null;
       const box=new window.THREE.Box3().setFromObject(c.scene);
+      let good=0,total=0;
+      c.scene.traverse(o=>{
+        if(!o.isMesh)return;
+        const a=o.geometry.getAttribute('normal');
+        if(!a)return;
+        for(let i=0;i<a.count;i+=Math.max(1,Math.floor(a.count/512))){
+          total++;const len=Math.hypot(a.getX(i),a.getY(i),a.getZ(i));
+          if(Number.isFinite(len)&&len>.98&&len<1.02)good++;
+        }
+      });
       return {meshes:c.meshes,textured:c.textured,bounds:box.getSize(new window.THREE.Vector3()).toArray(),
-        source:c.manifest?.source_project,parts:c.manifest?.parts?.length};
+        source:c.manifest?.source_project,parts:c.manifest?.parts?.length,
+        normalQuality:good/Math.max(1,total)};
     });
     report.nativeGeometry=live;
     if(!native||native.assetCount<5||native.fullUnrealLevel!==false||!live||live.parts<5||
-       live.meshes<5||live.textured<1||!live.bounds.every(x=>Number.isFinite(x)))
+       live.meshes<5||live.textured<1||live.normalQuality<.95||
+       !live.bounds.every(x=>Number.isFinite(x)))
       throw Error('Genuine Unreal .uasset meshes are in Git but failed real-browser load: '+JSON.stringify(report));
   }
   if(!report.ready||report.zones.join(',')!=='ny,sf,rio,miami'||report.roads<120||
