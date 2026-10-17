@@ -4,13 +4,16 @@
 import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2";
 env.allowLocalModels = false;
 let generator = null;
+const ALLOWED = new Set(["onnx-community/Qwen2.5-0.5B-Instruct","onnx-community/Qwen2.5-1.5B-Instruct"]);
 self.onmessage = async ({data}) => {
   try {
     if (data.type === "init") {
       if (!generator) {
-        self.postMessage({type:"progress", text:"Downloading Qwen 0.5B quantized model. Initial load can be large."});
+        const model = data.model || "onnx-community/Qwen2.5-0.5B-Instruct";
+        if (!ALLOWED.has(model)) throw new Error("Unsupported browser model");
+        self.postMessage({type:"progress", text:"Downloading "+model+" quantized model. Initial load can be large."});
         generator=await pipeline("text-generation",
-          "onnx-community/Qwen2.5-0.5B-Instruct",
+          model,
           {device:"webgpu", dtype:"q4",progress_callback:(p)=>{
             if (p.status==="progress") self.postMessage({type:"progress",text:"Qwen download "+Math.round(p.progress||0)+"%"});
           }});
