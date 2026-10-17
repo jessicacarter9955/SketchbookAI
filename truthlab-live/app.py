@@ -52,7 +52,7 @@ def initialize():
         CREATE TABLE IF NOT EXISTS calls(id INTEGER PRIMARY KEY, day TEXT, ts TEXT, model TEXT);
         CREATE TABLE IF NOT EXISTS errors(id INTEGER PRIMARY KEY, ts TEXT, body TEXT);
         """)
-        for key, val in {"status":"paused", "ari_enabled":"1", "noor_enabled":"1", "goal":DEFAULT_GOAL, "charter":DEFAULT_CHARTER,
+        for key, val in {"status":"paused", "engine":"idle", "last_browser_ping":"", "ari_enabled":"1", "noor_enabled":"1", "goal":DEFAULT_GOAL, "charter":DEFAULT_CHARTER,
                          "traits":json.dumps(DEFAULT_TRAITS), "last_run":"", "next_run":"", "cycles":"0"}.items():
             db.execute("INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)", (key,val))
 
@@ -81,6 +81,8 @@ def get_state():
                 "config":cfg, "messages":list(reversed(messages)), "reports":reports,
                 "errors":errors, "running_cycle":working,
                 "model_ready":bool(MODEL and API_KEY), "model":MODEL or "Not configured",
+                "browser_active":cfg.get("engine")=="browser" and cfg["status"]=="active"
+                    and (time.time()-float(cfg.get("last_browser_ping") or "0") < 120),
                 "browser_model_available": True, "browser_model_name":"onnx-community/Qwen2.5-0.5B-Instruct",
                 "daily_calls":used, "daily_cap":MAX_DAILY,
                 "tools":{"browser_qwen":"Available with active browser WebGPU, no key", "web_search":"not connected", "email":"not connected to worker",
@@ -205,7 +207,7 @@ def scheduler():
         time.sleep(15)
         try:
             cfg=settings()
-            if cfg["status"]=="active" and MODEL and API_KEY and not working:
+            if cfg["status"]=="active" and cfg.get("engine")=="api" and MODEL and API_KEY and not working:
                 if not cfg["next_run"] or time.time()>=float(cfg["next_run"]):
                     spawn()
         except Exception as exc:
@@ -224,7 +226,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("X-Content-Type-Options","nosniff")
         self.send_header("X-Frame-Options","DENY")
         self.send_header("Referrer-Policy","no-referrer")
-        self.send_header("Content-Security-Policy","default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
+        self.send_header("Content-Security-Policy","default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src 'self' https://cdn.jsdelivr.net https://*.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
         self.end_headers()
     def send_json(self, status, data):
         body=json.dumps(data,ensure_ascii=False).encode("utf-8")
@@ -235,6 +237,10 @@ class Handler(BaseHTTPRequestHandler):
         return bool(TOKEN) and hmac.compare_digest(given,"Bearer "+TOKEN)
     def do_GET(self):
         path=self.path.split("?",1)[0]
+        if path=="/browser-worker.js":
+            worker=(ROOT/"browser-worker.js").read_bytes()
+            self.headers_base(200,"text/javascript; charset=utf-8",len(worker))
+            return self.wfile.write(worker)
         if path=="/health":
             return self.send_json(200,{"ok":True,"version":"0.4-live-console","model_ready":bool(MODEL and API_KEY)})
         if path=="/api/state":
@@ -262,10 +268,21 @@ class Handler(BaseHTTPRequestHandler):
             action=body.get("action")
             if action=="start":
                 if not (MODEL and API_KEY): raise ValueError("A real model API must be configured before starting live agents")
+                save_setting("engine","api")
                 save_setting("status","active")
                 spawn()
             elif action=="pause":
                 save_setting("status","paused")
+                save_setting("engine","idle")
+            elif action=="browser_start":
+                if not any(settings()["agents_enabled"].values()):
+                    raise ValueError("Resume an agent first")
+                save_setting("engine","browser")
+                save_setting("status","active")
+                save_setting("last_browser_ping",str(time.time()))
+            elif action=="browser_ping":
+                if settings().get("engine")=="browser" and settings()["status"]=="active":
+                    save_setting("last_browser_ping",str(time.time()))
             elif action=="step":
                 spawn()
             elif action=="demo":
@@ -329,8 +346,10 @@ if __name__=="__main__":
     # 0 stops scheduling after the service restarts. Unset leaves DB controls.
     autostart = os.getenv("TRUTHLAB_AUTOSTART")
     if autostart == "0":
+        save_setting("engine","idle")
         save_setting("status","paused")
     elif autostart == "1" and MODEL and API_KEY:
+        save_setting("engine","api")
         save_setting("status","active")
         spawn()
     threading.Thread(target=scheduler,daemon=True).start()
