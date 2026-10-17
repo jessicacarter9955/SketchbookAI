@@ -185,7 +185,8 @@ try {
         for (const d of plan.zones) {
             const spawn=plan.spawns.find(s=>s.id==='district-'+d.id).position;
             add('vehicle','Auto guidabile · '+d.name,spawn[0]+9,spawn[2]+4);
-            add('pedestrian','Abitante · '+d.name,spawn[0]-7,spawn[2]+5);
+            // Pedestrians are spawned by DistrictTraffic on real sidewalk routes,
+            // not by ActorLayer's unrestricted random wandering AI.
         }
         sceneEditor.restore({version:1,world:current.world,objects}); sceneEditor.commit();
     }
