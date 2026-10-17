@@ -467,6 +467,11 @@ try {
         }
     }
     if (query.get('play') === '1'||minimalMobile) sceneEditor.setActive(false);
+    // Four independent districts retain actual Sketchbook Car physics, not just
+    // traffic mesh clones. Restore playable cars even if an editor-save path
+    // toggled play state before ActorLayer.start was called.
+    if(current.id==='coastal-districts' && !sceneEditor.active && !world.actorLayer.actors.length)
+        world.actorLayer.start(sceneEditor.items);
     if(minimalMobile&&['procedural-city','san-andreas'].includes(current.world)){
         // Actually draw into the default framebuffer before revealing it.
         // The WebGL engine can have live UI even when its 3D viewport is black.
