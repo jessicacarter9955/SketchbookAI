@@ -191,8 +191,39 @@ const {chromium}=require('playwright');
         await page.keyboard.up('d');
         console.log('Wheel spin and steering physics:',JSON.stringify({before,animated}));
         if(animated.rigs!==4 || !animated.spins.some((v,i)=>Math.abs(v-before[i])>0.05) ||
-           !animated.steering.some(v=>Math.abs(v)>0.01))
+           !animated.steering.some(v=>Math.abs(v)>0.01)) {
+            if(firstBrand==='ferrari') {
+                const relocation=await page.evaluate(()=>{
+                    const world=globalThis.world,ferrari=world.vehicles.find(v=>v.userData.rigStatus?.source==='ferrari'),
+                        bmw=world.vehicles.find(v=>v.userData.rigStatus?.source==='bmw');
+                    const body=ferrari.collision;
+                    const collisions=world.physicsWorld.contacts.filter(c=>c.bi===body||c.bj===body)
+                      .map(c=>({other:(c.bi===body?c.bj:c.bi).id,
+                        otherMass:(c.bi===body?c.bj:c.bi).mass,
+                        normal:c.ni.toString(),depth:c.penetrationVec?.toString()}));
+                    const start={ferrari:ferrari.position.toArray(),bmw:bmw.position.toArray()};
+                    world.remove(bmw);
+                    body.position.copy(bmw.collision.position);
+                    body.velocity.set(0,0,0);body.angularVelocity.set(0,0,0);
+                    body.wakeUp();
+                    return {start,collisions,movedTo:[body.position.x,body.position.y,body.position.z],
+                       oldGround:ferrari.userData.spawnGround};
+                });
+                await page.keyboard.down('w');await page.keyboard.down('d');
+                await page.waitForTimeout(1950);
+                const check=await page.evaluate(()=>{
+                    const car=globalThis.world.editorPlayer.controlledObject;
+                    return {position:car.position.toArray(),speed:car.collision.velocity.length(),
+                       spins:car.rayCastVehicle.wheelInfos.map(w=>w.rotation),
+                       forces:car.rayCastVehicle.wheelInfos.map(w=>w.engineForce),
+                       groundCount:car.rayCastVehicle.numWheelsOnGround,
+                       contacts:globalThis.world.physicsWorld.contacts.filter(c=>c.bi===car.collision||c.bj===car.collision).length};
+                });
+                await page.keyboard.up('w');await page.keyboard.up('d');
+                console.log('Ferrari relocation and chassis contacts:',JSON.stringify({relocation,check}));
+            }
             throw Error('Driving physics did not animate the real wheel spin and steering transforms.');
+        }
         const physics=await page.evaluate(()=>{
             const actor=globalThis.world.vehicles.find(x=>x.userData.rigStatus?.ready);
             return actor?{name:actor.userData.rigStatus?.source,
