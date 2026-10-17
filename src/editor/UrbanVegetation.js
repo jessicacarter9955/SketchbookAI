@@ -20,6 +20,43 @@ function treeLoader(){
   }));
   return loader;
 }
+export function configureUrbanTreeMaterial(mat){
+  if(!mat)return false;
+  const name=String(mat.name||'').toLowerCase();
+  // Poly Haven tree_small_02 uses cutout foliage cards. The previous
+  // case-sensitive /leaves/ check reset alphaTest to zero for e.g. "Leaves",
+  // forcing fully transparent texels to render as white rectangles.
+  const isFoliage=/leav|foliage|leaf|canopy|twig/.test(name);
+  const alreadyMasked=Boolean(mat.alphaMap||mat.alphaTest>0||mat.transparent);
+  if(isFoliage||alreadyMasked){
+    mat.alphaTest=Math.max(Number(mat.alphaTest)||0,0.48);
+    mat.transparent=false;
+    mat.depthWrite=true;
+    mat.side=THREE.DoubleSide;
+    // Some original leaf color textures have opaque near-white backing
+    // pixels instead of a useful alpha channel. Only foliage surfaces get
+    // this neutral-background chroma key, never trunk or asphalt materials.
+    if(isFoliage&&mat.map&&!mat.alphaMap&&!mat.userData?.foliageWhiteCutout){
+      mat.userData={...mat.userData,foliageWhiteCutout:true};
+      const previous=mat.onBeforeCompile;
+      mat.onBeforeCompile=shader=>{
+        previous?.(shader);
+        const marker='#include <map_fragment>';
+        if(shader.fragmentShader.includes(marker)){
+          shader.fragmentShader=shader.fragmentShader.replace(marker,
+            marker+'\\nif (diffuseColor.r > 0.92 && diffuseColor.g > 0.92 && diffuseColor.b > 0.92 && abs(diffuseColor.r-diffuseColor.g)<0.045 && abs(diffuseColor.g-diffuseColor.b)<0.045) discard;');
+        }
+      };
+      const priorKey=mat.customProgramCacheKey?.bind(mat);
+      mat.customProgramCacheKey=()=>String(priorKey?.()||'')+'-foliage-white-v1';
+    }
+  }
+  mat.envMapIntensity=.7;
+  mat.roughness=.85;
+  if(mat.map)mat.map.anisotropy=8;
+  mat.needsUpdate=true;
+  return isFoliage;
+}
 async function templates(){
   if(!templatesPromise){
     const start=performance.now();
@@ -33,7 +70,7 @@ async function templates(){
     };
     templatesPromise=Promise.all([load(0),load(1)]).then(kits=>kits.map(kit=>{
     const root=kit.scene;root.updateMatrixWorld(true);
-    root.traverse(n=>{if(n.isMesh){n.userData.sharedUrbanAsset=true;n.castShadow=n.receiveShadow=true;for(const mat of [].concat(n.material)){mat.alphaTest=/leaves/.test(mat.name)?.45:0;mat.transparent=false;mat.side=THREE.DoubleSide;mat.envMapIntensity=.7;mat.roughness=.85;if(mat.map)mat.map.anisotropy=8;}}});
+    root.traverse(n=>{if(n.isMesh){n.userData.sharedUrbanAsset=true;n.castShadow=n.receiveShadow=true;for(const mat of [].concat(n.material))configureUrbanTreeMaterial(mat);}});
     const bounds=new THREE.Box3().setFromObject(root),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
     root.position.set(-center.x,-bounds.min.y,-center.z);
     return {root,height:size.y};
