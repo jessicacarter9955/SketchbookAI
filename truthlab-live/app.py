@@ -93,11 +93,11 @@ def publish(speaker, body, mode, cycle):
 
 def report50(cycle, mode):
     # This reports dialogue activity only; external achievements require independent tool evidence.
-    words = ("Ari and Noor completed a discussion cycle about their shared objective. "
+    words = ("Ari and Noor completed a discussion of their shared objective. "
              "They exchanged proposals, challenged assumptions constructively, and identified next steps. "
-             "No external tools were connected, so no public posts, real income, wallet transactions, "
+             "No tools were connected, so no public posts, income, wallet transactions, "
              "emails, or independent research results have been verified. Their next step is to test "
-             "their strongest hypothesis with reliable evidence.").split()
+             "a hypothesis with reliable evidence.").split()
     assert len(words) == 50, len(words)
     with connect() as db:
         db.execute("INSERT INTO reports(ts,cycle,body,mode) VALUES(?,?,?,?)",
