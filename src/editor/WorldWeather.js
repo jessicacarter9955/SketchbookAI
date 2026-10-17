@@ -265,6 +265,9 @@ export class WorldWeather {
 
   setSnowCover(enabled){
     const runtime=this.world.levelRuntime;
+    // Coastal districts use an irregular topography, not UrbanRuntime blocksX/blocksZ.
+    // Snow particles remain available; do not project NaN-shaped urban cover onto coast.
+    if(runtime?.isDistrictCity)return;
     if(enabled&&!this.snowCover&&runtime?.plan&&runtime?.config){
       const group=new THREE.Group();group.name='Winter snow cover';
       const geo=new THREE.PlaneGeometry(1,1);geo.rotateX(-Math.PI/2);
