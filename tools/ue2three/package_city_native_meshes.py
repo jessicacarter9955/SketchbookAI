@@ -63,6 +63,18 @@ def bundle(input_dir: Path, output_dir: Path, brick_image: Path):
         part = trimesh.util.concatenate(parts)
         if len(part.faces) < 12:
             raise ValueError("Implausibly small native mesh: " + rel)
+        # UEViewer preserved all triangles, but exported ZERO-LENGTH vertex
+        # normals for this particular UE4 sample (100% of the vertices).
+        # Such a glTF parses and renders as black in Three.js even under
+        # photographic lights. Reconstruct finite unit vertex normals from
+        # the actual authored triangle winding, never replace the geometry.
+        source_norm=np.linalg.norm(part.vertex_normals,axis=1)
+        if np.mean(source_norm < 0.1) > 0.01:
+            restored=trimesh.geometry.mean_vertex_normals(
+                len(part.vertices),part.faces,part.face_normals)
+            if np.mean(np.linalg.norm(restored,axis=1)>0.99)<0.99:
+                raise ValueError("Cannot recover source Unreal mesh normals: "+rel)
+            part.vertex_normals=restored
         # UModel provides the real UVs but could not decode UE Materials because
         # material packages were not in the curated source subset.
         uv = getattr(part.visual, "uv", None)
@@ -94,6 +106,9 @@ def bundle(input_dir: Path, output_dir: Path, brick_image: Path):
     recovered = trimesh.load(str(target), force="scene", process=False)
     if not recovered.geometry or sum(len(m.faces) for m in recovered.geometry.values()) < 1000:
         raise ValueError("Output GLB has insufficient recovered Unreal geometry")
+    if any(np.mean(np.linalg.norm(m.vertex_normals,axis=1)>0.99)<0.99
+           for m in recovered.geometry.values() if isinstance(m,trimesh.Trimesh)):
+        raise ValueError("Output GLB has broken normal vectors; would render black")
     manifest = {
         "version": 1,
         "source_type": "UNREAL_NATIVE_STATIC_MESH_COMPOSITION",
