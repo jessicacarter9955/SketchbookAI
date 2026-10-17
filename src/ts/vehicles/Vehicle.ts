@@ -119,6 +119,21 @@ export abstract class Vehicle extends THREE.Object3D implements IWorldEntity
 			wheelObject.up.copy(Utils.threeVector(upAxisWorld));
 		}
 
+        // Imported Sketchfab tire meshes follow the SAME Cannon raycast
+        // wheel transforms, including spin, steering and suspension travel.
+        const bindings=this.userData.sketchfabWheelRig as
+            Array<{index:number,pivot:THREE.Group}>|undefined;
+        if(bindings?.length===4){
+            const inverse=this.quaternion.clone().invert();
+            for(const {index,pivot} of bindings){
+                const worldWheel=this.rayCastVehicle.wheelInfos[index]?.worldTransform;
+                if(!worldWheel)continue;
+                pivot.position.set(worldWheel.position.x,worldWheel.position.y,worldWheel.position.z)
+                    .sub(this.position).applyQuaternion(inverse);
+                pivot.quaternion.set(worldWheel.quaternion.x,worldWheel.quaternion.y,
+                    worldWheel.quaternion.z,worldWheel.quaternion.w).premultiply(inverse);
+            }
+        }
 		this.updateMatrixWorld();
 	}
 
