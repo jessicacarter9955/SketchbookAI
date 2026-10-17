@@ -1,5 +1,13 @@
 (function (root) {
     const API = 'https://api.sketchfab.com/v3/';
+    // Selected author-credited CC BY models hosted by the user's existing
+    // Sketchbook Render bridge. NEVER expose the server-side token in HTML.
+    // General Sketchfab downloads still use the end user's own authorization.
+    const CURATED_BRIDGE='https://sketchbook-fab-bridge.onrender.com/sketchfab/cars/';
+    const CURATED_DOWNLOADS=Object.freeze({
+        'e83da098149746b5a3ba6f1661645b09':'ferrari288'
+    });
+
     // Browser-persistent, origin-scoped credentials: never bundled or committed.
     class SketchfabCredentialStore {
         constructor(factory = root.indexedDB) { this.factory = factory; }
@@ -142,9 +150,14 @@
             if (maxFaces) params.set('max_face_count', String(maxFaces));
             return this.request(next || `${API}search?${params}`, signal);
         }
+        canDownloadWithoutBrowserToken(uid) { return Object.hasOwn(CURATED_DOWNLOADS,uid); }
         async download(uid) {
             if (!/^[a-zA-Z0-9_-]+$/.test(uid)) throw new Error('ID Sketchfab non valido.');
-            if (!this.token) throw new Error('Per scaricare serve il tuo token Sketchfab (resta solo in memoria).');
+            // Curated, attributed CC BY model: bridge uses SKETCHFAB_TOKENS
+            // privately on Render, so this particular car requires no form.
+            if (this.canDownloadWithoutBrowserToken(uid))
+                return CURATED_BRIDGE + CURATED_DOWNLOADS[uid];
+            if (!this.token) throw new Error('Questo modello richiede accesso Sketchfab personale. Salva il token JSON oppure collega il tuo account.');
             const data = await this.request(`${API}models/${uid}/download`);
             const download = data.glb || data.gltf;
             if (!download?.url) throw new Error('Sketchfab non offre un file glTF/GLB scaricabile per questo modello.');
