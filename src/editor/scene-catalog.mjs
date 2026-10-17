@@ -10,7 +10,8 @@ export const BUILTIN_SCENES = [
     { id: 'portland-grass', name: 'Portland · prato animato', world: 'liberty-city', spawn: 'spawn_portland' },
     { id: 'staunton-lab', name: 'Staunton · laboratorio', world: 'liberty-city', spawn: 'spawn_staunton_island' },
     { id: 'island-bridge', name: 'Isola · ponte e costa', world: 'procedural-island', spawn:'island-west' },
-    { id: 'island-sunset', name: 'Isola · tramonto', world: 'procedural-island', spawn:'island-west' }
+    { id: 'island-sunset', name: 'Isola · tramonto', world: 'procedural-island', spawn:'island-west' },
+    { id: 'coastal-districts', name: 'Coastal Districts · New York / SF / Rio / Miami', world: 'procedural-island', spawn:'district-ny' }
 ];
 export function loadCatalog(storage) {
     let custom = [];
