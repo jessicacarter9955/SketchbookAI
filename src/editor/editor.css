@@ -183,3 +183,28 @@ body.mobile-city-player:not(.playing) .mobile-city-controls{display:none!importa
   .city-asset-command button{min-height:38px;font-size:12px}
 }
 @media(orientation:landscape){.mobile-city-asset-search{left:24%;right:24%;top:max(60px,calc(env(safe-area-inset-top) + 58px));padding:5px 8px}}
+
+/* Mobile Photoreal Play: intentionally compact UI. The single top command
+   field has a 3D toggle; joystick and vehicle E button remain unobstructed. */
+.mobile-city-command{flex-direction:row;align-items:center;flex-wrap:wrap;padding:5px 8px;
+  top:max(4px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));
+  right:max(8px,env(safe-area-inset-right));min-height:42px;}
+.mobile-city-command input{flex:1 1 130px;width:auto;min-width:120px;min-height:34px;padding:4px 6px;font-size:14px;}
+.mobile-city-command [data-mobile-assets] {min-width:43px;min-height:35px;flex:0 0 auto;
+  color:#e3f7ff;background:#275978;border:1px solid #83b5ca;border-radius:9px;font:700 13px system-ui;}
+.mobile-city-command .mobile-city-message{flex:1 1 100%}
+.mobile-city-asset-search[hidden]{display:none!important}
+.mobile-city-asset-search{top:max(53px,calc(env(safe-area-inset-top) + 49px));}
+.mobile-city-actions [data-mobile-car]{font-size:16px;min-height:58px;min-width:120px;
+  background:#0e6591ec;border:2px solid #b1e6f8;box-shadow:0 3px 16px #000a}
+.mobile-city-actions [data-mobile-car]:disabled{opacity:.65;background:#314758d9;border-color:#7097a5}
+.mobile-city-joystick{box-shadow:0 6px 25px #0008}
+body.mobile-city-player .mobile-city-controls{display:block!important}
+body.mobile-city-player #scene-editor .editor-toolbar{display:none!important}
+body.mobile-city-player #scene-editor .editor-panel{display:none!important}
+body.mobile-city-player #scene-editor .editor-footer{display:none!important}
+@media (orientation:landscape){
+  .mobile-city-command{left:max(25%,env(safe-area-inset-left));right:max(25%,env(safe-area-inset-right));}
+  .mobile-city-asset-search{top:max(48px,calc(env(safe-area-inset-top) + 46px));}
+  .mobile-city-actions [data-mobile-car]{min-height:52px}
+}
