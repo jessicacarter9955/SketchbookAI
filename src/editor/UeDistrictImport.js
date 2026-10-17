@@ -63,3 +63,36 @@ export async function loadUnrealDistricts({fetcher=fetch,loader=new GLTFLoader()
  }
  return {items,missing:false,errors};
 }
+
+
+// Architectural DETAILS extracted from real UE4 .uasset static meshes are not
+// Unreal level GLBs. Keep this contract independent: never claim a complete
+// "UE 1/4" district when only source-authenticated meshes are overlaid.
+export const UE_NATIVE_MESH_MANIFEST=ROOT+'native-meshes.json';
+
+export async function loadNativeUnrealStreetfront({fetcher=fetch,loader=new GLTFLoader(),report=()=>{}}={}){
+ let response;
+ try{response=await fetcher(UE_NATIVE_MESH_MANIFEST,{cache:'no-cache'});}
+ catch(error){return {scene:null,manifest:null,error:'Not published: '+error.message};}
+ if(response.status===404)return {scene:null,manifest:null,error:null};
+ if(!response.ok)throw new Error('Native Unreal mesh manifest HTTP '+response.status);
+ const m=await response.json();
+ if(!m||m.version!==1||m.source_type!=='UNREAL_NATIVE_STATIC_MESH_COMPOSITION'||
+    m.district!=='ny'||m.full_unreal_level!==false||!Array.isArray(m.parts)||
+    m.parts.length<4||!/^ue-ny-native-[a-z0-9-]+\\.glb$/.test(m.mesh)|| 
+    !/^[a-f0-9]{64}$/.test(m.sha256)||!/^https:\/\/github\\.com\//.test(m.source_project||''))
+   throw new Error('Unreal native streetfront manifest violates authenticated geometry schema');
+ if(!m.parts.every(x=>typeof x.uasset==='string'&&x.uasset.endsWith('.uasset')&&
+   Number.isInteger(x.triangles)&&x.triangles>=12))
+   throw new Error('Native Unreal geometry must declare individually extracted .uasset triangles');
+ const scene=(await loader.loadAsync(ROOT+m.mesh)).scene;
+ let meshes=0,textured=0;
+ scene.traverse(x=>{if(x.isMesh){meshes++;textured+=Number([].concat(x.material).some(v=>v?.map));x.castShadow=true;x.receiveShadow=true;}});
+ if(!meshes||!textured)throw new Error('Genuine Unreal-native GLB missing meshes or CC0 photomaterial');
+ const result={scene,manifest:m,meshes,textured};
+ scene.name='Unreal static mesh storefront: '+m.source_revision;
+ scene.userData.unrealNative={sourceProject:m.source_project,sourceRevision:m.source_revision,
+  meshSourceCount:m.parts.length,fullLevel:false,textureIsReplacement:true};
+ report('Unreal-native New York: '+m.parts.length+' mesh originali da .uasset, '+meshes+' mesh renderizzate; il livello UE intero NON è ancora convertito.');
+ return result;
+}
