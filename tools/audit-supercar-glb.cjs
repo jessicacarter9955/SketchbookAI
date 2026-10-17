@@ -18,6 +18,10 @@ function details(buffer){
    names:lines.slice(0,110),likely,materials:(model.materials||[]).map(x=>x.name)};
 }
 (async()=>{
+ const local=require('fs').readFileSync('build/assets/car.glb');
+ const localMeta=details(local);
+ console.log('=== MODEL native bytes '+local.length+' ===');
+ console.log(JSON.stringify({...localMeta,extras:JSON.parse(local.toString('utf8',20,20+local.readUInt32LE(12))).nodes?.map((n,i)=>({index:i,name:n.name,extras:n.extras,translation:n.translation,rotation:n.rotation,scale:n.scale})).filter(n=>n.extras||/wheel|seat|collision/i.test(n.name))},null,2));
  for(const name of ids) {
   const res=await fetch('https://sketchbook-fab-bridge.onrender.com/sketchfab/cars/'+name,{signal:AbortSignal.timeout(120000)});
   if(!res.ok)throw Error(name+' HTTP '+res.status+' '+(await res.text()).slice(0,220));
