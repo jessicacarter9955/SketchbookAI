@@ -77,8 +77,9 @@ test('Poly Haven tree leaf cards recover alpha-mask cutout instead of solid whit
  assert.equal(leaf.userData.foliageWhiteCutout,true);
  const shader={fragmentShader:'void main() {\n#include <map_fragment>\n}'};
  leaf.onBeforeCompile(shader);
- assert.match(shader.fragmentShader,/diffuseColor\\.r > 0\\.92/);
+ assert.match(shader.fragmentShader,/diffuseColor\.r > 0\.92/);
  assert.match(shader.fragmentShader,/discard/);
+ assert.equal(shader.fragmentShader.includes(String.raw`\\nif`),false,'Shader must contain a genuine newline, not literal backslash-n');
  const bark=new THREE.MeshStandardMaterial({name:'Tree trunk',roughness:0.6,map:new THREE.Texture()});
  assert.equal(configureUrbanTreeMaterial(bark),false);
  assert.equal(bark.alphaTest,0);
