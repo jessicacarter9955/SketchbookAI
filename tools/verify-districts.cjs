@@ -1,15 +1,17 @@
 // Browser-level proof of editor boot, autonomous traffic and physical viaduct.
 const {chromium}=require('playwright');
 const fs=require('fs');
+const base=(process.env.DISTRICT_BASE_URL||'http://127.0.0.1:8401').replace(/\\/$/,'');
+const host=new URL(base).host;
 (async()=>{
 const browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 const page=await browser.newPage({viewport:{width:1280,height:800}});
 const errors=[],requests=[];
 page.on('pageerror',e=>errors.push(String(e.stack||e)));
-page.on('response',r=>{if(r.status()>=400&&r.url().includes('127.0.0.1'))requests.push(r.url()+' '+r.status());});
+page.on('response',r=>{if(r.status()>=400&&new URL(r.url()).host===host)requests.push(r.url()+' '+r.status());});
 let result;
 try{
- await page.goto('http://127.0.0.1:8401/editor.html?scene=coastal-districts&play=1&cars=0',
+ await page.goto(base+'/editor.html?scene=coastal-districts&play=1&cars=0',
     {waitUntil:'domcontentloaded',timeout:60000});
  await page.waitForFunction(()=>Boolean(window.world?.levelRuntime?.ready&&window.sceneEditor&&window.districtTraffic),null,
    {timeout:120000,polling:800});
