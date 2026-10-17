@@ -86,6 +86,17 @@ export function generateDistrictPlan(config=DISTRICT_PRESET){
    const sp=streetsX[Math.floor(nx/2)],zp=streetsZ[Math.floor(nz/2)];
    spawns.push({id:'district-'+d.id,name:d.name,position:[sp+4,districtGround(sp+4,zp)+.9,zp]});
  }
+ // Cross-district arterial roads make this ONE city, not four disconnected examples.
+ // They overlap the end strips of each local road grid to avoid wheel-sized gaps.
+ for(const [a,b,id,width] of [
+  [[-65,-172],[65,-172],'ny-to-sf',17],
+  [[-165,-51],[-165,19],'ny-to-rio',14],
+  [[165,-42],[165,17],'sf-to-miami',14]
+ ])roads.push(road(a,b,id,'avenue',width));
+ routes.push({district:'crosstown',points:[
+   [-165,-172],[-65,-172],[65,-172],[165,-172],
+   [65,-172],[-65,-172]
+ ]});
  // The channel is a real water inlet; bridges are road decks with collision, not floating decoration.
  const deck=[[-116,125],[-73,125],[-42,125],[0,125],[42,125],[73,125],[116,125]];
  const bridge=road(deck[0],deck[deck.length-1],'bay-viaduct','bridge',18);
