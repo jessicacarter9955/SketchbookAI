@@ -277,6 +277,15 @@ if __name__=="__main__":
     if not TOKEN or len(TOKEN)<20:
         raise RuntimeError("TRUTHLAB_ADMIN_TOKEN must be a random token at least 20 characters long")
     initialize()
+    # A chat-side operator can set this Render environment variable through a
+    # connected deployment tool. 1 enables actual inference ONLY if configured.
+    # 0 stops scheduling after the service restarts. Unset leaves DB controls.
+    autostart = os.getenv("TRUTHLAB_AUTOSTART")
+    if autostart == "0":
+        save_setting("status","paused")
+    elif autostart == "1" and MODEL and API_KEY:
+        save_setting("status","active")
+        spawn()
     threading.Thread(target=scheduler,daemon=True).start()
     port=int(os.getenv("PORT","10000"))
     print("TruthLab hosted console starting; model configured:",bool(MODEL and API_KEY),flush=True)
