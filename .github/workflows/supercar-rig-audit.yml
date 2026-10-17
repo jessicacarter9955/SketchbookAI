@@ -1,0 +1,37 @@
+name: Audit Sketchfab car wheel hierarchy
+on:
+  push:
+    branches: [img2threejs-runner]
+    paths: [".github/workflows/supercar-rig-audit.yml"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect downloaded licensed GLB structures
+        shell: bash
+        run: node tools/audit-supercar-glb.cjs > /tmp/glb-wheel-report.txt
+      - name: Print condensed model structure
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const s=require('fs').readFileSync('/tmp/glb-wheel-report.txt','utf8');
+          for(const part of s.split('=== MODEL').slice(1)){
+            const head=part.split('===')[0], body=JSON.parse(part.slice(part.indexOf('{')));
+            console.log('MODEL',head,'nodes',body.nodeCount,'meshes',body.meshCount);
+            console.log('CANDIDATE WHEELS:',JSON.stringify(body.likely).slice(0,13500));
+            console.log('ALL NAMES:',JSON.stringify(body.names.map(n=>({name:n.name,mesh:n.meshName,position:n.translation,bbox:n.bbox.map(x=>[x.min,x.max])}))).slice(0,12000));
+          }
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: car-rig-audit-metadata-only
+          path: /tmp/glb-wheel-report.txt
+          retention-days: 4
