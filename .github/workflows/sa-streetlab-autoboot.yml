@@ -1,0 +1,48 @@
+name: SA StreetLab no-upload browser boot
+on:
+  push:
+    branches: [codex/sa-navigation-port]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install and test
+        run: |
+          npm ci
+          npm test
+          npm run build
+      - name: Serve real production bundle with bundled 10MB world GLB
+        run: |
+          mkdir -p artifacts/sa-smoke/build
+          cp editor.html 3dPicker.js city-assets-sw.js artifacts/sa-smoke/
+          cp -r src/editor artifacts/sa-smoke/src
+          cp -r build/assets artifacts/sa-smoke/build/
+          cp build/editor.bundle.js build/sketchbook.min.js artifacts/sa-smoke/build/
+          sed -i 's#<script type="module" src="src/editor/start.js"></script>#<script defer src="build/editor.bundle.js"></script>#' artifacts/sa-smoke/editor.html
+          test -s artifacts/sa-smoke/build/assets/world.glb
+          (cd artifacts/sa-smoke && python3 -m http.server 8401 --bind 127.0.0.1 > ../sa-server.log 2>&1) &
+          sleep 2
+          curl --fail -I http://127.0.0.1:8401/build/assets/world.glb
+      - name: Install headless Chromium
+        run: |
+          npm install --no-save playwright@1.58.0
+          npx playwright install --with-deps chromium
+      - name: Verify StreetLab boots without any user upload
+        run: node tools/verify-sa-autoboot.mjs
+      - name: Archive autonomous browser diagnosis
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sa-streetlab-browser-diagnostics
+          path: |
+            artifacts/sa-streetlab-autoboot.json
+            artifacts/sa-server.log
