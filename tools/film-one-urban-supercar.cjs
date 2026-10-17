@@ -45,6 +45,7 @@ function call(bin,args,timeout=120000){const r=spawnSync(bin,args,{encoding:'utf
   if(initialized.totalVehicles!==3||!initialized.control||!initialized.occupant)
       throw Error('Three cars not loaded / not controlling car');
   const frames=8;
+  let dimensions;
   const raw=path.join(dest,car+'.rgba');try{fs.unlinkSync(raw)}catch{}
   const traces=[],colorSamples=[];
   for(let n=0;n<frames;n++){
@@ -60,17 +61,19 @@ function call(bin,args,timeout=120000){const r=spawnSync(bin,args,{encoding:'utf
       w.camera.lookAt(p.x,p.y+0.85,p.z);
       w.renderer.setRenderTarget(null);w.renderer.render(w.graphicsWorld,w.camera);
       const gl=w.renderer.getContext(),width=gl.drawingBufferWidth,height=gl.drawingBufferHeight;
-      if(width!==448||height!==252)throw Error('Resized buffer '+width+'x'+height);
+      if(width<200||height<100||width>900||height>600)throw Error('Unusable WebGL buffer');
       const bytes=new Uint8Array(width*height*4);
       gl.readPixels(0,0,width,height,gl.RGBA,gl.UNSIGNED_BYTE,bytes);
       let binary='';
       for(let start=0;start<bytes.length;start+=8192)
         binary+=String.fromCharCode(...bytes.subarray(start,start+8192));
-      return {pixel:btoa(binary),x:p.x,y:p.y,z:p.z,speed:v.speed,
+      return {pixel:btoa(binary),width,height,x:p.x,y:p.y,z:p.z,speed:v.speed,
         colors:bytes[Math.floor(bytes.length*.2)]+bytes[Math.floor(bytes.length*.37)]};
     },car);
     const buf=Buffer.from(data.pixel,'base64');
-    if(buf.length!==448*252*4)throw Error('Frame size wrong');
+    if(buf.length!==data.width*data.height*4)throw Error('Frame size wrong');
+    if(!dimensions)dimensions=[data.width,data.height];
+    if(dimensions[0]!==data.width||dimensions[1]!==data.height)throw Error('Dynamic WebGL buffer changed');
     fs.appendFileSync(raw,buf);
     traces.push({x:data.x,y:data.y,z:data.z,speed:data.speed});
     colorSamples.push(data.colors);
@@ -82,7 +85,7 @@ function call(bin,args,timeout=120000){const r=spawnSync(bin,args,{encoding:'utf
   if(distance<0.5||colorSamples.every(c=>c===0))throw Error('No real car motion or empty frames.');
   const mp4=path.join(dest,car+'.mp4'),image=path.join(dest,car+'.png');
   call('ffmpeg',['-hide_banner','-loglevel','error','-y','-f','rawvideo','-pixel_format','rgba',
-    '-video_size','448x252','-framerate','3','-i',raw,'-an',
+    '-video_size',dimensions.join('x'),'-framerate','3','-i',raw,'-an',
     '-vf','vflip,scale=896:504:flags=lanczos','-c:v','libx264','-preset','veryfast',
     '-crf','22','-pix_fmt','yuv420p','-r','24','-movflags','+faststart',mp4]);
   call('ffmpeg',['-hide_banner','-loglevel','error','-y','-ss','1','-i',mp4,'-frames:v','1',image]);
