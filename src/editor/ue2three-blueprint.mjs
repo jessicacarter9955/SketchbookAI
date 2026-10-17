@@ -29,11 +29,12 @@ function validateSchema(schema, value, depth = 0) {
     } else if (!validPrimitive(schema.type, value)) throw new Error('Invalid typed source member: ' + schema.type);
 }
 
-export function executeBlueprint(program, self = {}, inputs = {}, { functions = {}, frames = {}, tables = {} } = {}) {
-    return runBlueprint(program, self, inputs, functions, { remaining: 10000 }, 0, structuredClone(frames), tables);
+export function executeBlueprint(program, self = {}, inputs = {}, { functions = {}, frames = {}, tables = {}, bindings = {}, signatures = {} } = {}) {
+    return runBlueprint(program, self, inputs, functions, { remaining: 10000 }, 0, structuredClone(frames), tables,
+        {bindings: structuredClone(bindings), signatures, effects: []});
 }
 
-function runBlueprint(program, self, inputs, functions, budget, depth, frames, tables) {
+function runBlueprint(program, self, inputs, functions, budget, depth, frames, tables, notifications) {
     if (depth > 32) throw new Error('Blueprint call depth exceeded');
     if (program?.schema_version !== 1 || !['translated_straight_line', 'translated_control_flow'].includes(program.status)
         || !Array.isArray(program.steps) || program.steps.length > 10000
@@ -90,6 +91,54 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             validateSchema(expression.schema, expression.value);
             return structuredClone(expression.value);
         }
+        if (expression.op === 'struct_literal') {
+            if (expression.schema?.type !== 'StructProperty' || !expression.fields
+                || Object.keys(expression.fields).length !== Object.keys(expression.schema.fields).length)
+                throw new Error('Invalid original struct literal');
+            const value = Object.create(null);
+            for (const field of expression.schema.member_order || []) {
+                if (!safeField(field) || !owns(expression.fields, field)) throw new Error('Invalid original struct member order');
+                value[field] = evaluate(expression.fields[field], depth+1);
+            }
+            validateSchema(expression.schema, value);
+            return structuredClone(value);
+        }
+        if (expression.op === 'mark_dirty') {
+            if (!safeField(expression.field)
+                || !validPrimitive('IntProperty', expression.source_rep_index) || expression.source_rep_index < 0)
+                throw new Error('Invalid original dirty-property witness');
+            notifications.effects.push({op: 'mark_dirty', field: expression.field, source_rep_index: expression.source_rep_index});
+            return null;
+        }
+        if (expression.op === 'broadcast') {
+            const signature = notifications.signatures[expression.delegate];
+            if (!safeField(expression.delegate) || !signature || signature.export_index !== expression.export_index
+                || JSON.stringify(signature.parameters) !== JSON.stringify(expression.parameters)
+                || !Array.isArray(expression.args) || expression.args.length !== signature.parameters.length)
+                throw new Error('Unresolved original multicast declaration');
+            const values = expression.args.map((arg, index) => {
+                const value = evaluate(arg, depth+1); validateSchema(signature.parameters[index].schema, value);
+                return structuredClone(value);
+            });
+            const listeners = notifications.bindings[expression.delegate] || [];
+            if (!Array.isArray(listeners)) throw new Error('Invalid original delegate listener list');
+            notifications.effects.push({op: 'broadcast', delegate: expression.delegate,
+                parameters: Object.fromEntries(signature.parameters.map((param, index) => [param.name, values[index]])), listeners: listeners.length});
+            // UE copies the multicast invocation list and visits it in insertion order.
+            for (const listener of [...listeners]) {
+                const callee = owns(functions, listener.function) ? functions[listener.function] : null;
+                if (!callee || callee.source_export_index !== listener.export_index || callee.source_owner_index !== program.source_owner_index
+                    || !Array.isArray(callee.parameters) || callee.parameters.length !== signature.parameters.length
+                    || callee.parameters.some((param, index) => !safeField(param.name) || !param.schema
+                        || JSON.stringify(param.schema) !== JSON.stringify(signature.parameters[index].schema)))
+                    throw new Error('Untranslated or incompatible original delegate handler');
+                const args = Object.fromEntries(callee.parameters.map((param, index) => [param.name, values[index]]));
+                const nested = runBlueprint(callee, instance, args, functions, budget, callDepth+1, frames, tables, notifications);
+                Object.assign(instance, nested.state);
+                trace.push({source_index: sourceIndex, op: 'delegate_handler', delegate: expression.delegate, function: listener.function, trace: nested.trace});
+            }
+            return null;
+        }
         if (expression.op === 'table_get') {
             const reference = evaluate(expression.table, depth+1), row = evaluate(expression.row, depth+1), target = expression.target;
             const table = reference && owns(tables, reference.asset) ? tables[reference.asset] : null;
@@ -109,6 +158,50 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             const array = evaluate(expression.array, depth+1);
             if (!Array.isArray(array)) throw new Error('Invalid source Array_Length');
             return array.length;
+        }
+        if (expression.op === 'array_valid') {
+            const array = evaluate(expression.array, depth+1), index = evaluate(expression.index, depth+1);
+            if (!Array.isArray(array) || !validPrimitive('IntProperty', index)) throw new Error('Invalid source Array_IsValidIndex');
+            return index >= 0 && index < array.length;
+        }
+        if (expression.op === 'array_mutate') {
+            const target = expression.target;
+            if (target?.op !== 'get' || !safeField(target.field) || !['local', 'self'].includes(target.scope)
+                || JSON.stringify(program.schemas?.[target.scope]?.[target.field]?.element) !== JSON.stringify(expression.element))
+                throw new Error('Unresolved typed source array mutation');
+            const array = evaluate(target, depth+1), operation = expression.operation;
+            if (!Array.isArray(array)) throw new Error('Invalid source array mutation');
+            const index = expression.index ? evaluate(expression.index, depth+1) : null;
+            if (['Array_Set', 'Array_Remove'].includes(operation) && !validPrimitive('IntProperty', index)) throw new Error('Invalid source array index');
+            const value = expression.value ? structuredClone(evaluate(expression.value, depth+1)) : null;
+            let result = null, inBounds = index >= 0 && index < array.length;
+            if (operation === 'Array_Set') {
+                const resize = evaluate(expression.resize, depth+1);
+                if (typeof resize !== 'boolean') throw new Error('Invalid source Array_Set resize flag');
+                validateSchema(expression.element, value);
+                if (resize && index >= 0) {
+                    if (index >= 100000) throw new Error('Source array resource limit exceeded');
+                    while (array.length <= index) { validateSchema(expression.element, expression.element.default); array.push(structuredClone(expression.element.default)); }
+                    inBounds = true;
+                }
+                if (inBounds) array[index] = value;
+            } else if (operation === 'Array_Remove') { if (inBounds) array.splice(index, 1); }
+            else if (operation === 'Array_Clear') array.length = 0;
+            else if (operation === 'Array_Add') {
+                validateSchema(expression.element, value);
+                if (array.length >= 100000) throw new Error('Source array resource limit exceeded');
+                result = array.length; array.push(value);
+            } else if (operation === 'Array_Append') {
+                if (!Array.isArray(value) || array.length+value.length > 100000) throw new Error('Invalid or oversized source array append');
+                for (const item of value) validateSchema(expression.element, item);
+                // Copying the source first also preserves UE's self-append behavior.
+                for (const item of value) array.push(item);
+            } else throw new Error('Unsupported source array mutation');
+            if (['Array_Set', 'Array_Remove'].includes(operation) && !inBounds)
+                trace.push({source_index: sourceIndex, op: 'warning', message: operation+' index out of bounds; source array unchanged'});
+            trace.push({source_index: sourceIndex, op: 'array_mutate', operation, scope: target.scope, field: target.field,
+                index, in_bounds: inBounds, length: array.length});
+            return result;
         }
         if (expression.op === 'array_get') {
             const array = evaluate(expression.array, depth+1), index = evaluate(expression.index, depth+1), target = expression.target;
@@ -138,7 +231,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                     targets.push(binding);
                 } else throw new Error('Unsupported call argument');
             }
-            const nested = runBlueprint(callee, instance, args, functions, budget, callDepth + 1, frames, tables);
+            const nested = runBlueprint(callee, instance, args, functions, budget, callDepth + 1, frames, tables, notifications);
             for (const binding of targets) {
                 if (!owns(nested.outputs, binding.parameter)) throw new Error(`Missing call output: ${binding.parameter}`);
                 checkType(binding.target.scope, binding.target.field, nested.outputs[binding.parameter], binding.target.frame);
@@ -261,7 +354,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 outputs[field] = structuredClone(locals[field]);
             }
             trace.push({source_index: step.source_index, op: 'return', value: structuredClone(value)});
-            return {value: structuredClone(value), outputs, state: instance, frames, trace};
+            return {value: structuredClone(value), outputs, state: instance, frames, trace, effects: structuredClone(notifications.effects)};
         } else throw new Error(`Unsupported Blueprint instruction: ${step.op}`);
     }
     throw new Error('Blueprint returned no result');

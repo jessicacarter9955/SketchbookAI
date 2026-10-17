@@ -1,5 +1,10 @@
 // Mirrors the supported UE 5.7 KismetMathLibrary primitives. No game rules.
 export function evaluateNativeMath(name, args, warning = () => {}) {
+    if (name === 'SelectFloat') {
+        if (args.length !== 3 || args.slice(0, 2).some(value => typeof value !== 'number' || !Number.isFinite(value)) || typeof args[2] !== 'boolean')
+            throw new Error('Invalid native double selection parameters');
+        return args[2] ? args[0] : args[1];
+    }
     if (['Min', 'Max', 'Conv_IntToDouble', 'SelectInt'].includes(name)) {
         const arity = name === 'SelectInt' ? 3 : name === 'Conv_IntToDouble' ? 1 : 2;
         if (args.length !== arity || args.some((value, index) => name === 'SelectInt' && index === 2

@@ -6,6 +6,10 @@ export class BlueprintActorRuntime {
         this.report = report;
         this.states = Object.create(null);
         this.frames = Object.create(null);
+        this.bindings = Object.create(null);
+        this.notifications = [];
+        this.dirty = Object.create(null);
+        this.nextBindingId = 1;
         for (const [name, data] of Object.entries(report.packages)) this.states[name] = structuredClone(data.default_state || {});
         this.last = null;
         this.guardCache = new Map();
@@ -15,10 +19,33 @@ export class BlueprintActorRuntime {
         const data = this.report.packages[packageName], program = data?.functions[functionName];
         if (!program || !Object.hasOwn(this.states, packageName)) throw new Error(`Untranslated source function: ${functionName}`);
         const result = executeBlueprint(program, this.states[packageName], inputs,
-            {functions: {...data.functions, ...data.event_programs}, frames: this.frames[packageName] || {}, tables: this.report.tables || {}});
+            {functions: {...data.functions, ...data.event_programs}, frames: this.frames[packageName] || {}, tables: this.report.tables || {},
+                bindings: this.bindings[packageName] || {}, signatures: data.delegate_signatures || {}});
         this.states[packageName] = result.state;
         this.frames[packageName] = result.frames;
+        for (const effect of result.effects) {
+            if (effect.op === 'mark_dirty') {
+                this.dirty[packageName] ||= Object.create(null);
+                this.dirty[packageName][effect.field] = effect.source_rep_index;
+            } else if (effect.op === 'broadcast') this.notifications.push({package: packageName, ...structuredClone(effect)});
+        }
+        if (this.notifications.length > 1000) this.notifications.splice(0, this.notifications.length-1000);
         return result;
+    }
+    // Same-instance translated source handlers only. World/UI construction and
+    // cross-object delegate wiring require their original object adapters.
+    subscribe(packageName, delegate, functionName) {
+        const data = this.report.packages[packageName], signature = data?.delegate_signatures?.[delegate], program = data?.functions?.[functionName];
+        if (!signature || !program || !Array.isArray(program.parameters) || program.parameters.length !== signature.parameters.length
+            || program.parameters.some((param, index) => !param.schema || JSON.stringify(param.schema) !== JSON.stringify(signature.parameters[index].schema)))
+            throw new Error('Untranslated or incompatible original delegate handler');
+        const id = this.nextBindingId++;
+        this.bindings[packageName] ||= Object.create(null);
+        (this.bindings[packageName][delegate] ||= []).push({id, function: functionName, export_index: program.source_export_index});
+        return () => {
+            const list = this.bindings[packageName]?.[delegate];
+            if (list) this.bindings[packageName][delegate] = list.filter(binding => binding.id !== id);
+        };
     }
     checkAction(action) {
         const guard = this.report.character_guards?.[action];
@@ -47,8 +74,12 @@ export class BlueprintActorRuntime {
             return {...metric, value, current_value: state[metric.current], maximum_value: state[metric.maximum]};
         });
     }
-    snapshot() { return {states: structuredClone(this.states), frames: structuredClone(this.frames)}; }
-    restore(snapshot) { this.states = structuredClone(snapshot.states); this.frames = structuredClone(snapshot.frames); this.guardCache.clear(); this.metricCache.clear(); this.last = null; }
+    snapshot() { return structuredClone({states: this.states, frames: this.frames, bindings: this.bindings, notifications: this.notifications, dirty: this.dirty}); }
+    restore(snapshot) {
+        this.states = structuredClone(snapshot.states); this.frames = structuredClone(snapshot.frames);
+        this.bindings = structuredClone(snapshot.bindings || {}); this.notifications = structuredClone(snapshot.notifications || []); this.dirty = structuredClone(snapshot.dirty || {});
+        this.guardCache.clear(); this.metricCache.clear(); this.last = null;
+    }
 }
 
 export function bindBlueprintInputs(player, runtime, onResult = () => {}) {

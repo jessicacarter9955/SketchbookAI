@@ -11,17 +11,18 @@ export function blueprintFixtureState(fixture, test, report) {
     return {...structuredClone(base.state), ...structuredClone(test.self || {})};
 }
 
+export const blueprintFixtureEqual = (a, b) => a === b || a !== null && b !== null && typeof a === 'object' && typeof b === 'object'
+    && Array.isArray(a) === Array.isArray(b) && Object.keys(a).length === Object.keys(b).length
+    && Object.keys(a).every(key => Object.hasOwn(b, key) && blueprintFixtureEqual(a[key], b[key]));
+
 export function blueprintFixtureMembers(outputs, expected) {
     const actual = {};
-    const equal = (a, b) => a === b || a !== null && b !== null && typeof a === 'object' && typeof b === 'object'
-        && Array.isArray(a) === Array.isArray(b) && Object.keys(a).length === Object.keys(b).length
-        && Object.keys(a).every(key => Object.hasOwn(b, key) && equal(a[key], b[key]));
     for (const [output, members] of Object.entries(expected || {})) {
         if (!Object.hasOwn(outputs, output) || !outputs[output] || typeof outputs[output] !== 'object') throw new Error('Missing source output structure');
         actual[output] = {};
         for (const [member, value] of Object.entries(members)) {
             if (['__proto__', 'constructor', 'prototype'].includes(member) || !Object.hasOwn(outputs[output], member)
-                || !equal(outputs[output][member], value)) throw new Error('Source output member differs: ' + output + '.' + member);
+                || !blueprintFixtureEqual(outputs[output][member], value)) throw new Error('Source output member differs: ' + output + '.' + member);
             actual[output][member] = structuredClone(outputs[output][member]);
         }
     }

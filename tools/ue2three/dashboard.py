@@ -177,7 +177,10 @@ def serve(directory, port, open_browser=False):
     def is_busy():
         process = activity["process"]
         worker = activity["worker"]
-        return bool((process and process.poll() is None) or (worker and worker.is_alive()))
+        status = process.poll() if process else None
+        if process and status is not None:
+            activity["exit_code"] = status
+        return bool((process and status is None) or (worker and worker.is_alive()))
 
     def spawn(command):
         flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0

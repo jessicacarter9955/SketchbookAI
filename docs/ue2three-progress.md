@@ -401,3 +401,20 @@ moved back to its original test and the complete suite passed after the fix.
 - Browser inspection initially timed out while the hidden scene awaited animation
   frames. Presenting the integrated browser resumed it and all checks passed.
   Keep browser visibility enabled before live QA to avoid background throttling.
+
+
+## 2026-10-17 · Original inventory mutations and notifications
+
+166 translated /334 blocked; 498 generic +498 source comparisons pass in the
+integrated browser. Scene verification passes 24 inputs, 35 metrics, 4 events,
+332 inventory cases and 31 character calculations. Horizontal movement: 0.6670.
+116 Python tests, 75 JS tests and editor build pass. Added strict generic array
+writes, source struct constants, dirty witnesses and transactional multicast
+emissions with optional translated same-instance listeners. Original merge,
+remove, weight/encumbrance, currency and weapon-mod rules are preserved.
+Source input-state/backpack/implant dependencies cost only 52,026 bytes of
+bounded parser reads; no Unreal process or rescan. See
+[notification contracts](ue2three-blueprint-effects.md) for source quirks,
+resource bounds, failures fixed and remaining object/UI/network work.
+Evidence is local under verification/source-inventory-effects/. Checklist: 13
+scoped green checkpoints; broad gameplay systems remain yellow/red.

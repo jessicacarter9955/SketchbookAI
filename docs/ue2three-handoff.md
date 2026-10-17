@@ -1,4 +1,40 @@
-# ue2three saved handoff · 2026-10-15
+# ue2three saved handoff · 2026-10-17
+
+Latest batch: **166 translated /334 blocked**, 60 delegate declarations,
+six empty functions, 56 callbacks without effects, 64 event helpers,
+263 packages uncached. Original typed array Set/Remove/Clear/Add/Append and
+IsValidIndex, UDS struct constants, local dirty-property witnesses, typed
+multicast payloads and explicitly registered same-instance source handlers now
+execute transactionally. Source SelectFloat is double precision. No network
+replication or original cross-object/UI wiring is implied.
+Source-backed inventory operations now include TryMergeIntoCarry,
+RemoveCarryItemAtIndex, RecalculateWeight [trailing space], GetBackpackData,
+GetImplantData, GetImplantBonuses, Server_AddCurrency, SetWeaponMod, and original
+inventory/vitality OnRep emissions. DT_Backpacks has one row; DT_Implants is
+originally empty. Preserve source quirks documented in ue2three-blueprint-effects.md.
+Only seven extra source assets (52,026 bytes total) were parsed: input-state
+structs, backpack/implant row structs/tables, implant enum. Reuse these caches.
+No Unreal start, export, full scan, or asset upload.
+Failures fixed: unresolved struct schemas could be marked translated; the
+compiler now blocks them and source input-state fixtures retain the full type.
+The scene verifier omitted event helper dependencies; it now checks the combined
+function/event library. Effect comparison ignores object key order while
+preserving event/array order. Dashboard busy polling now records process exit
+before reporting idle, fixing a reproducible intermittent test race.
+Verification: 116 Python tests, 75 JS tests, editor build; browser audit 166
+functions /498 generic /498 independent source cases. Scene: 24 input /35
+metrics /4 events /332 inventory /31 character calculation cases, with
+0.6670339247183189 horizontal movement. Source checksum:
+b97e5a57d1fdfefbb2eb4b1b76501fbffddeffdb8c3a0257e0d05b0ca358b893.
+Evidence: build/local-scenes/ue2three/verification/source-inventory-effects/.
+Project progress now has 13 scoped green checkpoints and 18 broad areas;
+full inventory remains yellow. Editor revision18 and optional chunk421 ship
+together. Source package assets and generated project outputs remain local.
+Next: cross-object owner/component calls and original delegate wiring needed
+by SetSlotData/ClearSlot and full equip/transfer flows; then original combat
+native dependencies, UI/save paths. Animations remain assumed working with
+1:1 verification deferred. Lighting remains last. Do not mark whole systems
+or full multiplayer green based on function counts or local notifications.
 
 Latest batch (2026-10-16): **117 translated /383 blocked**, 60 declarations,
 six empty functions, 56 callbacks without effects, 263 packages uncached.

@@ -1,6 +1,6 @@
 // Explicit QA fixtures act on the actual player input hook and are restored.
 // They are not gameplay rules or permanent changes to source defaults.
-import { blueprintFixtureState, blueprintFixtureMembers } from './ue2three-fixtures.mjs';
+import { blueprintFixtureState, blueprintFixtureMembers, blueprintFixtureEqual } from './ue2three-fixtures.mjs';
 export async function verifyLiveBlueprintInputs(player, runtime, fixture) {
     const snapshot = runtime.snapshot(), results = [], metricResults = [], eventResults = [], inventoryResults = [], calculationResults = [];
     const guards = runtime.report.character_guards || {};
@@ -45,7 +45,7 @@ export async function verifyLiveBlueprintInputs(player, runtime, fixture) {
             metricResults.push({source_function: metric.function, value: actual, expected: test.outputs[metric.output]});
         }
         for (const test of fixture.cases) {
-            if (!test.state) continue;
+            if (!test.state || test.runtime === 'inventory') continue;
             const program = runtime.report.packages[test.package]?.functions[test.function];
             if (!program || program.source_bytecode_sha256 !== test.source_bytecode_sha256) throw new Error('Event fixture source differs from program');
             const data = runtime.report.packages[test.package], library = {...data.functions, ...data.event_programs};
@@ -63,18 +63,24 @@ export async function verifyLiveBlueprintInputs(player, runtime, fixture) {
             if (!['inventory', 'character_math'].includes(test.runtime)) continue;
             const data = runtime.report.packages[test.package], program = data?.functions[test.function];
             if (!program || program.source_bytecode_sha256 !== test.source_bytecode_sha256) throw new Error('Inventory fixture source differs from program');
+            const library = {...data.functions, ...data.event_programs};
             for (const [name, hash] of Object.entries(test.dependencies || {}))
-                if (data.functions[name]?.source_bytecode_sha256 !== hash) throw new Error('Inventory dependency source differs');
+                if (library[name]?.source_bytecode_sha256 !== hash) throw new Error('Inventory dependency source differs: '+name);
             for (const [name, hash] of Object.entries(test.types || {}))
                 if (runtime.report.type_sources?.[name]?.source_sha256 !== hash) throw new Error('Inventory source type differs');
             runtime.restore(snapshot); Object.assign(runtime.states[test.package], blueprintFixtureState(fixture, test, runtime.report));
             const result = runtime.call(test.package, test.function, test.inputs);
             for (const [field, expected] of Object.entries(test.outputs))
                 if (JSON.stringify(result.outputs[field]) !== JSON.stringify(expected)) throw new Error('Inventory source differs: ' + test.function + '.' + field);
+            for (const [field, expected] of Object.entries(test.state || {}))
+                if (JSON.stringify(result.state[field]) !== JSON.stringify(expected)) throw new Error('Inventory source state differs: '+test.function+'.'+field);
+            if (test.effects && !blueprintFixtureEqual(result.effects, test.effects)) throw new Error('Inventory source effects differ: '+test.function);
             const target = test.runtime === 'inventory' ? inventoryResults : calculationResults;
             const members = blueprintFixtureMembers(result.outputs, test.output_members);
             target.push({package: test.package, source_function: test.function, source_bytecode_sha256: program.source_bytecode_sha256,
                 inputs: test.inputs, outputs: result.outputs, expected: test.outputs,
+                ...(test.state ? {resulting_state: result.state, expected_state: test.state} : {}),
+                ...(test.effects ? {effects: result.effects, expected_effects: test.effects} : {}),
                 ...(test.output_members ? {actual_members: members, expected_members: test.output_members} : {})});
         }
         return {schema_version: 1, project: runtime.report.project, programs_content_sha256: runtime.report.content_sha256,

@@ -123,9 +123,12 @@ class BlueprintMigrationTests(unittest.TestCase):
         member = node('EX_StructMemberContext', StructMemberExpression={'New': {'Path': ['Quantity']}},
                       StructExpression=variable('EX_LocalVariable', 'InputData'))
         function = self.function(); function['ScriptBytecode'][1]['Expression'] = member
-        function['LoadedProperties'] = [{'Name': 'InputData', 'SerializedType': 'StructProperty', 'PropertyFlags': 'CPF_Parm'},
+        function['LoadedProperties'] = [{'Name': 'InputData', 'SerializedType': 'StructProperty', 'Struct': -1, 'PropertyFlags': 'CPF_Parm'},
                                         {'Name': 'ReturnValue', 'SerializedType': 'IntProperty', 'PropertyFlags': 'CPF_Parm, CPF_OutParm'}]
-        result = translate_package(Package({'Exports': [function]}))['functions']['GetState']
+        package = Package({'Exports': [function], 'Imports': [{'ObjectName': 'Original', 'OuterIndex': -2},
+                          {'ObjectName': '/Game/Struct', 'ClassName': 'Package'}]})
+        schema = {'type': 'StructProperty', 'source': '/Game/Struct', 'fields': {'Quantity': {'type':'IntProperty','default':0}}, 'default': {'Quantity':0}}
+        result = translate_package(package, {('/Game/Struct', 'Original'): schema})['functions']['GetState']
         self.assertEqual(result['steps'][0]['value']['field'], 'Quantity')
         self.assertEqual(result['input_fields'], ['InputData'])
         self.assertEqual(result['field_types']['local']['InputData'], 'StructProperty')

@@ -193,13 +193,14 @@ def project_progress(workspace, published, character_dir=None):
             program = blueprint_report.get('packages', {}).get(entry.get('package'), {}).get('functions', {}).get(entry.get('function'), {})
             samples = entry.get('source_cases', [])
             if (program and samples and program.get('source_bytecode_sha256') == entry.get('source_bytecode_sha256')
-                    and all((sample.get('expected') or sample.get('expected_state'))
+                    and all((sample.get('expected') or sample.get('expected_state') or 'expected_effects' in sample)
                             and all(key in sample.get('outputs', {}) and digest(sample['outputs'][key]) == digest(value)
                                     for key, value in sample.get('expected', {}).items())
                             and all(key in sample.get('resulting_state', {}) and digest(sample['resulting_state'][key]) == digest(value)
                                     for key, value in sample.get('expected_state', {}).items())
                             and all(key in sample.get('actual_members', {}) and digest(sample['actual_members'][key]) == digest(value)
-                                    for key, value in sample.get('expected_members', {}).items()) for sample in samples)):
+                                    for key, value in sample.get('expected_members', {}).items())
+                            and ('expected_effects' not in sample or digest(sample.get('effects')) == digest(sample['expected_effects'])) for sample in samples)):
                 verified.append(entry['function']); cases += len(samples)
                 if all(sample.get('expected_state') for sample in samples):
                     event_verified.append(entry['function']); event_cases += len(samples)
@@ -233,6 +234,34 @@ def project_progress(workspace, published, character_dir=None):
                     and all(verified_calculation(result) for result in calculations)):
                 milestones.append({'title': 'Calcoli sorgenti sul runtime della scena', 'status': 'green',
                                    'evidence': f"{len(calculations)} confronti di {len({(r['package'], r['source_function']) for r in calculations})} funzioni; input, output, bytecode e screenshot verificati; integrazione dei flussi completi esclusa"})
+            inventory_results = live.get('inventory_results', [])
+            verified_mutations, verified_notifications = set(), set()
+            for result in inventory_results if live_valid and live.get('inventory_checked') == len(inventory_results) else []:
+                package, function = result.get('package'), result.get('source_function')
+                program = blueprint_report.get('packages', {}).get(package, {}).get('functions', {}).get(function, {})
+                source = next((entry for entry in audit.get('evidence', [])
+                               if entry.get('package') == package and entry.get('function') == function), {})
+                expected_state, expected_effects = result.get('expected_state', {}), result.get('expected_effects')
+                if (not program or result.get('source_bytecode_sha256') != program.get('source_bytecode_sha256')
+                        or digest(result.get('outputs')) != digest(result.get('expected'))
+                        or not all(key in result.get('resulting_state', {}) and digest(result['resulting_state'][key]) == digest(value)
+                                   for key, value in expected_state.items())
+                        or expected_effects is None or digest(result.get('effects')) != digest(expected_effects)
+                        or not any(digest(sample.get('inputs')) == digest(result.get('inputs'))
+                                   and digest(sample.get('expected')) == digest(result.get('expected'))
+                                   and digest(sample.get('expected_state', {})) == digest(expected_state)
+                                   and digest(sample.get('expected_effects')) == digest(expected_effects) for sample in source.get('source_cases', []))):
+                    continue
+                if expected_state and program.get('self_writes'): verified_mutations.add(function)
+                if any(effect.get('op') == 'broadcast' for effect in expected_effects): verified_notifications.add(function)
+            if verified_mutations:
+                milestones.append({'title': 'Scritture inventario e accessori sul runtime della scena', 'status': 'green',
+                                   'evidence': f"{len(verified_mutations)} funzioni con stato, effetti, bytecode e confronto sorgente verificati: {', '.join(sorted(verified_mutations))}; UI, persistenza e autorità di rete escluse"})
+                target = next(row for row in rows if row['id'] == 'inventory')
+                target.update(status='yellow', evidence=f"{len(verified_mutations)} operazioni sorgenti verificate nel runtime; UI, persistenza e trasferimenti completi ancora da migrare")
+            if verified_notifications:
+                milestones.append({'title': 'Notifiche multicast originali nel runtime della scena', 'status': 'green',
+                                   'evidence': f"{len(verified_notifications)} funzioni con payload e ordine degli eventi confrontati; wiring originale tra oggetti, UI e replica esclusi"})
     report = {'schema_version': 1, 'project': project, 'fingerprint': fingerprint,
               'scope': 'cached registry and published outputs; no full-game percentage inferred',
               'source_classes': dict(classes), 'rows': rows, 'milestones': milestones,

@@ -113,6 +113,35 @@ class ProgressReportTests(unittest.TestCase):
         sample['resulting_state']['Enabled'] = True; atomic_json(path, audit)
         self.assertTrue(any('confronti sorgenti' in m['title'] for m in project_progress(self.workspace, self.published, self.character)['milestones']))
 
+    def test_mutations_and_notifications_require_exact_effects_state_and_visual_proof(self):
+        function = {'source_bytecode_sha256': 'bytecode', 'self_writes': ['Count']}
+        program = {'project': self.project, 'packages': {'/Game/A': {'functions': {'Change': function}}}}
+        program['content_sha256'] = digest(program); atomic_json(self.published / 'blueprint-programs.json', program)
+        folder = self.published / 'verification'; folder.mkdir()
+        (folder / 'blueprint-audit.jpg').write_bytes(b'audit'); (folder / 'blueprint-live.jpg').write_bytes(b'live')
+        effects = [{'op': 'broadcast', 'delegate': 'Changed', 'parameters': {'Count': 2}, 'listeners': 0}]
+        sample = {'inputs': {}, 'outputs': {}, 'expected': {}, 'resulting_state': {'Count': 2}, 'expected_state': {'Count': 2},
+                  'effects': effects, 'expected_effects': effects}
+        audit = {'project': self.project, 'status': 'passed', 'programs_content_sha256': program['content_sha256'],
+                 'screenshot_sha256': file_hash(folder / 'blueprint-audit.jpg'), 'golden_source_cases': 1,
+                 'evidence': [{'package': '/Game/A', 'function': 'Change', 'source_bytecode_sha256': 'bytecode', 'source_cases': [sample]}]}
+        atomic_json(self.published / 'blueprint-audit-verification.json', audit)
+        result = {'package': '/Game/A', 'source_function': 'Change', 'source_bytecode_sha256': 'bytecode', **sample}
+        live = {'schema_version': 1, 'project': self.project, 'status': 'passed', 'programs_content_sha256': program['content_sha256'],
+                'screenshot_sha256': file_hash(folder / 'blueprint-live.jpg'), 'inventory_checked': 1, 'inventory_results': [result]}
+        path = self.published / 'blueprint-live-verification.json'
+        def has_checkpoint():
+            atomic_json(path, live)
+            return any(m['title'].startswith('Scritture inventario') for m in project_progress(self.workspace, self.published, self.character)['milestones'])
+        self.assertTrue(has_checkpoint())
+        result['effects'] = []; self.assertFalse(has_checkpoint())
+        result['effects'] = effects; result['resulting_state'] = {'Count': True}; self.assertFalse(has_checkpoint())
+        result['resulting_state'] = {'Count': 2}; result['outputs'] = {'Wrong': 1}; self.assertFalse(has_checkpoint())
+        result['outputs'] = {}; live['screenshot_sha256'] = 'stale'; self.assertFalse(has_checkpoint())
+        live['screenshot_sha256'] = file_hash(folder / 'blueprint-live.jpg'); self.assertTrue(has_checkpoint())
+        sample['effects'] = []; atomic_json(self.published / 'blueprint-audit-verification.json', audit)
+        self.assertFalse(has_checkpoint())
+
     def test_scene_calculations_require_matching_source_cases_and_current_visual_proof(self):
         function = {'source_bytecode_sha256': 'bytecode', 'input_fields': ['X'], 'output_fields': ['Y'], 'self_writes': []}
         program = {'project': self.project, 'packages': {'/Game/A': {'functions': {'Probe': function}}}}

@@ -51,7 +51,7 @@ MATH_CALLS.update({'Divide_DoubleDouble': (2, 'DoubleDouble'),
                    'Lerp': (3, 'DoubleDouble'), 'FMin': (2, 'DoubleDouble'), 'FMax': (2, 'DoubleDouble'),
                    'InRange_FloatFloat': (5, 'double_range'),
                    'Min': (2, 'IntInt'), 'Max': (2, 'IntInt'),
-                   'Conv_IntToDouble': (1, 'IntInt'), 'SelectInt': (3, 'int_select'),
+                   'Conv_IntToDouble': (1, 'IntInt'), 'SelectInt': (3, 'int_select'), 'SelectFloat': (3, 'double_select'),
                    'EqualEqual_BoolBool': (2, 'bool'), 'NotEqual_BoolBool': (2, 'bool'),
                    'EqualEqual_NameName': (2, 'name'), 'NotEqual_NameName': (2, 'name'),
                    'FClamp': (3, 'DoubleDouble'), 'Clamp': (3, 'IntInt')})
@@ -146,46 +146,31 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
             return {'op': 'table_get', 'table': expression(args[0], reads, outputs, depth+1, package, owner),
                     'row': expression(args[1], reads, outputs, depth+1, package, owner),
                     'target': expression(args[2], reads, outputs, depth+1, package, owner), 'row_source': schema['source']}
-        if (kind(obj) == 'EX_ObjectConst' and import_path(package, obj.get('Value')) == ('/Script/Engine', 'Default__KismetArrayLibrary')
-                and kind(call) == 'EX_FinalFunction'
-                and import_path(package, call.get('StackNode')) == ('/Script/Engine', 'KismetArrayLibrary', 'Array_Length')):
-            args = call.get('Parameters', [])
-            if len(args) != 1 or kind(args[0]) != 'EX_InstanceVariable':
-                raise BlueprintTranslationError('Unsupported Array_Length source arguments')
-            name = field(args[0].get('Variable')); cls = package.export(owner)
-            prop = next((p for p in (cls or {}).get('LoadedProperties', []) if p.get('Name') == name), {})
-            schema = property_schema(package, prop)
-            if (not schema or schema['type'] != 'ArrayProperty' or value.get('Offset') != memory_size(call, package=package)
-                    or args[0].get('Variable', {}).get('New', {}).get('ResolvedOwner') != owner):
-                raise BlueprintTranslationError('Unresolved Array_Length source type, owner or context offset')
-            return {'op': 'array_length', 'array': expression(args[0], reads, outputs, depth+1, package, owner)}
-        if (kind(obj) == 'EX_ObjectConst' and import_path(package, obj.get('Value')) == ('/Script/Engine', 'Default__KismetArrayLibrary')
-                and kind(call) == 'EX_FinalFunction'
-                and import_path(package, call.get('StackNode')) == ('/Script/Engine', 'KismetArrayLibrary', 'Array_Get')):
-            args = call.get('Parameters', [])
-            if len(args) != 3 or kind(args[0]) != 'EX_InstanceVariable' or kind(args[2]) not in ('EX_LocalVariable', 'EX_LocalOutVariable'):
-                raise BlueprintTranslationError('Unsupported Array_Get source arguments')
-            name = field(args[0].get('Variable'))
-            cls = package.export(owner)
-            prop = next((p for p in (cls or {}).get('LoadedProperties', []) if p.get('Name') == name), {})
-            schema = property_schema(package, prop)
-            if not schema or schema['type'] != 'ArrayProperty': raise BlueprintTranslationError('Unresolved original array element type')
-            output_owner = package.export(args[2].get('Variable', {}).get('New', {}).get('ResolvedOwner'))
-            output_prop = next((p for p in (output_owner or {}).get('LoadedProperties', []) if p.get('Name') == field(args[2].get('Variable'))), {})
-            if (not output_owner or output_owner is not getattr(package, '_active_function', None) or output_owner.get('OuterIndex') != owner
-                    or property_schema(package, output_prop) != schema['element']
-                    or value.get('Offset') != memory_size(call, package=package)):
-                raise BlueprintTranslationError('Array_Get output type or source context offset differs')
-            return {'op': 'array_get', 'array': expression(args[0], reads, outputs, depth+1, package, owner),
-                    'index': expression(args[1], reads, outputs, depth+1, package, owner),
-                    'target': expression(args[2], reads, outputs, depth+1, package, owner), 'element': schema['element']}
+        from blueprint_effects import array_context
+        adapted = array_context(value, package, owner, reads, outputs, depth)
+        if adapted is not None: return adapted
         raise BlueprintTranslationError('Unsupported opcode: EX_Context')
     if token in ('EX_LocalVirtualFunction', 'EX_LocalFinalFunction', 'EX_FinalFunction'):
         return local_call(value, package, owner, reads, outputs, depth)
     if token == 'EX_StructMemberContext':
         return {'op': 'member', 'field': field(value.get('StructMemberExpression')),
                 'value': expression(value.get('StructExpression'), reads, outputs, depth+1, package, owner)}
+    if token == 'EX_StructConst':
+        schema = getattr(package, 'source_structs', {}).get(import_path(package, value.get('Struct'))) if package else None
+        members, values = (schema or {}).get('member_order'), value.get('Value')
+        if (not schema or not members or not isinstance(values, list) or len(values) != len(members)
+                or type(value.get('StructSize')) is not int or value['StructSize'] <= 0):
+            raise BlueprintTranslationError('Unresolved original struct constant layout')
+        return {'op': 'struct_literal', 'schema': schema, 'source_struct_size': value['StructSize'],
+                'fields': {name: expression(arg, reads, outputs, depth+1, package, owner) for name, arg in zip(members, values)}}
+    if token == 'EX_CallMulticastDelegate' and package:
+        from blueprint_effects import multicast
+        return multicast(value, package, owner, reads, outputs, depth)
     if token == 'EX_CallMath':
+        if package:
+            from blueprint_effects import dirty_call
+            adapted = dirty_call(value, package, owner)
+            if adapted is not None: return adapted
         name = math_call(package, value.get('StackNode'))
         args = value.get('Parameters')
         if not isinstance(args, list) or len(args) != MATH_CALLS[name][0]:
@@ -407,7 +392,7 @@ def translate_function(export, package=None, entry_offset=None):
             steps.append({'op': 'return', 'value': expression(instruction.get('ReturnExpression'), reads, outputs, package=package, owner=export.get('OuterIndex')),
                           'source_index': index})
             returned = True
-        elif token in ('EX_LocalVirtualFunction', 'EX_LocalFinalFunction', 'EX_FinalFunction', 'EX_CallMath', 'EX_Context'):
+        elif token in ('EX_LocalVirtualFunction', 'EX_LocalFinalFunction', 'EX_FinalFunction', 'EX_CallMath', 'EX_Context', 'EX_CallMulticastDelegate'):
             steps.append({'op': 'evaluate', 'value': expression(instruction, reads, outputs, package=package, owner=export.get('OuterIndex')),
                           'source_index': index})
         else:
@@ -466,9 +451,11 @@ def translate_package(package, structs=None, tables=None):
                 def local_reads(value):
                     if isinstance(value, dict):
                         target = value.get('target', {})
-                        if (value.get('op') in ('array_get', 'table_get', 'set_member') and target.get('scope') == 'local'
+                        if (value.get('op') in ('array_get', 'array_mutate', 'table_get', 'set_member') and target.get('scope') == 'local'
                                 and target.get('field') in const_inputs):
                             raise BlueprintTranslationError('Write through original const input')
+                        if value.get('op') == 'array_mutate' and target.get('scope') == 'self':
+                            program['self_writes'] = sorted(set(program['self_writes']) | {target['field']})
                         if value.get('op') == 'call' and any(binding.get('mode') == 'output'
                                 and binding.get('target', {}).get('scope') == 'local'
                                 and binding['target'].get('field') in const_inputs for binding in value.get('bindings', [])):
@@ -500,14 +487,18 @@ def translate_package(package, structs=None, tables=None):
                                   'self': {name: schema for name in program['self_reads'] if name in class_properties
                                            and (schema := property_schema(package, class_properties[name])) and schema['type'] in ('StructProperty', 'ArrayProperty', 'ObjectProperty')}}
             for scope, types in program['field_types'].items():
-                if any(type_name == 'ArrayProperty' and name not in program['schemas'][scope] for name, type_name in types.items()):
-                    raise BlueprintTranslationError('Unresolved array element schema')
+                if any(type_name in ('ArrayProperty', 'StructProperty') and name not in program['schemas'][scope] for name, type_name in types.items()):
+                    raise BlueprintTranslationError('Unresolved source array or struct schema')
             program['persistent_types'] = persistent
             program['input_fields'] = [prop['Name'] for prop in export.get('LoadedProperties', [])
                                        if prop.get('Name') in used_locals and 'CPF_Parm' in str(prop.get('PropertyFlags'))
                                        and ('CPF_OutParm' not in str(prop.get('PropertyFlags')) or prop['Name'] in const_inputs
                                             or 'CPF_ReferenceParm' in str(prop.get('PropertyFlags')))
                                        and 'CPF_ReturnParm' not in str(prop.get('PropertyFlags'))]
+            program['parameters'] = [{'name': prop['Name'], 'schema': property_schema(package, prop)}
+                                     for prop in export.get('LoadedProperties', []) if 'CPF_Parm' in str(prop.get('PropertyFlags'))
+                                     and 'CPF_ReturnParm' not in str(prop.get('PropertyFlags'))
+                                     and ('CPF_OutParm' not in str(prop.get('PropertyFlags')) or prop['Name'] in const_inputs)]
             program['source_defaults'] = {name: defaults[name] for name in program['self_reads'] if name in defaults}
             program['source_export_index'] = index
             if program['name'] in functions: raise BlueprintTranslationError('Duplicate function name')
@@ -579,7 +570,15 @@ def translate_package(package, structs=None, tables=None):
                        and not program['output_fields'] for program in functions.values())
     counts = {'translated': len(functions), 'blocked': len(blocked), 'declarations': len(declarations), 'no_op_functions': no_ops}
     if events: counts.update(event_entries=len(events), empty_event_functions=empty_events)
-    return {'functions': functions, 'event_programs': events, 'event_blocked': event_blocked,
+    from blueprint_effects import delegate_signature
+    signatures = {}
+    for name, prop in class_properties.items():
+        if prop.get('SerializedType') != 'MulticastInlineDelegateProperty': continue
+        owners = [i for i, e in enumerate(package.exports, 1) if prop in e.get('LoadedProperties', [])]
+        if len(owners) != 1: continue
+        try: signatures[name] = delegate_signature(package, owners[0], name)
+        except BlueprintTranslationError: continue
+    return {'functions': functions, 'event_programs': events, 'event_blocked': event_blocked, 'delegate_signatures': signatures,
             'blocked': blocked, 'declarations': declarations, 'default_state': default_state,
             'counts': counts}
 
@@ -711,6 +710,7 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
                           'controls': file_hash(controls_file) if controls_file.is_file() else None,
                           'implementation': file_hash(Path(__file__)),
                           'events_implementation': file_hash(Path(__file__).with_name('blueprint_events.py')),
+                          'effects_implementation': file_hash(Path(__file__).with_name('blueprint_effects.py')),
                           'values_implementation': file_hash(Path(__file__).with_name('blueprint_values.py')),
                           'types_implementation': file_hash(Path(__file__).with_name('blueprint_types.py'))})
     report_file = output / 'blueprint-programs.json'
@@ -739,8 +739,9 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
               'limitations': ['Locals, instance state, comparisons, static jumps and same-source-class calls with out parameters execute.',
                              'Struct member reads, typed source-struct field writes/defaults, typed Array_Get copies and ASCII FName equality execute.',
                              'Cached typed DataTable row reads retain primitive/array/native-vector fields, FText identities and data-only asset references.',
-                             'Asset references do not execute or convert their referenced assets. Other FText histories, unsupported identity characters, struct constants and nested writes remain blocked.',
-                             'Other array operations and Unicode FName comparisons remain unsupported.',
+                             'Asset references do not execute or convert their referenced assets. Other FText histories, unsupported identity characters and nested writes remain blocked.',
+                             'Typed source struct constants and array Get/Length/IsValidIndex/Set/Remove/Clear/Add/Append execute; other array operations and Unicode FName comparisons remain blocked.',
+                             'Original property-dirty witnesses and typed multicast emissions execute locally. Explicitly registered translated handlers run transactionally; original world/UI bindings and network replication are not migrated.',
                              'Constant source event entries, flow stacks and per-instance persistent primitive fields execute on fully translated reachable paths.',
                              'Event callbacks with no source effects are counted separately; animation dispatch, native effects and complete game events are not implied.',
                              'Cross-object calls, derived-class virtual overrides, arbitrary dynamic jumps, latent actions and replication remain blocked.',
