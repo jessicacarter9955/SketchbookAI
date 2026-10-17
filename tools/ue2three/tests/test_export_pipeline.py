@@ -83,7 +83,7 @@ class PipelineTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,"Unreal export"):
             stage(src,self.root/"out","rio")
     def test_corrupt_binary_is_rejected(self):
-        f=self.root/"bad.glb";f.write_bytes(b"glTF"+"\0"*44)
+        f=self.root/"bad.glb";f.write_bytes(b"glTF"+b"\0"*44)
         with self.assertRaises(ValueError):validate_glb(f)
 if __name__=="__main__":
     unittest.main()
