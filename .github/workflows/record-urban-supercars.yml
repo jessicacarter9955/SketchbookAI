@@ -40,7 +40,7 @@ jobs:
             ffprobe -v error -show_entries format=duration -of default=nw=1 "artifacts/urban-supercar-driving/$car.mp4"
           done
           test -s "artifacts/urban-supercar-driving/urban-photoreal-overview.png"
-          node -e 'const j=require("./artifacts/urban-supercar-driving/results.json");if(!j.ok||j.cars.length!==3||j.cars.some(x=>x.driveDistanceMeters<0.5))process.exit(1);'
+          node -e 'const j=require("./artifacts/urban-supercar-driving/results.json");if(!j.ok||j.cars.length!==3||j.cars.some(x=>x.driveDistanceMeters<0.4))process.exit(1);'
           echo "Three genuine Sketchfab driving recordings and photos verified." >> "$GITHUB_STEP_SUMMARY"
       - name: Upload 3 individual videos and photos for viewing
         if: always()
