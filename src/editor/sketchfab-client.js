@@ -131,7 +131,7 @@
                     return response.json();
                 }
             }
-            if (unauthorized) throw new Error('Tutti i token Sketchfab salvati sono stati rifiutati (HTTP 401). Aggiorna la configurazione.');
+            if (unauthorized) throw new Error('Nessun token Sketchfab valido: tutte le credenziali salvate sono state rifiutate (HTTP 401). Aggiorna la configurazione.');
             throw new Error('Sketchfab non raggiungibile.');
         }
         search(query, { animated = false, maxFaces = '', next = null, signal } = {}) {
