@@ -1,0 +1,36 @@
+name: Tripo CLI connection check
+
+on:
+  push:
+    branches:
+      - chatgpt/ue2three-dds
+    paths:
+      - .github/workflows/tripo-cli.yml
+      - docs/tripo-cli-integration.md
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  doctor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify official CLI can run
+        run: npx --yes tripo-cli@latest --help
+      - name: Check connected Tripo account (read-only, no generation)
+        shell: bash
+        env:
+          TRIPO_API_KEY: ${{ secrets.TRIPO_API_KEY }}
+        run: |
+          if [ -z "$TRIPO_API_KEY" ]; then
+            echo "Tripo CLI runnable; no account connected. Set repository secret TRIPO_API_KEY." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          npx --yes tripo-cli@latest doctor
+          echo "Tripo CLI doctor completed successfully (account/network/balance checked; no model generated)." >> "$GITHUB_STEP_SUMMARY"
