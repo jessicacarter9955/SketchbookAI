@@ -37,6 +37,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Verify coastal district road networks and bridge geometry
+        run: node --test tests/districts.test.mjs
       - name: Build Three.js application
         run: npm run build
       - name: Prepare static deploy without local files or credentials
