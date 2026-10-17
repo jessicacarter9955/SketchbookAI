@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UE2Three · New York · Verified Unreal Native Meshes</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#101824;color:#e4ecf6;font:14px/1.5 system-ui,Arial;overflow:hidden}
+#view{position:fixed;inset:0}
+header{position:fixed;z-index:2;top:20px;left:20px;max-width:min(420px,calc(100vw - 40px));background:#0b1421e8;border:1px solid #526b7e;border-radius:13px;padding:17px 20px;box-shadow:0 10px 35px #0006;pointer-events:auto}
+h1{margin:0 0 6px;font-size:23px;line-height:1.12;letter-spacing:-.4px}
+.tag{color:#83cbdb;text-transform:uppercase;font-size:11px;letter-spacing:1.4px}
+p{margin:4px 0 10px;color:#bccdd8}
+a{color:#8edbff}#status{font-weight:650;color:#b0f2ca}#status.error{color:#ffb5b5}
+small{font-size:11px;color:#90a4b2}
+footer{position:fixed;bottom:14px;left:14px;padding:10px 12px;background:#111c2ad9;border-radius:10px;color:#ced6df}
+@media(max-width:550px){header{padding:12px;top:8px;left:8px}h1{font-size:18px}footer{font-size:11px}}
+</style><script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script></head>
+<body><main id="view" aria-label="Render 3D di mesh architettoniche originali estratte da file Unreal"></main>
+<header>
+<div class="tag">Verified Unreal static meshes · Not a complete level</div>
+<h1>New York · UE2Three Native Geometry</h1>
+<p>Geometria estratta da veri file Unreal <b>.uasset</b>; materiali sostitutivi PBR con fotografia CC0. Non sono gli shader originali Unreal.</p>
+<div id="status" role="status">Verifica GLB in corso…</div>
+<p id="info"></p>
+<small><a href="editor.html?scene=coastal-districts&play=1">↩ Torna alla città giocabile</a> · trascina per ruotare · scorri per zoom</small>
+</header><footer>🔎 Prova tecnica: 5 StaticMesh originali, non un intero quartiere Unreal.</footer>
+<script type="module" src="tools/ue2three/native-newyork-viewer.js"></script>
+</body></html>
