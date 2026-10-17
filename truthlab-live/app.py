@@ -237,8 +237,8 @@ class Handler(BaseHTTPRequestHandler):
         return bool(TOKEN) and hmac.compare_digest(given,"Bearer "+TOKEN)
     def do_GET(self):
         path=self.path.split("?",1)[0]
-        if path=="/browser-worker.js":
-            worker=(ROOT/"browser-worker.js").read_bytes()
+        if path in ("/browser-worker.js","/browser-control.js"):
+            worker=(ROOT/path.lstrip("/")).read_bytes()
             self.headers_base(200,"text/javascript; charset=utf-8",len(worker))
             return self.wfile.write(worker)
         if path=="/health":
