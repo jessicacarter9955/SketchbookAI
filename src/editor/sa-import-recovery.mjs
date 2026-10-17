@@ -14,7 +14,7 @@ export function validateSaGeometryInput(files){
   if(!list.length||list.length>128)throw Error('Seleziona da 1 a 128 settori GLB originali.');
   const keys=new Set();
   for(const file of list){
-    if(!file||!/^[a-z0-9_.-]+\\.glb$/i.test(file.name)||file.name.startsWith('.')||
+    if(!file||!/^[a-z0-9_.-]+\.glb$/i.test(file.name)||file.name.startsWith('.')||
        !Number.isFinite(file.size)||file.size<20||file.size>MAX_GLB_SIZE)
       throw Error('Settore GLB non valido o oltre 256 MB: '+(file?.name||'file sconosciuto'));
     const name=file.name.toLowerCase();
