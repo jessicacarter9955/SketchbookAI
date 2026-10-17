@@ -3,7 +3,9 @@ name: Export real UE4 city architecture from public native UAssets
 on:
   push:
     branches: [codex/ue2three-realistic-districts]
-    paths: ['.github/workflows/unreal-native-asset-export.yml']
+    paths:
+      - '.github/workflows/unreal-native-asset-export.yml'
+      - 'tools/ue2three/package_city_native_meshes.py'
   workflow_dispatch:
 
 permissions:
