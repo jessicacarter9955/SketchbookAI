@@ -190,3 +190,28 @@ test('vehicle GLB automatically tests four quarter-turns, including nose directi
   const b=new THREE.Box3().setFromObject(rear).getCenter(new THREE.Vector3());
   assert.ok(a.z>b.z);
 });
+
+test('Imported Ferrari/BMW/Lamborghini assets are driveable and their prefab survives JSON save/load',async()=>{
+ const {isImportedVehicle}=await import('../src/editor/vehicle-import.mjs');
+ const {validateScene}=await import('../src/editor/scene-data.mjs');
+ for(const name of ['Ferrari 288 GTO','Ferrari F40','BMW M4 G82','Lamborghini Aventador SV']){
+   assert.equal(isImportedVehicle({name}),true,name);
+ }
+ for(const name of ['carpet pattern','carport','street bench','oak tree']){
+   assert.equal(isImportedVehicle({name}),false,name);
+ }
+ const item={id:'car1',prefab:'vehicle',assetId:'glb-test',name:'Ferrari 288 GTO',
+   position:[2,0,3],rotation:[0,0,0],scale:[1,1,1],collider:false};
+ const saved=validateScene({version:1,world:'procedural-city',objects:[item]});
+ assert.equal(saved.objects[0].prefab,'vehicle');
+ assert.equal(saved.objects[0].assetId,'glb-test');
+ assert.equal(saved.objects[0].collider,false);
+ const source=await readFile(new URL('../src/editor/ActorLayer.js',import.meta.url),'utf8');
+ assert.match(source,/createVehicleActor\(item\)/);
+ assert.match(source,/spawnImportedVehicle\(item\)/);
+ assert.match(source,/rigImportedWheels\(shell,brand\.id,actor,THREE\)/);
+ const editor=await readFile(new URL('../src/editor/SceneEditor.js',import.meta.url),'utf8');
+ assert.match(editor,/spawnImportedVehicle\(item\)/);
+ const vehicle=await readFile(new URL('../src/ts/vehicles/Vehicle.ts',import.meta.url),'utf8');
+ assert.match(vehicle,/sketchfabWheelRig/);
+});
