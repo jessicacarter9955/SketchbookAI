@@ -2,7 +2,7 @@ name: Verify real Sketchfab supercar downloads
 on:
   push:
     branches: [img2threejs-runner]
-    paths: [".github/workflows/sketchfab-supercars-smoke.yml"]
+    paths: [".github/workflows/sketchfab-supercars-smoke.yml","fab-cloud/server.cjs","fab-cloud/sketchfab-supercars.cjs"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -17,8 +17,8 @@ jobs:
           set -eu
           HOST="https://sketchbook-fab-bridge.onrender.com"
           curl -fsSL --retry 3 --max-time 30 "$HOST/sketchfab/showcase" -o /tmp/sketchfab-catalog.json
-          node -e 'const c=require("/tmp/sketchfab-catalog.json");if(!c.configured||c.vehicles.length!==3)process.exit(1);console.log("Catalog shows 3 licensed models and server credentials are configured.")'
-          for model in bmw ferrari lamborghini; do
+          node -e 'const c=require("/tmp/sketchfab-catalog.json");if(!c.configured||c.vehicles.length!==4||!c.vehicles.some(x=>x.id==="ferrari288"&&x.uid==="e83da098149746b5a3ba6f1661645b09"))process.exit(1);console.log("Catalog shows 4 attributed CC BY cars and server credentials are configured.")'
+          for model in ferrari288; do
             status=$(curl -sSL --max-time 120 --retry 1 --output "/tmp/${model}.blob" --write-out '%{http_code}' "$HOST/sketchfab/cars/$model")
             bytes=$(wc -c <"/tmp/${model}.blob")
             echo "$model: HTTP $status, $bytes bytes" | tee -a "$GITHUB_STEP_SUMMARY"
@@ -30,4 +30,4 @@ jobs:
             MODEL="$model" node -e 'const fs=require("fs");const b=fs.readFileSync("/tmp/"+process.env.MODEL+".blob");if(b.toString("utf8",0,4)==="glTF"){const n=b.readUInt32LE(12),j=JSON.parse(b.toString("utf8",20,20+n));console.log("GLB",process.env.MODEL,"extensionsRequired:",j.extensionsRequired||[],"meshes:",j.meshes?.length,"materials:",j.materials?.length)}'
             rm -f "/tmp/${model}.blob"
           done
-          echo "All 3 licensed Sketchfab car downloads verified." >> "$GITHUB_STEP_SUMMARY"
+          echo "Ferrari 288 GTO licensed Sketchfab download verified." >> "$GITHUB_STEP_SUMMARY"

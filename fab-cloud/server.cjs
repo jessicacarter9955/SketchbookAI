@@ -129,7 +129,7 @@ async function app(req,res) {
         return reply(res,200,{provider:'sketchfab',configured:sketchfab.configured(),
             vehicles:sketchfab.catalog()},origin);
     }
-    if(req.method==='GET' && /^\/sketchfab\/cars\/(bmw|ferrari|lamborghini)$/.test(url.pathname)) {
+    if(req.method==='GET' && /^\/sketchfab\/cars\/(bmw|ferrari|ferrari288|lamborghini)$/.test(url.pathname)) {
         if(!throttle(req,12)) return reply(res,429,{error:'Troppe richieste.'},origin);
         try {
             const id = url.pathname.split('/').pop();

@@ -5,6 +5,8 @@ const MODELS = Object.freeze({
         creator:'Rosemarin',license:'CC BY',url:'https://sketchfab.com/3d-models/bmw-m4-g82-5a9007d569a846548dbf352877550c4e' },
     ferrari: { brand:'Ferrari',name:'Ferrari F40',uid:'52a66c41cfcd4f999fb1b1c49bf24d70',
         creator:'Black Snow',license:'CC BY',url:'https://sketchfab.com/3d-models/ferrari-f40-52a66c41cfcd4f999fb1b1c49bf24d70' },
+    ferrari288: { brand:'Ferrari',name:'Ferrari 288 GTO',uid:'e83da098149746b5a3ba6f1661645b09',
+        creator:'Randomness',license:'CC BY',url:'https://sketchfab.com/3d-models/ferrari-288-gto-e83da098149746b5a3ba6f1661645b09' },
     lamborghini: { brand:'Lamborghini',name:'Lamborghini Aventador SV',uid:'4350c8de8fd740f582bd316c1fa010ff',
         creator:'SDC PERFORMANCE',license:'CC BY',url:'https://sketchfab.com/3d-models/free-lamborghini-aventador-sv-tunnig-by-sdc-4350c8de8fd740f582bd316c1fa010ff'}
 });

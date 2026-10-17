@@ -122,7 +122,9 @@ test('Fab cloud refuses operations without bridge key and rejects foreign origin
 
 test('Sketchfab supercar credentials stay in server environment, and only whitelisted CC BY models are downloadable',async()=>{
     const {MODELS,catalog,getGrant} = require('../fab-cloud/sketchfab-supercars.cjs');
-    assert.deepEqual(Object.keys(MODELS), ['bmw','ferrari','lamborghini']);
+    assert.deepEqual(Object.keys(MODELS), ['bmw','ferrari','ferrari288','lamborghini']);
+    assert.equal(MODELS.ferrari288.uid,'e83da098149746b5a3ba6f1661645b09');
+    assert.equal(MODELS.ferrari288.creator,'Randomness');
     assert.ok(catalog().every(c=>c.license==='CC BY' && /^https:\/\/sketchfab.com\//.test(c.url)));
     const prior=process.env.SKETCHFAB_TOKENS;
     process.env.SKETCHFAB_TOKENS='a'.repeat(32);
