@@ -15,6 +15,8 @@ import { UrbanTool } from './UrbanTool';
 import { DEFAULT_URBAN } from './urban-data.mjs';
 import { geoJSONToPrefabs } from './geojson-import.mjs';
 import { autoOrientVehicle } from './auto-orient-vehicle.mjs';
+import { fitVehicleVisual } from './supercars.mjs';
+import { isImportedVehicle } from './vehicle-import.mjs';
 
 const labels = { box: 'Blocco', building: 'Edificio', road: 'Strada', tree: 'Albero', lamp: 'Lampione', car: 'Auto statica', vehicle: 'Auto guidabile', pedestrian: 'Abitante' };
 const copy = value => JSON.parse(JSON.stringify(value));
@@ -201,7 +203,9 @@ export class SceneEditor {
     }
     create(item) {
         const object = new THREE.Group(); object.userData.editorId = item.id;
-        object.add(item.assetId ? clone(this.templates.get(item.assetId)) : this.prefab(item.prefab));
+        if(item.assetId&&item.prefab==='vehicle')
+            object.add(fitVehicleVisual(this.templates.get(item.assetId),THREE));
+        else object.add(item.assetId ? clone(this.templates.get(item.assetId)) : this.prefab(item.prefab));
         object.traverse(node => { if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; for (const material of [].concat(node.material)) this.world.sky.setupMaterial(material); } });
         object.userData.bounds = new THREE.Box3().setFromObject(object);
         object.position.fromArray(item.position); object.rotation.set(...item.rotation); object.scale.fromArray(item.scale);
@@ -311,15 +315,24 @@ export class SceneEditor {
     async importBytes(bytes, metadata = {}, {nearPlayer=false} = {}) {
         if(this.items.length>=500)throw new Error('Limite di 500 oggetti raggiunto.');
         bytes = await modelToGLB(bytes);
+        metadata={...metadata,role:isImportedVehicle(metadata)?'vehicle':(metadata.role||'prop')};
+        const isVehicle=metadata.role==='vehicle';
         const asset = { id: crypto.randomUUID(), bytes, metadata }; const template = await this.prepareAsset(asset);
         await this.store.putAll([asset]); this.assets.set(asset.id, asset); this.templates.set(asset.id, template);
         if(nearPlayer && this.world.editorPlayer){
             const item={id:crypto.randomUUID(),assetId:asset.id,name:metadata.name||'Modello',
-                position:this.spawnPositionForAsset(),rotation:[0,0,0],scale:[1,1,1],collider:true};
+                ...(isVehicle?{prefab:'vehicle'}:{}),
+                position:this.spawnPositionForAsset(),rotation:[0,0,0],scale:[1,1,1],collider:!isVehicle};
             this.items.push(item);this.create(item);this.select(item.id);this.commit();
-            this.message('“'+item.name+'” inserito davanti al giocatore. Premi «Posiziona» per spostarlo con un clic nell’editor.');
+            if(isVehicle && !this.active){
+                const vehicle=this.world.actorLayer?.spawnImportedVehicle(item);
+                this.objects.get(item.id).visible=false;
+                if(!vehicle)throw Error('Auto importata ma attore guidabile non disponibile.');
+                this.message('“'+item.name+'” guidabile vicino al giocatore. Avvicinati e premi F per entrare; WASD per guidare.');
+            }else this.message('“'+item.name+'” inserito davanti al giocatore. Premi «Posiziona» per spostarlo con un clic nell’editor.');
         }else{
-            this.add({ assetId: asset.id, name: metadata.name || 'Modello' });
+            this.add({ assetId: asset.id, ...(isVehicle?{prefab:'vehicle',collider:false}:{}),
+                name: metadata.name || 'Modello' });
             this.focus(); this.message('“'+(metadata.name||'Modello')+'” aggiunto e selezionato nella scena.');
         }
     }
