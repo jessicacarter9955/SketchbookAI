@@ -32,7 +32,16 @@ try{
   await page.evaluate(()=>globalThis.sceneEditor.openModelLibrary('ferrari'));
   const card=page.locator('.asset-results article[data-model="'+uid+'"]');
   await card.waitFor({state:'visible',timeout:45000});
-  await card.getByRole('button',{name:'Aggiungi alla scena'}).click({timeout:20000});
+  // On SwiftShader the 8M-triangle photoreal city can prevent Playwright's
+  // actionability (stable-pixel) detector from settling. Dispatch the actual
+  // DOM button's click event after confirming it is visible and enabled.
+  await page.evaluate(modelUid=>{
+    const card=document.querySelector('.asset-results article[data-model="'+modelUid+'"]');
+    const button=[...card?.querySelectorAll('button')||[]].find(b=>b.textContent==='Aggiungi alla scena');
+    if(!button||button.disabled||getComputedStyle(button).visibility==='hidden')
+      throw Error('Ferrari Add button missing or disabled');
+    button.click();
+  },uid);
   await page.waitForFunction(expected=>{
     const editor=globalThis.sceneEditor;
     return editor.items.length>expected&&editor.items.some(item=>
