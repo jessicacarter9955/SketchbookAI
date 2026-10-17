@@ -25,7 +25,14 @@ const {chromium}=require('playwright');
             const names=ed?.items?.filter(x=>x.name?.startsWith('Sketchfab · ')).map(x=>({name:x.name,prefab:x.prefab,assetId:x.assetId,position:x.position}))||[];
             const actors=world?.vehicles?.filter(x=>x.userData?.editorActor).map(x=>({
                 isCar:x.constructor?.name,position:x.position.toArray(),seats:x.seats?.length,
-                branded:!!x.children?.some(c=>c.userData?.sketchfabBody)
+                branded:!!x.children?.some(c=>c.userData?.sketchfabBody),
+                rig:x.userData.rigStatus||null,
+                wheels:x.rayCastVehicle?.wheelInfos.map(w=>({
+                    radius:w.radius,contact:w.isInContact,rotation:w.rotation,
+                    height:w.worldTransform?.position?.y,
+                    suspension:w.suspensionLength
+                })),
+                floor:x.userData.spawnGround,rideHeight:x.userData.chassisRideHeight
             }))||[];
             return {ready:!!ed,status:globalThis.supercarsStatus,names,actors,player:world?.editorPlayer?.position?.toArray(),
                 playing:!!ed&&!ed.active,worldReady:world?.levelRuntime?.ready,
@@ -46,6 +53,15 @@ const {chromium}=require('playwright');
                 throttle:!!car.actions?.throttle,engine:!!car.rayCastVehicle};
         });
         console.log('Vehicle driving:',JSON.stringify(entered));
+        const physics=await page.evaluate(()=>{
+            const actor=globalThis.world.vehicles.find(x=>x.userData.rigStatus?.ready);
+            return actor?{name:actor.userData.rigStatus?.source,
+                wheeling:actor.userData.sketchfabWheelRig?.map(w=>({index:w.index,pos:w.pivot.position.toArray(),q:w.pivot.quaternion.toArray()})),
+                wheels:actor.rayCastVehicle.wheelInfos.map(w=>({contact:w.isInContact,spin:w.rotation,suspension:w.suspensionLength,radius:w.radius,
+                    centerY:w.worldTransform.position.y})),ground:actor.userData.spawnGround,chassis:actor.position.y
+            }:null;
+        });
+        console.log('Rig details:',JSON.stringify(physics));
         if(!entered.occupied || !entered.control || !entered.throttle || !entered.engine)
             throw Error('Car seat driving controls not connected.');
         console.log('PASS: 3 Sketchfab branded cars and real driveable seat/controls.');
