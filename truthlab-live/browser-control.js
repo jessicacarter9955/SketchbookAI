@@ -20,12 +20,20 @@ async function request(method,action,data={}){
 function makeButton(txt,fun){const b=document.createElement("button");b.type="button";b.textContent=txt;b.onclick=fun;return b}
 const engineLine=document.createElement("div");engineLine.className="note";
 engineLine.textContent="Free browser model: Qwen2.5 0.5B, WebGPU required; model loads locally. Keep tab open. AI activity is NOT independently verified.";
-let localStart=makeButton("▶ Start free Qwen",()=>start());
+const modelSelect=document.createElement("select");
+modelSelect.setAttribute("aria-label","Local model");
+modelSelect.style.cssText="padding:9px;background:#1a2943;color:white;border-radius:9px;max-width:100%";
+for(const [id,label] of [["onnx-community/Qwen2.5-0.5B-Instruct","Qwen 0.5B (fast)"],["onnx-community/Qwen2.5-1.5B-Instruct","Qwen 1.5B (quality)"]]){
+ const o=document.createElement("option");o.value=id;o.textContent=label;modelSelect.append(o);
+}
+modelSelect.value=localStorage.getItem("truthlab_model")||"onnx-community/Qwen2.5-0.5B-Instruct";
+modelSelect.onchange=()=>localStorage.setItem("truthlab_model",modelSelect.value);
+let localStart=makeButton("▶ Start selected Qwen",()=>start());
 let localStop=makeButton("■ Stop Qwen",()=>stop());
 let localStatus=document.createElement("span");localStatus.className="sub";localStatus.textContent="Browser AI not started";
 let root=document.createElement("div");
 root.style.cssText="display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin-top:9px";
-root.append(localStart,localStop,localStatus);
+root.append(modelSelect,localStart,localStop,localStatus);
 document.querySelector(".actions")?.append(root);
 document.querySelector(".intro")?.insertAdjacentElement("afterend",engineLine);
 const individual={};
@@ -68,6 +76,7 @@ async function refresh(){
     ui.state.style.color=enabled?"var(--mint)":"var(--yellow)";
   }
   localStop.disabled=!live && !worker;
+  modelSelect.disabled=live||busy||!!worker;
   localStart.disabled=busy||live||!s.config.agents_enabled.Ari&&!s.config.agents_enabled.Noor;
   if(!live && s.config.engine==="browser" && s.config.status==="active" && !s.browser_active){
     localStatus.textContent="Browser worker inactive (open tab & click Start)";
@@ -91,7 +100,7 @@ function waitWorker(){
     if(workerReady){workerReady.reject(new Error(e.message||"Worker failed"));workerReady=null;}
     if(pending){pending.reject(new Error(e.message||"Worker failed"));pending=null;}
   };
-  worker.postMessage({type:"init"});
+  worker.postMessage({type:"init",model:modelSelect.value});
  });
 }
 function reply(system,prompt){
