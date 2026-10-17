@@ -1,0 +1,48 @@
+name: Film all 3 photoreal supercars with headful Chrome and Xvfb
+on:
+  push:
+    branches: [codex/sa-navigation-port]
+    paths:
+      - ".github/workflows/record-urban-supercars-x11.yml"
+      - "tools/record-urban-supercars-x11.cjs"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  film:
+    runs-on: ubuntu-latest
+    timeout-minutes: 17
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install headful Chromium, Xvfb, ffmpeg
+        run: |
+          npm install --prefix /tmp/photoreal-chrome --no-save --no-audit --no-fund playwright@1.56.0
+          /tmp/photoreal-chrome/node_modules/.bin/playwright install --with-deps chromium
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb xauth ffmpeg
+      - name: Film actual BMW Ferrari and Lamborghini in Urban Photoreal
+        env:
+          NODE_PATH: /tmp/photoreal-chrome/node_modules
+          PHOTO_URL: https://6ad259ad86251ebad353dc0c--my-test-site3.netlify.app/editor.html?scene=urban-photoreal&cityBlocks=2&play=1
+        run: xvfb-run -a -s "-screen 0 960x540x24" node tools/record-urban-supercars-x11.cjs
+      - name: Check actual three MP4s and photographs
+        run: |
+          for car in bmw ferrari lamborghini; do
+            test -s "artifacts/urban-supercar-driving/$car.png"
+            test -s "artifacts/urban-supercar-driving/$car.mp4"
+            ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "artifacts/urban-supercar-driving/$car.mp4"
+          done
+      - name: Upload all driving movies and real photo frames
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: urban-photoreal-driving-headful-x11
+          path: |
+            artifacts/urban-supercar-driving/*.mp4
+            artifacts/urban-supercar-driving/*.png
+            artifacts/urban-supercar-driving/results.json
+          if-no-files-found: warn
+          retention-days: 14
