@@ -1,14 +1,48 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 let templatesPromise;
+// THREE GLTFLoader uses ImageBitmapLoader in Chromium by default. A finished
+// network download does not mean createImageBitmap() has decoded the JPEG:
+// on lower-memory browsers this texture promise can stall for many seconds.
+// Use the ordinary HTMLImageElement-backed TextureLoader for tree textures.
+function treeLoader(){
+  const loader=new GLTFLoader();
+  loader.register(parser=>({
+    name:'UrbanTreeImageTextureLoader',
+    beforeRoot(){
+      if(parser.textureLoader?.isImageBitmapLoader){
+        const images=new THREE.TextureLoader(parser.options.manager);
+        images.setCrossOrigin(parser.options.crossOrigin||'anonymous');
+        parser.textureLoader=images;
+        globalThis.cityDiagnostics?.activity('VEGETAZIONE: decode texture con HTMLImageElement, non createImageBitmap');
+      }
+    }
+  }));
+  return loader;
+}
 async function templates(){
-  if(!templatesPromise)templatesPromise=Promise.all([0,1].map(level=>new GLTFLoader().loadAsync(`assets/urban-kits/tree_small_02/scene-lod${level}.gltf`))).then(kits=>kits.map(kit=>{
+  if(!templatesPromise){
+    const start=performance.now();
+    const load=level=>{
+      globalThis.cityDiagnostics?.activity('VEGETAZIONE: parsing albero GLTF LOD'+level+' avviato');
+      return treeLoader().loadAsync(`assets/urban-kits/tree_small_02/scene-lod${level}.gltf`)
+        .then(kit=>{
+          globalThis.cityDiagnostics?.activity('VEGETAZIONE: GLTF LOD'+level+' pronto in '+Math.round(performance.now()-start)+'ms');
+          return kit;
+        });
+    };
+    templatesPromise=Promise.all([load(0),load(1)]).then(kits=>kits.map(kit=>{
     const root=kit.scene;root.updateMatrixWorld(true);
     root.traverse(n=>{if(n.isMesh){n.userData.sharedUrbanAsset=true;n.castShadow=n.receiveShadow=true;for(const mat of [].concat(n.material)){mat.alphaTest=/leaves/.test(mat.name)?.45:0;mat.transparent=false;mat.side=THREE.DoubleSide;mat.envMapIntensity=.7;mat.roughness=.85;if(mat.map)mat.map.anisotropy=8;}}});
     const bounds=new THREE.Box3().setFromObject(root),size=bounds.getSize(new THREE.Vector3()),center=bounds.getCenter(new THREE.Vector3());
     root.position.set(-center.x,-bounds.min.y,-center.z);
     return {root,height:size.y};
-  }));
+  })).catch(error=>{
+      // Retry on the next attempt, rather than permanently caching a rejected promise.
+      templatesPromise=null;
+      throw error;
+    });
+  }
   return templatesPromise;
 }
 export async function createVegetation(items,seed=0){
