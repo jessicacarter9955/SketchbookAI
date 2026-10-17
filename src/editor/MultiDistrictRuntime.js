@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import {IslandRuntime} from './IslandRuntime.js';
 import {DISTRICT_PRESET,generateDistrictPlan,districtGround,districtDeckHeight,districtHash} from './district-data.mjs';
+import {loadUnrealDistricts,UE_DISTRICTS} from './UeDistrictImport.js';
 
 // City-scale coast, road collision, four distinct architectural/vegetation palettes.
 // Retains Sketchbook's Water, World physics, ActorLayer, editor, controllable vehicles and camera.
@@ -82,7 +83,7 @@ function buildFacadeTexture(theme,seed=0){
  }
  const tex=new THREE.CanvasTexture(cnv);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=4;return tex;
 }
-function architecture(group,plan,bodies){
+function architecture(group,plan,bodies,realDistricts=new Set()){
  const mats={};
  for(const d of plan.zones){
   const p=zonePalette[d.id],atlas=buildFacadeTexture(d.id,plan.config.seed);
@@ -98,6 +99,12 @@ function architecture(group,plan,bodies){
  };
  for(const b of plan.buildings){
   const y=districtGround(b.x,b.z),s=mats[b.district],rise=b.height;
+  // Keep physics footprints even when real Unreal geometry replaces the box facade.
+  if(realDistricts.has(b.district)){
+   bodies.push(new CANNON.Body({mass:0,shape:new CANNON.Box(new CANNON.Vec3(b.w/2,rise/2,b.d/2)),
+     position:new CANNON.Vec3(b.x,y+rise/2,b.z)}));
+   continue;
+  }
   const base=mesh(cube,s.body,group,[b.x,y+rise/2,b.z],true);
   base.scale.set(b.w,rise,b.d);base.userData.districtBuilding=b.id;
   const profile=b.theme==='metro'&&b.floors>17||b.theme==='tropical'&&b.floors>8;
@@ -239,10 +246,19 @@ export class MultiDistrictRuntime extends IslandRuntime {
   if(/Android|iPhone|iPad/i.test(navigator.userAgent))world.renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.15));
   world.isOutOfBounds=p=>p.y<-18||Math.abs(p.x)>1100||Math.abs(p.z)>900;
  }
- initialize(){this.generate(DISTRICT_PRESET);}
+ async initialize(report=()=>{}){
+   this.unreal=await loadUnrealDistricts({report});
+   this.generate(DISTRICT_PRESET);
+   globalThis.coastalDistrictEvidence={mode:this.unreal.items.length===4?'unreal-four-districts':this.unreal.items.length?'mixed-unreal':'procedural-preview',
+    districts:UE_DISTRICTS, imported:this.unreal.items.map(x=>({id:x.id,meshes:x.meshes,pbr:x.pbr})),
+    failed:this.unreal.errors,missingManifest:this.unreal.missing};
+   report('Coastal City: '+this.unreal.items.length+'/4 quartieri Unreal realmente importati.');
+  }
  generate(raw=DISTRICT_PRESET){
   const plan=generateDistrictPlan(raw),group=new THREE.Group(),bodies=[];
-  terrain(group,bodies,plan);architecture(group,plan,bodies);
+  const real=new Set((this.unreal?.items||[]).filter(item=>item.coverage==='architecture-only').map(item=>item.id));
+  terrain(group,bodies,plan);architecture(group,plan,bodies,real);
+  for(const item of this.unreal?.items||[])group.add(item.scene);
   placeRoads(group,plan,bodies);buildBeaches(group,plan);vegetation(group,plan);
   // Pier-side boardwalk: above the beach, away from the bridge navigation corridor.
   const boardwalk=mesh(new THREE.BoxGeometry(255,.25,7),m(0xaa9781),group,[175,2.2,200]);
@@ -266,7 +282,7 @@ export class MultiDistrictRuntime extends IslandRuntime {
   }
   const speed=Math.round(player?.controlledObject?.collision.velocity.length()*3.6||0);
   const el=document.querySelector('[data-city-status]');
-  if(el)el.textContent='COASTAL DISTRICTS · '+(near?.name||'Viadotto')+
+  if(el)el.textContent='COASTAL DISTRICTS · UE '+(this.unreal?.items?.length||0)+'/4 · '+(near?.name||'Viadotto')+
    ' · '+speed+' km/h · '+(this.world.districtTraffic?.cars.length||0)+' auto AI';
  }
  async ensure(){this.ready=true;}
