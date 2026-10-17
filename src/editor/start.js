@@ -205,6 +205,7 @@ try {
     }
     if (current.id === 'coastal-districts') {
         globalThis.districtTraffic = new DistrictTraffic(world);
+        world.districtTraffic = globalThis.districtTraffic;
         report('Quattro distretti, traffico stradale, pedoni e dialoghi pronti');
     }
     report('Preparazione interfaccia e controlli');
