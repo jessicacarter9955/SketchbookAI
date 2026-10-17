@@ -45,3 +45,23 @@ test('San Andreas missing local sectors are recovered by same-origin importer ra
   assert.match(monitor,/resumeUser\(/);
 });
 function sourceFile(p){return readFileSync(new URL('../'+p,import.meta.url),'utf8');}
+
+test('StreetLab automatically bootstraps honest Sketchbook demo from already bundled geometry, never labeling it original SA',async()=>{
+ const {isSketchbookSaDemo,tryAutoLoadSketchbookDemo}=await import('../src/editor/sa-import-recovery.mjs');
+ assert.equal(isSketchbookSaDemo(['sketchbook-demo-world.glb']),true);
+ assert.equal(isSketchbookSaDemo(['los-santos-original.glb']),false);
+ assert.equal(typeof tryAutoLoadSketchbookDemo,'function');
+ const recovery=source('src/editor/sa-import-recovery.mjs');
+ assert.match(recovery,/const DEMO_URL='build\/assets\/world\.glb'/);
+ assert.match(recovery,/sceneId!=='san-andreas-streetlab'/);
+ assert.match(recovery,/NON|non è un asset|NOT a Rockstar/i);
+ assert.match(recovery,/importSaGeometryFromBrowser\(\[file\]/);
+ const {statSync,openSync,readSync,closeSync}=await import('node:fs');
+ const file=new URL('../build/assets/world.glb',import.meta.url);
+ const stats=statSync(file);
+ assert.ok(stats.size>1_000_000,'Sketchbook demo GLB is included in the repo');
+ const descriptor=openSync(file,'r'),header=Buffer.alloc(12);
+ try{readSync(descriptor,header,0,12,0);}finally{closeSync(descriptor);}
+ assert.equal(header.toString('ascii',0,4),'glTF');
+ assert.equal(header.readUInt32LE(8),stats.size);
+});
