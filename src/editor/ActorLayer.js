@@ -176,7 +176,7 @@ export class ActorLayer {
                 actor.userData.spawnAdjusted=spot.x!==x0||spot.z!==z0;
                 actor.userData.groundSpread=spot.uneven;
                 actor.userData.spawnGround=ground;
-                actor.userData.chassisRideHeight=height-ground;
+                actor.userData.chassisRideHeight=spot.clearance-ground;
                 actor.collision.quaternion.setFromEuler(...item.rotation);
                 actor.collision.initQuaternion.copy(actor.collision.quaternion);
                 // Spheres are required for mesh/ground chassis collisions in Cannon.
