@@ -59,9 +59,9 @@ test('TRUE City vegetation prewarms a bounded set of authentic HD tree LODs and 
  const fs=await import('node:fs');
  const code=fs.readFileSync(new URL('../src/editor/UrbanVegetation.js',import.meta.url),'utf8');
  const runtime=fs.readFileSync(new URL('../src/editor/UrbanRuntime.js',import.meta.url),'utf8');
- assert.match(code,/const initialCount=Math\\.min\\(items\\.length,48\\)/);
- assert.match(code,/layer\\.userData\\.stream=/);
+ assert.match(code,/const initialCount=Math\.min\(items\.length,48\)/);
+ assert.match(code,/layer\.userData\.stream=/);
  assert.match(code,/scene-lod/);
  assert.match(runtime,/VEGETAZIONE:/);
- assert.match(runtime,/this\\.world\\.camera\\);/);
+ assert.match(runtime,/this\.world\.camera\);/);
 });
