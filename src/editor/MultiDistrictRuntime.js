@@ -236,6 +236,7 @@ export class MultiDistrictRuntime extends IslandRuntime {
  constructor(world){
   super(world);this.root.name='Sketchbook · Four Coastal Districts';this.isDistrictCity=true;this.plan=null;
   world.camera.far=2300;world.camera.updateProjectionMatrix();
+  if(/Android|iPhone|iPad/i.test(navigator.userAgent))world.renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.15));
   world.isOutOfBounds=p=>p.y<-18||Math.abs(p.x)>1100||Math.abs(p.z)>900;
  }
  initialize(){this.generate(DISTRICT_PRESET);}
@@ -253,6 +254,21 @@ export class MultiDistrictRuntime extends IslandRuntime {
   applyCoastalPBR(group);
  }
  groundAt(x,z){return districtDeckHeight(x,z)??districtGround(x,z);}
+ update(){
+  super.update();
+  const player=this.world.editorPlayer;
+  const pos=player?.controlledObject?.position||player?.position;
+  if(!pos)return;
+  let near=this.plan?.zones?.[0];
+  for(const d of this.plan?.zones||[]){
+   if(Math.hypot(pos.x-d.center[0],pos.z-d.center[1])<
+      Math.hypot(pos.x-near.center[0],pos.z-near.center[1]))near=d;
+  }
+  const speed=Math.round(player?.controlledObject?.collision.velocity.length()*3.6||0);
+  const el=document.querySelector('[data-city-status]');
+  if(el)el.textContent='COASTAL DISTRICTS · '+(near?.name||'Viadotto')+
+   ' · '+speed+' km/h · '+(this.world.districtTraffic?.cars.length||0)+' auto AI';
+ }
  async ensure(){this.ready=true;}
  refreshPhysics(){}
 }
