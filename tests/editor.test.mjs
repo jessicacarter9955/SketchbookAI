@@ -216,3 +216,40 @@ test('Sketchfab BMW Ferrari Lamborghini positions remain close to the spawn',asy
     assert.ok(size.z>4.2 && size.z<=4.61);
     assert.ok(Math.abs(box.min.y+0.84)<0.02);
 });
+
+test('automatic car wheel rig extracts four wheels, with separate steering and suspension pivots',async()=>{
+ const THREE=await import('three');
+ const {rigImportedWheels,chassisHeightForGround}=await import('../src/editor/wheel-rig.mjs');
+ const makeWheel=(x,z,name)=>{
+    const m=new THREE.Mesh(new THREE.CylinderGeometry(.33,.33,.24,20),new THREE.MeshStandardMaterial());
+    m.rotation.z=Math.PI/2;
+    m.position.set(x,-.50,z);
+    m.name=name;
+    return m;
+ };
+ for(const id of ['bmw','ferrari','lamborghini']){
+    const shell=new THREE.Group();
+    if(id==='ferrari'){
+        for(let i=0;i<4;i++)shell.add(makeWheel(i%2?0.95:-0.95,i<2?1.35:-1.35,'Object_'+(37+i)));
+    }else{
+        for(const [i,z] of [1.35,-1.35].entries()){
+            const name=id==='bmw'?(i?'Back Wheels':'Front Wheels'):(i?'Plane08.001_4':'Plane08_3');
+            const group=new THREE.Group();group.name=name;
+            group.add(makeWheel(-.95,z,name+'_L'),makeWheel(.95,z,name+'_R'));
+            shell.add(group);
+        }
+    }
+    const car={wheels:[{position:new THREE.Vector3(-.95,0,1.35),wheelObject:new THREE.Group()},
+        {position:new THREE.Vector3(.95,0,1.35),wheelObject:new THREE.Group()},
+        {position:new THREE.Vector3(-.95,0,-1.35),wheelObject:new THREE.Group()},
+        {position:new THREE.Vector3(.95,0,-1.35),wheelObject:new THREE.Group()}],
+        userData:{},add(o){this.children??=[];this.children.push(o);}};
+    const result=rigImportedWheels(shell,id,car,THREE);
+    assert.equal(result.ready,true,id+': '+result.reason);
+    assert.deepEqual(car.userData.sketchfabWheelRig.map(v=>v.index).sort(),[0,1,2,3]);
+    assert.equal(car.children.length,4);
+    assert.ok(car.wheels.every(w=>w.wheelObject.visible===false));
+ }
+ const y=chassisHeightForGround(12.5,[{chassisConnectionPointLocal:{y:-.15},suspensionRestLength:.35,radius:.31}]);
+ assert.ok(Math.abs(y-13.39)<.001);
+});
