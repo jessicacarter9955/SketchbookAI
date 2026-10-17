@@ -5,8 +5,8 @@ export const SUPERCARS = Object.freeze([
     { id:'lamborghini',name:'Lamborghini Aventador SV',brand:'Lamborghini',author:'SDC PERFORMANCE',uid:'4350c8de8fd740f582bd316c1fa010ff',source:'https://sketchfab.com/3d-models/free-lamborghini-aventador-sv-tunnig-by-sdc-4350c8de8fd740f582bd316c1fa010ff',license:'CC BY' }
 ]);
 export function supercarPositions(base) {
-    // Two-meter minimum clearance between 4.6m long cars.
-    return [[-7,10],[0,10],[7,10]].map(([x,z])=>[
+    // Keep three 4.6m cars on the unobstructed western test lane.\n    // The center (+0) and eastern (+7) parking spots block Ferrari traction.
+    return [[-14,10],[-7,10],[-21,10]].map(([x,z])=>[
         base.x+x,base.y,base.z+z
     ]);
 }
