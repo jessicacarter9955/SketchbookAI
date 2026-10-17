@@ -22,6 +22,13 @@ shutil.copytree(modern/'build',out/'webgpu/vendor/three/build',dirs_exist_ok=Tru
 if (modern/'LICENSE').is_file():
     shutil.copy2(modern/'LICENSE',out/'webgpu/vendor/three/LICENSE')
 
+# Include verified UE2Three district assets if a licensed Unreal exporter populated the cache.
+ue_districts=root/'build/local-scenes/ue2three-districts'
+if (ue_districts/'manifest.json').is_file():
+    shutil.copytree(ue_districts,out/'build/local-scenes/ue2three-districts',dirs_exist_ok=True)
+else:
+    print('No genuine UE2Three building exports: coastal mode explicitly reports procedural preview.')
+
 # Include original DDS mannequin, weapon meshes and animation exports when supplied.
 # Keep the Sketchbook variant deployable when DDS exports are not available.
 dds=root/'build/local-scenes/dds'
@@ -40,8 +47,13 @@ if not sa_bundle.is_file(): raise RuntimeError('San Andreas viewer bundle missin
 shutil.copy2(sa_bundle,out/'build/sa-viewer.bundle.js')
 html=(out/'editor.html').read_text(encoding='utf-8')
 old='<script type="module" src="src/editor/start.js"></script>'
-if old not in html: raise RuntimeError('editor.html module script missing')
-(out/'editor.html').write_text(html.replace(old,'<script defer src="build/editor.bundle.js"></script>'),encoding='utf-8')
+if old in html:
+    html=html.replace(old,'<script defer src="build/editor.bundle.js"></script>')
+elif '<script src="build/editor.bundle.js"></script>' in html:
+    html=html.replace('<script src="build/editor.bundle.js"></script>','<script defer src="build/editor.bundle.js"></script>')
+else:
+    raise RuntimeError('editor.html has no valid compiled City Player boot script')
+(out/'editor.html').write_text(html,encoding='utf-8')
 # Drop original unneeded high-poly tree source; runtime loads the 2 LODs.
 original=out/'assets/urban-kits/tree_small_02/tree_small_02.bin'
 if original.exists(): original.unlink()
