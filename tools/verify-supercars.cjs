@@ -8,7 +8,7 @@ const {chromium}=require('playwright');
     const errors=[],failed=[];
     page.on('pageerror',e=>errors.push(e.message.slice(0,230)));
     page.on('requestfailed',req=>failed.push(req.url().slice(0,170)+' '+req.failure()?.errorText));
-    const target='https://my-test-site3.netlify.app/editor.html?scene=sandbox&play=1';
+    const target='https://my-test-site3.netlify.app/editor.html?scene=urban-photoreal&play=1';
     console.log('Browser test:',target);
     fs.mkdirSync('artifacts/supercars',{recursive:true});
     try {
@@ -30,7 +30,7 @@ const {chromium}=require('playwright');
         await page.goto(target,{waitUntil:'domcontentloaded',timeout:65000});
         await page.waitForFunction(()=>Boolean(globalThis.supercarsStatus) ||
             /Impossibile avviare la scena/.test(document.querySelector('#loading-screen')?.textContent||''),
-            null,{timeout:140000});
+            null,{timeout:220000});
         const loadState=await page.evaluate(()=>({loading:document.querySelector('#loading-screen')?.innerText?.slice(0,600),
             status:globalThis.supercarsStatus,active:!!globalThis.sceneEditor}));
         console.log('Loading status:',JSON.stringify(loadState));
@@ -105,6 +105,29 @@ const {chromium}=require('playwright');
             });
         });
         console.log('Branded wheel visual alignment:',JSON.stringify(wheelVisuals));
+        // Diagnostic: in the Ferrari, a tire mesh alone may hide static spoke meshes.
+        const ferrariParts=await page.evaluate(()=>{
+            const ferrari=globalThis.world.vehicles.find(x=>x.userData.rigStatus?.source==='ferrari');
+            const shell=ferrari?.children.find(x=>x.userData.sketchfabBody);
+            if(!shell)return [];
+            shell.updateMatrixWorld(true);
+            const inverse=shell.matrixWorld.clone().invert(), result=[];
+            shell.traverse(o=>{
+                if(!o.isMesh||!o.geometry?.getAttribute('position'))return;
+                o.geometry.computeBoundingBox();
+                const box=o.geometry.boundingBox.clone().applyMatrix4(inverse.clone().multiply(o.matrixWorld));
+                const c=box.getCenter(o.position.clone()),sz=box.getSize(o.position.clone());
+                const nearWheel=Math.abs(c.x)>.48 && Math.abs(c.x)<1.18 &&
+                    (Math.abs(c.z-1.17)<.5 || Math.abs(c.z+1.34)<.5);
+                if(nearWheel)result.push({name:o.name,parent:o.parent?.name,
+                    size:sz.toArray().map(n=>+n.toFixed(3)),
+                    center:c.toArray().map(n=>+n.toFixed(3)),
+                    triangles:o.geometry.index?.count/3||o.geometry.getAttribute('position').count/3,
+                    visible:o.visible});
+            });
+            return result.slice(0,90);
+        });
+        console.log('Ferrari nearby wheel meshes:',JSON.stringify(ferrariParts));
         console.log('Page errors:',JSON.stringify(errors.slice(0,12)));
         console.log('Failed requests:',JSON.stringify(failed.slice(0,15)));
         await page.screenshot({path:'artifacts/supercars/sketchfab-three-cars.png',fullPage:true});
