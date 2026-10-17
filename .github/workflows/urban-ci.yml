@@ -51,7 +51,7 @@ jobs:
             fi
             echo "Changed files:"
             printf '%s\n' "$changed"
-            if grep -Eq '^(src/editor/(UrbanRuntime|UrbanStreets|UrbanLighting|UrbanArchitecture|UrbanVegetation|UrbanProps|urban-data)|assets/|tools/(capture-urban-assets|fetch-urban-kits|prepare-urban-lods)|urban-examples.html|urban-assets.html|\.github/workflows/(urban-ci|netlify-deploy)\.yml)' <<< "$changed"; then
+            if grep -Eq '^(3dPicker\\.js|src/editor/(sketchfab-client\\.js|SceneEditor\\.js|model-import\\.js)|tools/verify-ferrari288-picker\\.mjs|src/editor/(UrbanRuntime|UrbanStreets|UrbanLighting|UrbanArchitecture|UrbanVegetation|UrbanProps|urban-data)|assets/|tools/(capture-urban-assets|fetch-urban-kits|prepare-urban-lods)|urban-examples.html|urban-assets.html|\.github/workflows/(urban-ci|netlify-deploy)\.yml)' <<< "$changed"; then
               mode=full; assets=true; package=true
             fi
             if ! grep -Eq '^(src/|tests/|tools/|webgpu/|assets/|build/|editor.html|urban-|webpack|package(-lock)?\.json|\.github/workflows/(urban-ci|netlify-deploy)\.yml)' <<< "$changed"; then
@@ -98,6 +98,7 @@ jobs:
           node --check tools/capture-urban-hd-smoke.mjs
           node --check src/editor/city-perf.js
           node --check src/editor/city-telemetry.js
+          node --check tools/verify-ferrari288-picker.mjs
       - name: Unit tests
         if: env.RUN_TESTS == 'true'
         run: npm test
