@@ -7,8 +7,8 @@ module.exports = {
   output: {filename: 'build/editor.bundle.js',path: __dirname},
   resolve: {extensions: ['.mjs','.js','.ts','.tsx']},
   module: {rules: [
-    {test:/\\.tsx?$/,use:'ts-loader',exclude:/node_modules/},
-    {test:/\\.css$/,use:['style-loader','css-loader']}
+    {test:/\.tsx?$/,use:'ts-loader',exclude:/node_modules/},
+    {test:/\.css$/,use:['style-loader','css-loader']}
   ]},
   performance:{hints:false},
   devtool:false
