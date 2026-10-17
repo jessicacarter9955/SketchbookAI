@@ -222,7 +222,7 @@ class BlueprintMigrationTests(unittest.TestCase):
         self.assertEqual(translate()['counts']['translated'], 0)
         context['Offset'] -= 1
         cls['LoadedProperties'][0]['Inner'] = {'SerializedType': 'UnresolvedProperty'}
-        self.assertEqual(translate()['counts']['translated'], 0}
+        self.assertEqual(translate()['counts']['translated'], 0)
 
     def call_package(self):
         caller = {'ObjectName': 'Caller', 'OuterIndex': 3, 'LoadedProperties': [
