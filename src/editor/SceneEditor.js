@@ -249,7 +249,7 @@ export class SceneEditor {
     remove() { if (!this.selected) return; const id = this.selected; this.select(null); this.destroyObject(id); this.items = this.items.filter(i => i.id !== id); this.commit(); }
     restore(scene) {
         if (!scene) return;
-        if(this.worldId==='procedural-island') {this.world.levelRuntime.generate(scene.generator || DEFAULT_ISLAND);this.generator=copy(this.world.levelRuntime.config);this.islandTool?.refresh();}
+        if(this.worldId==='procedural-island' && !this.world.levelRuntime?.isDistrictCity) {this.world.levelRuntime.generate(scene.generator || DEFAULT_ISLAND);this.generator=copy(this.world.levelRuntime.config);this.islandTool?.refresh();}
         if(this.worldId==='procedural-city') {this.world.levelRuntime.generate(scene.generator || DEFAULT_URBAN);this.generator=copy(this.world.levelRuntime.config);this.urbanTool?.refresh();}
         this.select(null); [...this.objects.keys()].forEach(id => this.destroyObject(id)); this.items = copy(scene.objects); this.items.forEach(item => this.create(item));
         this.mapEdits=copy(scene.mapEdits || []); if(typeof this.world.levelRuntime?.surfaces?.setEdits==='function') this.world.levelRuntime.surfaces.setEdits(this.mapEdits); this.surfaceTool?.refreshList(); this.list(); this.save();
