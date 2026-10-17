@@ -91,7 +91,7 @@
             const parsed = new URL(url);
             if (parsed.origin !== 'https://api.sketchfab.com' || !parsed.pathname.startsWith('/v3/')) throw new Error('URL Sketchfab non valida.');
             const pool = this._manualToken ? [this._manualToken] :
-                [...new Set(this._localTokens.length ? this._localTokens : this._savedTokens)];
+                [...new Set([...this._localTokens, ...this._savedTokens])];
             if (!pool.length) pool.push('');
             let unauthorized = false;
             for (const credential of pool) {
