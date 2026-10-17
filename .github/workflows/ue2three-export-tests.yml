@@ -1,0 +1,26 @@
+name: UE2Three native-export contract tests
+on:
+  push:
+    branches: [img2threejs-runner]
+    paths:
+      - "tools/ue2three/**"
+      - ".github/workflows/ue2three-export-tests.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  python-contract-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test source inventory and native export stage contracts
+        run: python -m unittest discover -s tools/ue2three/tests -p 'test_*.py' -v
+      - name: Report native Unreal execution capability
+        run: |
+          echo "This workflow validates the ue2three exporter logic using mocks only." >> "$GITHUB_STEP_SUMMARY"
+          echo "No Unreal Editor binary or source UE environment is installed on the runner." >> "$GITHUB_STEP_SUMMARY"
+          echo "Tests do NOT prove that photoreal Unreal source content was converted." >> "$GITHUB_STEP_SUMMARY"
