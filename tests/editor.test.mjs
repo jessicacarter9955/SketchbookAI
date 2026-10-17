@@ -129,3 +129,23 @@ test('TRUE Realistic City identifies the HD weather-and-logs world, never Libert
     assert.equal(BUILTIN_SCENES.find(scene=>scene.id==='liberty-city').world,'liberty-city');
     assert.ok(!BUILTIN_SCENES.find(scene=>scene.id==='liberty-city').name.startsWith('TRUE'));
 });
+
+
+test('vehicle GLB automatically tests four quarter-turns, including nose direction when wheel labels exist', async () => {
+  const THREE=await import('three');
+  const {autoOrientVehicle}=await import('../src/editor/auto-orient-vehicle.mjs');
+  const side=new THREE.Group();side.add(new THREE.Mesh(new THREE.BoxGeometry(4.6,1.3,2)));
+  assert.ok(Math.abs(autoOrientVehicle(side,THREE)-Math.PI/2)<.01);
+  const backwards=new THREE.Group();
+  backwards.add(new THREE.Mesh(new THREE.BoxGeometry(2,1.3,4.6)));
+  const front=new THREE.Group(),rear=new THREE.Group();
+  front.name='Front Wheels';rear.name='Back Wheels';
+  front.add(new THREE.Mesh(new THREE.SphereGeometry(.3)));
+  rear.add(new THREE.Mesh(new THREE.SphereGeometry(.3)));
+  front.position.z=-1.4;rear.position.z=1.4;
+  backwards.add(front,rear);
+  assert.ok(Math.abs(autoOrientVehicle(backwards,THREE)-Math.PI)<.01);
+  const a=new THREE.Box3().setFromObject(front).getCenter(new THREE.Vector3());
+  const b=new THREE.Box3().setFromObject(rear).getCenter(new THREE.Vector3());
+  assert.ok(a.z>b.z);
+});

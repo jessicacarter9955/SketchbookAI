@@ -14,6 +14,7 @@ import { DEFAULT_ISLAND } from './island-data.mjs';
 import { UrbanTool } from './UrbanTool';
 import { DEFAULT_URBAN } from './urban-data.mjs';
 import { geoJSONToPrefabs } from './geojson-import.mjs';
+import { autoOrientVehicle } from './auto-orient-vehicle.mjs';
 
 const labels = { box: 'Blocco', building: 'Edificio', road: 'Strada', tree: 'Albero', lamp: 'Lampione', car: 'Auto statica', vehicle: 'Auto guidabile', pedestrian: 'Abitante' };
 const copy = value => JSON.parse(JSON.stringify(value));
@@ -272,7 +273,12 @@ export class SceneEditor {
         const box = new THREE.Box3().setFromObject(gltf.scene); const extent = box.getSize(new THREE.Vector3());
         const size = Math.max(extent.x, extent.y, extent.z);
         if (!Number.isFinite(size) || size <= 0) throw new Error('Modello senza geometria visibile.');
+        // Try 0/90/180/270 before placing the original mesh on the car chassis.
+        // This is applied only to genuine imported vehicle GLBs, not pedestrians.
+        const vehicleYaw = asset.metadata?.role==='vehicle'?
+            autoOrientVehicle(gltf.scene,THREE):0;
         const root = new THREE.Group(); root.add(gltf.scene);
+        if(asset.metadata?.role==='vehicle')root.userData.autoVehicleYaw=vehicleYaw;
         root.scale.setScalar(4 / size); root.updateMatrixWorld(true);
         const normalized = new THREE.Box3().setFromObject(root), center = normalized.getCenter(new THREE.Vector3());
         root.position.set(-center.x, -normalized.min.y, -center.z);
