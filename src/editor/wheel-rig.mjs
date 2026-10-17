@@ -81,6 +81,28 @@ export function rigImportedWheels(shell,modelId,car,THREE) {
      }
      mapped.push({index,pivot,sourceCenter:part.center.clone(),radius:part.radius});
    }
+   // Ferrari F40 Object_31 is a static rear-right hub exported outside the
+   // Object_37..40 tire subtrees. Rotate it with the corresponding real tire.
+   if(modelId==='ferrari') {
+     const hub=shell.getObjectByName('Object_31');
+     if(hub) {
+       const details=new Map();
+       hub.traverse(node=>{if(node.isMesh)extractMesh(node,shell,THREE,details);});
+       let joined=0;
+       for(const [key,meshes] of details) {
+         const wheel=mapped.find(w=>w.pivot.name.endsWith(' '+key));
+         for(const mesh of meshes) {
+           const center=mesh.geometry.boundingBox?.getCenter(new THREE.Vector3());
+           if(!wheel||!center||center.distanceTo(wheel.sourceCenter)>.48) {
+             mesh.geometry.dispose();continue;
+           }
+           mesh.geometry.translate(-wheel.sourceCenter.x,-wheel.sourceCenter.y,-wheel.sourceCenter.z);
+           wheel.pivot.add(mesh);joined++;
+         }
+       }
+       if(joined)hub.visible=false;
+     }
+   }
    for(const target of targets)target.visible=false;
    // BMW has a separately exported wheel badge group. A static badge rotating
    // nowhere on the body would visually betray the moving tires: hide it until

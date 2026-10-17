@@ -231,6 +231,7 @@ test('automatic car wheel rig extracts four wheels, with separate steering and s
  for(const id of ['bmw','ferrari','lamborghini']){
     const shell=new THREE.Group();
     if(id==='ferrari'){
+        shell.add(makeWheel(.95,-1.35,'Object_31'));
         for(let i=0;i<4;i++)shell.add(makeWheel(i%2?0.95:-0.95,i<2?1.35:-1.35,'Object_'+(37+i)));
     }else{
         for(const [i,z] of [1.35,-1.35].entries()){
@@ -250,6 +251,13 @@ test('automatic car wheel rig extracts four wheels, with separate steering and s
     assert.deepEqual(car.userData.sketchfabWheelRig.map(v=>v.index).sort(),[0,1,2,3]);
     assert.equal(car.children.length,4);
     assert.ok(car.wheels.every(w=>w.wheelObject.visible===false));
+    if(id==='ferrari'){
+      assert.equal(shell.getObjectByName('Object_31').visible,false,
+        'Separate F40 rear hub must not remain static');
+      const rearRight=car.userData.sketchfabWheelRig.find(w=>w.pivot.name.endsWith(' right:rear'));
+      assert.ok(rearRight.pivot.children.length>=2,
+        'Rear hub and tire must share the physics wheel pivot');
+    }
  }
  const y=chassisHeightForGround(12.5,[{chassisConnectionPointLocal:{y:-.15},suspensionRestLength:.35,radius:.31}]);
  assert.ok(Math.abs(y-13.39)<.001);
