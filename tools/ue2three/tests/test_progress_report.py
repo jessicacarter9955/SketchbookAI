@@ -78,7 +78,8 @@ class ProgressReportTests(unittest.TestCase):
         self.assertFalse(any('vitalità' in m['title'] for m in report['milestones']))
 
     def test_source_audit_requires_exact_outputs_and_matching_programs(self):
-        program = {'project': self.project, 'packages': {'/Game/A': {'functions': {'Probe': {'source_bytecode_sha256': 'bytecode'}}}}}
+        program = {'project': self.project, 'packages': {'/Game/A': {'functions': {'Probe': {'source_bytecode_sha256': 'bytecode',
+                   'steps': [{'op': 'evaluate', 'value': {'op': 'table_get'}}]}}}}}
         program['content_sha256'] = digest(program); atomic_json(self.published / 'blueprint-programs.json', program)
         image = self.published / 'verification/blueprint-audit.jpg'; image.parent.mkdir(); image.write_bytes(b'audit-image')
         sample = {'outputs': {'Result': 1}, 'expected': {'Result': True}}
@@ -96,9 +97,11 @@ class ProgressReportTests(unittest.TestCase):
         self.assertFalse(any('confronti sorgenti' in m['title'] for m in project_progress(self.workspace, self.published, self.character)['milestones']))
         sample['actual_members']['Item']['Weight'] = 2; atomic_json(path, audit)
         self.assertTrue(any('confronti sorgenti' in m['title'] for m in project_progress(self.workspace, self.published, self.character)['milestones']))
+        self.assertTrue(any('tabelle con campi' in m['title'] for m in project_progress(self.workspace, self.published, self.character)['milestones']))
         audit['programs_content_sha256'] = 'stale'; atomic_json(path, audit)
         report = project_progress(self.workspace, self.published, self.character)
         self.assertFalse(any('confronti sorgenti' in m['title'] for m in report['milestones']))
+        self.assertFalse(any('tabelle con campi' in m['title'] for m in report['milestones']))
 
     def test_source_event_evidence_checks_state_when_outputs_are_void(self):
         program = {'project': self.project, 'packages': {'/Game/A': {'functions': {'Event': {'source_bytecode_sha256': 'event'}}}}}

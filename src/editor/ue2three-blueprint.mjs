@@ -18,10 +18,11 @@ function validateSchema(schema, value, depth = 0) {
             if (!safeField(field) || !owns(value, field)) throw new Error('Missing typed source struct field: ' + field);
             validateSchema(child, value[field], depth+1);
         }
-    } else if (schema.type === 'ObjectProperty') {
+    } else if (schema.type === 'ObjectProperty' || schema.type === 'ClassProperty') {
         if (value !== null && (!value || typeof value !== 'object' || typeof value.asset !== 'string'
             || !/^\/(Game|Engine|Script)\/[A-Za-z0-9_\/.]+$/.test(value.asset)
-            || JSON.stringify(value.declared_class) !== JSON.stringify(schema.class))) throw new Error('Invalid source asset identity');
+            || JSON.stringify(value.declared_class) !== JSON.stringify(schema.class)
+            || schema.type === 'ClassProperty' && JSON.stringify(value.meta_class) !== JSON.stringify(schema.meta_class))) throw new Error('Invalid source asset identity');
     } else if (schema.type === 'TextProperty') {
         if (!value || typeof value.text !== 'string' || !Number.isInteger(value.flags) || value.flags < 0 || value.flags > 4294967295
             || !(value.history === 'empty' && value.text === '' || value.history === 'base' && typeof value.namespace === 'string'
@@ -63,6 +64,10 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
         for (const [field, type] of Object.entries(types)) {
             if (!safeField(field)) throw new Error('Invalid persistent frame field');
             if (!owns(frames[frame], field) && owns(primitiveDefaults, type)) frames[frame][field] = primitiveDefaults[type];
+            const schema = program.persistent_schemas?.[frame]?.[field];
+            if (!owns(frames[frame], field) && schema) {
+                validateSchema(schema, schema.default); frames[frame][field] = structuredClone(schema.default);
+            }
         }
     }
     const instance = structuredClone(self);
@@ -82,7 +87,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             || type === 'ObjectProperty' && (value === null || typeof value === 'object')
             || type === 'StructProperty' && value !== null && typeof value === 'object' && !Array.isArray(value);
         if (!valid) throw new Error(`Unsupported or invalid ${type}: ${scope}.${field}`);
-        const schema = program.schemas?.[scope]?.[field];
+        const schema = scope === 'persistent' ? program.persistent_schemas?.[frame]?.[field] : program.schemas?.[scope]?.[field];
         if (schema) validateSchema(schema, value);
     };
     const evaluate = (expression, depth = 0) => {

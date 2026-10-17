@@ -69,3 +69,30 @@ equivalence test. Animations retain the user's deferred verification status.
 Browser proofs compare output, selected state, ordered effects and source hashes.
 The progress report requires current program checksums and screenshot checksums
 before enabling scoped green checkpoints. Whole game areas stay yellow/red.
+
+## Equipment data follow-up · 2026-10-18
+
+Original DT_Weapons now retains three complete 73-field records. ClassProperty
+values preserve the imported class identity plus the source MetaClass constraint;
+only Class/BlueprintGeneratedClass imports are accepted. These are data-only
+references, including camera-shake classes. No camera-shake execution or class
+construction is implied. Original armor/shield rows and their six/five fields
+are also retained. Persistent struct/array/object frames now carry their exact
+source schemas and initialize from original defaults, with transactional copies.
+
+New original functions include GetWeaponData, GetArmorData, GetShieldData,
+GetReserveAmmoForWeapon, GetCombat_CurrentWeaponData and armor/shield stat event
+bodies. Tests preserve these additional source quirks:
+
+* GetShieldData assigns Found=true in both success and missing-row branches.
+* Missing weapon data has AmmoType=0; reserve-ammo lookup still counts light
+  ammo through that original fallback.
+* Applying armor/shield uses maximum HP for any negative CurrentHP, accepts
+  zero as zero, and leaves above-maximum positive values unclamped.
+* Clearing armor resets armor HP/capacity but retains movement/stamina penalties.
+  Clearing shield also resets mitigation. These are source behaviors.
+
+Reading reload, sound and class references does not migrate the referenced
+animations, sounds or native effects. Server-named event bodies execute locally;
+authority/RPC transport, equip wiring, damage delivery and regeneration remain
+separate unfinished work.

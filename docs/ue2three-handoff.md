@@ -1,4 +1,37 @@
-# ue2three saved handoff · 2026-10-17
+# ue2three saved handoff · 2026-10-18
+
+Latest equipment batch: **173 translated /327 blocked**, 60 declarations,
+six empty functions, 56 callbacks without effects, 64 event helpers and 263
+uncached packages. Added ClassProperty data identities with original MetaClass
+constraints and class-import validation. No class instantiation or camera-shake
+execution is implied. Persistent structs/arrays/objects now retain their exact
+source schemas, initialize original defaults and validate transactional copies.
+Read seven extra original assets (124,118 bytes): armor/shield/weapon structs,
+three tables and the firing-mode enum. DT_Weapons retains three 73-field rows;
+DT_Armor and DT_ShieldData retain one original row each. No Unreal start,
+rescan, export, upload or additional dependency installation.
+New supported functions: GetWeaponData, GetArmorData, GetShieldData,
+GetReserveAmmoForWeapon [trailing space], GetCombat_CurrentWeaponData and the
+original Server_ApplyArmorStats/Server_ApplyShieldStats bodies. Previously
+translated clear-stat bodies now also have source state/effect comparisons.
+25 cases added (523 total). Source quirks preserved: GetShieldData Found=true
+on the missing-row path; missing weapon fallback still counts light ammo;
+negative HP refills to maximum, positive over-maximum HP is not clamped;
+ClearArmorStats retains movement/stamina penalties. These are original rules.
+Verification: 124 Python/79 JS tests, editor build; browser audit 173 functions,
+519 generic and 523 source cases. Scene: 24 input/35 metrics/4 events/357
+inventory/equipment/31 character-math checks; horizontal movement 0.6028400331.
+Source checksum: 9527b7bb1dc6719a05896010a45e1aec5d56a01aa8ec2c2459e52542b90dbab9.
+Evidence: verification/source-equipment-data/{armor-stats,weapons,scene}.jpg
+plus audit.json and live-inputs.json. The audit now shows before/actual/expected
+field tables alongside raw proofs. Progress: 18 broad areas, 14 scoped green
+checkpoints, including table reads with explicitly compared fields. Broad
+inventory, combat, UI and complete gameplay remain partial. Editor revision20.
+Next: source object/component graph and native adapters needed by SetSlotData,
+ClearSlot, equip, damage and UI bindings; full character controller/animation
+state graphs and other maps/materials remain open. Animations stay yellow with
+1:1 verification deferred on user request. Lighting last. Never infer overall
+game completion from function counts or asset references.
 
 Remote integration: all nine newer branch commits were merged, preserving
 Drive staging, CI, Tripo connectivity and server-managed Sketchfab access.

@@ -82,6 +82,7 @@ try {
             if (test.effects && !blueprintFixtureEqual(result.effects, test.effects)) throw new Error(`Notifiche sorgenti differenti: ${test.function}`);
             const actualMembers = blueprintFixtureMembers(result.outputs, test.output_members);
             rowsByFunction.get(JSON.stringify([test.package, test.function])).samples.push({inputs: test.inputs, state: test.self,
+                ...(test.source_note ? {source_note: test.source_note} : {}),
                 base_state: test.base_state, outputs: result.outputs, expected: test.outputs,
                 actual_members: actualMembers, expected_members: test.output_members || {},
                 ...(test.effects ? {effects: result.effects, expected_effects: test.effects} : {}),
@@ -92,14 +93,39 @@ try {
     for (const {row, samples} of rowsByFunction.values()) {
         if (!samples.length) continue;
         row.children[1].textContent = `🟢 PASS · 3 generici · ${samples.length} confronti`;
+        const brief = value => Array.isArray(value) ? `Array · ${value.length} elementi`
+            : value && typeof value === 'object' ? `Struttura · ${Object.keys(value).length} campi` : JSON.stringify(value);
+        row.children[2].textContent = 'Primo confronto sorgente: ' + Object.entries(samples[0].outputs).map(([name, value]) => name+' = '+brief(value)).join(' · ');
         const details = document.createElement('details'), summary = document.createElement('summary'), pre = document.createElement('pre');
         summary.textContent = `${samples.length} casi sorgenti verificati`;
-        pre.textContent = JSON.stringify(samples.map(sample => ({inputs: sample.inputs, outputs: sample.outputs, expected: sample.expected,
+        pre.textContent = JSON.stringify(samples.map(sample => ({...(sample.source_note ? {source_note: sample.source_note} : {}), inputs: sample.inputs, outputs: sample.outputs, expected: sample.expected,
             ...(Object.keys(sample.expected_members).length ? {actual_members: sample.actual_members, expected_members: sample.expected_members} : {}),
             ...(Object.keys(sample.expected_state).length ? {resulting_state: sample.resulting_state, expected_state: sample.expected_state} : {}),
             ...(sample.effects ? {effects: sample.effects, expected_effects: sample.expected_effects} : {}),
             base_state: sample.base_state, state: sample.state, ...(sample.trace ? {trace: sample.trace} : {})})), null, 2); pre.style.cssText = 'max-height:260px;overflow:auto';
-        details.append(summary, pre); row.children[2].append(details);
+        details.append(summary);
+        const sample = samples.find(sample => Object.keys(sample.expected_state).length || Object.keys(sample.expected_members).length);
+        if (sample) {
+            const table = document.createElement('table'), head = document.createElement('tr');
+            for (const text of ['Campo', 'Prima', 'Risultato', 'Sorgente attesa']) {
+                const cell = document.createElement('th'); cell.textContent = text; head.append(cell);
+            }
+            table.append(head);
+            const add = (name, before, actual, expected) => {
+                const tr = document.createElement('tr');
+                for (const text of [name, before === undefined ? '—' : brief(before), brief(actual), brief(expected)]) {
+                    const cell = document.createElement('td'); cell.textContent = text; tr.append(cell);
+                }
+                table.append(tr);
+            };
+            for (const [name, expected] of Object.entries(sample.expected_state))
+                add(name, sample.state?.[name], sample.resulting_state[name], expected);
+            for (const [output, members] of Object.entries(sample.expected_members))
+                for (const [name, expected] of Object.entries(members))
+                    add(output+'.'+name.replace(/_\d+_[A-F0-9]+$/, ''), undefined, sample.actual_members[output][name], expected);
+            details.append(table);
+        }
+        details.append(pre); row.children[2].append(details);
     }
     for (const entry of evidence) entry.source_cases = rowsByFunction.get(JSON.stringify([entry.package, entry.function])).samples;
     status.textContent = `PASS: ${passed} funzioni sorgenti eseguite (${report.counts.no_op_functions || 0} vuote; ${report.counts.empty_event_functions || 0} callback senza effetti di gioco), ${scenarios} scenari generici e ${golden} confronti sorgenti specifici. ${report.counts.blocked || 0} funzioni bloccate; ${report.counts.declarations || 0} sole dichiarazioni; ${report.missing_cached_packages.length} pacchetti senza bytecode in cache. Questo non verifica il gioco completo.`;

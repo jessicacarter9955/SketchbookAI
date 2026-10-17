@@ -3,6 +3,8 @@ from copy import deepcopy
 from test_blueprint_migration import node
 from blueprint_migration import expression, translate_package, memory_size, BlueprintTranslationError
 from umg_migration import Package
+from blueprint_types import property_schema
+from blueprint_values import serialized_value
 
 
 def var(name, owner=1, local=False):
@@ -10,6 +12,22 @@ def var(name, owner=1, local=False):
 
 
 class SourceEffectsTests(unittest.TestCase):
+    def test_class_values_keep_original_meta_class_and_require_an_imported_class(self):
+        p=Package({'Imports': [{'ObjectName':'Class','OuterIndex':-2,'ClassName':'Class'},
+            {'ObjectName':'/Script/CoreUObject','ClassName':'Package'},
+            {'ObjectName':'CameraShakeBase','OuterIndex':-4,'ClassName':'Class'},
+            {'ObjectName':'/Script/Engine','ClassName':'Package'},
+            {'ObjectName':'CS_Original_C','OuterIndex':-6,'ClassName':'BlueprintGeneratedClass'},
+            {'ObjectName':'/Game/Camera/CS_Original','ClassName':'Package'}]})
+        prop={'SerializedType':'ClassProperty','PropertyClass':-1,'MetaClass':-3}
+        schema=property_schema(p,prop)
+        self.assertEqual(serialized_value(p,prop,schema,{'Value':-5}),{'asset':'/Game/Camera/CS_Original.CS_Original_C',
+            'declared_class':['/Script/CoreUObject','Class'],'meta_class':['/Script/Engine','CameraShakeBase']})
+        self.assertIsNone(serialized_value(p,prop,schema,{'Value':0}))
+        self.assertIsNone(property_schema(p,{**prop,'MetaClass':0}))
+        p.imports[4]['ClassName']='Object'
+        with self.assertRaisesRegex(ValueError,'class import'):serialized_value(p,prop,schema,{'Value':-5})
+
     def package(self):
         props = [{'Name': 'Items', 'SerializedType': 'ArrayProperty', 'Inner': {'SerializedType': 'IntProperty'}, 'PropertyFlags': 'CPF_Net'},
                  {'Name': 'Changed', 'SerializedType': 'MulticastInlineDelegateProperty', 'SignatureFunction': 3}]
@@ -35,6 +53,17 @@ class SourceEffectsTests(unittest.TestCase):
         r = translate_package(p)['functions']['Change']
         self.assertEqual(r['self_writes'], ['Items']); self.assertEqual(r['steps'][0]['value']['op'], 'array_set')
         self.assertEqual(r['schemas']['self']['Items']['element']['type'], 'IntProperty')
+
+    def test_persistent_array_schema_is_retained_and_unresolved_struct_frames_block(self):
+        p=self.package();frame={'ObjectName':'ExecuteUbergraph_Original','OuterIndex':1,'LoadedProperties':[
+            {'Name':'Stored','SerializedType':'ArrayProperty','Inner':{'SerializedType':'IntProperty'}}]}
+        p.exports.append(frame)
+        p.exports[1]['ScriptBytecode'].insert(0,node('EX_LetValueOnPersistentFrame',
+            DestinationProperty={'New':{'Path':['Stored'],'ResolvedOwner':4}},AssignmentExpression=var('Items')))
+        result=translate_package(p)['functions']['Change']
+        self.assertEqual(result['persistent_schemas']['4']['Stored']['element']['type'],'IntProperty')
+        frame['LoadedProperties'][0]={'Name':'Stored','SerializedType':'StructProperty','Struct':-3}
+        result=translate_package(p);self.assertFalse(result['functions']);self.assertIn('persistent source schema',result['blocked'][0]['reason'])
 
     def test_array_adapter_rejects_wrong_owner_offset_arity_or_native_library(self):
         for change in ('owner', 'offset', 'arity', 'library'):

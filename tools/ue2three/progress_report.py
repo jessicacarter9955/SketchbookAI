@@ -188,7 +188,10 @@ def project_progress(workspace, published, character_dir=None):
     if (blueprint_report and audit.get('status') == 'passed' and audit.get('project') == project
             and audit.get('programs_content_sha256') == blueprint_report.get('content_sha256')
             and outputs['audit_blueprint_screenshot'] and audit.get('screenshot_sha256') == outputs['audit_blueprint_screenshot']):
-        verified, cases, event_verified, event_cases, container_verified, container_cases = [], 0, [], 0, [], 0
+        verified, cases, event_verified, event_cases, container_verified, container_cases, table_verified = [], 0, [], 0, [], 0, []
+        def reads_table(value):
+            if isinstance(value, dict): return value.get('op') == 'table_get' or any(reads_table(child) for child in value.values())
+            return isinstance(value, list) and any(reads_table(child) for child in value)
         for entry in audit.get('evidence', []):
             program = blueprint_report.get('packages', {}).get(entry.get('package'), {}).get('functions', {}).get(entry.get('function'), {})
             samples = entry.get('source_cases', [])
@@ -207,6 +210,8 @@ def project_progress(workspace, published, character_dir=None):
                 if (not program.get('self_writes') and program.get('output_fields')
                         and 'ArrayProperty' in program.get('field_types', {}).get('self', {}).values()):
                     container_verified.append(entry['function']); container_cases += len(samples)
+                if reads_table(program.get('steps')) and any(sample.get('expected_members') for sample in samples):
+                    table_verified.append(entry['function'])
         if verified and cases == audit.get('golden_source_cases'):
             milestones.append({'title': 'Funzioni con confronti sorgenti verificati', 'status': 'green',
                                'evidence': f"{len(verified)} funzioni, {cases} casi; incluse {', '.join(sorted(set(verified)))}; non prova i sistemi completi"})
@@ -216,6 +221,9 @@ def project_progress(workspace, published, character_dir=None):
             if container_verified:
                 milestones.append({'title': 'Letture di contenitori tipizzati', 'status': 'green',
                                    'evidence': f"{len(container_verified)} funzioni, {container_cases} casi: {', '.join(container_verified)}; scritture, UI e persistenza escluse"})
+            if table_verified:
+                milestones.append({'title': 'Letture di tabelle con campi sorgenti confrontati', 'status': 'green',
+                                   'evidence': f"{len(table_verified)} funzioni: {', '.join(table_verified)}; verificati i campi dichiarati nei casi, non esecuzione degli asset o flussi completi"})
             calculations = live.get('calculation_results', [])
             def verified_calculation(result):
                 package, function = result.get('package'), result.get('source_function')

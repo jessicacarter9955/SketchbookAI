@@ -56,6 +56,27 @@ test('struct literal follows the source member order and validates every field',
     delete literal.fields.HP;assert.throws(()=>executeBlueprint(program),/struct literal/);
 });
 
+test('data-only class references retain the source base class and cannot masquerade as another class',()=>{
+    const klass={type:'ClassProperty',class:['/Script/CoreUObject','Class'],meta_class:['/Script/Engine','CameraShakeBase'],default:null};
+    const value={asset:'/Game/Camera/Original.Original_C',declared_class:klass.class,meta_class:klass.meta_class};
+    const program={...base,steps:[{op:'return',value:{op:'typed_literal',schema:klass,value}}]};
+    assert.deepEqual(executeBlueprint(program).value,value);
+    program.steps[0].value.value={...value,meta_class:['/Script/Engine','Actor']};
+    assert.throws(()=>executeBlueprint(program),/asset identity/);
+    program.steps[0].value.value=null;assert.equal(executeBlueprint(program).value,null);
+});
+
+test('typed persistent frames initialize source defaults, copy writes and reject corrupt stored structs transactionally',()=>{
+    const frameGet={op:'get',scope:'persistent',frame:10,field:'Stored'};
+    const program={...base,persistent_types:{10:{Stored:'StructProperty'}},persistent_schemas:{10:{Stored:schema}},steps:[{op:'return',value:frameGet}]};
+    assert.deepEqual(executeBlueprint(program).value,schema.default);
+    const frames={10:{Stored:{Name:'Original',HP:true}}};
+    assert.throws(()=>executeBlueprint(program,{}, {},{frames}),/typed source member/);assert.equal(frames[10].Stored.HP,true);
+    program.steps.unshift({op:'set',scope:'persistent',frame:10,field:'Stored',value:{op:'typed_literal',schema,value:{Name:'New',HP:42}}});
+    const written=executeBlueprint(program,{}, {},{frames});assert.equal(written.value.HP,42);assert.equal(frames[10].Stored.HP,true);
+    written.value.HP=0;assert.equal(written.frames[10].Stored.HP,42);
+});
+
 function delegateFixture() {
     const number={type:'DoubleProperty',default:0};
     const signatures={Changed:{export_index:20,parameters:[{name:'Value',schema:number}]}};

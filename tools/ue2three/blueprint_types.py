@@ -31,6 +31,10 @@ def property_schema(package, prop):
     if type_name == 'ObjectProperty':
         identity = import_path(package, prop.get('PropertyClass'))
         if identity: return {'type': type_name, 'class': list(identity), 'default': None}
+    if type_name == 'ClassProperty':
+        identity, meta = import_path(package, prop.get('PropertyClass')), import_path(package, prop.get('MetaClass'))
+        if identity == ('/Script/CoreUObject', 'Class') and meta:
+            return {'type': type_name, 'class': list(identity), 'meta_class': list(meta), 'default': None}
     if type_name == 'TextProperty': return {'type': type_name, 'default': {'history': 'empty', 'text': '', 'flags': 0}}
     if type_name == 'StructProperty':
         identity = import_path(package, prop.get('Struct'))

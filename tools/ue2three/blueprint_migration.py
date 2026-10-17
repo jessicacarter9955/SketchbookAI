@@ -456,7 +456,7 @@ def translate_package(package, structs=None, tables=None):
                         or step['op'] == 'set_member' and step['target'].get('scope') == 'local' and step['target']['field'] in const_inputs):
                     raise BlueprintTranslationError('Assignment to original const input')
             used_locals = set(program['output_fields'])
-            persistent = {}
+            persistent, persistent_schemas = {}, {}
             for step in program['steps']:
                 if step['op'] == 'set' and step.get('scope') == 'local': used_locals.add(step['field'])
                 def local_reads(value):
@@ -479,7 +479,12 @@ def translate_package(package, structs=None, tables=None):
                                 raise BlueprintTranslationError('Persistent property belongs to another source class')
                             props = [p for p in frame.get('LoadedProperties', []) if p.get('Name') == field_name]
                             if len(props) != 1: raise BlueprintTranslationError('Unresolved persistent source property: ' + field_name)
-                            persistent.setdefault(str(frame_index), {})[field_name] = property_type(props[0], package)
+                            type_name = property_type(props[0], package)
+                            persistent.setdefault(str(frame_index), {})[field_name] = type_name
+                            if type_name in ('StructProperty', 'ArrayProperty', 'ObjectProperty'):
+                                schema = property_schema(package, props[0])
+                                if not schema: raise BlueprintTranslationError('Unresolved persistent source schema: ' + field_name)
+                                persistent_schemas.setdefault(str(frame_index), {})[field_name] = schema
                         if value.get('op') == 'call' and 'entry_offset' in value:
                             request = (value['export_index'], value['entry_offset'])
                             if request not in requested:
@@ -501,6 +506,7 @@ def translate_package(package, structs=None, tables=None):
                 if any(type_name in ('ArrayProperty', 'StructProperty') and name not in program['schemas'][scope] for name, type_name in types.items()):
                     raise BlueprintTranslationError('Unresolved source array or struct schema')
             program['persistent_types'] = persistent
+            program['persistent_schemas'] = persistent_schemas
             program['input_fields'] = [prop['Name'] for prop in export.get('LoadedProperties', [])
                                        if prop.get('Name') in used_locals and 'CPF_Parm' in str(prop.get('PropertyFlags'))
                                        and ('CPF_OutParm' not in str(prop.get('PropertyFlags')) or prop['Name'] in const_inputs

@@ -45,7 +45,15 @@ def serialized_value(package, prop, schema, value):
         items = value.get('Value')
         if not isinstance(items, list) or len(items) > 100000: raise ValueError('Invalid source array data')
         return [serialized_value(package, prop['Inner'], schema['element'], item) for item in items]
-    if type_name == 'ObjectProperty': return asset_reference(package, value.get('Value'), schema['class'])
+    if type_name in ('ObjectProperty', 'ClassProperty'):
+        reference = value.get('Value')
+        if type_name == 'ClassProperty' and reference != 0:
+            if (type(reference) is not int or not -len(package.imports) <= reference < 0
+                    or package.imports[-reference-1].get('ClassName') not in ('Class', 'BlueprintGeneratedClass')):
+                raise ValueError('Original class reference is not a class import')
+        result = asset_reference(package, reference, schema['class'])
+        if result is not None and type_name == 'ClassProperty': result['meta_class'] = schema['meta_class']
+        return result
     if type_name == 'TextProperty': return text_value(value)
     if type_name == 'StructProperty':
         values = value.get('Value')
@@ -105,7 +113,7 @@ def construct_source_structs(documents):
                     schema = property_schema(package, prop)
                     if not schema: raise ValueError('Unresolved source member type')
                     # Keep only descriptors needed to decode later sparse rows.
-                    properties[field] = {k: v for k, v in prop.items() if k in ('Name', 'SerializedType', 'Inner', 'Enum', 'Struct', 'PropertyClass')}
+                    properties[field] = {k: v for k, v in prop.items() if k in ('Name', 'SerializedType', 'Inner', 'Enum', 'Struct', 'PropertyClass', 'MetaClass')}
                     fields[field] = schema; defaults[field] = serialized_value(package, prop, schema, values[field])
                 structs[(name, export['ObjectName'])] = {'type': 'StructProperty', 'source': name, 'fields': fields,
                     'default': defaults, 'properties': properties, 'member_order': list(fields)}

@@ -18013,6 +18013,2006 @@
         "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
         "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96"
       }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "GetWeaponData",
+      "source_bytecode_sha256": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a",
+      "self": {},
+      "inputs": {
+        "ItemID": "Test_Wpn_Pistol"
+      },
+      "outputs": {
+        "bFound": true
+      },
+      "runtime": "inventory",
+      "base_state": "inventory-defaults",
+      "output_members": {
+        "WeaponData": {
+          "ItemID_53_4307572A4C31602F6D1F628755B38392": "Test_Wpn_Pistol",
+          "BaseDamage_74_EED27D5542A964C175C7DD9906082211": 8.0,
+          "MagazineSize_84_FD2F632342262ABF35E587B560B2F9B6": 20,
+          "AmmoType_81_C19C975448FBCB6C085D41B6D098637F": 0,
+          "EffectiveRange_77_B95A235A498075AB62D4459CBA7CC6D2": 2500.0,
+          "MaxRange_78_BB09E405474D117DC1CC2096ED17663C": 4000.0,
+          "ReloadTime_87_42438381423C0A09445A92834B5153B1": 1.5,
+          "ReloadTime_Empty_299_44B709B84307CF6760058184B3D11DC0": 1.8,
+          "MinDamagePercent_286_7AF477FD4867978BDA838D9D6FBF2CD7": 0.25,
+          "CameraShake_Fire_232_0C90518947C1D8E3C81ECCAEF6BB0856": {
+            "asset": "/Game/Fixers/VFX/GunEffects/CS_WeaponFire_Light.CS_WeaponFire_Light_C",
+            "declared_class": [
+              "/Script/CoreUObject",
+              "Class"
+            ],
+            "meta_class": [
+              "/Script/Engine",
+              "CameraShakeBase"
+            ]
+          }
+        }
+      },
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "GetWeaponData",
+      "source_bytecode_sha256": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a",
+      "self": {},
+      "inputs": {
+        "ItemID": "Test_Wpn_Rifle"
+      },
+      "outputs": {
+        "bFound": true
+      },
+      "runtime": "inventory",
+      "base_state": "inventory-defaults",
+      "output_members": {
+        "WeaponData": {
+          "ItemID_53_4307572A4C31602F6D1F628755B38392": "Test_Wpn_Rifle",
+          "BaseDamage_74_EED27D5542A964C175C7DD9906082211": 15.0,
+          "MagazineSize_84_FD2F632342262ABF35E587B560B2F9B6": 30,
+          "AmmoType_81_C19C975448FBCB6C085D41B6D098637F": 1,
+          "EffectiveRange_77_B95A235A498075AB62D4459CBA7CC6D2": 4500.0,
+          "MaxRange_78_BB09E405474D117DC1CC2096ED17663C": 7000.0,
+          "ReloadTime_87_42438381423C0A09445A92834B5153B1": 1.5,
+          "ReloadTime_Empty_299_44B709B84307CF6760058184B3D11DC0": 1.8,
+          "MinDamagePercent_286_7AF477FD4867978BDA838D9D6FBF2CD7": 0.25,
+          "CameraShake_Fire_232_0C90518947C1D8E3C81ECCAEF6BB0856": {
+            "asset": "/Game/Fixers/VFX/GunEffects/CS_WeaponFire_Medium.CS_WeaponFire_Medium_C",
+            "declared_class": [
+              "/Script/CoreUObject",
+              "Class"
+            ],
+            "meta_class": [
+              "/Script/Engine",
+              "CameraShakeBase"
+            ]
+          }
+        }
+      },
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "GetWeaponData",
+      "source_bytecode_sha256": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a",
+      "self": {},
+      "inputs": {
+        "ItemID": "Test_Wpn_AutoShotgun"
+      },
+      "outputs": {
+        "bFound": true
+      },
+      "runtime": "inventory",
+      "base_state": "inventory-defaults",
+      "output_members": {
+        "WeaponData": {
+          "ItemID_53_4307572A4C31602F6D1F628755B38392": "Test_Wpn_AutoShotgun",
+          "BaseDamage_74_EED27D5542A964C175C7DD9906082211": 25.0,
+          "MagazineSize_84_FD2F632342262ABF35E587B560B2F9B6": 12,
+          "AmmoType_81_C19C975448FBCB6C085D41B6D098637F": 3,
+          "EffectiveRange_77_B95A235A498075AB62D4459CBA7CC6D2": 1500.0,
+          "MaxRange_78_BB09E405474D117DC1CC2096ED17663C": 2500.0,
+          "ReloadTime_87_42438381423C0A09445A92834B5153B1": 2.2,
+          "ReloadTime_Empty_299_44B709B84307CF6760058184B3D11DC0": 2.8,
+          "MinDamagePercent_286_7AF477FD4867978BDA838D9D6FBF2CD7": 0.25,
+          "CameraShake_Fire_232_0C90518947C1D8E3C81ECCAEF6BB0856": {
+            "asset": "/Game/Fixers/VFX/GunEffects/CS_WeaponFire_Heavy.CS_WeaponFire_Heavy_C",
+            "declared_class": [
+              "/Script/CoreUObject",
+              "Class"
+            ],
+            "meta_class": [
+              "/Script/Engine",
+              "CameraShakeBase"
+            ]
+          }
+        }
+      },
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "GetWeaponData",
+      "source_bytecode_sha256": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a",
+      "self": {},
+      "inputs": {
+        "ItemID": "Missing_Weapon"
+      },
+      "outputs": {
+        "bFound": false
+      },
+      "runtime": "inventory",
+      "base_state": "inventory-defaults",
+      "output_members": {
+        "WeaponData": {
+          "ItemID_53_4307572A4C31602F6D1F628755B38392": "None",
+          "BaseDamage_74_EED27D5542A964C175C7DD9906082211": 0.0,
+          "MagazineSize_84_FD2F632342262ABF35E587B560B2F9B6": 0,
+          "ReloadTime_87_42438381423C0A09445A92834B5153B1": 0.0,
+          "CameraShake_Fire_232_0C90518947C1D8E3C81ECCAEF6BB0856": null,
+          "MinDamagePercent_286_7AF477FD4867978BDA838D9D6FBF2CD7": 0.25
+        }
+      },
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "GetArmorData",
+      "source_bytecode_sha256": "87cb49ffb753534ded7d154cdac270ecbaaa7cf75cefa0ff2871bdd8c4f2cf58",
+      "self": {},
+      "inputs": {
+        "ItemID": "Test_Armor_BasicVest"
+      },
+      "outputs": {
+        "bFound": true
+      },
+      "runtime": "inventory",
+      "base_state": "inventory-defaults",
+      "output_members": {
+        "ArmorData": {
+          "ArmorMaxHP_38_C267ACC54DB9FD44F3E5489818DB0D3C": 75,
+          "ItemID_15_F45EC36D4080A4369AC64CACBD935960": "Test_Armor_BasicVest",
+          "Mesh_Female_31_68C4FCF242D96232DEB1B89374AE389E": null,
+          "Mesh_Male_29_70BFC0724E21E9F6BB3736B00267BBD9": null,
+          "MovementSpeedPenalty_39_5CA9ACAC4980B3700FAD64A5E0A86AE4": 0.05,
+          "StaminaDrainMultiplier_40_D6442F0849D83E8338375480917C8072": 1.05
+        }
+      },
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "GetArmorData",
+      "source_bytecode_sha256": "87cb49ffb753534ded7d154cdac270ecbaaa7cf75cefa0ff2871bdd8c4f2cf58",
+      "self": {},
+      "inputs": {
+        "ItemID": "Missing_Item"
+      },
+      "outputs": {
+        "bFound": false
+      },
+      "runtime": "inventory",
+      "base_state": "inventory-defaults",
+      "output_members": {
+        "ArmorData": {
+          "ArmorMaxHP_38_C267ACC54DB9FD44F3E5489818DB0D3C": 0,
+          "ItemID_15_F45EC36D4080A4369AC64CACBD935960": "None",
+          "Mesh_Female_31_68C4FCF242D96232DEB1B89374AE389E": null,
+          "Mesh_Male_29_70BFC0724E21E9F6BB3736B00267BBD9": null,
+          "MovementSpeedPenalty_39_5CA9ACAC4980B3700FAD64A5E0A86AE4": 0.0,
+          "StaminaDrainMultiplier_40_D6442F0849D83E8338375480917C8072": 0.0
+        }
+      },
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "GetShieldData",
+      "source_bytecode_sha256": "a505d31594edfd97e3e48930ad38d6b6c4ff22ce010ae5dd58944b645d299eaf",
+      "self": {},
+      "inputs": {
+        "ItemID": "Test_Shield_BasicShield"
+      },
+      "outputs": {
+        "Found": true
+      },
+      "runtime": "inventory",
+      "base_state": "inventory-defaults",
+      "output_members": {
+        "ShieldData": {
+          "DamageMitigationPercent_15_B42C1F664C23F1B0660A76AEE5555C8A": 0.15,
+          "ItemID_2_183585C8498E80DD45AB34844B99CEFB": "Test_Shield_BasicShield",
+          "RechargeDelay_16_587D3E5E4CEC2343E0BED5A9F18E2264": 3.0,
+          "RechargeRate_17_302F6DE045AE87C2830C689E2386F36B": 20.0,
+          "ShieldMaxHP_13_99F915D8445F29A9CD830EAF62FBAC85": 75
+        }
+      },
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "GetShieldData",
+      "source_bytecode_sha256": "a505d31594edfd97e3e48930ad38d6b6c4ff22ce010ae5dd58944b645d299eaf",
+      "self": {},
+      "inputs": {
+        "ItemID": "Missing_Item"
+      },
+      "outputs": {
+        "Found": true
+      },
+      "runtime": "inventory",
+      "base_state": "inventory-defaults",
+      "output_members": {
+        "ShieldData": {
+          "DamageMitigationPercent_15_B42C1F664C23F1B0660A76AEE5555C8A": 0.0,
+          "ItemID_2_183585C8498E80DD45AB34844B99CEFB": "None",
+          "RechargeDelay_16_587D3E5E4CEC2343E0BED5A9F18E2264": 0.0,
+          "RechargeRate_17_302F6DE045AE87C2830C689E2386F36B": 0.0,
+          "ShieldMaxHP_13_99F915D8445F29A9CD830EAF62FBAC85": 0
+        }
+      },
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      },
+      "source_note": "Original fallback assigns Found=true even when the row is absent."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "function": "Server_ApplyArmorStats",
+      "source_bytecode_sha256": "a42d74b1d40782ef1832b734e7b80753ddf77ae74b96e09432e481e590793914",
+      "self": {
+        "CurrentArmor": 10.0,
+        "MaxArmor": 20.0,
+        "MovementSpeedPenalty": 0.9,
+        "StaminaDrainMultiplier": 2.0
+      },
+      "inputs": {
+        "ArmorData": {
+          "ArmorMaxHP_38_C267ACC54DB9FD44F3E5489818DB0D3C": 75,
+          "ItemID_15_F45EC36D4080A4369AC64CACBD935960": "Test_Armor_BasicVest",
+          "Mesh_Female_31_68C4FCF242D96232DEB1B89374AE389E": null,
+          "Mesh_Male_29_70BFC0724E21E9F6BB3736B00267BBD9": null,
+          "MovementSpeedPenalty_39_5CA9ACAC4980B3700FAD64A5E0A86AE4": 0.05,
+          "StaminaDrainMultiplier_40_D6442F0849D83E8338375480917C8072": 1.05
+        },
+        "CurrentHP": -1.0
+      },
+      "outputs": {},
+      "runtime": "inventory",
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Vitality_Fixers@13716": "6584c98e45cc573431cd1a3b5437f6326ea304becbf00c0f8c16471842f3cce2",
+        "OnRep_CurrentArmor": "c38ad073c0e5f1daa82041b65a8d07819f30bbae895d21f67a8bbc147e46e4d1"
+      },
+      "state": {
+        "CurrentArmor": 75.0,
+        "MaxArmor": 75.0,
+        "MovementSpeedPenalty": 0.05,
+        "StaminaDrainMultiplier": 1.05
+      },
+      "effects": [
+        {
+          "op": "mark_dirty",
+          "field": "MaxArmor",
+          "source_rep_index": 5
+        },
+        {
+          "op": "mark_dirty",
+          "field": "CurrentArmor",
+          "source_rep_index": 4
+        },
+        {
+          "op": "broadcast",
+          "delegate": "OnArmorChanged",
+          "parameters": {
+            "NewArmor": 75.0,
+            "MaxArmor": 75.0
+          },
+          "listeners": 0
+        },
+        {
+          "op": "mark_dirty",
+          "field": "MovementSpeedPenalty",
+          "source_rep_index": 21
+        },
+        {
+          "op": "mark_dirty",
+          "field": "StaminaDrainMultiplier",
+          "source_rep_index": 22
+        }
+      ],
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "function": "Server_ApplyShieldStats",
+      "source_bytecode_sha256": "8ca816d1013ec56ff4a51fd569d99c31418e9526c5d658fb30f05af0e3e3c5da",
+      "self": {
+        "CurrentShield": 10.0,
+        "MaxShield": 20.0,
+        "ShieldMitigationPercent": 0.9
+      },
+      "inputs": {
+        "ShieldData": {
+          "DamageMitigationPercent_15_B42C1F664C23F1B0660A76AEE5555C8A": 0.15,
+          "ItemID_2_183585C8498E80DD45AB34844B99CEFB": "Test_Shield_BasicShield",
+          "RechargeDelay_16_587D3E5E4CEC2343E0BED5A9F18E2264": 3.0,
+          "RechargeRate_17_302F6DE045AE87C2830C689E2386F36B": 20.0,
+          "ShieldMaxHP_13_99F915D8445F29A9CD830EAF62FBAC85": 75
+        },
+        "CurrentHP": -1.0
+      },
+      "outputs": {},
+      "runtime": "inventory",
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Vitality_Fixers@13634": "6584c98e45cc573431cd1a3b5437f6326ea304becbf00c0f8c16471842f3cce2",
+        "OnRep_CurrentShield": "06461e33fabd70872baaa0608a13027363a8e4132a72c27dd59bc1a525919074"
+      },
+      "state": {
+        "CurrentShield": 75.0,
+        "MaxShield": 75.0,
+        "ShieldMitigationPercent": 0.15
+      },
+      "effects": [
+        {
+          "op": "mark_dirty",
+          "field": "MaxShield",
+          "source_rep_index": 15
+        },
+        {
+          "op": "mark_dirty",
+          "field": "ShieldMitigationPercent",
+          "source_rep_index": 20
+        },
+        {
+          "op": "mark_dirty",
+          "field": "CurrentShield",
+          "source_rep_index": 14
+        },
+        {
+          "op": "broadcast",
+          "delegate": "OnShieldChanged",
+          "parameters": {
+            "NewShield": 75.0,
+            "MaxShield": 75.0
+          },
+          "listeners": 0
+        }
+      ],
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "function": "Server_ApplyArmorStats",
+      "source_bytecode_sha256": "a42d74b1d40782ef1832b734e7b80753ddf77ae74b96e09432e481e590793914",
+      "self": {
+        "CurrentArmor": 10.0,
+        "MaxArmor": 20.0,
+        "MovementSpeedPenalty": 0.9,
+        "StaminaDrainMultiplier": 2.0
+      },
+      "inputs": {
+        "ArmorData": {
+          "ArmorMaxHP_38_C267ACC54DB9FD44F3E5489818DB0D3C": 75,
+          "ItemID_15_F45EC36D4080A4369AC64CACBD935960": "Test_Armor_BasicVest",
+          "Mesh_Female_31_68C4FCF242D96232DEB1B89374AE389E": null,
+          "Mesh_Male_29_70BFC0724E21E9F6BB3736B00267BBD9": null,
+          "MovementSpeedPenalty_39_5CA9ACAC4980B3700FAD64A5E0A86AE4": 0.05,
+          "StaminaDrainMultiplier_40_D6442F0849D83E8338375480917C8072": 1.05
+        },
+        "CurrentHP": -20.0
+      },
+      "outputs": {},
+      "runtime": "inventory",
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Vitality_Fixers@13716": "6584c98e45cc573431cd1a3b5437f6326ea304becbf00c0f8c16471842f3cce2",
+        "OnRep_CurrentArmor": "c38ad073c0e5f1daa82041b65a8d07819f30bbae895d21f67a8bbc147e46e4d1"
+      },
+      "state": {
+        "CurrentArmor": 75.0,
+        "MaxArmor": 75.0,
+        "MovementSpeedPenalty": 0.05,
+        "StaminaDrainMultiplier": 1.05
+      },
+      "effects": [
+        {
+          "op": "mark_dirty",
+          "field": "MaxArmor",
+          "source_rep_index": 5
+        },
+        {
+          "op": "mark_dirty",
+          "field": "CurrentArmor",
+          "source_rep_index": 4
+        },
+        {
+          "op": "broadcast",
+          "delegate": "OnArmorChanged",
+          "parameters": {
+            "NewArmor": 75.0,
+            "MaxArmor": 75.0
+          },
+          "listeners": 0
+        },
+        {
+          "op": "mark_dirty",
+          "field": "MovementSpeedPenalty",
+          "source_rep_index": 21
+        },
+        {
+          "op": "mark_dirty",
+          "field": "StaminaDrainMultiplier",
+          "source_rep_index": 22
+        }
+      ],
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "function": "Server_ApplyShieldStats",
+      "source_bytecode_sha256": "8ca816d1013ec56ff4a51fd569d99c31418e9526c5d658fb30f05af0e3e3c5da",
+      "self": {
+        "CurrentShield": 10.0,
+        "MaxShield": 20.0,
+        "ShieldMitigationPercent": 0.9
+      },
+      "inputs": {
+        "ShieldData": {
+          "DamageMitigationPercent_15_B42C1F664C23F1B0660A76AEE5555C8A": 0.15,
+          "ItemID_2_183585C8498E80DD45AB34844B99CEFB": "Test_Shield_BasicShield",
+          "RechargeDelay_16_587D3E5E4CEC2343E0BED5A9F18E2264": 3.0,
+          "RechargeRate_17_302F6DE045AE87C2830C689E2386F36B": 20.0,
+          "ShieldMaxHP_13_99F915D8445F29A9CD830EAF62FBAC85": 75
+        },
+        "CurrentHP": -20.0
+      },
+      "outputs": {},
+      "runtime": "inventory",
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Vitality_Fixers@13634": "6584c98e45cc573431cd1a3b5437f6326ea304becbf00c0f8c16471842f3cce2",
+        "OnRep_CurrentShield": "06461e33fabd70872baaa0608a13027363a8e4132a72c27dd59bc1a525919074"
+      },
+      "state": {
+        "CurrentShield": 75.0,
+        "MaxShield": 75.0,
+        "ShieldMitigationPercent": 0.15
+      },
+      "effects": [
+        {
+          "op": "mark_dirty",
+          "field": "MaxShield",
+          "source_rep_index": 15
+        },
+        {
+          "op": "mark_dirty",
+          "field": "ShieldMitigationPercent",
+          "source_rep_index": 20
+        },
+        {
+          "op": "mark_dirty",
+          "field": "CurrentShield",
+          "source_rep_index": 14
+        },
+        {
+          "op": "broadcast",
+          "delegate": "OnShieldChanged",
+          "parameters": {
+            "NewShield": 75.0,
+            "MaxShield": 75.0
+          },
+          "listeners": 0
+        }
+      ],
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "function": "Server_ApplyArmorStats",
+      "source_bytecode_sha256": "a42d74b1d40782ef1832b734e7b80753ddf77ae74b96e09432e481e590793914",
+      "self": {
+        "CurrentArmor": 10.0,
+        "MaxArmor": 20.0,
+        "MovementSpeedPenalty": 0.9,
+        "StaminaDrainMultiplier": 2.0
+      },
+      "inputs": {
+        "ArmorData": {
+          "ArmorMaxHP_38_C267ACC54DB9FD44F3E5489818DB0D3C": 75,
+          "ItemID_15_F45EC36D4080A4369AC64CACBD935960": "Test_Armor_BasicVest",
+          "Mesh_Female_31_68C4FCF242D96232DEB1B89374AE389E": null,
+          "Mesh_Male_29_70BFC0724E21E9F6BB3736B00267BBD9": null,
+          "MovementSpeedPenalty_39_5CA9ACAC4980B3700FAD64A5E0A86AE4": 0.05,
+          "StaminaDrainMultiplier_40_D6442F0849D83E8338375480917C8072": 1.05
+        },
+        "CurrentHP": 0.0
+      },
+      "outputs": {},
+      "runtime": "inventory",
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Vitality_Fixers@13716": "6584c98e45cc573431cd1a3b5437f6326ea304becbf00c0f8c16471842f3cce2",
+        "OnRep_CurrentArmor": "c38ad073c0e5f1daa82041b65a8d07819f30bbae895d21f67a8bbc147e46e4d1"
+      },
+      "state": {
+        "CurrentArmor": 0.0,
+        "MaxArmor": 75.0,
+        "MovementSpeedPenalty": 0.05,
+        "StaminaDrainMultiplier": 1.05
+      },
+      "effects": [
+        {
+          "op": "mark_dirty",
+          "field": "MaxArmor",
+          "source_rep_index": 5
+        },
+        {
+          "op": "mark_dirty",
+          "field": "CurrentArmor",
+          "source_rep_index": 4
+        },
+        {
+          "op": "broadcast",
+          "delegate": "OnArmorChanged",
+          "parameters": {
+            "NewArmor": 0.0,
+            "MaxArmor": 75.0
+          },
+          "listeners": 0
+        },
+        {
+          "op": "mark_dirty",
+          "field": "MovementSpeedPenalty",
+          "source_rep_index": 21
+        },
+        {
+          "op": "mark_dirty",
+          "field": "StaminaDrainMultiplier",
+          "source_rep_index": 22
+        }
+      ],
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "function": "Server_ApplyShieldStats",
+      "source_bytecode_sha256": "8ca816d1013ec56ff4a51fd569d99c31418e9526c5d658fb30f05af0e3e3c5da",
+      "self": {
+        "CurrentShield": 10.0,
+        "MaxShield": 20.0,
+        "ShieldMitigationPercent": 0.9
+      },
+      "inputs": {
+        "ShieldData": {
+          "DamageMitigationPercent_15_B42C1F664C23F1B0660A76AEE5555C8A": 0.15,
+          "ItemID_2_183585C8498E80DD45AB34844B99CEFB": "Test_Shield_BasicShield",
+          "RechargeDelay_16_587D3E5E4CEC2343E0BED5A9F18E2264": 3.0,
+          "RechargeRate_17_302F6DE045AE87C2830C689E2386F36B": 20.0,
+          "ShieldMaxHP_13_99F915D8445F29A9CD830EAF62FBAC85": 75
+        },
+        "CurrentHP": 0.0
+      },
+      "outputs": {},
+      "runtime": "inventory",
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Vitality_Fixers@13634": "6584c98e45cc573431cd1a3b5437f6326ea304becbf00c0f8c16471842f3cce2",
+        "OnRep_CurrentShield": "06461e33fabd70872baaa0608a13027363a8e4132a72c27dd59bc1a525919074"
+      },
+      "state": {
+        "CurrentShield": 0.0,
+        "MaxShield": 75.0,
+        "ShieldMitigationPercent": 0.15
+      },
+      "effects": [
+        {
+          "op": "mark_dirty",
+          "field": "MaxShield",
+          "source_rep_index": 15
+        },
+        {
+          "op": "mark_dirty",
+          "field": "ShieldMitigationPercent",
+          "source_rep_index": 20
+        },
+        {
+          "op": "mark_dirty",
+          "field": "CurrentShield",
+          "source_rep_index": 14
+        },
+        {
+          "op": "broadcast",
+          "delegate": "OnShieldChanged",
+          "parameters": {
+            "NewShield": 0.0,
+            "MaxShield": 75.0
+          },
+          "listeners": 0
+        }
+      ],
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "function": "Server_ApplyArmorStats",
+      "source_bytecode_sha256": "a42d74b1d40782ef1832b734e7b80753ddf77ae74b96e09432e481e590793914",
+      "self": {
+        "CurrentArmor": 10.0,
+        "MaxArmor": 20.0,
+        "MovementSpeedPenalty": 0.9,
+        "StaminaDrainMultiplier": 2.0
+      },
+      "inputs": {
+        "ArmorData": {
+          "ArmorMaxHP_38_C267ACC54DB9FD44F3E5489818DB0D3C": 75,
+          "ItemID_15_F45EC36D4080A4369AC64CACBD935960": "Test_Armor_BasicVest",
+          "Mesh_Female_31_68C4FCF242D96232DEB1B89374AE389E": null,
+          "Mesh_Male_29_70BFC0724E21E9F6BB3736B00267BBD9": null,
+          "MovementSpeedPenalty_39_5CA9ACAC4980B3700FAD64A5E0A86AE4": 0.05,
+          "StaminaDrainMultiplier_40_D6442F0849D83E8338375480917C8072": 1.05
+        },
+        "CurrentHP": 37.5
+      },
+      "outputs": {},
+      "runtime": "inventory",
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Vitality_Fixers@13716": "6584c98e45cc573431cd1a3b5437f6326ea304becbf00c0f8c16471842f3cce2",
+        "OnRep_CurrentArmor": "c38ad073c0e5f1daa82041b65a8d07819f30bbae895d21f67a8bbc147e46e4d1"
+      },
+      "state": {
+        "CurrentArmor": 37.5,
+        "MaxArmor": 75.0,
+        "MovementSpeedPenalty": 0.05,
+        "StaminaDrainMultiplier": 1.05
+      },
+      "effects": [
+        {
+          "op": "mark_dirty",
+          "field": "MaxArmor",
+          "source_rep_index": 5
+        },
+        {
+          "op": "mark_dirty",
+          "field": "CurrentArmor",
+          "source_rep_index": 4
+        },
+        {
+          "op": "broadcast",
+          "delegate": "OnArmorChanged",
+          "parameters": {
+            "NewArmor": 37.5,
+            "MaxArmor": 75.0
+          },
+          "listeners": 0
+        },
+        {
+          "op": "mark_dirty",
+          "field": "MovementSpeedPenalty",
+          "source_rep_index": 21
+        },
+        {
+          "op": "mark_dirty",
+          "field": "StaminaDrainMultiplier",
+          "source_rep_index": 22
+        }
+      ],
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "function": "Server_ApplyShieldStats",
+      "source_bytecode_sha256": "8ca816d1013ec56ff4a51fd569d99c31418e9526c5d658fb30f05af0e3e3c5da",
+      "self": {
+        "CurrentShield": 10.0,
+        "MaxShield": 20.0,
+        "ShieldMitigationPercent": 0.9
+      },
+      "inputs": {
+        "ShieldData": {
+          "DamageMitigationPercent_15_B42C1F664C23F1B0660A76AEE5555C8A": 0.15,
+          "ItemID_2_183585C8498E80DD45AB34844B99CEFB": "Test_Shield_BasicShield",
+          "RechargeDelay_16_587D3E5E4CEC2343E0BED5A9F18E2264": 3.0,
+          "RechargeRate_17_302F6DE045AE87C2830C689E2386F36B": 20.0,
+          "ShieldMaxHP_13_99F915D8445F29A9CD830EAF62FBAC85": 75
+        },
+        "CurrentHP": 37.5
+      },
+      "outputs": {},
+      "runtime": "inventory",
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Vitality_Fixers@13634": "6584c98e45cc573431cd1a3b5437f6326ea304becbf00c0f8c16471842f3cce2",
+        "OnRep_CurrentShield": "06461e33fabd70872baaa0608a13027363a8e4132a72c27dd59bc1a525919074"
+      },
+      "state": {
+        "CurrentShield": 37.5,
+        "MaxShield": 75.0,
+        "ShieldMitigationPercent": 0.15
+      },
+      "effects": [
+        {
+          "op": "mark_dirty",
+          "field": "MaxShield",
+          "source_rep_index": 15
+        },
+        {
+          "op": "mark_dirty",
+          "field": "ShieldMitigationPercent",
+          "source_rep_index": 20
+        },
+        {
+          "op": "mark_dirty",
+          "field": "CurrentShield",
+          "source_rep_index": 14
+        },
+        {
+          "op": "broadcast",
+          "delegate": "OnShieldChanged",
+          "parameters": {
+            "NewShield": 37.5,
+            "MaxShield": 75.0
+          },
+          "listeners": 0
+        }
+      ],
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "function": "Server_ApplyArmorStats",
+      "source_bytecode_sha256": "a42d74b1d40782ef1832b734e7b80753ddf77ae74b96e09432e481e590793914",
+      "self": {
+        "CurrentArmor": 10.0,
+        "MaxArmor": 20.0,
+        "MovementSpeedPenalty": 0.9,
+        "StaminaDrainMultiplier": 2.0
+      },
+      "inputs": {
+        "ArmorData": {
+          "ArmorMaxHP_38_C267ACC54DB9FD44F3E5489818DB0D3C": 75,
+          "ItemID_15_F45EC36D4080A4369AC64CACBD935960": "Test_Armor_BasicVest",
+          "Mesh_Female_31_68C4FCF242D96232DEB1B89374AE389E": null,
+          "Mesh_Male_29_70BFC0724E21E9F6BB3736B00267BBD9": null,
+          "MovementSpeedPenalty_39_5CA9ACAC4980B3700FAD64A5E0A86AE4": 0.05,
+          "StaminaDrainMultiplier_40_D6442F0849D83E8338375480917C8072": 1.05
+        },
+        "CurrentHP": 250.0
+      },
+      "outputs": {},
+      "runtime": "inventory",
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Vitality_Fixers@13716": "6584c98e45cc573431cd1a3b5437f6326ea304becbf00c0f8c16471842f3cce2",
+        "OnRep_CurrentArmor": "c38ad073c0e5f1daa82041b65a8d07819f30bbae895d21f67a8bbc147e46e4d1"
+      },
+      "state": {
+        "CurrentArmor": 250.0,
+        "MaxArmor": 75.0,
+        "MovementSpeedPenalty": 0.05,
+        "StaminaDrainMultiplier": 1.05
+      },
+      "effects": [
+        {
+          "op": "mark_dirty",
+          "field": "MaxArmor",
+          "source_rep_index": 5
+        },
+        {
+          "op": "mark_dirty",
+          "field": "CurrentArmor",
+          "source_rep_index": 4
+        },
+        {
+          "op": "broadcast",
+          "delegate": "OnArmorChanged",
+          "parameters": {
+            "NewArmor": 250.0,
+            "MaxArmor": 75.0
+          },
+          "listeners": 0
+        },
+        {
+          "op": "mark_dirty",
+          "field": "MovementSpeedPenalty",
+          "source_rep_index": 21
+        },
+        {
+          "op": "mark_dirty",
+          "field": "StaminaDrainMultiplier",
+          "source_rep_index": 22
+        }
+      ],
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "function": "Server_ApplyShieldStats",
+      "source_bytecode_sha256": "8ca816d1013ec56ff4a51fd569d99c31418e9526c5d658fb30f05af0e3e3c5da",
+      "self": {
+        "CurrentShield": 10.0,
+        "MaxShield": 20.0,
+        "ShieldMitigationPercent": 0.9
+      },
+      "inputs": {
+        "ShieldData": {
+          "DamageMitigationPercent_15_B42C1F664C23F1B0660A76AEE5555C8A": 0.15,
+          "ItemID_2_183585C8498E80DD45AB34844B99CEFB": "Test_Shield_BasicShield",
+          "RechargeDelay_16_587D3E5E4CEC2343E0BED5A9F18E2264": 3.0,
+          "RechargeRate_17_302F6DE045AE87C2830C689E2386F36B": 20.0,
+          "ShieldMaxHP_13_99F915D8445F29A9CD830EAF62FBAC85": 75
+        },
+        "CurrentHP": 250.0
+      },
+      "outputs": {},
+      "runtime": "inventory",
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Vitality_Fixers@13634": "6584c98e45cc573431cd1a3b5437f6326ea304becbf00c0f8c16471842f3cce2",
+        "OnRep_CurrentShield": "06461e33fabd70872baaa0608a13027363a8e4132a72c27dd59bc1a525919074"
+      },
+      "state": {
+        "CurrentShield": 250.0,
+        "MaxShield": 75.0,
+        "ShieldMitigationPercent": 0.15
+      },
+      "effects": [
+        {
+          "op": "mark_dirty",
+          "field": "MaxShield",
+          "source_rep_index": 15
+        },
+        {
+          "op": "mark_dirty",
+          "field": "ShieldMitigationPercent",
+          "source_rep_index": 20
+        },
+        {
+          "op": "mark_dirty",
+          "field": "CurrentShield",
+          "source_rep_index": 14
+        },
+        {
+          "op": "broadcast",
+          "delegate": "OnShieldChanged",
+          "parameters": {
+            "NewShield": 250.0,
+            "MaxShield": 75.0
+          },
+          "listeners": 0
+        }
+      ],
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "function": "Server_ClearArmorStats",
+      "source_bytecode_sha256": "610abfccf34055c1d0d838bf3c9387397d1a213cead61daadf875c6cf26a91ee",
+      "self": {
+        "CurrentArmor": 75.0,
+        "MaxArmor": 75.0,
+        "MovementSpeedPenalty": 0.05,
+        "StaminaDrainMultiplier": 1.05
+      },
+      "inputs": {},
+      "outputs": {},
+      "runtime": "inventory",
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Vitality_Fixers@13834": "6584c98e45cc573431cd1a3b5437f6326ea304becbf00c0f8c16471842f3cce2",
+        "OnRep_CurrentArmor": "c38ad073c0e5f1daa82041b65a8d07819f30bbae895d21f67a8bbc147e46e4d1"
+      },
+      "state": {
+        "CurrentArmor": 0.0,
+        "MaxArmor": 0.0,
+        "MovementSpeedPenalty": 0.05,
+        "StaminaDrainMultiplier": 1.05
+      },
+      "effects": [
+        {
+          "op": "mark_dirty",
+          "field": "MaxArmor",
+          "source_rep_index": 5
+        },
+        {
+          "op": "mark_dirty",
+          "field": "CurrentArmor",
+          "source_rep_index": 4
+        },
+        {
+          "op": "broadcast",
+          "delegate": "OnArmorChanged",
+          "parameters": {
+            "NewArmor": 0.0,
+            "MaxArmor": 0.0
+          },
+          "listeners": 0
+        }
+      ],
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/BPC_Vitality_Fixers",
+      "function": "Server_ClearShieldStats",
+      "source_bytecode_sha256": "b08d700cfd168039447945fc26878334924a0a71c207a795ab6d2f6489d9639e",
+      "self": {
+        "CurrentShield": 75.0,
+        "MaxShield": 75.0,
+        "ShieldMitigationPercent": 0.15
+      },
+      "inputs": {},
+      "outputs": {},
+      "runtime": "inventory",
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Vitality_Fixers@13798": "6584c98e45cc573431cd1a3b5437f6326ea304becbf00c0f8c16471842f3cce2",
+        "OnRep_CurrentShield": "06461e33fabd70872baaa0608a13027363a8e4132a72c27dd59bc1a525919074"
+      },
+      "state": {
+        "CurrentShield": 0.0,
+        "MaxShield": 0.0,
+        "ShieldMitigationPercent": 0.0
+      },
+      "effects": [
+        {
+          "op": "mark_dirty",
+          "field": "MaxShield",
+          "source_rep_index": 15
+        },
+        {
+          "op": "mark_dirty",
+          "field": "ShieldMitigationPercent",
+          "source_rep_index": 20
+        },
+        {
+          "op": "mark_dirty",
+          "field": "CurrentShield",
+          "source_rep_index": 14
+        },
+        {
+          "op": "broadcast",
+          "delegate": "OnShieldChanged",
+          "parameters": {
+            "NewShield": 0.0,
+            "MaxShield": 0.0
+          },
+          "listeners": 0
+        }
+      ],
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "GetReserveAmmoForWeapon ",
+      "source_bytecode_sha256": "190764cd7dcf102419f4617fee2778e11c8f3ead10261bc2de62b8ec51c3814d",
+      "self": {
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 12,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          },
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 15,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          },
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 6,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          },
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Shotgun",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 9,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          }
+        ],
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Rifle",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        }
+      },
+      "inputs": {
+        "WeaponSlotType": 0
+      },
+      "outputs": {
+        "ReserveAmmoTotal": 21
+      },
+      "runtime": "inventory",
+      "base_state": "inventory-defaults",
+      "dependencies": {
+        "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+        "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+        "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a"
+      },
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "GetReserveAmmoForWeapon ",
+      "source_bytecode_sha256": "190764cd7dcf102419f4617fee2778e11c8f3ead10261bc2de62b8ec51c3814d",
+      "self": {
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 12,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          },
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 15,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          },
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 6,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          },
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Shotgun",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 9,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          }
+        ],
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Pistol",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        }
+      },
+      "inputs": {
+        "WeaponSlotType": 0
+      },
+      "outputs": {
+        "ReserveAmmoTotal": 12
+      },
+      "runtime": "inventory",
+      "base_state": "inventory-defaults",
+      "dependencies": {
+        "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+        "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+        "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a"
+      },
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "GetReserveAmmoForWeapon ",
+      "source_bytecode_sha256": "190764cd7dcf102419f4617fee2778e11c8f3ead10261bc2de62b8ec51c3814d",
+      "self": {
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 12,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          },
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 15,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          },
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 6,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          },
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Shotgun",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 9,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          }
+        ],
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_AutoShotgun",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        }
+      },
+      "inputs": {
+        "WeaponSlotType": 0
+      },
+      "outputs": {
+        "ReserveAmmoTotal": 9
+      },
+      "runtime": "inventory",
+      "base_state": "inventory-defaults",
+      "dependencies": {
+        "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+        "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+        "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a"
+      },
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "GetReserveAmmoForWeapon ",
+      "source_bytecode_sha256": "190764cd7dcf102419f4617fee2778e11c8f3ead10261bc2de62b8ec51c3814d",
+      "self": {
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 12,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          },
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 15,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          },
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 6,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          },
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Shotgun",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 9,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+          }
+        ],
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Missing_Weapon",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        }
+      },
+      "inputs": {
+        "WeaponSlotType": 0
+      },
+      "outputs": {
+        "ReserveAmmoTotal": 12
+      },
+      "runtime": "inventory",
+      "base_state": "inventory-defaults",
+      "dependencies": {
+        "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+        "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+        "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a"
+      },
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "GetReserveAmmoForWeapon ",
+      "source_bytecode_sha256": "190764cd7dcf102419f4617fee2778e11c8f3ead10261bc2de62b8ec51c3814d",
+      "self": {
+        "CarryContents": []
+      },
+      "inputs": {
+        "WeaponSlotType": 0
+      },
+      "outputs": {
+        "ReserveAmmoTotal": 0
+      },
+      "runtime": "inventory",
+      "base_state": "inventory-defaults",
+      "dependencies": {
+        "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+        "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+        "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a"
+      },
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
     }
   ],
   "schema_version": 1,

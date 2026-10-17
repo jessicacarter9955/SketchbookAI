@@ -418,3 +418,19 @@ bounded parser reads; no Unreal process or rescan. See
 resource bounds, failures fixed and remaining object/UI/network work.
 Evidence is local under verification/source-inventory-effects/. Checklist: 13
 scoped green checkpoints; broad gameplay systems remain yellow/red.
+
+
+## 2026-10-18 · Original equipment tables and stat events
+
+173 translated /327 blocked. The generic reader now preserves imported class
+identities plus MetaClass constraints as data, and persistent event frames retain
+source schemas. Original weapon records (3 x73 fields), armor and shield records
+are readable. Seven extra parser inputs total 124,118 bytes; no Unreal launch,
+rescan, export or upload. Source weapon, armor/shield, reserve-ammo and apply/clear
+stat cases preserve original fallback and notification behavior.
+124 Python/79 JS tests and editor build pass. Browser: 519 generic +523 source
+comparisons; scene: 24 inputs/35 metrics/4 events/357 inventory-equipment/31
+character calculations, horizontal movement 0.60284. Evidence directory:
+verification/source-equipment-data/. The visible audit includes before/result/
+expected tables. Checklist has 14 scoped green checkpoints; whole systems remain
+partial. See ue2three-blueprint-effects.md for source quirks and remaining wiring.
