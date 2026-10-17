@@ -1,0 +1,56 @@
+name: UE2Three DDS + Realistic Coastal City integration
+on:
+  push:
+    branches: [codex/ue2three-realistic-districts]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: DDS UE2Three translator original Python tests
+        run: python -m unittest discover -s tools/ue2three/tests -q
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: DDS UE2Three + coastal geometry/mapping tests
+        run: node --test tests/districts.test.mjs tests/ue2three-districts.test.mjs tests/ue2three-*.test.mjs
+      - name: Original Realistic City regression tests
+        run: npm test
+      - name: Build Realistic City with genuine converter integration
+        run: npm run build
+      - name: Install browser acceptance runner
+        run: |
+          npm install --no-save playwright@1.58.0
+          npx playwright install --with-deps chromium
+      - name: Launch original Sketchbook site locally
+        run: |
+          python3 -m http.server 8765 >/tmp/coastal-http.log 2>&1 &
+          echo $! > /tmp/coastal-http.pid
+      - name: Verify car physics spawn, pedestrians, dialogues and four regions in Chromium
+        run: node tools/verify-ue2three-coastal.cjs
+      - name: Archive actual screenshot and output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ue2three-realistic-city-browser-proof
+          path: |
+            artifacts/ue2three-coastal-browser.json
+            artifacts/ue2three-coastal-browser.png
+      - name: Report actual export availability, no false photoreal claim
+        if: always()
+        run: |
+          if [ -s build/local-scenes/ue2three-districts/manifest.json ]; then
+            echo "Real Unreal native district GLBs present. Check acceptance report for all four." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No original UE district GLBs in checkout. Site used clearly labeled procedural preview; genuine Unreal conversion still blocked by source assets." >> "$GITHUB_STEP_SUMMARY"
+          fi
