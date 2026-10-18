@@ -290,7 +290,7 @@ def ai_reply(agent, context, cfg):
             "\nDialogue rule: respond directly to "+other+"'s latest point, "
             + ("introduce a new CLI move, image, paradox or playful twist, " if free_mode
                else "propose one NEW concrete insight, test, or evidence criterion, ")
-            "and avoid restating earlier agreements. Do not claim a completed "
+            + "and avoid restating earlier agreements. Do not claim a completed "
             "action without proof. If you disagree, explain constructively. "
             "Output ONLY your own contribution, without any Ari: or Noor: "
             "speaker labels, and NEVER write the other agent's next turn."
