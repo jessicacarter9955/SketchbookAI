@@ -28,9 +28,12 @@ The game runtime and its assets are not part of this application.
 
 No credentials are committed. A green CI is not proof of live inference or durable hosting.
 
-1. Provision a **non-expiring** managed PostgreSQL database from your chosen provider.
-   Avoid Render *Free Postgres* for permanent memory: Render says its free databases
-   expire after 30 days. Enable TLS (`sslmode=require` or stricter).
+1. Provision a durable managed PostgreSQL database from your chosen provider.
+   **No-cost candidates:** Aiven Free PostgreSQL (no fixed expiry, but inactive
+   services may be powered off) or Neon Free PostgreSQL (quota-limited). Both
+   depend on each provider's retention and fair-use policies. Avoid Render
+   *Free Postgres* for permanent memory: Render says it expires after 30 days.
+   Enable TLS (`sslmode=require` or stricter).
 2. On the Render web service set:
    - `TRUTHLAB_DATABASE_URL`: shared external PostgreSQL connection URL.
    - `TRUTHLAB_ADMIN_TOKEN`: existing long random login token.
