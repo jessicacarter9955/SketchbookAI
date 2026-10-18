@@ -35,6 +35,17 @@ constant; corrected the test setup to exercise typed asset rejection properly.
 All tests now pass. Editor revision21 with optional chunk421 shipped together.
 No Unreal start, source rescan, new parsed packages, export or upload this batch.
 
+Next dependency audit (cached AST only): TryAutoEquipItem has original local
+EX_SetArray instructions, Actor.GetComponentByClass, ActorComponent.GetOwner,
+and KismetSystemLibrary.IsValid. EquipItemToSlot and TryAutoEquipStackable also
+require IsValid; the complete source paths then need cross-component calls.
+TryEquipToSlot contains LocalizedText "Slot In Use" with original key
+C52FCD624614FE4233E099A431659554 and empty namespace; non-empty TextConst is not
+translated yet. Do not replace these paths with invented equip handlers.
+The corresponding UE5.7 execSetArray empties the destination before evaluating
+and adding elements sequentially; evaluate-all-then-assign would be wrong if
+expressions read that same array. Any future adapter must preserve that order.
+
 Next: acquire fresh integrated-browser screenshots when capture works, then
 continue original equip/transfer dependencies (native calls, casts, array literals,
 source Text constants), cross-component events and original UI wiring. Animations
