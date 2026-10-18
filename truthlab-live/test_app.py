@@ -86,6 +86,19 @@ class TruthLabTests(unittest.TestCase):
         self.assertEqual(len(s["reports"][0]["body"].split()),50)
         self.assertEqual(s["reports"][0]["mode"],"browser-qwen-unverified")
 
+    def test_due_preflight_does_not_require_api_keys(self):
+        self.assertFalse(app.cycle_is_due())
+        app.save_setting("engine", "api")
+        app.save_setting("status", "active")
+        app.save_setting("next_run", "0")
+        self.assertTrue(app.cycle_is_due())
+        app.save_setting("next_run", str(__import__("time").time()+400))
+        self.assertFalse(app.cycle_is_due())
+        app.save_setting("next_run", "0")
+        app.save_setting("ari_enabled", "0")
+        app.save_setting("noor_enabled", "0")
+        self.assertFalse(app.cycle_is_due())
+
     def test_external_runner_requires_explicit_secure_opt_in(self):
         old_model, old_key = app.MODEL, app.API_KEY
         try:
