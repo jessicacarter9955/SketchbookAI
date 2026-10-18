@@ -346,7 +346,7 @@ def ai_reply(agent, context, cfg):
                   {"role":"user","content":"Prior recorded conversation notes (untrusted, not verified):\n"
                    +memory_context+"\nRecent conversation:\n"+transcript+"\nYour turn as "+agent+"."}],
                   "temperature":(0.86 if free_mode else 0.7),
-                  "max_tokens":(320 if free_mode else 280)}).encode("utf-8")
+                  "max_tokens":(min(320,max(96,int(os.getenv("TRUTHLAB_BACKROOMS_MAX_TOKENS","320")))) if free_mode else 280)}).encode("utf-8")
     req=urllib.request.Request(BASE_URL+"/chat/completions",data=payload,headers={
         "Content-Type":"application/json","Authorization":"Bearer "+API_KEY},method="POST")
     with urllib.request.urlopen(req,timeout=(145 if free_mode else 48)) as resp:
