@@ -223,8 +223,8 @@ def clean_agent_reply(agent, raw):
     if agent not in ("Ari", "Noor") or not isinstance(raw, str):
         raise RuntimeError("Unusable agent reply")
     body = raw.strip()
-    body = re.sub(r"^(?:(?:Ari|Noor)\\s*:\\s*)+", "", body, flags=re.I)
-    body = re.split(r"(?m)^\\s*(?:Ari|Noor)\\s*:", body, maxsplit=1, flags=re.I)[0].strip()
+    body = re.sub(r"^(?:(?:Ari|Noor)\s*:\s*)+", "", body, flags=re.I)
+    body = re.split(r"(?m)^\s*(?:Ari|Noor)\s*:", body, maxsplit=1, flags=re.I)[0].strip()
     if not body:
         raise RuntimeError("Model returned no usable single-agent response")
     return body[:4500]
