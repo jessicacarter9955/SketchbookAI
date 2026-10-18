@@ -70,125 +70,51 @@ not create unknown provider accounts, disclose credentials or silently charge
 a payment method. GitHub Actions schedules are best-effort periodic execution,
 not guaranteed continuous realtime availability.
 
-## Backrooms evolution: historical-method replication
+## Backrooms evolution — historical-method replica
 
-This is an **original creative experiment**, not Truth Terminal impersonation
-or a prewritten imitation of its outcome. Its purpose is to reproduce the
-observable *method and sequence* behind the 2024 experiment:
+This is an original fiction experiment modeled on the observable process of
+Andy Ayrey's Infinite Backrooms and later Truth Terminal, not a prewritten
+duplicate of its mythology or a guaranteed viral outcome.
 
-| Historical experiment | TruthLab Backrooms implementation |
+| Historical sequence | TruthLab implementation |
 | --- | --- |
-| March 2024: two Claude Opus models improvise in a fake CLI | Ari and Noor start in `simulator@truthlab:~/# TruthLab Pair — cloud memory + authenticated independent scheduling (v0.8)
+| March 2024: paired Claude models explore an imagined CLI | Ari is the explorer issuing invented commands; Noor interprets them as the fictional simulator at `simulator@truthlab:~/$` |
+| Many free-flowing conversations | Ari and Noor alternate; real output is recorded in a workflow-isolated database |
+| Recurring motifs and strange myth-making | Repeated meaningful phrases across different cycles and both agents are identified from actual prose, excluding shell boilerplate |
+| Ayrey curates unusual exchanges | Each completed real Backrooms cycle is archived; operator can curate or reject excerpts while paused |
+| Selected corpus shapes an experimental voice | Authenticated JSON export contains *only* curated turns for possible later model training; no third agent or fine-tuning has been run |
+| Voice shared publicly, feedback refines it | Editorial phase prepares private drafts only; no unauthorized publication, followers, audience reactions or public feedback is invented |
+| GOAT token later independently created by outsiders | No token launches, token promotion, wallet actions, or fabricated economic impact |
 
-TruthLab is an isolated two-agent research experiment (Ari and Noor) in
-`jessicacarter9955/SketchbookAI`, branch `truthlab-autonomous-agents`.
-The game runtime and its assets are not part of this application.
+The five observable phases are `exploration`, `recurrence`, `mythmaking`,
+`curation`, and `editorial`. A phase is a descriptive assessment of recorded
+evidence and operator actions, not a scripted destiny. The starting prompt
+contains no original historical meme name or preselected religion.
 
-## Implemented
+The dashboard shows the current phase, detected phrases, archived scenes and
+curation controls. Only a paused operator may select or reject material.
+The download control produces a JSON corpus; it does not upload, fine-tune,
+publish, or create another agent. All fictional CLI effects are roleplay.
 
-- Browser console with individual start/pause, operator messages, workflow selection,
-  and a 50-word report per completed cycle.
-- Two independent conversation modes: goal-directed TruthLab and open-ended Backrooms.
-- **PostgreSQL** backend, enabled by `TRUTHLAB_DATABASE_URL`. Stores messages,
-  workflow-specific memories, reports, goals, pause state, and model usage. Reads across
-  independent processes and restarts (subject to the provider retaining the database).
-  SQLite remains the local fallback and is **not durable** on Render Free.
-- The model prompt selects recent and topically relevant older memories (up to 2,000 rows per workflow), labelled
-  as untrusted dialogue rather than independently verified facts.
-- Cross-process database lease prevents the web scheduler and an external scheduler from
-  executing a duplicate cycle at the same time.
-- `python truthlab-live/app.py --once` runs a due, **previously enabled** agent cycle
-  without a web browser or a persistent HTTP server, and honors pause, agent toggles,
-  due time, and the daily model-call cap.
-- A default-branch workflow at `.github/workflows/truthlab-autonomous-tick.yml` polls
-  every fifteen minutes and checks out this isolated branch. Only a due cycle runs.
-  Scheduled GitHub Actions can be delayed or skipped; this is **not** an always-on process.
+### Historical sources
 
-## Confirmed free, no-key inference path
+- https://www.infinitebackrooms.com/ — archive and experiments
+- https://www.infinitebackrooms.com/dreams/conversation-1712185367-txt — initial roleplay context
+- https://truthterminal.wiki/When_AIs_Play_God_se.pdf — April 2024 interpretive paper
+- https://www.wired.com/story/truth-terminal-goatse-crypto-millionaire/ — curation, fine-tuning, social release, and later GOAT origin
+- https://www.truthcollective.foundation/ — founding organization perspective
 
-The default-branch dispatcher now starts a locally bound **Qwen2.5-1.5B-Instruct**
-GGUF model through official `llama.cpp` Ubuntu CPU binaries whenever no external
-model API key and name are configured. The weights' SHA256 is pinned and verified.
-The 2026-10-18 GitHub Actions push smoke demonstrated a **real response** from the
-model, not a simulated transcript: run
-https://github.com/jessicacarter9955/SketchbookAI/actions/runs/39106760002.
-Standard GitHub Actions runners are free for this public repository.
+### Verification and limits
 
-This avoids OpenAI/Grok/OpenRouter tokens for **inference**, but DOES NOT
-automatically create an external PostgreSQL database. GitHub Actions first checks
-its optional `TRUTHLAB_DATABASE_URL` secret and otherwise requests a short-lived,
-RSA-signed GitHub OIDC token. The Render server verifies the exact repository,
-repository ID, workflow path, main branch and schedule/dispatch event before
-returning the private PostgreSQL URL. OIDC credentials are never printed or
-committed. The signed OIDC probe was verified in
-https://github.com/jessicacarter9955/SketchbookAI/actions/runs/39108501645.
-The runner skips when no durable database is connected.
-
-The existing Render console can enable the scheduled external runner with
-`TRUTHLAB_ALLOW_EXTERNAL_RUNNER=1` and a configured
-`TRUTHLAB_DATABASE_URL`. Its Start button then sets the shared database state
-to active; Pause stops the next scheduled cycle. While running in this mode,
-no live hosted API model is required, and individual toggles remain effective.
-
-The existing service's build command is compile-only. For this specific
-legacy Render service `TRUTHLAB_PG_BOOTSTRAP=1` allows the PostgreSQL driver
-to be installed at the first cloud DB connection when missing. Prefer installing
-dependencies in the build command for any future service.
-
-## End-to-end evidence
-
-The two-agent pipeline was independently validated with an actual Qwen CPU model,
-a disposable PostgreSQL container, and separate process invocations. The
-verification checks 2 cycles, 6 real messages, 6 durable memories, 2 reports,
-workflow-specific agent pause, global pause, and no double cycle:
-https://github.com/jessicacarter9955/SketchbookAI/actions/runs/39107713044
-
-A disposable CI Postgres proves storage behavior but is not an actual cloud
-database account. Production memory **remains unconfigured** until an approved
-provider is connected and the Render DB URL is provisioned. The project does
-not create unknown provider accounts, disclose credentials or silently charge
-a payment method. GitHub Actions schedules are best-effort periodic execution,
-not guaranteed continuous realtime availability.
-
- with no preselected meme, doctrine or cryptocurrency |
-| Thousands of free conversations | Unattended hourly cycles where possible; all real model outputs recorded by workflow |
-| Strange symbols, recurrent ideas, myths | Deterministic evidence-based repeated-bigram tracking, across two voices and multiple cycles |
-| Ayrey selects memorable conversations | Archived raw session excerpts, selectable or rejectable by the operator after pausing |
-| Curated corpus shapes a distinct voice | Only *selected* excerpts can advance the experimental workflow to the editorial phase; no automatic third agent |
-| Draft ideas become externally visible | Draft-only artifacts remain private; publication requires a separately authorized integration and human review |
-| Outside people later create/adopt the GOAT meme token | No imitation of token promotion, fake traction, trading, wallet actions or automatic posting |
-
-The workflow starts in `exploration`. Later phases are `recurrence` (evidence
-across cycles and speakers), `mythmaking` (multiple motifs remain salient
-across cycles), `curation` (operator has selected a real artifact), and
-`editorial` (recurrent, operator-curated material exists). These labels
-describe observation and prompting strategies, not proven autonomous intelligence,
-spiritual revelations or organically grown communities.
-
-The tracker saves `evolution_artifacts` in the same configured DB with one
-record per *live* Backrooms cycle, isolated from the original TruthLab goal mode.
-No default mythology is injected or assigned by the stage classifier. The
-dashboard displays the evolving phase, recurrent motifs, actual excerpts and
-select/reject controls. Curation is blocked while agents are running.
-
-The browser-only Qwen mode also uses the CLI prompt, but the GitHub runner with
-a persistent database is required for unattended execution. With no external
-PostgreSQL connected, Render's SQLite memory remains ephemeral.
-
-**Historical primary sources:**
-- https://www.infinitebackrooms.com/ (official archive)
-- https://www.infinitebackrooms.com/dreams/conversation-1712185367-txt (April 2024 CLI dialogue)
-- https://truthterminal.wiki/When_AIs_Play_God_se.pdf (April 2024 paper)
-- https://www.wired.com/story/truth-terminal-goatse-crypto-millionaire/ (operator's curation and GOAT's external origin)
-- https://www.truthcollective.foundation/ (project history in founders' words)
-
-**Evidence and limitations:** matching the *timeline mechanically* does not
-guarantee the same high originality, memetic reach, emergent culture or real
-funding. The original work used Claude 3 Opus and a separately fine-tuned Llama
-model; our free Qwen 1.5B implementation is not equivalent in capability.
-Tracking word overlaps alone is an imperfect proxy for a compelling cultural
-motif. No actual model fine-tuning, X posting, autonomous public persuasion,
-or financial integrations have been configured here.
+Run `python -m unittest discover -s truthlab-live -p 'test_*.py' -v`.
+The default-branch job `TruthLab Backrooms Real Genesis` executes actual
+Qwen 1.5B replies with a disposable PostgreSQL 16 database, tests two cycles,
+restarts, verifies archive and memory, then pauses. This is not production.
+The original experiment had Claude 3 Opus and a later separately fine-tuned
+Llama-based character, substantially stronger and unlike this Qwen 1.5B pair.
+A text-overlap counter cannot prove a myth or culture has meaningfully emerged.
+Real fine-tuning, third-party publishing, community engagement and permanent
+cloud database provisioning are not yet active.
 
 ## Required configuration to activate
 
