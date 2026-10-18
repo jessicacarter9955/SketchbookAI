@@ -85,5 +85,36 @@ class TruthLabTests(unittest.TestCase):
         self.assertEqual(len(s["reports"][0]["body"].split()),50)
         self.assertEqual(s["reports"][0]["mode"],"browser-qwen-unverified")
 
+    def test_cycle_lease_blocks_reentry_and_can_be_released(self):
+        lease = app.claim_cycle_lease()
+        self.assertIsNotNone(lease)
+        self.assertIsNone(app.claim_cycle_lease())
+        app.release_cycle_lease(lease)
+        self.assertIsNotNone(app.claim_cycle_lease())
+
+    def test_one_shot_runner_respects_persistent_pause_and_due_time(self):
+        old_model, old_key, old_reply = app.MODEL, app.API_KEY, app.ai_reply
+        try:
+            app.MODEL = "fixture"
+            app.API_KEY = "not-a-real-key"
+            app.ai_reply = lambda agent, context, cfg: agent + " proposes an evidence-based next step."
+            app.scheduled_once()  # Paused by default: should do nothing.
+            self.assertEqual(app.settings()["cycles"], 0)
+            app.save_setting("engine", "api")
+            app.save_setting("status", "active")
+            app.scheduled_once()
+            self.assertEqual(app.settings()["cycles"], 1)
+            self.assertEqual(len(app.get_state()["messages"]), 4)
+            self.assertEqual(len(app.get_state()["memories"]), 4)
+            self.assertEqual(len(app.get_state()["reports"][0]["body"].split()), 50)
+            app.scheduled_once()  # Not due: cannot duplicate cycle.
+            self.assertEqual(app.settings()["cycles"], 1)
+            app.save_setting("status", "paused")
+            app.save_setting("next_run", "0")
+            app.scheduled_once()  # Paused: cannot resume itself.
+            self.assertEqual(app.settings()["cycles"], 1)
+        finally:
+            app.MODEL, app.API_KEY, app.ai_reply = old_model, old_key, old_reply
+
 if __name__ == "__main__":
     unittest.main()
