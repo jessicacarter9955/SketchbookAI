@@ -20,6 +20,8 @@ assert os.environ.get("TRUTHLAB_DATABASE_URL")==dsn
 assert os.environ.get("OPENAI_BASE_URL")=="http://127.0.0.1:8080/v1"
 assert os.environ.get("OPENAI_MODEL")=="qwen-local"
 assert os.environ.get("OPENAI_API_KEY")=="local-only-no-external-key"
+# Optional speed profile for free CPU: shorter new replies, full history retained.
+os.environ.setdefault("TRUTHLAB_BACKROOMS_MAX_TOKENS","192")
 app.MODEL="qwen-local"
 app.API_KEY="local-only-no-external-key"
 app.BASE_URL="http://127.0.0.1:8080/v1"
