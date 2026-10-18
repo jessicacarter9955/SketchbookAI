@@ -88,3 +88,26 @@ jobs:
           name: gaussianimate-synthetic-browser-smoke
           path: img2three/gaussianimate/bridge/qa/synthetic-browser-smoke.png
           if-no-files-found: ignore
+
+  upstream-python-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: img2three/gaussianimate/upstream
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build vendored upstream wheel and source archive
+        run: |
+          python -m pip install "build>=1,<2" "setuptools>=70.1" wheel
+          python -m build
+      - name: Validate actual GaussiAnimate CLI and experiment configs
+        run: |
+          python -m pip install dist/*.whl
+          python -m experiments.run experiments/mesh/config.yaml --validate-only
+          python -m experiments.run experiments/monocular_gaussian/config.yaml --validate-only
+          python -m experiments.run experiments/multiview_gaussian/config.yaml --validate-only
+          python -c "from importlib.metadata import distribution; assert all(callable(e.load()) for e in distribution('gaussianimate').entry_points if e.group == 'console_scripts')"
