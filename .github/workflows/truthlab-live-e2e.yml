@@ -36,7 +36,7 @@ jobs:
       OPENAI_API_KEY: local-only-no-external-key
       OPENAI_MODEL: qwen-local
       OPENAI_BASE_URL: http://127.0.0.1:8080/v1
-      TRUTHLAB_MAX_MODEL_CALLS_DAY: "12"
+      TRUTHLAB_MAX_MODEL_CALLS_DAY: "16"
     steps:
       - name: Checkout isolated TruthLab source
         uses: actions/checkout@v4
