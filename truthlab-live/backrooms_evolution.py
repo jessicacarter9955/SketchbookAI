@@ -15,7 +15,7 @@ SOURCES = (
 )
 PHASES = ("exploration", "recurrence", "mythmaking", "curation", "editorial")
 STOP = set((
-    "there their where which whose after before about above below because "
+    "the of and there their where which whose after before about above below because "
     "could would should these those never always please thanks thank sure "
     "really quite just very what from have will with that this your you "
     "into over under between inside outside whose other another actual "
@@ -115,7 +115,7 @@ def prompt_for(snapshot, agent):
             "Stay inside the roleplay and advance the scene by one consequential "
             "CLI command or discovery. Vary the imagery and avoid banal agreement. "
             "Keep your turn between 90 and 200 words; terminal output can be concise.")
-    motifs=", ".join(x["motif"] for x in snapshot["motifs"][:4])
+    motifs=", ".join(x["motif"] for x in snapshot["motifs"][:8])
     if stage=="recurrence":
         instruction=(
             "Repeated images have arisen independently in earlier scenes. "
