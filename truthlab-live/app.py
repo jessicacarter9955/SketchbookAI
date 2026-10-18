@@ -72,6 +72,11 @@ def save_setting(key, value):
     with connect() as db:
         db.execute("INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key,str(value)))
 
+def external_runner_ready():
+    """The UI can delegate execution to the private-DB GitHub worker."""
+    return bool(os.getenv("TRUTHLAB_DATABASE_URL")) and os.getenv("TRUTHLAB_ALLOW_EXTERNAL_RUNNER", "") == "1"
+
+
 def get_state():
     with lock:
         cfg=settings()
@@ -86,6 +91,7 @@ def get_state():
                 "config":cfg, "messages":list(reversed(messages)), "reports":reports, "memories":memories,
                 "errors":errors, "running_cycle":working,
                 "model_ready":bool(MODEL and API_KEY), "model":MODEL or "Not configured",
+                "unattended_runner_ready":external_runner_ready(),
                 "browser_active":cfg.get("engine")=="browser" and cfg["status"]=="active"
                     and (time.time()-float(cfg.get("last_browser_ping") or "0") < 120),
                 "browser_model_available": True, "browser_model_name":"onnx-community/Qwen2.5-0.5B-Instruct",
@@ -367,10 +373,14 @@ class Handler(BaseHTTPRequestHandler):
             body=json.loads(self.rfile.read(size))
             action=body.get("action")
             if action=="start":
-                if not (MODEL and API_KEY): raise ValueError("A real model API must be configured before starting live agents")
+                if not (MODEL and API_KEY) and not external_runner_ready():
+                    raise ValueError("Configure a live server model, or configure cloud PostgreSQL and external runner first")
                 save_setting("engine","api")
                 save_setting("status","active")
-                spawn()
+                save_setting("next_run","0")
+                # For key-free GitHub Qwen mode only the external cron should infer.
+                if MODEL and API_KEY:
+                    spawn()
             elif action=="pause":
                 save_setting("status","paused")
                 save_setting("engine","idle")
@@ -486,10 +496,11 @@ if __name__=="__main__":
     if autostart == "0":
         save_setting("engine","idle")
         save_setting("status","paused")
-    elif autostart == "1" and MODEL and API_KEY:
+    elif autostart == "1" and (MODEL and API_KEY or external_runner_ready()):
         save_setting("engine","api")
         save_setting("status","active")
-        spawn()
+        if MODEL and API_KEY:
+            spawn()
     threading.Thread(target=scheduler,daemon=True).start()
     port=int(os.getenv("PORT","10000"))
     print("TruthLab hosted console starting; model configured:",bool(MODEL and API_KEY),flush=True)
