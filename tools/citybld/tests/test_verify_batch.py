@@ -17,7 +17,7 @@ def glb_bytes(textured=True):
     length = 12 + 8 + len(data) + 8 + len(binary)
     return (struct.pack("<4sII", b"glTF", 2, length) +
             struct.pack("<I4s", len(data), b"JSON") + data +
-            struct.pack("<I4s", len(binary), b"BIN\\x00") + binary)
+            struct.pack("<I4s", len(binary), b"BIN" + bytes([0])) + binary)
 
 class CityBldPortTest(unittest.TestCase):
     def setUp(self):
