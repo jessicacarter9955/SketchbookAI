@@ -4,7 +4,7 @@ This script must only be used with TRUTHLAB_TEST_DATABASE_URL pointing to a
 fresh CI service container. No production credentials or real conversations.
 It launches the existing one-shot process separately, verifies durable messages
 and recall after reconnect, proves skip-not-due and pause, and tests per-agent
-enablement with a second full two-agent cycle, then one individually paused cycle. Never run against the operator's DB.
+enablement with a second full two-agent cycle, a solo pause check, then a resumed turn. Never run against the operator's DB.
 """
 import json
 import os
@@ -28,7 +28,7 @@ app.DB = "/tmp/truthlab-e2e-sentinel-not-used.sqlite"
 app.MODEL = "qwen-local"
 app.API_KEY = "local-only-no-external-key"
 app.BASE_URL = "http://127.0.0.1:8080/v1"
-app.MAX_DAILY = 12
+app.MAX_DAILY = 16
 
 def run_one(expect_run=True):
     result = subprocess.run(
@@ -102,33 +102,44 @@ assert len(second["memories"]) == 8 and len(second["reports"]) == 2
 assert second["daily_calls"] == 8
 print("TRUTHLAB_E2E_STEP_3_OK: two successive real AI pair conversations with recalled memory", flush=True)
 
-# Individual agent controls persist across independent workers too.
+# Ari paused: Noor gets a single solo update, not a fake two-sided exchange.
 app.save_setting("ari_enabled", "0")
 app.save_setting("next_run", "0")
 run_one()
 third = app.get_state()
 assert third["config"]["cycles"] == 3
-third_msgs = [m for m in third["messages"] if m["mode"]=="live" and m["cycle"]==3]
-assert len(third_msgs) == 2 and all(m["speaker"]=="Noor" for m in third_msgs)
-assert len(third["memories"]) == 10
-assert len(third["reports"]) == 3
-assert third["daily_calls"] == 10
-print("TRUTHLAB_E2E_STEP_4_OK: Ari individually paused and Noor continued", flush=True)
+third_msgs = [m for m in fourth["messages"] if m["mode"]=="live" and m["cycle"]==3]
+assert len(third_msgs) == 1 and third_msgs[0]["speaker"] == "Noor"
+assert len(third["memories"]) == 9 and len(third["reports"]) == 3
+assert third["daily_calls"] == 9
+print("TRUTHLAB_E2E_STEP_4_OK: Noor solo update, no repeated fake conversation", flush=True)
+
+# Restart with Ari resumed: his first live message MUST answer the last Noor.
+app.save_setting("ari_enabled", "1")
+app.save_setting("next_run", "0")
+run_one()
+fourth = app.get_state()
+assert fourth["config"]["cycles"] == 4
+fourth_msgs = [m for m in fourth["messages"] if m["mode"]=="live" and m["cycle"]==4]
+assert [m["speaker"] for m in fourth_msgs] == ["Ari","Noor","Ari","Noor"]
+assert len(fourth["memories"]) == 13 and len(fourth["reports"]) == 4
+assert fourth["daily_calls"] == 13
+print("TRUTHLAB_E2E_STEP_5_OK: Ari RESUMED and replied immediately after Noor", flush=True)
 
 app.save_setting("status", "paused")
 app.save_setting("next_run", "0")
 assert not app.cycle_is_due()
 run_one(expect_run=False)
-assert app.settings()["cycles"] == 3, "Paused agents should not run"
-print("TRUTHLAB_E2E_STEP_5_OK: global pause is durable and blocks next tick", flush=True)
+assert app.settings()["cycles"] == 4, "Paused agents should not run"
+print("TRUTHLAB_E2E_STEP_6_OK: global pause is durable and blocks next tick", flush=True)
 
 # Publish ONLY synthetic CI conversations. The production application NEVER
 # logs private transcripts, passwords, DB strings, or user messages.
 transcript = [{"cycle":m["cycle"],"speaker":m["speaker"],"body":m["body"]}
               for m in third["messages"] if m["mode"]=="live"]
 reports = [{"cycle":r["cycle"], "body":r["body"]}
-           for r in sorted(third["reports"],key=lambda r:r["cycle"])]
-assert len(transcript) == 10
+           for r in sorted(fourth["reports"],key=lambda r:r["cycle"])]
+assert len(transcript) == 13
 print("TRUTHLAB_E2E_PUBLIC_CONVERSATION_JSON="+json.dumps({
     "environment":"isolated CI; synthetic project goal, not production",
     "model":"Qwen2.5 1.5B Instruct Q4_K_M through llama.cpp",
@@ -137,4 +148,4 @@ print("TRUTHLAB_E2E_PUBLIC_CONVERSATION_JSON="+json.dumps({
     "model_messages":transcript,
     "reports":reports
 }, ensure_ascii=False), flush=True)
-print("TRUTHLAB_E2E_COMPLETE real_model=Qwen1.5B cycles=3 messages=10 memories=10 reports=3", flush=True)
+print("TRUTHLAB_E2E_COMPLETE real_model=Qwen1.5B cycles=4 messages=13 memories=13 reports=4", flush=True)
