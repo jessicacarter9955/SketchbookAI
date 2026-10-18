@@ -95,6 +95,37 @@ def evolution_snapshot():
     return backrooms.phase_for(list(reversed(msgs)),list(reversed(artifacts)))
 
 
+def curated_backrooms_corpus():
+    """Export ONLY human-curated, authentic Backrooms turns for later training.
+
+    No automatic fine-tuning, uploads, payments, publication or third agent.
+    Every row remains traceable to a specific stored conversation cycle.
+    """
+    with connect() as db:
+        rows=[dict(r) for r in db.execute(
+            "SELECT m.cycle,m.speaker,m.body FROM messages AS m "
+            "JOIN evolution_artifacts AS a ON a.workflow=m.workflow AND a.cycle=m.cycle "
+            "WHERE m.workflow='backrooms' AND m.mode='live' AND a.status='curated' "
+            "AND m.speaker IN ('Ari','Noor') ORDER BY m.id LIMIT 1200")]
+    examples=[]
+    for i in range(1,len(rows)):
+        prior, current=rows[i-1],rows[i]
+        if prior["cycle"]!=current["cycle"] or prior["speaker"]==current["speaker"]:
+            continue
+        examples.append({
+            "messages":[
+                {"role":"system","content":"Fictional Backrooms CLI creative roleplay."},
+                {"role":"user","content":prior["speaker"]+": "+prior["body"]},
+                {"role":"assistant","content":current["body"]},
+            ],
+            "cycle":current["cycle"],
+            "speaker":current["speaker"],
+        })
+    return {"format":"chat_sft_v1","origin":"human-curated TruthLab Backrooms fiction",
+            "training_performed":False,"publicly_published":False,
+            "examples":examples}
+
+
 def archive_backrooms(cycle):
     with connect() as db:
         rows=[dict(r) for r in db.execute(
@@ -513,6 +544,8 @@ class Handler(BaseHTTPRequestHandler):
             if not database_url:
                 return self.send_json(503, {"error":"Cloud database not configured"})
             return self.send_json(200, {"database_url":database_url})
+        if path=="/api/backrooms/corpus":
+            return self.send_json(200,curated_backrooms_corpus()) if self.authorized() else self.send_json(401,{"error":"Unauthorized"})
         if path=="/api/state":
             return self.send_json(200,get_state()) if self.authorized() else self.send_json(401,{"error":"Unauthorized"})
         if path=="/":
