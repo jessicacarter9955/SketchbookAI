@@ -95,7 +95,7 @@ def get_state():
                 "tools":{"browser_qwen":"Available with active browser WebGPU, no key", "web_search":"not connected", "email":"not connected to worker",
                          "github":"not connected to worker", "wallet":"not connected"},
                 "wallet_address":None,"contact_email":None,
-                "hosting_note":"Free hosting sleeps after inactivity and loses SQLite state on restart; not an always-on durable worker."}
+                "hosting_note":"Render Free SQLite is ephemeral. Browser snapshots preserve conversations on the same device when browser storage remains available; export JSON for independent backups."}
 
 def publish(speaker, body, mode, cycle):
     with connect() as db:
@@ -302,7 +302,7 @@ class Handler(BaseHTTPRequestHandler):
             if self.headers.get("Content-Type","").split(";")[0]!="application/json":
                 raise ValueError("Expected application/json")
             size=int(self.headers.get("Content-Length","0"))
-            if size<1 or size>5000: raise ValueError("Invalid request size")
+            if size<1 or size>750000: raise ValueError("Invalid request size")
             body=json.loads(self.rfile.read(size))
             action=body.get("action")
             if action=="start":
@@ -360,6 +360,34 @@ class Handler(BaseHTTPRequestHandler):
                     report50(n,"browser-qwen-unverified")
                     save_setting("cycles",n)
                     save_setting("last_run",now())
+            elif action=="restore_snapshot":
+                snapshot=body.get("snapshot")
+                if not isinstance(snapshot,dict): raise ValueError("Invalid snapshot")
+                workflow=snapshot.get("workflow")
+                if workflow not in ("truthlab","backrooms"): raise ValueError("Invalid snapshot workflow")
+                if settings()["status"]=="active": raise ValueError("Pause before restoring")
+                messages=snapshot.get("messages",[])
+                reports=snapshot.get("reports",[])
+                memories=snapshot.get("memories",[])
+                if any(not isinstance(x,list) or len(x)>400 for x in (messages,reports,memories)):
+                    raise ValueError("Snapshot exceeds limits")
+                with lock:
+                    with connect() as db:
+                        existing=db.execute("SELECT COUNT(*) FROM messages WHERE workflow=?",(workflow,)).fetchone()[0]
+                        if existing: raise ValueError("Workflow already has messages; restore requires empty history")
+                        for m in messages:
+                            if m.get("speaker") not in ("Ari","Noor","Operator") or not isinstance(m.get("body"),str): continue
+                            db.execute("INSERT INTO messages(ts,cycle,speaker,body,mode,workflow) VALUES(?,?,?,?,?,?)",
+                                (str(m.get("ts",""))[:40],int(m.get("cycle",0)),m["speaker"],m["body"][:4500],str(m.get("mode","restored"))[:60],workflow))
+                        for r in reports:
+                            if isinstance(r.get("body"),str):
+                                db.execute("INSERT INTO reports(ts,cycle,body,mode,workflow) VALUES(?,?,?,?,?)",
+                                    (str(r.get("ts",""))[:40],int(r.get("cycle",0)),r["body"][:4500],str(r.get("mode","restored"))[:60],workflow))
+                        for m in memories:
+                            if isinstance(m.get("content"),str):
+                                db.execute("INSERT INTO memories(ts,workflow,cycle,content) VALUES(?,?,?,?)",
+                                    (str(m.get("ts",""))[:40],workflow,int(m.get("cycle",0)),m["content"][:1500]))
+                save_setting("cycles",max(settings()["cycles"],max([int(x.get("cycle",0)) for x in messages]+[0])))
             elif action=="set_workflow":
                 mode=body.get("workflow")
                 if mode not in ("truthlab","backrooms"): raise ValueError("Unknown workflow")
