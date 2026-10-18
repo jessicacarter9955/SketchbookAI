@@ -51,6 +51,21 @@ class TruthLabTests(unittest.TestCase):
         self.post({"action":"set_agent","agent":"Ari","enabled":True})
         self.assertEqual(app.settings()["agents_enabled"], {"Ari":True,"Noor":False})
 
+    def test_worker_credential_endpoint_rejects_unauthenticated_access(self):
+        from unittest.mock import patch
+        req=urllib.request.Request(self.url + "/api/worker/credentials")
+        with patch.dict(os.environ, {"TRUTHLAB_OIDC_BRIDGE":"1"}):
+            with self.assertRaises(urllib.error.HTTPError) as failure:
+                urllib.request.urlopen(req, timeout=4)
+        self.assertEqual(failure.exception.code,401)
+
+    def test_worker_probe_fails_closed_when_disabled(self):
+        req=urllib.request.Request(self.url + "/api/worker/probe")
+        with patch.dict(os.environ, {"TRUTHLAB_OIDC_BRIDGE":"0"}):
+            with self.assertRaises(urllib.error.HTTPError) as failure:
+                urllib.request.urlopen(req, timeout=4)
+        self.assertEqual(failure.exception.code,404)
+
     def test_unauthorized_write(self):
         with self.assertRaises(urllib.error.HTTPError) as r:
             self.post({"action":"pause"},token=False)
