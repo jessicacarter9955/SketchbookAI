@@ -90,7 +90,7 @@ def evolution_snapshot():
             "SELECT cycle,speaker,body,mode FROM messages WHERE workflow='backrooms' "
             "ORDER BY id DESC LIMIT 600")]
         artifacts=[dict(r) for r in db.execute(
-            "SELECT id,ts,cycle,kind,title,status FROM evolution_artifacts "
+            "SELECT id,ts,cycle,kind,title,content,status FROM evolution_artifacts "
             "WHERE workflow='backrooms' ORDER BY id DESC LIMIT 50")]
     return backrooms.phase_for(list(reversed(msgs)),list(reversed(artifacts)))
 
