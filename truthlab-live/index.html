@@ -67,9 +67,11 @@ function render(){
  $("cycles").textContent=c.cycles;$("messages").textContent=state.messages.length;
  $("calls").textContent=state.daily_calls+"/"+state.daily_cap;
  $("model").textContent=state.model;
- $("readiness").textContent=ready?"Real model connection configured. No external tools are connected.":"No real model API is configured. Live Start is disabled; Preview demo is simulated.";
+ var unattended=Boolean(state.unattended_runner_ready);
+ $("readiness").textContent=ready?"Server model connected. The scheduler can also continue from cloud memory.":(unattended?"External Qwen runner enabled; GitHub database secret must match this instance for unattended execution.":"No server model or cloud database is configured. Browser Qwen requires an open tab; demo is simulated.");
+ $("start").textContent=unattended&&!ready?"▶ Start scheduled agents":"▶ Start real agents";
  $("readiness").className="note "+(ready?"good":"warn");
- $("start").disabled=!ready||state.running_cycle||c.status==="active";
+ $("start").disabled=!(ready||unattended)||state.running_cycle||c.status==="active";
  $("step").disabled=!ready||state.running_cycle;
  $("pause").disabled=c.status!=="active";
  $("demo").disabled=state.running_cycle;
