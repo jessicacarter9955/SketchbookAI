@@ -43,7 +43,17 @@ workflowSelect.onchange=async()=>{
  try{await request("POST","set_workflow",{workflow:workflowSelect.value});notify("Workflow selected: "+workflowSelect.options[workflowSelect.selectedIndex].text);}
  catch(e){notify(e.message);await refresh();}
 };
-root.append(workflowSelect,modelSelect,localStart,localStop,localStatus);
+const exportButton=makeButton("↓ Export workflow JSON",async()=>{
+ try{
+  const s=await request("GET");
+  const data={exported_at:new Date().toISOString(),workflow:s.config.workflow,config:s.config,messages:s.messages,reports:s.reports,memories:s.memories};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;a.download="truthlab-"+s.config.workflow+"-"+Date.now()+".json";a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),30000);
+ }catch(e){notify(e.message)}
+});
+root.append(workflowSelect,modelSelect,localStart,localStop,exportButton,localStatus);
 document.querySelector(".actions")?.append(root);
 document.querySelector(".intro")?.insertAdjacentElement("afterend",engineLine);
 const individual={};
