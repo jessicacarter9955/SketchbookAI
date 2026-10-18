@@ -143,8 +143,9 @@ async function singleCycle(){
     "You cannot browse, email, use wallets, spend, or post publicly. Never claim to have performed those actions. "+
     "Provide one concrete measurable next step. Reply in 50-110 words.";
   const history=s.messages.filter(x=>x.mode!=="demo").slice(-12).map(x=>x.speaker+": "+x.body).join("\n");
+  const memory=(s.memories||[]).slice(0,8).reverse().map(x=>x.content).join("\n");
   localStatus.textContent="Qwen generating "+agent+"…";
-  const answer=await reply(system, "Recent conversation:\n"+history+
+  const answer=await reply(system, "Earlier remembered exchanges:\n"+memory+"\nRecent conversation:\n"+history+
    "\nYou are "+agent+". Respond to the other agent or to an Operator request addressed to you.");
   if(stopping)break;
   const fresh=await request("GET");
@@ -169,7 +170,10 @@ async function loop(){
       }else{await new Promise(r=>setTimeout(r,4000))}
     }catch(e){notify("Qwen stopped: "+e.message);break}
   }
-  live=false;busy=false;localStatus.textContent="Qwen stopped";localStop.disabled=true;
+  live=false;busy=false;worker?.terminate();worker=null;
+  await request("POST","pause").catch(()=>{});
+  localStatus.textContent="Qwen stopped";localStop.disabled=true;
+  refresh();
 }
 async function start(){
  if(live||busy)return;
