@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Free CPU inference: official llama.cpp + Qwen2.5 0.5B Instruct GGUF.
+# Free CPU inference: official llama.cpp + Qwen2.5 1.5B Instruct GGUF.
 # Runs inside one GitHub Actions job, never exposing a public model endpoint.
 set -euo pipefail
 MODEL_DIR="${TRUTHLAB_MODEL_DIR:-${RUNNER_TEMP:-/tmp}/truthlab-model}"
 mkdir -p "$MODEL_DIR"
-MODEL="$MODEL_DIR/qwen2.5-0.5b-instruct-q4_k_m.gguf"
-MODEL_URL="https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf"
-MODEL_SHA256="74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db"
+MODEL="$MODEL_DIR/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+MODEL_URL="https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+MODEL_SHA256="6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e"
 LLAMA_RELEASE="b11430"
 ARCHIVE="$MODEL_DIR/llama.tar.gz"
 RELEASE_URL="https://github.com/ggml-org/llama.cpp/releases/download/$LLAMA_RELEASE/llama-$LLAMA_RELEASE-bin-ubuntu-x64.tar.gz"
@@ -31,7 +31,7 @@ pid=$!
 echo "$pid" > "$MODEL_DIR/server.pid"
 for i in $(seq 1 100); do
   if curl -fsS --max-time 2 http://127.0.0.1:8080/health | grep -q '"status":"ok"'; then
-    echo "TRUTHLAB_LOCAL_MODEL_READY llama.cpp Qwen2.5 0.5B"
+    echo "TRUTHLAB_LOCAL_MODEL_READY llama.cpp Qwen2.5 1.5B"
     exit 0
   fi
   if ! kill -0 "$pid" 2>/dev/null; then
