@@ -108,7 +108,7 @@ app.save_setting("next_run", "0")
 run_one()
 third = app.get_state()
 assert third["config"]["cycles"] == 3
-third_msgs = [m for m in fourth["messages"] if m["mode"]=="live" and m["cycle"]==3]
+third_msgs = [m for m in third["messages"] if m["mode"]=="live" and m["cycle"]==3]
 assert len(third_msgs) == 1 and third_msgs[0]["speaker"] == "Noor"
 assert len(third["memories"]) == 9 and len(third["reports"]) == 3
 assert third["daily_calls"] == 9
@@ -136,7 +136,7 @@ print("TRUTHLAB_E2E_STEP_6_OK: global pause is durable and blocks next tick", fl
 # Publish ONLY synthetic CI conversations. The production application NEVER
 # logs private transcripts, passwords, DB strings, or user messages.
 transcript = [{"cycle":m["cycle"],"speaker":m["speaker"],"body":m["body"]}
-              for m in third["messages"] if m["mode"]=="live"]
+              for m in fourth["messages"] if m["mode"]=="live"]
 reports = [{"cycle":r["cycle"], "body":r["body"]}
            for r in sorted(fourth["reports"],key=lambda r:r["cycle"])]
 assert len(transcript) == 13
