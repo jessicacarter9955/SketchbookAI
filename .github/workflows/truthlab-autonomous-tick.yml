@@ -1,5 +1,7 @@
 # Schedules run from default branch; agent code stays on dedicated branch.
-# Production memory must be a private durable PostgreSQL backend configured as a secret.
+# Production memory comes from a private managed PostgreSQL database.
+# The cron job can use either a manually configured GitHub secret OR a signed
+# OIDC exchange with the existing Render console to avoid repository secrets.
 name: TruthLab Autonomous Tick
 on:
   push:
@@ -20,6 +22,9 @@ jobs:
   tick:
     if: github.event_name != 'push'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     timeout-minutes: 20
     env:
       TRUTHLAB_DATABASE_URL: ${{ secrets.TRUTHLAB_DATABASE_URL }}
@@ -28,27 +33,34 @@ jobs:
       OPENAI_BASE_URL: ${{ vars.TRUTHLAB_LLM_BASE_URL || 'https://api.openai.com/v1' }}
       TRUTHLAB_MAX_MODEL_CALLS_DAY: ${{ vars.TRUTHLAB_MAX_MODEL_CALLS_DAY || '48' }}
     steps:
-      - name: Verify persistent storage configured
+      - name: Checkout isolated agents code
+        uses: actions/checkout@v4
+        with:
+          ref: truthlab-autonomous-agents
+          persist-credentials: false
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Resolve private PostgreSQL credential
         id: verify
         shell: bash
         run: |
           if [[ -n "$TRUTHLAB_DATABASE_URL" ]]; then
             echo "enabled=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::Cloud database connection not configured; refusing to generate disposable unpersisted dialogue."
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            set +e
+            python truthlab-live/fetch_worker_database.py
+            code=$?
+            set -e
+            case "$code" in
+              0) echo "enabled=true" >> "$GITHUB_OUTPUT" ;;
+              2) echo "::notice::Durable PostgreSQL not connected; scheduled dialogues are safely disabled."
+                 echo "enabled=false" >> "$GITHUB_OUTPUT" ;;
+              *) echo "::error::GitHub/Render OIDC credential exchange failed."
+                 exit "$code" ;;
+            esac
           fi
-      - name: Checkout isolated agents code
-        if: steps.verify.outputs.enabled == 'true'
-        uses: actions/checkout@v4
-        with:
-          ref: truthlab-autonomous-agents
-          persist-credentials: false
-      - name: Python
-        if: steps.verify.outputs.enabled == 'true'
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
       - name: Install PostgreSQL driver
         if: steps.verify.outputs.enabled == 'true'
         run: python -m pip install -r truthlab-live/requirements.txt
@@ -90,6 +102,38 @@ jobs:
       - name: Execute one due cycle
         if: steps.due.outputs.ready == 'true'
         run: python truthlab-live/app.py --once
+
+  # One-off verification using a genuine GitHub-signed OIDC token;
+  # cannot read database credentials during push events.
+  oidc-probe:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Verify GitHub OIDC identity is accepted by Render without returning secrets
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json,os,urllib.request,urllib.parse
+          address=os.environ["ACTIONS_ID_TOKEN_REQUEST_URL"]
+          address+=("&" if "?" in address else "?")
+          address+=urllib.parse.urlencode({"audience":"truthlab-render-database-v1"})
+          req=urllib.request.Request(address,headers={
+              "Authorization":"Bearer "+os.environ["ACTIONS_ID_TOKEN_REQUEST_TOKEN"],
+              "Accept":"application/json; api-version=2.0"})
+          with urllib.request.urlopen(req,timeout=20) as r:
+              signed=json.load(r)["value"]
+          req=urllib.request.Request(
+              "https://truthlab-agents-open.onrender.com/api/worker/probe",
+              headers={"Authorization":"Bearer "+signed})
+          with urllib.request.urlopen(req,timeout=120) as r:
+              result=json.load(r)
+          assert result == {"verified":True,"credential_access":False}, "Unexpected OIDC probe result"
+          print("TRUTHLAB_OIDC_VERIFIED signed main-branch workflow identity; zero credentials returned")
+          PY
 
   # Runs only when THIS workflow definition changes: verifies actual inference,
   # not just syntax. No production DB or user transcripts accessed.
