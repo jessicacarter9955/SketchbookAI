@@ -86,10 +86,28 @@ form.onsubmit=async(e)=>{
  try{await request("POST","message",{target:selector.value,text:t});input.value="";urgent=true;nextTick=0;notify("Message saved for "+selector.value+". Reply depends on the active inference engine.");}
  catch(err){notify(err.message)}
 };
+const snapshotKey=w=>"truthlab-snapshot-v1-"+w;
+let restoring=false;
 async function refresh(){
  if(!token())return;
  try{
-  const s=await request("GET");for(const [a,ui] of Object.entries(individual)){
+  const s=await request("GET");
+  const w=s.config.workflow||"truthlab";
+  if(s.messages.length){
+    try{
+      const snapshot={workflow:w,messages:s.messages,reports:s.reports,memories:s.memories,updated:new Date().toISOString()};
+      localStorage.setItem(snapshotKey(w),JSON.stringify(snapshot));
+    }catch(e){localStatus.textContent="Browser backup unavailable; export JSON";}
+  }else if(!restoring && s.config.status!=="active"){
+    const saved=localStorage.getItem(snapshotKey(w));
+    if(saved){
+      restoring=true;
+      try{await request("POST","restore_snapshot",{snapshot:JSON.parse(saved)});notify("Restored "+w+" from this browser's saved memory");}
+      catch(e){localStatus.textContent="Automatic restore: "+e.message;}
+      finally{restoring=false;}
+    }
+  }
+  for(const [a,ui] of Object.entries(individual)){
     const enabled=s.config.agents_enabled[a];
     ui.button.textContent=enabled?"Ⅱ Pause "+a:"▶ Resume "+a;
     ui.state.textContent=enabled?"Enabled":"Paused";
