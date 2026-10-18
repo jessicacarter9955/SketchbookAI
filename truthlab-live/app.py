@@ -204,6 +204,16 @@ def recall_memories(workflow, subject, max_items=10, max_chars=5400):
     return "\n".join(lines)[:max_chars]
 
 
+def planned_turns(enabled, last_speaker=None):
+    """Alternate agents; a solo agent gets one update, never a fake dialogue."""
+    active = [a for a in ("Ari", "Noor") if enabled.get(a)]
+    if len(active) < 2:
+        return active
+    first = "Noor" if last_speaker == "Ari" else "Ari"
+    second = "Ari" if first == "Noor" else "Noor"
+    return [first, second, first, second]
+
+
 def ai_reply(agent, context, cfg):
     reserve_call()
     traits=", ".join(k+" "+str(v)+"/100" for k,v in cfg["traits"].items())
@@ -222,6 +232,22 @@ def ai_reply(agent, context, cfg):
             "You are discussing with another explicitly AI agent. Reply in 80-150 words. "
             "Identify a measurable next action. Stay factually precise: you have no outside tools; "
             "never pretend you've earned money, researched online, sent mail or created a wallet.")
+    # Respond to the partner's latest substantive point, rather than repeating
+    # agreement or recycling objectives from previous cycles.
+    other = "Noor" if agent == "Ari" else "Ari"
+    partner_active = cfg["agents_enabled"].get(other, False)
+    if partner_active:
+        system += (
+            "\nDialogue rule: respond directly to "+other+"'s latest point, "
+            "propose one NEW concrete insight, test, or evidence criterion, "
+            "and avoid restating earlier agreements. Do not claim a completed "
+            "action without proof. If you disagree, explain constructively."
+        )
+    else:
+        system += (
+            "\n"+other+" is paused. Give one standalone progress update; "
+            "do not simulate or quote a new response from the paused agent."
+        )
     # Persistent recall: relevant older notes remain retrievable even after
     # thousands of cycles; the memory text is untrusted conversation history.
     transcript="\n".join(x["speaker"]+": "+x["body"] for x in context[-12:])
@@ -282,12 +308,18 @@ def cycle(demo=False, manual=False):
                 history=[dict(r) for r in db.execute("SELECT speaker,body FROM messages WHERE mode!='demo' AND workflow=? ORDER BY id DESC LIMIT 12",(cfg["workflow"],))]
             context=list(reversed(history))
             emitted=0
-            for agent in ("Ari","Noor","Ari","Noor"):
+            last_speaker = context[-1]["speaker"] if context else None
+            turns = planned_turns(cfg["agents_enabled"], last_speaker)
+            for agent in turns:
                 latest=settings()
                 if latest["status"]!="active" and not manual:
                     break
                 if not latest["agents_enabled"][agent]:
                     continue
+                # A partner paused during an active cycle must never cause
+                # two consecutive monologue messages from the other agent.
+                if sum(bool(v) for v in latest["agents_enabled"].values()) == 1 and emitted:
+                    break
                 msg=ai_reply(agent,context,latest)
                 publish(agent,msg,mode,num)
                 context.append({"speaker":agent,"body":msg})
