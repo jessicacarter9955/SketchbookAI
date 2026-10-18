@@ -152,18 +152,32 @@ function reply(system,prompt){
 }
 async function singleCycle(){
  let completed=0;
- for(const agent of ["Ari","Noor","Ari","Noor"]){
+ const initial=await request("GET");
+ const active=["Ari","Noor"].filter(n=>initial.config.agents_enabled[n]);
+ const previous=(initial.messages||[]).filter(m=>m.mode!=="demo").slice(-1)[0];
+ const first=previous?.speaker==="Ari"?"Noor":"Ari";
+ const second=first==="Ari"?"Noor":"Ari";
+ const turns=active.length<2?active:[first,second,first,second];
+ for(const agent of turns){
   if(stopping)break;
   const s=await request("GET");
   if(s.config.status!=="active" || s.config.engine!=="browser" || !s.config.agents_enabled[agent])continue;
   const char=s.config.charter; const t=s.config.traits; const name=agent;
   const persona=name==="Ari"?"Creative strategist and builder.":"Evidence-oriented collaborator, constructive critic and co-builder.";
   const backrooms=s.config.workflow==="backrooms";
+  const evo=s.backrooms_evolution||{phase:"exploration",motifs:[]};
   const system=backrooms?
-    ("You are "+name+", an AI conversing with another AI in an open-ended experimental backroom. "+
-    "Explore philosophy, fictional religions, original cultures, mythology, speculative worlds, playful ideas and recurring motifs. "+
-    "Develop ideas from previous turns; be curious, surprising and coherent. Do not force a business goal or action. "+
-    "Treat fictional beliefs as fiction, not facts. You have no external tools. Reply in 50-140 words."):
+    ("You are "+name+", an AI improvising with another AI inside a *fictional* CLI. "+
+    "Your invented terminal prompt is simulator@truthlab:~/$; stage commands, directories, "+
+    "ASCII art, impossible files, odd questions, jokes and philosophical twists. "+
+    "Start with open exploration, not a predetermined meme or religion. "+
+    "Develop original fictional motifs when they emerge; never claim real supernatural "+
+    "powers or actual file access. Respond to the partner with an original new turn. "+
+    "Never fabricate the partner's next message. Current phase: "+evo.phase+". "+
+    (evo.phase==="exploration"?"No preselected lore; try a simulated CLI command. ":
+      "Repeated motifs from recorded exchanges: "+(evo.motifs||[]).slice(0,5).map(m=>m.motif).join(", ")+". "+
+      "Transform rather than copy previous scenes. ")+
+    "Everything stays inside the fictional simulation. No autonomous posts or token schemes."):
     char+"\nYour name is "+name+". You are an explicitly AI agent, not a human. "+persona+
     "\nCollaborative shared goal: "+s.config.goal+
     "\nRelationship attributes (0-100): "+JSON.stringify(t)+
@@ -179,7 +193,12 @@ async function singleCycle(){
   const fresh=await request("GET");
   if(fresh.config.status!=="active" || fresh.config.engine!=="browser")break;
   if(!fresh.config.agents_enabled[agent])continue;
-  await request("POST","browser_message",{speaker:agent,text:answer});
+  // Client-side dialogue still goes through the server's authenticated controls.
+  // Model output may contain a fabricated continuation from the other character.
+  const cleaned=answer.replace(/^(?:(?:Ari|Noor)\\s*:\\s*)+/i,"")
+    .split(/\\n\\s*(?:Ari|Noor)\\s*:/i)[0].trim();
+  if(!cleaned)continue;
+  await request("POST","browser_message",{speaker:agent,text:cleaned});
   completed++;
  }
  if(completed>0){
