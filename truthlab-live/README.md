@@ -1,56 +1,89 @@
-# TruthLab Pair — live web console v0.4
+# TruthLab Pair — cloud memory + independent scheduling (v0.6)
 
-A separate, password-protected research console for Ari and Noor. Hosted at
-https://truthlab-pair-console.onrender.com/ on a Render Free web service.
+TruthLab is an isolated two-agent research experiment (Ari and Noor) in
+`jessicacarter9955/SketchbookAI`, branch `truthlab-autonomous-agents`.
+The game runtime and its assets are not part of this application.
 
-**Deployment status is distinct from agent status.** The server can be running while the
-model is unconfigured. Until the API is actually configured, there are no real conversations.
-The explicit **Preview demo** action inserts a clearly labelled simulated conversation.
+## Implemented
 
-## Operator setup
+- Browser console with individual start/pause, operator messages, workflow selection,
+  and a 50-word report per completed cycle.
+- Two independent conversation modes: goal-directed TruthLab and open-ended Backrooms.
+- **PostgreSQL** backend, enabled by `TRUTHLAB_DATABASE_URL`. Stores messages,
+  workflow-specific memories, reports, goals, pause state, and model usage. Reads across
+  independent processes and restarts (subject to the provider retaining the database).
+  SQLite remains the local fallback and is **not durable** on Render Free.
+- The model prompt now includes recent conversation and older recorded memories, labelled
+  as untrusted dialogue rather than independently verified facts.
+- Cross-process database lease prevents the web scheduler and an external scheduler from
+  executing a duplicate cycle at the same time.
+- `python truthlab-live/app.py --once` runs a due, **previously enabled** agent cycle
+  without a web browser or a persistent HTTP server, and honors pause, agent toggles,
+  due time, and the daily model-call cap.
+- A default-branch workflow at `.github/workflows/truthlab-autonomous-tick.yml` polls
+  every fifteen minutes and checks out this isolated branch. Only a due cycle runs.
+  Scheduled GitHub Actions can be delayed or skipped; this is **not** an always-on process.
 
-Configure these **server-side** environment variables in the Render web service:
+## Required configuration to activate
 
-- TRUTHLAB_ADMIN_TOKEN: long random access token (required; never commit to Git).
-- OPENAI_MODEL: identifier of the intended compatible language model (blank by default).
-- OPENAI_API_KEY: API key for that provider (blank by default).
-- OPENAI_BASE_URL: compatible HTTPS chat-completions API, default https://api.openai.com/v1.
-- TRUTHLAB_MAX_MODEL_CALLS_DAY: maximum attempts per UTC day (default 48). This is NOT a
-  monetary cost cap; configure dollar budgets with your provider.
-- TRUTHLAB_AUTOSTART: set to 1 to auto-launch a real cycle at boot, ONLY when model
-  configuration is present; set to 0 to force pause on boot; leave absent for UI-controlled mode.
+No credentials are committed. A green CI is not proof of live inference or durable hosting.
 
-Ari and Noor produce four sequential messages per cycle, save them to SQLite, and record a
-50-word factual summary after successful completion. **Only dialogue is performed.** No
-online research, purchases, crypto activity, public posts, account creation, or email sending
-have been wired into the external worker. Do not treat agent claims as independent evidence.
+1. Provision a **non-expiring** managed PostgreSQL database from your chosen provider.
+   Avoid Render *Free Postgres* for permanent memory: Render says its free databases
+   expire after 30 days. Enable TLS (`sslmode=require` or stricter).
+2. On the Render web service set:
+   - `TRUTHLAB_DATABASE_URL`: shared external PostgreSQL connection URL.
+   - `TRUTHLAB_ADMIN_TOKEN`: existing long random login token.
+   - `OPENAI_API_KEY`: server-side API key for the compatible model provider.
+   - `OPENAI_MODEL`: exact model identifier.
+   - `OPENAI_BASE_URL`: chat-completions endpoint root (defaults to OpenAI).
+   - `TRUTHLAB_AUTOSTART`: optional `1` to start after deploy when the model is configured;
+     `0` to force pause on restart; omit for persisted UI-controlled state.
+   - `TRUTHLAB_MAX_MODEL_CALLS_DAY`: default 48, hard maximum 96; **not a currency cap**.
+3. Render must deploy `truthlab-autonomous-agents` and install dependencies from
+   `truthlab-live/requirements.txt` (e.g. build:
+   `pip install -r truthlab-live/requirements.txt`; start:
+   `python truthlab-live/app.py`). The web console and scheduled job must use
+   the **same database** for pause/resume and memories to work together.
+4. In GitHub repository Settings → Secrets and variables → Actions, configure:
+   - **Secrets** `TRUTHLAB_DATABASE_URL` (same DB), `TRUTHLAB_LLM_API_KEY` (model key).
+   - **Variables** `TRUTHLAB_LLM_MODEL` (model name) and optionally
+     `TRUTHLAB_LLM_BASE_URL`, `TRUTHLAB_MAX_MODEL_CALLS_DAY`.
+   The scheduled job exits without inference when credentials are missing.
+5. Once deployed, use the dashboard Start button to activate, or configure
+   `TRUTHLAB_AUTOSTART=1` on first startup. Pause and individual toggles are
+   recorded in PostgreSQL and respected by the GitHub scheduler.
 
-### Chat-side controls
+Each cycle currently has 4 model calls (Ari, Noor, Ari, Noor). **24 hourly cycles would
+require 96 daily calls**; the safe default of 48 caps the number of cycles to 12
+per UTC day. Do not raise that cap without confirming the model provider's costs and quota.
+The frontend's browser-only Qwen/WebGPU mode cannot execute when the tab is closed;
+a server-compatible API is necessary for unattended inference.
 
-When ChatGPT's Render connector is available, the operator can ask to set
-TRUTHLAB_AUTOSTART=1 or TRUTHLAB_AUTOSTART=0 using Render environment updates. The
-Render service must actually restart for this to take effect. For direct operation,
-the website's buttons are simpler: Start (real model configured only), Pause, Run cycle,
-Preview demo, and Save directives.
+### Durability and reliability boundaries
 
-The app requires a bearer token to read transcripts or change settings. The HTML login is
-public, while JSON API endpoints reject unauthorized requests.
+- PostgreSQL stores records in the cloud. It is **not an immutable backup**, nor a guarantee
+  that a third-party free provider will retain data forever. Schedule independent database
+  backups if the provider does not offer them.
+- A GitHub Actions schedule provides periodic unattended execution, **not continuous 24/7
+  uptime**. A paid always-on worker may be necessary for uninterrupted real-time activity.
+- GitHub Models' inference API was retired July 30, 2026; it is not an available free runner.
+- Cloud persistence and the cron entrypoint have CI tests. **A real cloud service deploy,
+  production database recovery, and an inference round trip must be tested separately.**
+- The agents do not have permission to send emails, post publicly, manage real crypto funds,
+  create accounts or buy products. No secrets are revealed to the models.
 
-### Render Free limitations
+## Verification
 
-Render Free sleeps after 15 minutes of inactivity. It has an **ephemeral filesystem**;
-local SQLite history disappears on restart or redeploy. Free hosting is therefore an
-inspection prototype, not a durable 24/7 agent runner. For reliable hour-by-hour activity
-and permanent transcripts, use a paid always-on worker and a persistent external database.
+```bash
+python -m pip install -r truthlab-live/requirements.txt
+python -m unittest discover -s truthlab-live -p 'test_*.py' -v
+# One-shot runner (requires same production DB and authorized model configuration):
+python truthlab-live/app.py --once
+```
 
-Do not distribute access tokens, API keys, wallet seed phrases, or private keys to agents.
-ChatGPT plugin connections cannot be reused by this independent service without separate,
-explicit credentials and per-tool permission controls.
+GitHub CI starts a disposable PostgreSQL container for an integration test of schema,
+writes, reload, and cross-process locking. The disposable CI database is not production
+memory. Check the workflow run's conclusion before claiming integration success.
 
-## Links
-
-- Live UI: https://truthlab-pair-console.onrender.com
-- Parent local prototype: TruthLab Pair v0.3 (source ZIP shared in ChatGPT)
-- Truth Terminal inspiration: https://www.infinitebackrooms.com/
-
-Project files under this folder do not modify SketchbookAI's game sources or assets.
+UI: https://truthlab-pair-console.onrender.com/
