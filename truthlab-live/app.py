@@ -404,6 +404,27 @@ class Handler(BaseHTTPRequestHandler):
         if path=="/health":
             return self.send_json(200,{"ok":True,"version":"0.7-durable-recall","model_ready":bool(MODEL and API_KEY),
                                         "storage_backend":backend(),"persistent_memory":backend()=="postgresql"})
+        if path in ("/api/worker/credentials", "/api/worker/probe"):
+            if os.getenv("TRUTHLAB_OIDC_BRIDGE") != "1":
+                return self.send_json(404, {"error":"Not found"})
+            try:
+                from worker_auth import verify_github_oidc
+                value = self.headers.get("Authorization", "")
+                if not value.startswith("Bearer "):
+                    raise ValueError("Bearer token required")
+                verify_github_oidc(value[7:], allow_probe=path.endswith("/probe"))
+            except Exception as exc:
+                # Never echo credentials, JWTs, or detailed verifier errors publicly.
+                note_error("OIDC auth failed: "+type(exc).__name__)
+                return self.send_json(401, {"error":"Unauthorized"})
+            if path.endswith("/probe"):
+                return self.send_json(200, {"verified":True,"credential_access":False})
+            # This endpoint is ONLY reachable from the verified and narrowly
+            # pinned schedule/dispatch workflow identity.
+            database_url = os.getenv("TRUTHLAB_DATABASE_URL", "")
+            if not database_url:
+                return self.send_json(503, {"error":"Cloud database not configured"})
+            return self.send_json(200, {"database_url":database_url})
         if path=="/api/state":
             return self.send_json(200,get_state()) if self.authorized() else self.send_json(401,{"error":"Unauthorized"})
         if path=="/":
