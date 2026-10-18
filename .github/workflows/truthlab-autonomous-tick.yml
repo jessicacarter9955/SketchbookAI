@@ -1,12 +1,10 @@
-# Scheduled workflows run from the default branch only.
-# This tiny dispatcher checks out the isolated TruthLab branch; no game files are changed.
+# Schedules run from default branch; agent code stays on dedicated branch.
+# Production memory must be a private durable PostgreSQL backend configured as a secret.
 name: TruthLab Autonomous Tick
 on:
   push:
-    branches:
-      - main
-    paths:
-      - '.github/workflows/truthlab-autonomous-tick.yml'
+    branches: [main]
+    paths: ['.github/workflows/truthlab-autonomous-tick.yml']
   schedule:
     - cron: '7,22,37,52 * * * *'
   workflow_dispatch:
@@ -20,8 +18,9 @@ concurrency:
 
 jobs:
   tick:
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 20
     env:
       TRUTHLAB_DATABASE_URL: ${{ secrets.TRUTHLAB_DATABASE_URL }}
       OPENAI_API_KEY: ${{ secrets.TRUTHLAB_LLM_API_KEY }}
@@ -29,28 +28,91 @@ jobs:
       OPENAI_BASE_URL: ${{ vars.TRUTHLAB_LLM_BASE_URL || 'https://api.openai.com/v1' }}
       TRUTHLAB_MAX_MODEL_CALLS_DAY: ${{ vars.TRUTHLAB_MAX_MODEL_CALLS_DAY || '48' }}
     steps:
-      - name: Checkout isolated TruthLab branch
+      - name: Verify persistent storage configured
+        id: verify
+        shell: bash
+        run: |
+          if [[ -n "$TRUTHLAB_DATABASE_URL" ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Cloud database connection not configured; refusing to generate disposable unpersisted dialogue."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Checkout isolated agents code
+        if: steps.verify.outputs.enabled == 'true'
         uses: actions/checkout@v4
         with:
           ref: truthlab-autonomous-agents
           persist-credentials: false
       - name: Python
+        if: steps.verify.outputs.enabled == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Verify secrets are configured
-        id: verify
-        shell: bash
-        run: |
-          if [[ -n "$TRUTHLAB_DATABASE_URL" && -n "$OPENAI_API_KEY" && -n "$OPENAI_MODEL" ]]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::notice::TruthLab tick disabled until cloud DB and model credentials are configured."
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Install Postgres connector
+      - name: Install PostgreSQL driver
         if: steps.verify.outputs.enabled == 'true'
         run: python -m pip install -r truthlab-live/requirements.txt
-      - name: Run one due cycle
+      - name: Select self-hosted open model when no external LLM is configured
+        if: steps.verify.outputs.enabled == 'true'
+        id: local
+        shell: bash
+        run: |
+          if [[ -z "$OPENAI_API_KEY" || -z "$OPENAI_MODEL" ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "OPENAI_API_KEY=local-only-no-external-key" >> "$GITHUB_ENV"
+            echo "OPENAI_MODEL=qwen-local" >> "$GITHUB_ENV"
+            echo "OPENAI_BASE_URL=http://127.0.0.1:8080/v1" >> "$GITHUB_ENV"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Cache open weights
+        if: steps.local.outputs.enabled == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/truthlab-model/qwen2.5-0.5b-instruct-q4_k_m.gguf
+          key: truthlab-qwen2.5-0.5b-q4km-sha74a4da8
+      - name: Launch local Qwen llama.cpp
+        if: steps.local.outputs.enabled == 'true'
+        run: bash truthlab-live/start-local-llama.sh
+      - name: Execute one due cycle
         if: steps.verify.outputs.enabled == 'true'
         run: python truthlab-live/app.py --once
+
+  # Runs only when THIS workflow definition changes: verifies actual inference,
+  # not just syntax. No production DB or user transcripts accessed.
+  free-model-smoke:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: truthlab-autonomous-agents
+          persist-credentials: false
+      - name: Cache open weights
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/truthlab-model/qwen2.5-0.5b-instruct-q4_k_m.gguf
+          key: truthlab-qwen2.5-0.5b-q4km-sha74a4da8
+      - name: Launch local Qwen llama.cpp
+        run: bash truthlab-live/start-local-llama.sh
+      - name: Verify actual no-key LLM response
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, urllib.request
+          data = json.dumps({
+            "model":"qwen-local",
+            "messages":[{"role":"user","content":"Say the single word READY."}],
+            "max_tokens":24,"temperature":0
+          }).encode()
+          req = urllib.request.Request(
+              "http://127.0.0.1:8080/v1/chat/completions",data=data,
+              headers={"Content-Type":"application/json","Authorization":"Bearer local-only"},
+              method="POST")
+          with urllib.request.urlopen(req,timeout=100) as response:
+              parsed=json.load(response)
+          content=parsed["choices"][0]["message"]["content"]
+          assert isinstance(content,str) and content.strip(), "Empty generated response"
+          print("TRUTHLAB_FREE_LLM_SUCCESS: local response generated (content not persisted)")
+          PY
