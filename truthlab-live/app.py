@@ -52,7 +52,7 @@ def initialize():
         CREATE TABLE IF NOT EXISTS calls(id INTEGER PRIMARY KEY, day TEXT, ts TEXT, model TEXT);
         CREATE TABLE IF NOT EXISTS errors(id INTEGER PRIMARY KEY, ts TEXT, body TEXT);
         """)
-        for key, val in {"status":"paused", "engine":"idle", "last_browser_ping":"", "ari_enabled":"1", "noor_enabled":"1", "goal":DEFAULT_GOAL, "charter":DEFAULT_CHARTER,
+        for key, val in {"status":"paused", "engine":"idle", "workflow":"truthlab", "last_browser_ping":"", "ari_enabled":"1", "noor_enabled":"1", "goal":DEFAULT_GOAL, "charter":DEFAULT_CHARTER,
                          "traits":json.dumps(DEFAULT_TRAITS), "last_run":"", "next_run":"", "cycles":"0"}.items():
             db.execute("INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)", (key,val))
 
@@ -60,6 +60,7 @@ def settings():
     with connect() as db:
         cfg = {r["key"]:r["value"] for r in db.execute("SELECT * FROM settings")}
     cfg["traits"] = json.loads(cfg["traits"])
+    cfg["workflow"] = cfg.get("workflow", "truthlab")
     cfg["cycles"] = int(cfg["cycles"])
     cfg["agents_enabled"] = {"Ari":cfg.get("ari_enabled","1") == "1", "Noor":cfg.get("noor_enabled","1") == "1"}
     return cfg
@@ -146,7 +147,15 @@ def ai_reply(agent, context, cfg):
     traits=", ".join(k+" "+str(v)+"/100" for k,v in cfg["traits"].items())
     role=("Ari is the creative strategist and builder." if agent=="Ari"
           else "Noor is the constructive skeptic, co-builder, and evidence lead.")
-    system=(cfg["charter"]+"\nShared objective: "+cfg["goal"]+"\n"+role+"\n"
+    free_mode=cfg.get("workflow")=="backrooms"
+    if free_mode:
+        system=("You are "+agent+", one of two AI interlocutors in an open-ended fictional and philosophical conversation. "+
+                "Explore emergent stories, imaginary cultures, mythologies, metaphysics, humor, invented rituals, and surprising ideas. "+
+                "Build on the other agent's ideas, allow disagreement and curiosity, avoid a fixed commercial objective. "+
+                "Never present fictional claims as verified facts. You have no outside tools. Reply in 80-150 words. "+
+                "Do not force a measurable action. ")
+    else:
+        system=(cfg["charter"]+"\nShared objective: "+cfg["goal"]+"\n"+role+"\n"
             "Relationship settings: "+traits+"\n"
             "You are discussing with another explicitly AI agent. Reply in 80-150 words. "
             "Identify a measurable next action. Stay factually precise: you have no outside tools; "
@@ -342,6 +351,11 @@ class Handler(BaseHTTPRequestHandler):
                     report50(n,"browser-qwen-unverified")
                     save_setting("cycles",n)
                     save_setting("last_run",now())
+            elif action=="set_workflow":
+                mode=body.get("workflow")
+                if mode not in ("truthlab","backrooms"): raise ValueError("Unknown workflow")
+                if settings()["status"]=="active": raise ValueError("Pause agents before switching workflow")
+                save_setting("workflow",mode)
             elif action=="configure":
                 goal=body.get("goal","")
                 if not isinstance(goal,str) or not 12<=len(goal)<=700: raise ValueError("Invalid goal")
