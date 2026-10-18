@@ -19,7 +19,7 @@ jobs:
           POSTGRES_PASSWORD: disposable_ci
         ports: ['5432:5432']
         options: >-
-          --health-cmd 'pg_isready -U truthlab -d truthlab_100'
+          --health-cmd "pg_isready -U truthlab -d truthlab_100"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
