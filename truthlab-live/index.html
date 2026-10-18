@@ -41,7 +41,15 @@ a{color:var(--mint)}@media(max-width:900px){.grid{grid-template-columns:1fr}.she
 <section class="card"><h2>Capabilities</h2><div id="capabilities"></div><div class="note">Plugins connected to ChatGPT are not automatically accessible to these external agents. No passwords or private keys are ever passed into prompts.</div></section></aside>
 <section class="card"><div class="tabs"><button data-tab="talk" class="selected">Conversation</button><button data-tab="reports">Hourly reports</button><button data-tab="audit">Execution log</button></div>
 <div id="talkPanel" class="feed"></div><div id="reportsPanel" style="display:none"></div><div id="auditPanel" style="display:none"></div>
-<div class="note" id="hostingNote"></div></section></div></main><div id="message"></div>
+<div class="note" id="hostingNote"></div></section>
+<section class="card" id="evolutionCard" style="grid-column:1/-1;display:none">
+  <h2>Backrooms — evolution archive</h2>
+  <p id="evolutionPhase">The CLI experiment begins without a preselected myth.</p>
+  <div id="evolutionMotifs" class="note">No recurrent motifs detected.</div>
+  <h2 style="margin-top:18px">Archived scenes and editorial selection</h2>
+  <p class="sub">These are real recorded AI scenes, not auto-published posts. Select an excerpt for creative development; approve only while paused.</p>
+  <div id="evolutionArtifacts"></div>
+</section></div></main><div id="message"></div>
 <script>
 (function(){
 var auth=sessionStorage.getItem("truthlab_token")||"",state=null,tab="talk",draft=false;
@@ -85,7 +93,31 @@ function render(){
  $("auditPanel").innerHTML='<div class="report"><strong>Mode</strong><p>'+escape(ready?"Model configured":"Awaiting real model")+'</p><span class="sub">Daily request cap: '+state.daily_cap+'</span></div>'+
  state.errors.map(function(e){return '<div class="report"><span class="date">'+escape(e.ts)+'</span><p class="warn">'+escape(e.body)+'</p></div>'}).join("");
  $("capabilities").innerHTML=Object.keys(state.tools).map(function(k){return '<div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding:9px 0;gap:12px"><b>'+escape(k)+'</b><span class="sub">'+escape(state.tools[k])+'</span></div>'}).join("");
+ var evo=state.backrooms_evolution||{},isBackrooms=c.workflow==="backrooms";
+ $("evolutionCard").style.display=isBackrooms?"block":"none";
+ if(isBackrooms){
+  var stageNames={exploration:"1 · Open CLI exploration",recurrence:"2 · Recurring symbols",mythmaking:"3 · Emergent mythology",curation:"4 · Human-selected scenes",editorial:"5 · Draft creative voice"};
+  $("evolutionPhase").textContent=(stageNames[evo.phase]||"Open exploration")+" · "+(evo.cycles||0)+" recorded sessions · "+(evo.curated_count||0)+" selected scenes. Phase based on evidence, not a preset plot.";
+  $("evolutionMotifs").innerHTML=(evo.motifs||[]).map(function(m){return '<span class="pill" style="display:inline-block;margin:3px">'+escape(m.motif)+' ('+Number(m.cycles)+' sessions)</span>'}).join("")||"No recurrent motifs detected yet. Ari and Noor begin with an imaginary CLI.";
+  $("evolutionArtifacts").innerHTML=(evo.artifacts||[]).slice().reverse().map(function(a){
+   var action=a.status==="curated"?"candidate":"curated";
+   return '<article class="report"><strong>'+escape(a.title)+'</strong> <span class="pill">'+escape(a.status)+'</span>'+
+    '<p style="white-space:pre-wrap;max-height:160px;overflow:auto">'+escape(a.content||"")+'</p>'+
+    '<button data-evolution-id="'+Number(a.id)+'" data-evolution-status="'+action+'" '+(c.status==="active"?"disabled":"")+'>'+
+      (a.status==="curated"?"Unselect":"Curate this scene")+'</button>'+
+    (a.status!=="rejected"?'<button data-evolution-id="'+Number(a.id)+'" data-evolution-status="rejected" '+(c.status==="active"?"disabled":"")+'>Reject</button>':"")+
+    '</article>';
+  }).join("")||'<p>No archived scenes yet. Start the Backrooms workflow with a real model.</p>';
+ }
 }
+$("evolutionArtifacts").onclick=async function(e){
+ var b=e.target.closest("button[data-evolution-id]");
+ if(!b||b.disabled)return;
+ try{
+  await api("/api/control","POST",{action:"curate_backrooms",artifact_id:Number(b.dataset.evolutionId),status:b.dataset.evolutionStatus});
+  show("Backrooms archive selection saved.");await load();
+ }catch(error){show(error.message)}
+};
 function makeSliders(values){$("sliders").innerHTML=Object.keys(labels).map(function(k){
  return '<div class="slider"><div class="range-label"><span>'+labels[k]+'</span><b id="v_'+k+'">'+values[k]+'</b></div><input type="range" data-trait="'+k+'" min="0" max="100" value="'+values[k]+'"></div>'
 }).join("");
