@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GaussiAnimate → Three.js Animation Bridge</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0d1420;color:#eff6ff;font:14px system-ui,sans-serif}
+#stage{display:block;width:100%;height:100%;touch-action:none}
+.panel{position:absolute;top:14px;left:14px;right:14px;max-width:510px;border:1px solid #4c6882;border-radius:12px;background:rgba(9,18,31,.89);padding:14px 18px}
+h1{font-size:18px;margin:0 0 6px}
+p{margin:8px 0}#source{color:#b1d8e6;font-size:12px}
+#status{font-size:12px}#frame{width:57%;vertical-align:middle;accent-color:#4ac8da}
+button{border:none;background:#12677c;border-radius:7px;padding:8px 13px;color:white;cursor:pointer}
+</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.165.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.165.0/examples/jsm/"}}</script>
+</head>
+<body>
+<canvas id="stage"></canvas>
+<section class="panel">
+<h1>GaussiAnimate → Three.js</h1>
+<p id="source">Loading animation…</p>
+<button id="toggle">Pause</button>
+<input type="range" id="frame" min="0" max="1" value="0" step="1" aria-label="Animation frame">
+<p id="status" role="status"></p>
+</section>
+<script type="module" src="./viewer.js"></script>
+</body>
+</html>
