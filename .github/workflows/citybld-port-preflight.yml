@@ -1,0 +1,27 @@
+name: CityBLD Authentic Batch Preflight
+on:
+  push:
+    branches: [codex/citybld-modern-city-port]
+    paths:
+      - 'tools/citybld/**'
+      - '.github/workflows/citybld-port-preflight.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-export-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile Python importer and guardrail validator
+        run: python -m py_compile tools/citybld/export_selected_citybld.py tools/citybld/verify_batch.py
+      - name: Verify source-origin and genuine-GLB contract
+        run: python -m unittest discover -s tools/citybld/tests -v
+      - name: Report actual source readiness (never fake a successful port)
+        run: |
+          echo 'CityBLD conversion tooling validated, Unreal Engine NOT executed on this runner.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Modern City kit and first physical NY district export are still required.' >> "$GITHUB_STEP_SUMMARY"
