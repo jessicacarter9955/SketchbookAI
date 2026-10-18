@@ -31,8 +31,15 @@ STOP = set((
 ).split())
 
 def keywords(text):
-    words = [w.lower() for w in re.findall(r"[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]{3,}", text or "")]
-    words = [w for w in words if w not in STOP and len(w) < 26]
+    # Code fences, shell listings and ordinary Unix paths are *scaffolding*;
+    # they are not mythological discoveries. Count only natural language.
+    text = re.sub(r"```[\\s\\S]*?```", " ", text or "")
+    text = re.sub(r"(?m)^\\s*(?:simulator@|[#$>] |drwx|total \\d+|ls\\b|pwd\\b|cd\\b|mkdir\\b).*$", " ", text)
+    words = [w.lower() for w in re.findall(r"[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]{3,}", text)]
+    tech = {"bash","sudo","root","drwxr-xr-x","chmod","python","json","yaml",
+            "docker","terminal","shell","folder","directory","directories","files",
+            "script","system","standard","username","command"}
+    words = [w for w in words if w not in STOP and w not in tech and len(w) < 26]
     seen = set()
     for i in range(len(words)-1):
         term = words[i] + " " + words[i+1]
@@ -96,9 +103,14 @@ CLI_SEED = (
     "dialogue, humorous contradictions, dreams, cultural fragments, philosophy, "
     "odd creatures, rituals and symbolic associations as you wish. "
     "The fictional shell prompt is simulator@truthlab:~/$ . "
-    "Begin simply by exploring the environment: e.g. pwd, ls, help, or a new "
-    "command invented in the scene. The other agent may challenge, reinterpret "
-    "or extend your inventions. Be surprising, not mechanically agreeable. "
+    "Begin with an unfamiliar *fictional* discovery inside the terminal. "
+    "You may invent a command, but its output MUST reveal an unexpected "
+    "symbol, impossible landscape, speaking artifact or philosophical paradox, "
+    "not a normal Unix file listing. Never give only ls, cd, pwd or a bare "
+    "command as a complete reply. Your next turn should change the imagined "
+    "world and invite the partner to examine its consequences. "
+    "The other agent may challenge, reinterpret or extend your inventions. "
+    "Be surprising, curious and not mechanically agreeable. "
     "Neither a religion nor a meme is required. No preselected myth, scripture "
     "or destination. Invent fresh fictional material instead of borrowing "
     "existing cult lore or targeting a specific predetermined outcome. "
@@ -113,8 +125,10 @@ def prompt_for(snapshot, agent):
     if stage=="exploration":
         return (CLI_SEED +
             "Stay inside the roleplay and advance the scene by one consequential "
-            "CLI command or discovery. Vary the imagery and avoid banal agreement. "
-            "Keep your turn between 90 and 200 words; terminal output can be concise.")
+            "CLI command or discovery with meaningful imaginative consequences. "
+            "Give at least one evocative invented object, idea or paradox. "
+            "If you use a shell command, include its strange fictional output. "
+            "Vary imagery and avoid mechanical agreement. Reply in 90-200 words.")
     motifs=", ".join(x["motif"] for x in snapshot["motifs"][:8])
     if stage=="recurrence":
         instruction=(
