@@ -6,6 +6,7 @@ import threading
 import unittest
 import urllib.error
 import urllib.request
+from unittest.mock import patch
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 
@@ -84,6 +85,26 @@ class TruthLabTests(unittest.TestCase):
         self.assertEqual(s["cycles"],1) if "cycles" in s else self.assertEqual(s["config"]["cycles"],1)
         self.assertEqual(len(s["reports"][0]["body"].split()),50)
         self.assertEqual(s["reports"][0]["mode"],"browser-qwen-unverified")
+
+    def test_external_runner_requires_explicit_secure_opt_in(self):
+        old_model, old_key = app.MODEL, app.API_KEY
+        try:
+            app.MODEL = ""
+            app.API_KEY = ""
+            with self.assertRaises(urllib.error.HTTPError) as err:
+                self.post({"action":"start"})
+            self.assertEqual(err.exception.code,400)
+            self.assertEqual(app.settings()["status"],"paused")
+            with patch.object(app,"external_runner_ready",return_value=True):
+                self.post({"action":"start"})
+                self.assertEqual(app.settings()["status"],"active")
+                self.assertEqual(app.settings()["engine"],"api")
+                self.assertEqual(app.settings()["next_run"],"0")
+                self.assertTrue(app.get_state()["unattended_runner_ready"])
+                self.post({"action":"pause"})
+                self.assertEqual(app.settings()["status"],"paused")
+        finally:
+            app.MODEL, app.API_KEY = old_model, old_key
 
     def test_cycle_lease_blocks_reentry_and_can_be_released(self):
         lease = app.claim_cycle_lease()
