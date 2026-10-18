@@ -157,6 +157,38 @@ class TruthLabTests(unittest.TestCase):
         app.release_cycle_lease(lease)
         self.assertIsNotNone(app.claim_cycle_lease())
 
+    def test_ari_replies_after_noor_and_single_agent_gets_one_turn(self):
+        self.assertEqual(app.planned_turns({"Ari":True,"Noor":True},"Noor"),
+                         ["Ari","Noor","Ari","Noor"])
+        self.assertEqual(app.planned_turns({"Ari":True,"Noor":True},"Ari"),
+                         ["Noor","Ari","Noor","Ari"])
+        self.assertEqual(app.planned_turns({"Ari":False,"Noor":True},"Noor"),["Noor"])
+        self.assertEqual(app.planned_turns({"Ari":True,"Noor":False},"Noor"),["Ari"])
+        self.assertEqual(app.planned_turns({"Ari":False,"Noor":False},"Noor"),[])
+
+    def test_real_cycle_resumes_ari_after_solo_noor(self):
+        previous = app.MODEL, app.API_KEY, app.ai_reply
+        try:
+            app.MODEL, app.API_KEY = "fixture", "test-key"
+            app.ai_reply = lambda agent, context, cfg: (
+                agent + " responding after " + (context[-1]["speaker"] if context else "start")
+            )
+            app.save_setting("engine","api")
+            app.save_setting("status","active")
+            app.save_setting("ari_enabled","0")
+            app.scheduled_once()
+            first = app.get_state()["messages"]
+            self.assertEqual([x["speaker"] for x in first], ["Noor"])
+            app.save_setting("ari_enabled","1")
+            app.save_setting("next_run","0")
+            app.scheduled_once()
+            after = app.get_state()["messages"]
+            self.assertEqual([x["speaker"] for x in after],
+                             ["Noor","Ari","Noor","Ari","Noor"])
+            self.assertIn("responding after Noor", after[1]["body"])
+        finally:
+            app.MODEL, app.API_KEY, app.ai_reply = previous
+
     def test_one_shot_runner_respects_persistent_pause_and_due_time(self):
         old_model, old_key, old_reply = app.MODEL, app.API_KEY, app.ai_reply
         try:
