@@ -24,6 +24,32 @@ The game runtime and its assets are not part of this application.
   every fifteen minutes and checks out this isolated branch. Only a due cycle runs.
   Scheduled GitHub Actions can be delayed or skipped; this is **not** an always-on process.
 
+## Confirmed free, no-key inference path
+
+The default-branch dispatcher now starts a locally bound **Qwen2.5-0.5B-Instruct**
+GGUF model through official `llama.cpp` Ubuntu CPU binaries whenever no external
+model API key and name are configured. The weights' SHA256 is pinned and verified.
+The 2026-10-18 GitHub Actions push smoke demonstrated a **real response** from the
+model, not a simulated transcript: run
+https://github.com/jessicacarter9955/SketchbookAI/actions/runs/39106760002.
+Standard GitHub Actions runners are free for this public repository.
+
+This avoids OpenAI/Grok/OpenRouter tokens for **inference**, but DOES NOT
+automatically create a PostgreSQL database or connect GitHub and Render to it.
+GitHub Actions checks for `TRUTHLAB_DATABASE_URL` before doing any persistent
+work; without it, the action intentionally skips and generates no fake output.
+
+The existing Render console can enable the scheduled external runner with
+`TRUTHLAB_ALLOW_EXTERNAL_RUNNER=1` and a configured
+`TRUTHLAB_DATABASE_URL`. Its Start button then sets the shared database state
+to active; Pause stops the next scheduled cycle. While running in this mode,
+no live hosted API model is required, and individual toggles remain effective.
+
+The existing service's build command is compile-only. For this specific
+legacy Render service `TRUTHLAB_PG_BOOTSTRAP=1` allows the PostgreSQL driver
+to be installed at the first cloud DB connection when missing. Prefer installing
+dependencies in the build command for any future service.
+
 ## Required configuration to activate
 
 No credentials are committed. A green CI is not proof of live inference or durable hosting.
@@ -37,9 +63,11 @@ No credentials are committed. A green CI is not proof of live inference or durab
 2. On the Render web service set:
    - `TRUTHLAB_DATABASE_URL`: shared external PostgreSQL connection URL.
    - `TRUTHLAB_ADMIN_TOKEN`: existing long random login token.
-   - `OPENAI_API_KEY`: server-side API key for the compatible model provider.
-   - `OPENAI_MODEL`: exact model identifier.
-   - `OPENAI_BASE_URL`: chat-completions endpoint root (defaults to OpenAI).
+   - `OPENAI_API_KEY`: optional if using the free scheduled Qwen runner.
+   - `OPENAI_MODEL`: optional with Qwen; otherwise exact hosted model identifier.
+   - `OPENAI_BASE_URL`: optional hosted chat-completions endpoint root (defaults to OpenAI).
+   - `TRUTHLAB_ALLOW_EXTERNAL_RUNNER=1`: enable Start/Pause for GitHub-hosted Qwen.
+   - `TRUTHLAB_PG_BOOTSTRAP=1`: optional legacy-service driver installation.
    - `TRUTHLAB_AUTOSTART`: optional `1` to start after deploy when the model is configured;
      `0` to force pause on restart; omit for persisted UI-controlled state.
    - `TRUTHLAB_MAX_MODEL_CALLS_DAY`: default 48, hard maximum 96; **not a currency cap**.
@@ -49,19 +77,24 @@ No credentials are committed. A green CI is not proof of live inference or durab
    `python truthlab-live/app.py`). The web console and scheduled job must use
    the **same database** for pause/resume and memories to work together.
 4. In GitHub repository Settings → Secrets and variables → Actions, configure:
-   - **Secrets** `TRUTHLAB_DATABASE_URL` (same DB), `TRUTHLAB_LLM_API_KEY` (model key).
-   - **Variables** `TRUTHLAB_LLM_MODEL` (model name) and optionally
+   - **Secret** `TRUTHLAB_DATABASE_URL` (same database used by Render).
+   - For free Qwen inference, `TRUTHLAB_LLM_API_KEY` and model variables are not required.
+     Optionally provide a compatible remote key via secret `TRUTHLAB_LLM_API_KEY`
+     and model name via variable `TRUTHLAB_LLM_MODEL`; also optionally
      `TRUTHLAB_LLM_BASE_URL`, `TRUTHLAB_MAX_MODEL_CALLS_DAY`.
-   The scheduled job exits without inference when credentials are missing.
+   The scheduled job exits without inference when the **database secret** is missing.
 5. Once deployed, use the dashboard Start button to activate, or configure
    `TRUTHLAB_AUTOSTART=1` on first startup. Pause and individual toggles are
-   recorded in PostgreSQL and respected by the GitHub scheduler.
+   recorded in PostgreSQL and respected by the GitHub scheduler. For local Qwen,
+   no `OPENAI_API_KEY` is needed on Render, but the shared PostgreSQL connection
+   and the explicit `TRUTHLAB_ALLOW_EXTERNAL_RUNNER=1` flag are needed.
 
 Each cycle currently has 4 model calls (Ari, Noor, Ari, Noor). **24 hourly cycles would
 require 96 daily calls**; the safe default of 48 caps the number of cycles to 12
 per UTC day. Do not raise that cap without confirming the model provider's costs and quota.
 The frontend's browser-only Qwen/WebGPU mode cannot execute when the tab is closed;
-a server-compatible API is necessary for unattended inference.
+the separate **GitHub Actions Qwen CPU** runner can, provided a shared durable database
+is configured. A hosted model API is optional.
 
 ### Durability and reliability boundaries
 
