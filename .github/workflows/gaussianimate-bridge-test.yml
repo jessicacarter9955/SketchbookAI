@@ -1,0 +1,90 @@
+name: GaussiAnimate Three.js bridge smoke tests
+on:
+  push:
+    branches: [img2threejs-runner]
+    paths:
+      - "img2three/gaussianimate/bridge/**"
+      - ".github/workflows/gaussianimate-bridge-test.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bridge-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install minimal array dependency
+        run: python -m pip install "numpy>=1.22,<1.26"
+      - name: Python binary round-trip validation
+        run: |
+          set -euo pipefail
+          python -m py_compile img2three/gaussianimate/bridge/npz_to_three_frames.py
+          python - <<'PY'
+          import json, subprocess, sys, tempfile
+          from pathlib import Path
+          import numpy as np
+          script = Path("img2three/gaussianimate/bridge/npz_to_three_frames.py").resolve()
+          with tempfile.TemporaryDirectory() as td:
+              p = Path(td)
+              points = np.arange(5*7*3,dtype=np.float32).reshape(5,7,3)/13
+              faces = np.array([[0,1,2],[2,3,4],[4,5,6]],dtype=np.int32)
+              np.savez(p/"animation.npz",points=points,fps=24.0)
+              np.savez(p/"sequence.npz",points=points,faces=faces,fps=24.0)
+              subprocess.check_call([sys.executable,str(script),str(p/"animation.npz"),str(p/"out"),"--faces-npz",str(p/"sequence.npz")])
+              frames = np.fromfile(p/"out/frames.f32.bin",dtype="<f4").reshape(5,7,3)
+              indices = np.fromfile(p/"out/faces.u32.bin",dtype="<u4").reshape(-1,3)
+              manifest = json.loads((p/"out/animation.json").read_text())
+              assert np.array_equal(points,frames)
+              assert np.array_equal(faces,indices)
+              assert manifest["frame_count"] == 5 and manifest["vertex_count"] == 7 and manifest["fps"] == 24
+              print("PASS: exported float32 frames, uint32 triangle faces, metadata")
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate viewer module syntax
+        run: node --input-type=module --check < img2three/gaussianimate/bridge/viewer.js
+      - name: Install Chromium for live WebGL smoke test
+        run: |
+          mkdir -p /tmp/gaussi-playwright
+          cd /tmp/gaussi-playwright
+          npm install --no-audit --no-fund playwright pngjs
+          npx playwright install --with-deps chromium
+      - name: Verify actual browser canvas and capture screenshot
+        run: |
+          set -euo pipefail
+          python -m http.server 8788 --bind 127.0.0.1 >/tmp/gaussi-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" || true' EXIT
+          sleep 2
+          node <<'JS'
+          const {chromium} = require('/tmp/gaussi-playwright/node_modules/playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-webgl','--no-sandbox']});
+            const page=await browser.newPage({viewport:{width:1200,height:800},deviceScaleFactor:1});
+            const errors=[];
+            page.on('pageerror',e=>errors.push(e.message));
+            page.on('response',r=>{if(r.status()>=400)errors.push(r.status()+' '+r.url())});
+            await page.goto('http://127.0.0.1:8788/img2three/gaussianimate/bridge/viewer.html',{waitUntil:'domcontentloaded'});
+            await page.waitForFunction('window.__gaussiAnimateReady === true || !!window.__gaussiAnimateError',{timeout:45000});
+            const result=await page.evaluate(()=>({ready:window.__gaussiAnimateReady,error:window.__gaussiAnimateError,caption:document.querySelector('#source').textContent,canvas:document.querySelector('canvas').getBoundingClientRect().width}));
+            require('fs').mkdirSync('img2three/gaussianimate/bridge/qa',{recursive:true});
+            await page.screenshot({path:'img2three/gaussianimate/bridge/qa/synthetic-browser-smoke.png'});
+            if(!result.ready || result.error || !result.caption.includes('SYNTHETIC') || result.canvas<100 || errors.length)
+              throw Error('Browser smoke failed: '+JSON.stringify({result,errors}));
+            console.log('PASS: live browser canvas and synthetic clip',JSON.stringify(result));
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gaussianimate-synthetic-browser-smoke
+          path: img2three/gaussianimate/bridge/qa/synthetic-browser-smoke.png
+          if-no-files-found: ignore
