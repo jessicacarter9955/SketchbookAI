@@ -415,7 +415,11 @@ class Handler(BaseHTTPRequestHandler):
                 verify_github_oidc(value[7:], allow_probe=path.endswith("/probe"))
             except Exception as exc:
                 # Never echo credentials, JWTs, or detailed verifier errors publicly.
-                note_error("OIDC auth failed: "+type(exc).__name__)
+                # Authentication must fail closed even if the DB itself is offline.
+                try:
+                    note_error("OIDC auth failed: "+type(exc).__name__)
+                except Exception:
+                    pass
                 return self.send_json(401, {"error":"Unauthorized"})
             if path.endswith("/probe"):
                 return self.send_json(200, {"verified":True,"credential_access":False})
