@@ -30,15 +30,16 @@ app.API_KEY = "local-only-no-external-key"
 app.BASE_URL = "http://127.0.0.1:8080/v1"
 app.MAX_DAILY = 12
 
-def run_one():
+def run_one(expect_run=True):
     result = subprocess.run(
         [sys.executable, str(root / "app.py"), "--once"],
         env=os.environ.copy(), timeout=480, text=True, capture_output=True,
     )
     if result.returncode:
         raise AssertionError("One-shot runner exited nonzero: " + result.stderr[-1500:])
-    if "TRUTHLAB_TICK_FINISHED" not in result.stdout:
-        raise AssertionError("Expected completed process: " + result.stdout[-1000:])
+    expected = "TRUTHLAB_TICK_FINISHED" if expect_run else "TRUTHLAB_TICK_SKIPPED"
+    if expected not in result.stdout:
+        raise AssertionError("Expected "+expected+": " + result.stdout[-1000:])
     return result.stdout
 
 # Keep this test entirely synthetic; operator's actual goals are not used.
@@ -78,7 +79,7 @@ check = subprocess.run(
 saved = json.loads(check.stdout.strip())
 assert saved == {"messages": 4, "memories": 4, "cycles": 1}, saved
 assert not app.cycle_is_due(), "Must not run before scheduled time"
-run_one()
+run_one(expect_run=False)
 assert app.settings()["cycles"] == 1, "Duplicate cycle ran despite next-run timestamp"
 print("TRUTHLAB_E2E_STEP_2_OK: distinct process recall and idempotent schedule", flush=True)
 
@@ -99,7 +100,7 @@ print("TRUTHLAB_E2E_STEP_3_OK: individual pause respected with real inference", 
 app.save_setting("status", "paused")
 app.save_setting("next_run", "0")
 assert not app.cycle_is_due()
-run_one()
+run_one(expect_run=False)
 assert app.settings()["cycles"] == 2, "Paused agents should not run"
 print("TRUTHLAB_E2E_STEP_4_OK: global pause is durable and blocks next tick", flush=True)
 print("TRUTHLAB_E2E_COMPLETE real_model=Qwen cycles=2 messages=6 memories=6 reports=2", flush=True)
