@@ -51,7 +51,12 @@ def initialize():
         CREATE TABLE IF NOT EXISTS reports(id INTEGER PRIMARY KEY, ts TEXT, cycle INTEGER, body TEXT, mode TEXT);
         CREATE TABLE IF NOT EXISTS calls(id INTEGER PRIMARY KEY, day TEXT, ts TEXT, model TEXT);
         CREATE TABLE IF NOT EXISTS errors(id INTEGER PRIMARY KEY, ts TEXT, body TEXT);
+        CREATE TABLE IF NOT EXISTS memories(id INTEGER PRIMARY KEY, ts TEXT, workflow TEXT, cycle INTEGER, content TEXT);
         """)
+        columns={row[1] for row in db.execute("PRAGMA table_info(messages)")}
+        if "workflow" not in columns: db.execute("ALTER TABLE messages ADD COLUMN workflow TEXT DEFAULT 'truthlab'")
+        columns={row[1] for row in db.execute("PRAGMA table_info(reports)")}
+        if "workflow" not in columns: db.execute("ALTER TABLE reports ADD COLUMN workflow TEXT DEFAULT 'truthlab'")
         for key, val in {"status":"paused", "engine":"idle", "workflow":"truthlab", "last_browser_ping":"", "ari_enabled":"1", "noor_enabled":"1", "goal":DEFAULT_GOAL, "charter":DEFAULT_CHARTER,
                          "traits":json.dumps(DEFAULT_TRAITS), "last_run":"", "next_run":"", "cycles":"0"}.items():
             db.execute("INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)", (key,val))
@@ -73,13 +78,14 @@ def get_state():
     with lock:
         cfg=settings()
         with connect() as db:
-            messages=[dict(r) for r in db.execute("SELECT * FROM messages ORDER BY id DESC LIMIT 100")]
-            reports=[dict(r) for r in db.execute("SELECT * FROM reports ORDER BY id DESC LIMIT 30")]
+            messages=[dict(r) for r in db.execute("SELECT * FROM messages WHERE workflow=? ORDER BY id DESC LIMIT 100",(cfg["workflow"],))]
+            reports=[dict(r) for r in db.execute("SELECT * FROM reports WHERE workflow=? ORDER BY id DESC LIMIT 30",(cfg["workflow"],))]
+            memories=[dict(r) for r in db.execute("SELECT * FROM memories WHERE workflow=? ORDER BY id DESC LIMIT 24",(cfg["workflow"],))]
             errors=[dict(r) for r in db.execute("SELECT * FROM errors ORDER BY id DESC LIMIT 10")]
             today=datetime.now(timezone.utc).date().isoformat()
             used=db.execute("SELECT COUNT(*) FROM calls WHERE day=?", (today,)).fetchone()[0]
         return {"version":"0.4-live-console", "agents":["Ari","Noor"],
-                "config":cfg, "messages":list(reversed(messages)), "reports":reports,
+                "config":cfg, "messages":list(reversed(messages)), "reports":reports, "memories":memories,
                 "errors":errors, "running_cycle":working,
                 "model_ready":bool(MODEL and API_KEY), "model":MODEL or "Not configured",
                 "browser_active":cfg.get("engine")=="browser" and cfg["status"]=="active"
@@ -93,15 +99,15 @@ def get_state():
 
 def publish(speaker, body, mode, cycle):
     with connect() as db:
-        db.execute("INSERT INTO messages(ts,cycle,speaker,body,mode) VALUES(?,?,?,?,?)",
-                   (now(),cycle,speaker,body[:4500],mode))
+        db.execute("INSERT INTO messages(ts,cycle,speaker,body,mode,workflow) VALUES(?,?,?,?,?,?)",
+                   (now(),cycle,speaker,body[:4500],mode,settings()["workflow"]))
 
 def report50(cycle, mode):
     """Generate exactly 50 words, using actual transcript excerpts, not claims of success."""
     with connect() as db:
         rows = [dict(r) for r in db.execute(
-            "SELECT speaker,body FROM messages WHERE cycle=? AND mode=? ORDER BY id",
-            (cycle, mode))]
+            "SELECT speaker,body FROM messages WHERE cycle=? AND mode=? AND workflow=? ORDER BY id",
+            (cycle, mode,settings()["workflow"]))]
     def excerpt(speaker, count):
         texts = [r["body"] for r in rows if r["speaker"] == speaker]
         if not texts:
@@ -123,8 +129,11 @@ def report50(cycle, mode):
     message = " ".join(words[:50])
     assert len(message.split()) == 50
     with connect() as db:
-        db.execute("INSERT INTO reports(ts,cycle,body,mode) VALUES(?,?,?,?)",
-                   (now(),cycle,message,mode))
+        db.execute("INSERT INTO reports(ts,cycle,body,mode,workflow) VALUES(?,?,?,?,?)",
+                   (now(),cycle,message,mode,settings()["workflow"]))
+        for r in rows:
+            db.execute("INSERT INTO memories(ts,workflow,cycle,content) VALUES(?,?,?,?)",
+                       (now(),settings()["workflow"],cycle,(r["speaker"]+": "+r["body"])[:1500]))
     # Render logs are private to the operator workspace. This explicit marker
     # supports the hourly ChatGPT reporting task without exposing API tokens.
     print("TRUTHLAB_50_WORD_REPORT "+json.dumps({"cycle":cycle,"mode":mode,"text":message}),flush=True)
@@ -191,7 +200,7 @@ def cycle(demo=False, manual=False):
         else:
             mode="live"
             with connect() as db:
-                history=[dict(r) for r in db.execute("SELECT speaker,body FROM messages WHERE mode!='demo' ORDER BY id DESC LIMIT 12")]
+                history=[dict(r) for r in db.execute("SELECT speaker,body FROM messages WHERE mode!='demo' AND workflow=? ORDER BY id DESC LIMIT 12",(cfg["workflow"],))]
             context=list(reversed(history))
             emitted=0
             for agent in ("Ari","Noor","Ari","Noor"):
@@ -346,7 +355,7 @@ class Handler(BaseHTTPRequestHandler):
                 with lock:
                     n=settings()["cycles"]+1
                     with connect() as db:
-                        count=db.execute("SELECT COUNT(*) FROM messages WHERE cycle=? AND mode='browser-qwen-unverified'",(n,)).fetchone()[0]
+                        count=db.execute("SELECT COUNT(*) FROM messages WHERE cycle=? AND mode='browser-qwen-unverified' AND workflow=?",(n,settings()["workflow"])).fetchone()[0]
                     if count<1: raise ValueError("No browser model output to summarize")
                     report50(n,"browser-qwen-unverified")
                     save_setting("cycles",n)
