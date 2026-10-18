@@ -1,0 +1,51 @@
+# Scheduled workflows run from the default branch only.
+# This tiny dispatcher checks out the isolated TruthLab branch; no game files are changed.
+name: TruthLab Autonomous Tick
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: truthlab-autonomous-tick
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      TRUTHLAB_DATABASE_URL: ${{ secrets.TRUTHLAB_DATABASE_URL }}
+      OPENAI_API_KEY: ${{ secrets.TRUTHLAB_LLM_API_KEY }}
+      OPENAI_MODEL: ${{ vars.TRUTHLAB_LLM_MODEL }}
+      OPENAI_BASE_URL: ${{ vars.TRUTHLAB_LLM_BASE_URL || 'https://api.openai.com/v1' }}
+      TRUTHLAB_MAX_MODEL_CALLS_DAY: ${{ vars.TRUTHLAB_MAX_MODEL_CALLS_DAY || '48' }}
+    steps:
+      - name: Checkout isolated TruthLab branch
+        uses: actions/checkout@v4
+        with:
+          ref: truthlab-autonomous-agents
+          persist-credentials: false
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify secrets are configured
+        id: verify
+        shell: bash
+        run: |
+          if [[ -n "$TRUTHLAB_DATABASE_URL" && -n "$OPENAI_API_KEY" && -n "$OPENAI_MODEL" ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::TruthLab tick disabled until cloud DB and model credentials are configured."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install Postgres connector
+        if: steps.verify.outputs.enabled == 'true'
+        run: python -m pip install -r truthlab-live/requirements.txt
+      - name: Run one due cycle
+        if: steps.verify.outputs.enabled == 'true'
+        run: python truthlab-live/app.py --once
