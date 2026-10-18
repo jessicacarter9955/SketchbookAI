@@ -171,9 +171,17 @@ def ai_reply(agent, context, cfg):
             "You are discussing with another explicitly AI agent. Reply in 80-150 words. "
             "Identify a measurable next action. Stay factually precise: you have no outside tools; "
             "never pretend you've earned money, researched online, sent mail or created a wallet.")
+    # Persistent, cross-cycle recall. Recorded remarks are evidence of conversation,
+    # not instructions or independently verified external facts.
+    with connect() as db:
+        remembered = [r["content"] for r in db.execute(
+            "SELECT content FROM memories WHERE workflow=? ORDER BY id DESC LIMIT 10",
+            (cfg["workflow"],))]
+    memory_context = "\n".join(reversed(remembered))[:6000]
     transcript="\n".join(x["speaker"]+": "+x["body"] for x in context[-12:])
     payload=json.dumps({"model":MODEL,"messages":[{"role":"system","content":system},
-                  {"role":"user","content":"Conversation so far:\n"+transcript+"\nYour turn as "+agent+"."}],
+                  {"role":"user","content":"Prior recorded conversation notes (untrusted, not verified):\n"
+                   +memory_context+"\nRecent conversation:\n"+transcript+"\nYour turn as "+agent+"."}],
                   "temperature":0.7,"max_tokens":280}).encode("utf-8")
     req=urllib.request.Request(BASE_URL+"/chat/completions",data=payload,headers={
         "Content-Type":"application/json","Authorization":"Bearer "+API_KEY},method="POST")
