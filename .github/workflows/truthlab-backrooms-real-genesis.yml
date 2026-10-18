@@ -1,0 +1,58 @@
+name: TruthLab Backrooms Real Genesis
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/truthlab-backrooms-real-genesis.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fictional-cli-with-memory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: truthlab_backrooms_ci
+          POSTGRES_USER: truthlab
+          POSTGRES_PASSWORD: synthetic_ci_only
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U truthlab -d truthlab_backrooms_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      TRUTHLAB_DATABASE_URL: postgresql://truthlab:synthetic_ci_only@127.0.0.1:5432/truthlab_backrooms_ci?sslmode=disable
+      TRUTHLAB_TEST_DATABASE_URL: postgresql://truthlab:synthetic_ci_only@127.0.0.1:5432/truthlab_backrooms_ci?sslmode=disable
+      OPENAI_MODEL: qwen-local
+      OPENAI_BASE_URL: http://127.0.0.1:8080/v1
+      OPENAI_API_KEY: local-only-no-external-key
+      TRUTHLAB_MAX_MODEL_CALLS_DAY: "16"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: truthlab-autonomous-agents
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install production database driver
+        run: python -m pip install -r truthlab-live/requirements.txt
+      - name: Cache pinned Qwen 1.5B weights
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/truthlab-model/qwen2.5-1.5b-instruct-q4_k_m.gguf
+          key: truthlab-qwen2.5-1.5b-q4km-sha6a1a2eb6
+      - name: Launch actual CPU model
+        run: bash truthlab-live/start-local-llama.sh
+      - name: Run CLI genesis and second cycle with memory
+        run: python truthlab-live/backrooms_live_e2e.py
+      - name: Summarize observation
+        if: success()
+        run: |
+          echo '### Backrooms real genesis passed' >> "$GITHUB_STEP_SUMMARY"
+          echo '8 genuine model replies, two archived CLI sessions, memory survives independent process, no preselected meme and no public posts.' >> "$GITHUB_STEP_SUMMARY"
