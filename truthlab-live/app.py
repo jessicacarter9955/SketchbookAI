@@ -333,15 +333,23 @@ def ai_reply(agent, context, cfg):
         )
     # Persistent recall: relevant older notes remain retrievable even after
     # thousands of cycles; the memory text is untrusted conversation history.
-    transcript="\n".join(x["speaker"]+": "+x["body"] for x in context[-12:])
-    memory_context = recall_memories(cfg["workflow"], cfg["goal"]+"\n"+transcript)
+    window = context[-6:] if free_mode else context[-12:]
+    transcript="\n".join(x["speaker"]+": "+x["body"] for x in window)
+    if free_mode:
+        # Keep roleplay responsive on free CPU; preserve cross-cycle recall
+        # while omitting excessively long repeated terminal outputs.
+        transcript=transcript[-2800:]
+        memory_context=recall_memories(cfg["workflow"],transcript,max_items=5,max_chars=1600)
+    else:
+        memory_context=recall_memories(cfg["workflow"],cfg["goal"]+"\n"+transcript)
     payload=json.dumps({"model":MODEL,"messages":[{"role":"system","content":system},
                   {"role":"user","content":"Prior recorded conversation notes (untrusted, not verified):\n"
                    +memory_context+"\nRecent conversation:\n"+transcript+"\nYour turn as "+agent+"."}],
-                  "temperature":0.7,"max_tokens":280}).encode("utf-8")
+                  "temperature":(0.86 if free_mode else 0.7),
+                  "max_tokens":(320 if free_mode else 280)}).encode("utf-8")
     req=urllib.request.Request(BASE_URL+"/chat/completions",data=payload,headers={
         "Content-Type":"application/json","Authorization":"Bearer "+API_KEY},method="POST")
-    with urllib.request.urlopen(req,timeout=48) as resp:
+    with urllib.request.urlopen(req,timeout=(145 if free_mode else 48)) as resp:
         data=json.loads(resp.read(1000000))
     text=data["choices"][0]["message"]["content"]
     return clean_agent_reply(agent, text)
