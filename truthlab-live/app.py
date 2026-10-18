@@ -6,7 +6,8 @@ SQLite is ephemeral on Render Free; do not treat it as durable storage.
 import hmac
 import json
 import os
-import sqlite3
+import sys
+from storage import connection, backend
 import threading
 import time
 import urllib.error
@@ -38,10 +39,7 @@ def now():
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 def connect():
-    Path(DB).parent.mkdir(parents=True, exist_ok=True)
-    con = sqlite3.connect(DB, timeout=20)
-    con.row_factory = sqlite3.Row
-    return con
+    return connection(db_path=DB)
 
 def initialize():
     with connect() as db:
@@ -58,7 +56,7 @@ def initialize():
         columns={row[1] for row in db.execute("PRAGMA table_info(reports)")}
         if "workflow" not in columns: db.execute("ALTER TABLE reports ADD COLUMN workflow TEXT DEFAULT 'truthlab'")
         for key, val in {"status":"paused", "engine":"idle", "workflow":"truthlab", "last_browser_ping":"", "ari_enabled":"1", "noor_enabled":"1", "goal":DEFAULT_GOAL, "charter":DEFAULT_CHARTER,
-                         "traits":json.dumps(DEFAULT_TRAITS), "last_run":"", "next_run":"", "cycles":"0"}.items():
+                         "traits":json.dumps(DEFAULT_TRAITS), "last_run":"", "next_run":"", "cycles":"0", "lease_until":"0"}.items():
             db.execute("INSERT OR IGNORE INTO settings(key,value) VALUES(?,?)", (key,val))
 
 def settings():
@@ -95,7 +93,11 @@ def get_state():
                 "tools":{"browser_qwen":"Available with active browser WebGPU, no key", "web_search":"not connected", "email":"not connected to worker",
                          "github":"not connected to worker", "wallet":"not connected"},
                 "wallet_address":None,"contact_email":None,
-                "hosting_note":"Render Free SQLite is ephemeral. Browser snapshots preserve conversations on the same device when browser storage remains available; export JSON for independent backups."}
+                "storage_backend":backend(),
+                "persistent_memory":backend()=="postgresql",
+                "hosting_note":("Cloud PostgreSQL: conversation history survives service restarts while the database provider retains it."
+                                if backend()=="postgresql" else
+                                "SQLite is ephemeral on Render Free. Browser backups are device-dependent; configure TRUTHLAB_DATABASE_URL for shared persistent storage.")}
 
 def publish(speaker, body, mode, cycle):
     with connect() as db:
@@ -188,9 +190,31 @@ def demo_cycle(cycle):
     publish("Ari","[SIMULATED EXAMPLE] Agreed. Candidate next action: prepare a one-page problem statement and interview script. Our success measure should be real voluntary interest, not simulated agreement.","demo",cycle)
     publish("Noor","[SIMULATED EXAMPLE] I'd assess whether the interview questions are unbiased and whether findings justify further effort. Without a connected model or tools, these messages only demonstrate the interface.","demo",cycle)
 
+def claim_cycle_lease():
+    """Atomically prevent two instances (web and cron) from executing a cycle together."""
+    expiry = str(time.time() + 900)
+    with connect() as db:
+        result = db.execute(
+            "UPDATE settings SET value=? WHERE key='lease_until' "
+            "AND CAST(value AS DOUBLE PRECISION) < ?",
+            (expiry, time.time()))
+        claimed = result.rowcount == 1
+    return expiry if claimed else None
+
+
+def release_cycle_lease(lease):
+    with connect() as db:
+        db.execute("UPDATE settings SET value='0' WHERE key='lease_until' AND value=?", (lease,))
+
+
 def cycle(demo=False, manual=False):
     global working
+    lease = None
     try:
+        lease = claim_cycle_lease()
+        if not lease:
+            print("TRUTHLAB_TICK_SKIPPED another worker owns the cycle lease", flush=True)
+            return
         with lock:
             cfg=settings()
             num=cfg["cycles"]+1
@@ -225,6 +249,11 @@ def cycle(demo=False, manual=False):
         if not demo:
             save_setting("status","paused")
     finally:
+        if lease:
+            try:
+                release_cycle_lease(lease)
+            except Exception as exc:
+                note_error("Lease release: "+str(exc)[:200])
         with lock:
             working=False
 
@@ -240,6 +269,29 @@ def spawn(demo=False):
         working=True
     thread=threading.Thread(target=cycle,args=(demo, not demo and settings()["status"]!="active"),daemon=True)
     thread.start()
+
+def scheduled_once():
+    """Run one due cycle from an independent scheduler, without an HTTP server."""
+    global working
+    initialize()
+    cfg = settings()
+    if cfg["status"] != "active" or cfg.get("engine") != "api":
+        print("TRUTHLAB_TICK_SKIPPED agents globally paused or browser-only", flush=True)
+        return
+    if not MODEL or not API_KEY:
+        print("TRUTHLAB_TICK_SKIPPED model settings missing", flush=True)
+        return
+    if not any(cfg["agents_enabled"].values()):
+        print("TRUTHLAB_TICK_SKIPPED all agents paused", flush=True)
+        return
+    if cfg["next_run"] and time.time() < float(cfg["next_run"]):
+        print("TRUTHLAB_TICK_SKIPPED next cycle not due", flush=True)
+        return
+    with lock:
+        working = True
+    cycle()
+    print("TRUTHLAB_TICK_FINISHED", flush=True)
+
 
 def scheduler():
     while True:
@@ -281,7 +333,8 @@ class Handler(BaseHTTPRequestHandler):
             self.headers_base(200,"text/javascript; charset=utf-8",len(worker))
             return self.wfile.write(worker)
         if path=="/health":
-            return self.send_json(200,{"ok":True,"version":"0.4-live-console","model_ready":bool(MODEL and API_KEY)})
+            return self.send_json(200,{"ok":True,"version":"0.6-persistent-runner","model_ready":bool(MODEL and API_KEY),
+                                        "storage_backend":backend(),"persistent_memory":backend()=="postgresql"})
         if path=="/api/state":
             return self.send_json(200,get_state()) if self.authorized() else self.send_json(401,{"error":"Unauthorized"})
         if path=="/":
@@ -412,6 +465,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(502,{"error":"Internal error; see error log"})
 
 if __name__=="__main__":
+    if "--once" in sys.argv:
+        scheduled_once()
+        raise SystemExit(0)
     if not TOKEN or len(TOKEN)<20:
         raise RuntimeError("TRUTHLAB_ADMIN_TOKEN must be a random token at least 20 characters long")
     initialize()
