@@ -48,6 +48,8 @@ a{color:var(--mint)}@media(max-width:900px){.grid{grid-template-columns:1fr}.she
   <div id="evolutionMotifs" class="note">No recurrent motifs detected.</div>
   <h2 style="margin-top:18px">Archived scenes and editorial selection</h2>
   <p class="sub">These are real recorded AI scenes, not auto-published posts. Select an excerpt for creative development; approve only while paused.</p>
+  <button type="button" id="downloadCuratedCorpus">↓ Export curated corpus (JSON)</button>
+  <span class="sub">No training or publication occurs automatically.</span>
   <div id="evolutionArtifacts"></div>
 </section></div></main><div id="message"></div>
 <script>
@@ -110,6 +112,16 @@ function render(){
   }).join("")||'<p>No archived scenes yet. Start the Backrooms workflow with a real model.</p>';
  }
 }
+$("downloadCuratedCorpus").onclick=async function(){
+ try{
+  var data=await api("/api/backrooms/corpus");
+  var blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+  var url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download="truthlab-backrooms-curated-corpus.json";a.click();
+  setTimeout(function(){URL.revokeObjectURL(url)},30000);
+  show("Exported "+data.examples.length+" curated examples; no external upload.");
+ }catch(e){show(e.message)}
+};
 $("evolutionArtifacts").onclick=async function(e){
  var b=e.target.closest("button[data-evolution-id]");
  if(!b||b.disabled)return;
