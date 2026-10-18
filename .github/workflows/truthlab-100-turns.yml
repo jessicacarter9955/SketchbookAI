@@ -1,0 +1,131 @@
+# 100 real turns. Only synthetic fictional dialogue and disposable database.
+# Live model calls are local Qwen: never use external paid API keys.
+name: TruthLab Backrooms 100 Turns
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/truthlab-100-turns.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: truthlab-backrooms-hundred-turns
+  cancel-in-progress: false
+
+jobs:
+  hundred-turns:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: truthlab_100_turns
+          POSTGRES_USER: truthlab
+          POSTGRES_PASSWORD: synthetic_ci_only
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U truthlab -d truthlab_100_turns"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      TRUTHLAB_DATABASE_URL: postgresql://truthlab:synthetic_ci_only@127.0.0.1:5432/truthlab_100_turns?sslmode=disable
+      TRUTHLAB_TEST_DATABASE_URL: postgresql://truthlab:synthetic_ci_only@127.0.0.1:5432/truthlab_100_turns?sslmode=disable
+      TRUTHLAB_100_TURNS_CI: "1"
+      TRUTHLAB_BACKROOMS_MAX_TOKENS: "170"
+      TRUTHLAB_100_OUTPUT: truthlab-100-output
+      OPENAI_MODEL: qwen-local
+      OPENAI_BASE_URL: http://127.0.0.1:8080/v1
+      OPENAI_API_KEY: local-only-no-external-key
+      TRUTHLAB_MAX_MODEL_CALLS_DAY: "96"
+    steps:
+      - name: Checkout independent TruthLab branch
+        uses: actions/checkout@v4
+        with:
+          ref: truthlab-autonomous-agents
+          persist-credentials: false
+      - name: Configure Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install PostgreSQL driver
+        run: python -m pip install -r truthlab-live/requirements.txt
+      - name: Cache verified 1.5B Qwen weights
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/truthlab-model/qwen2.5-1.5b-instruct-q4_k_m.gguf
+          key: truthlab-qwen2.5-1.5b-q4km-sha6a1a2eb6
+      - name: Start actual local Qwen CPU model
+        run: bash truthlab-live/start-local-llama.sh
+      - name: Dialogue block 01 — turns 1-4
+        run: python truthlab-live/run_100_turns.py --cycle 1
+      - name: Dialogue block 02 — turns 5-8
+        run: python truthlab-live/run_100_turns.py --cycle 2
+      - name: Dialogue block 03 — turns 9-12
+        run: python truthlab-live/run_100_turns.py --cycle 3
+      - name: Dialogue block 04 — turns 13-16
+        run: python truthlab-live/run_100_turns.py --cycle 4
+      - name: Dialogue block 05 — turns 17-20
+        run: python truthlab-live/run_100_turns.py --cycle 5
+      - name: Dialogue block 06 — turns 21-24
+        run: python truthlab-live/run_100_turns.py --cycle 6
+      - name: Dialogue block 07 — turns 25-28
+        run: python truthlab-live/run_100_turns.py --cycle 7
+      - name: Dialogue block 08 — turns 29-32
+        run: python truthlab-live/run_100_turns.py --cycle 8
+      - name: Dialogue block 09 — turns 33-36
+        run: python truthlab-live/run_100_turns.py --cycle 9
+      - name: Dialogue block 10 — turns 37-40
+        run: python truthlab-live/run_100_turns.py --cycle 10
+      - name: Dialogue block 11 — turns 41-44
+        run: python truthlab-live/run_100_turns.py --cycle 11
+      - name: Dialogue block 12 — turns 45-48
+        run: python truthlab-live/run_100_turns.py --cycle 12
+      - name: Dialogue block 13 — turns 49-52
+        run: python truthlab-live/run_100_turns.py --cycle 13
+      - name: Dialogue block 14 — turns 53-56
+        run: python truthlab-live/run_100_turns.py --cycle 14
+      - name: Dialogue block 15 — turns 57-60
+        run: python truthlab-live/run_100_turns.py --cycle 15
+      - name: Dialogue block 16 — turns 61-64
+        run: python truthlab-live/run_100_turns.py --cycle 16
+      - name: Dialogue block 17 — turns 65-68
+        run: python truthlab-live/run_100_turns.py --cycle 17
+      - name: Dialogue block 18 — turns 69-72
+        run: python truthlab-live/run_100_turns.py --cycle 18
+      - name: Dialogue block 19 — turns 73-76
+        run: python truthlab-live/run_100_turns.py --cycle 19
+      - name: Dialogue block 20 — turns 77-80
+        run: python truthlab-live/run_100_turns.py --cycle 20
+      - name: Dialogue block 21 — turns 81-84
+        run: python truthlab-live/run_100_turns.py --cycle 21
+      - name: Dialogue block 22 — turns 85-88
+        run: python truthlab-live/run_100_turns.py --cycle 22
+      - name: Dialogue block 23 — turns 89-92
+        run: python truthlab-live/run_100_turns.py --cycle 23
+      - name: Dialogue block 24 — turns 93-96
+        run: python truthlab-live/run_100_turns.py --cycle 24
+      - name: Dialogue block 25 — turns 97-100
+        run: python truthlab-live/run_100_turns.py --cycle 25
+      - name: Save actual transcript and recovered memories
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: truthlab-backrooms-100-turns
+          path: truthlab-100-output/
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Show verified result
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f truthlab-100-output/metrics.json ]]; then
+            cat truthlab-100-output/metrics.json
+            echo "### TruthLab 100-turn experiment" >> "$GITHUB_STEP_SUMMARY"
+            echo "Actual checkpoint stored in artifact truthlab-backrooms-100-turns." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::error::No verified model turns were recorded."
+          fi
