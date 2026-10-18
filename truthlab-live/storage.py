@@ -70,7 +70,19 @@ def connection(db_path=None, database_url=None):
         try:
             import psycopg
         except ImportError as exc:
-            raise RuntimeError("Install requirements.txt to enable PostgreSQL") from exc
+            # Existing Render Free web service has a fixed compile-only build command.
+            # Explicitly enabled one-time startup install avoids a second paid service.
+            if os.getenv("TRUTHLAB_PG_BOOTSTRAP") != "1":
+                raise RuntimeError("Install requirements.txt to enable PostgreSQL") from exc
+            import subprocess
+            import sys
+            requirements = str(Path(__file__).with_name("requirements.txt"))
+            subprocess.run(
+                [sys.executable, "-m", "pip", "install", "--no-input",
+                 "--disable-pip-version-check", "-r", requirements],
+                check=True, timeout=180,
+            )
+            import psycopg
         if not url.startswith(("postgresql://", "postgres://")):
             raise ValueError("TRUTHLAB_DATABASE_URL must be a PostgreSQL URL")
         # Provider URLs should use TLS (sslmode=require or stronger).
