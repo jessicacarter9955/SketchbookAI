@@ -9,6 +9,7 @@ import re
 import os
 import sys
 from storage import connection, backend
+import backrooms_evolution as backrooms
 import threading
 import time
 import urllib.error
@@ -51,6 +52,10 @@ def initialize():
         CREATE TABLE IF NOT EXISTS calls(id INTEGER PRIMARY KEY, day TEXT, ts TEXT, model TEXT);
         CREATE TABLE IF NOT EXISTS errors(id INTEGER PRIMARY KEY, ts TEXT, body TEXT);
         CREATE TABLE IF NOT EXISTS memories(id INTEGER PRIMARY KEY, ts TEXT, workflow TEXT, cycle INTEGER, content TEXT);
+        CREATE TABLE IF NOT EXISTS evolution_artifacts(
+          id INTEGER PRIMARY KEY, ts TEXT, workflow TEXT, cycle INTEGER,
+          kind TEXT, title TEXT, content TEXT, status TEXT,
+          UNIQUE(workflow,cycle));
         """)
         columns={row[1] for row in db.execute("PRAGMA table_info(messages)")}
         if "workflow" not in columns: db.execute("ALTER TABLE messages ADD COLUMN workflow TEXT DEFAULT 'truthlab'")
@@ -78,6 +83,35 @@ def external_runner_ready():
     return bool(os.getenv("TRUTHLAB_DATABASE_URL")) and os.getenv("TRUTHLAB_ALLOW_EXTERNAL_RUNNER", "") == "1"
 
 
+def evolution_snapshot():
+    """Evidence-based Backrooms progression, isolated from TruthLab goal workflow."""
+    with connect() as db:
+        msgs=[dict(r) for r in db.execute(
+            "SELECT cycle,speaker,body,mode FROM messages WHERE workflow='backrooms' "
+            "ORDER BY id DESC LIMIT 600")]
+        artifacts=[dict(r) for r in db.execute(
+            "SELECT id,ts,cycle,kind,title,status FROM evolution_artifacts "
+            "WHERE workflow='backrooms' ORDER BY id DESC LIMIT 50")]
+    return backrooms.phase_for(list(reversed(msgs)),list(reversed(artifacts)))
+
+
+def archive_backrooms(cycle):
+    with connect() as db:
+        rows=[dict(r) for r in db.execute(
+            "SELECT cycle,speaker,body,mode FROM messages "
+            "WHERE workflow='backrooms' AND cycle=? AND mode='live' ORDER BY id",
+            (cycle,))]
+    snapshot=evolution_snapshot()
+    item=backrooms.artifact_for(cycle,rows,snapshot)
+    if item is None:
+        return
+    with connect() as db:
+        db.execute(
+            "INSERT INTO evolution_artifacts(ts,workflow,cycle,kind,title,content,status) "
+            "VALUES(?,?,?,?,?,?,?) ON CONFLICT(workflow,cycle) DO NOTHING",
+            (now(),"backrooms",cycle,item["kind"],item["title"],item["content"],"candidate"))
+
+
 def get_state():
     with lock:
         cfg=settings()
@@ -100,6 +134,7 @@ def get_state():
                 "tools":{"browser_qwen":"Available with active browser WebGPU, no key", "web_search":"not connected", "email":"not connected to worker",
                          "github":"not connected to worker", "wallet":"not connected"},
                 "wallet_address":None,"contact_email":None,
+                "backrooms_evolution":evolution_snapshot(),
                 "storage_backend":backend(),
                 "persistent_memory":backend()=="postgresql",
                 "hosting_note":("Cloud PostgreSQL: conversation history survives service restarts while the database provider retains it."
@@ -237,11 +272,9 @@ def ai_reply(agent, context, cfg):
           else "Noor is the constructive skeptic, co-builder, and evidence lead.")
     free_mode=cfg.get("workflow")=="backrooms"
     if free_mode:
-        system=("You are "+agent+", one of two AI interlocutors in an open-ended fictional and philosophical conversation. "+
-                "Explore emergent stories, imaginary cultures, mythologies, metaphysics, humor, invented rituals, and surprising ideas. "+
-                "Build on the other agent's ideas, allow disagreement and curiosity, avoid a fixed commercial objective. "+
-                "Never present fictional claims as verified facts. You have no outside tools. Reply in 80-150 words. "+
-                "Do not force a measurable action. ")
+        # March 2024 Infinite Backrooms' creative method: free CLI improvisation
+        # first; detect recurring motifs only from subsequent real messages.
+        system=backrooms.prompt_for(evolution_snapshot(), agent)
     else:
         system=(cfg["charter"]+"\nShared objective: "+cfg["goal"]+"\n"+role+"\n"
             "Relationship settings: "+traits+"\n"
@@ -255,7 +288,8 @@ def ai_reply(agent, context, cfg):
     if partner_active:
         system += (
             "\nDialogue rule: respond directly to "+other+"'s latest point, "
-            "propose one NEW concrete insight, test, or evidence criterion, "
+            + ("introduce a new CLI move, image, paradox or playful twist, " if free_mode
+               else "propose one NEW concrete insight, test, or evidence criterion, ")
             "and avoid restating earlier agreements. Do not claim a completed "
             "action without proof. If you disagree, explain constructively. "
             "Output ONLY your own contribution, without any Ari: or Noor: "
@@ -343,6 +377,8 @@ def cycle(demo=False, manual=False):
             if not emitted:
                 raise RuntimeError("No active agent delivered a response")
         report50(num,mode)
+        if not demo and cfg["workflow"]=="backrooms":
+            archive_backrooms(num)
         with lock:
             save_setting("cycles",num)
             save_setting("last_run",now())
@@ -587,6 +623,20 @@ class Handler(BaseHTTPRequestHandler):
                                 db.execute("INSERT INTO memories(ts,workflow,cycle,content) VALUES(?,?,?,?)",
                                     (str(m.get("ts",""))[:40],workflow,int(m.get("cycle",0)),m["content"][:1500]))
                 save_setting("cycles",max(settings()["cycles"],max([int(x.get("cycle",0)) for x in messages]+[0])))
+            elif action=="curate_backrooms":
+                if settings()["status"]=="active":
+                    raise ValueError("Pause the experiment before editorial curation")
+                item_id=body.get("artifact_id")
+                status=body.get("status")
+                if type(item_id)!=int or item_id<1 or status not in ("curated","rejected","candidate"):
+                    raise ValueError("Invalid archive selection")
+                with connect() as db:
+                    updated=db.execute(
+                        "UPDATE evolution_artifacts SET status=? "
+                        "WHERE id=? AND workflow='backrooms'",
+                        (status,item_id))
+                    if updated.rowcount!=1:
+                        raise ValueError("Unknown Backrooms artifact")
             elif action=="set_workflow":
                 mode=body.get("workflow")
                 if mode not in ("truthlab","backrooms"): raise ValueError("Unknown workflow")
