@@ -52,8 +52,8 @@ jobs:
       - name: Cache verified open weights
         uses: actions/cache@v4
         with:
-          path: ${{ runner.temp }}/truthlab-model/qwen2.5-0.5b-instruct-q4_k_m.gguf
-          key: truthlab-qwen2.5-0.5b-q4km-sha74a4da8
+          path: ${{ runner.temp }}/truthlab-model/qwen2.5-1.5b-instruct-q4_k_m.gguf
+          key: truthlab-qwen2.5-1.5b-q4km-sha6a1a2eb6
       - name: Start actual Qwen model via llama.cpp
         run: bash truthlab-live/start-local-llama.sh
       - name: Exercise real model, database, restart, two-agent pause, scheduler
