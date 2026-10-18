@@ -75,6 +75,15 @@ class BackroomsEvolution(unittest.TestCase):
         self.assertEqual(app.get_state()["config"]["workflow"],"truthlab")
         self.assertEqual(app.get_state()["messages"],[])
 
+    def test_shell_scaffolding_is_not_mythology(self):
+        code = "```bash\\nls\\ndrwxr-xr-x 5 root root 4096\\n```"
+        messages=[{"cycle":n,"speaker":sp,"mode":"live","body":code}
+                  for n in (1,2,3) for sp in ("Ari","Noor")]
+        self.assertEqual(evo.discover(messages),[])
+        state=evo.phase_for(messages,[])
+        self.assertEqual(state["phase"],"exploration")
+        self.assertFalse(state["motifs"])
+
     def test_candidates_reject_demo_and_operator_suggestions(self):
         msgs=[
             {"cycle":1,"speaker":"Operator","mode":"live","body":"silver orchard " * 5},
