@@ -33,8 +33,8 @@ STOP = set((
 def keywords(text):
     # Code fences, shell listings and ordinary Unix paths are *scaffolding*;
     # they are not mythological discoveries. Count only natural language.
-    text = re.sub(r"```[\\s\\S]*?```", " ", text or "")
-    text = re.sub(r"(?m)^\\s*(?:simulator@|[#$>] |drwx|total \\d+|ls\\b|pwd\\b|cd\\b|mkdir\\b).*$", " ", text)
+    text = re.sub(r"```[\s\S]*?```", " ", text or "")
+    text = re.sub(r"(?m)^\s*(?:simulator@|[#$>] |drwx|total \d+|ls\b|pwd\b|cd\b|mkdir\b).*$", " ", text)
     words = [w.lower() for w in re.findall(r"[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]{3,}", text)]
     tech = {"bash","sudo","root","drwxr-xr-x","chmod","python","json","yaml",
             "docker","terminal","shell","folder","directory","directories","files",
