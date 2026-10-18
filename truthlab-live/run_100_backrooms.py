@@ -41,6 +41,7 @@ all_messages=[]
 failures=[]
 start=time.monotonic()
 for i in range(100):
+    turn_started=time.monotonic()
     agent="Ari" if i%2==0 else "Noor"
     cycle=i//4+1
     before=len(all_messages)
@@ -65,6 +66,11 @@ for i in range(100):
     with transcript.open("a",encoding="utf-8") as h:
         h.write(json.dumps(item,ensure_ascii=False)+"\n")
     all_messages.append({"speaker":agent,"body":body})
+    # One heartbeat for every real response makes latency and throughput clear.
+    print("BACKROOMS_100_TURN "+json.dumps({"turn":i+1,"speaker":agent,
+        "turn_seconds":round(time.monotonic()-turn_started,1),
+        "elapsed_seconds":round(time.monotonic()-start,1),
+        "response_chars":len(body)}),flush=True)
     if (i+1)%4==0:
         # Exactly one memory record per real model response and a unique
         # archive candidate for each complete four-turn cycle.
