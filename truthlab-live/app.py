@@ -284,6 +284,20 @@ def spawn(demo=False):
     thread=threading.Thread(target=cycle,args=(demo, not demo and settings()["status"]!="active"),daemon=True)
     thread.start()
 
+def cycle_is_due():
+    """Cheap, key-free preflight; avoids loading 491 MB model on skipped ticks."""
+    initialize()
+    cfg = settings()
+    try:
+        next_due = not cfg["next_run"] or time.time() >= float(cfg["next_run"])
+    except (ValueError, TypeError):
+        next_due = True
+    return (cfg["status"] == "active"
+            and cfg.get("engine") == "api"
+            and any(cfg["agents_enabled"].values())
+            and next_due)
+
+
 def scheduled_once():
     """Run one due cycle from an independent scheduler, without an HTTP server."""
     global working
@@ -483,6 +497,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(502,{"error":"Internal error; see error log"})
 
 if __name__=="__main__":
+    if "--is-due" in sys.argv:
+        print("due" if cycle_is_due() else "not-due")
+        raise SystemExit(0)
     if "--once" in sys.argv:
         scheduled_once()
         raise SystemExit(0)
