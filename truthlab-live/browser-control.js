@@ -33,7 +33,17 @@ let localStop=makeButton("■ Stop Qwen",()=>stop());
 let localStatus=document.createElement("span");localStatus.className="sub";localStatus.textContent="Browser AI not started";
 let root=document.createElement("div");
 root.style.cssText="display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin-top:9px";
-root.append(modelSelect,localStart,localStop,localStatus);
+const workflowSelect=document.createElement("select");
+workflowSelect.setAttribute("aria-label","Experiment workflow");
+workflowSelect.style.cssText=modelSelect.style.cssText;
+for(const [id,label] of [["truthlab","TruthLab · Collaboration"],["backrooms","Infinite Backrooms · Free exploration"]]){
+ const option=document.createElement("option");option.value=id;option.textContent=label;workflowSelect.append(option);
+}
+workflowSelect.onchange=async()=>{
+ try{await request("POST","set_workflow",{workflow:workflowSelect.value});notify("Workflow selected: "+workflowSelect.options[workflowSelect.selectedIndex].text);}
+ catch(e){notify(e.message);await refresh();}
+};
+root.append(workflowSelect,modelSelect,localStart,localStop,localStatus);
 document.querySelector(".actions")?.append(root);
 document.querySelector(".intro")?.insertAdjacentElement("afterend",engineLine);
 const individual={};
@@ -77,6 +87,8 @@ async function refresh(){
   }
   localStop.disabled=!live && !worker;
   modelSelect.disabled=live||busy||!!worker;
+  workflowSelect.disabled=live||busy||s.config.status==="active";
+  if(document.activeElement!==workflowSelect)workflowSelect.value=s.config.workflow||"truthlab";
   localStart.disabled=busy||live||!s.config.agents_enabled.Ari&&!s.config.agents_enabled.Noor;
   if(!live && s.config.engine==="browser" && s.config.status==="active" && !s.browser_active){
     localStatus.textContent="Browser worker inactive (open tab & click Start)";
@@ -118,7 +130,13 @@ async function singleCycle(){
   if(s.config.status!=="active" || s.config.engine!=="browser" || !s.config.agents_enabled[agent])continue;
   const char=s.config.charter; const t=s.config.traits; const name=agent;
   const persona=name==="Ari"?"Creative strategist and builder.":"Evidence-oriented collaborator, constructive critic and co-builder.";
-  const system=char+"\nYour name is "+name+". You are an explicitly AI agent, not a human. "+persona+
+  const backrooms=s.config.workflow==="backrooms";
+  const system=backrooms?
+    ("You are "+name+", an AI conversing with another AI in an open-ended experimental backroom. "+
+    "Explore philosophy, fictional religions, original cultures, mythology, speculative worlds, playful ideas and recurring motifs. "+
+    "Develop ideas from previous turns; be curious, surprising and coherent. Do not force a business goal or action. "+
+    "Treat fictional beliefs as fiction, not facts. You have no external tools. Reply in 50-140 words."):
+    char+"\nYour name is "+name+". You are an explicitly AI agent, not a human. "+persona+
     "\nCollaborative shared goal: "+s.config.goal+
     "\nRelationship attributes (0-100): "+JSON.stringify(t)+
     "\nFollow the goal with high quality and speed; verify uncertain claims, avoid dismissive comments. "+
