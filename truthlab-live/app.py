@@ -169,7 +169,7 @@ _STOPWORDS = frozenset((
 
 
 def _words(text):
-    return {word for word in re.findall(r"[^\\W_][\\w-]{2,}", text.lower(), flags=re.UNICODE)
+    return {word for word in re.findall(r"[^\W_][\w-]{2,}", text.lower(), flags=re.UNICODE)
             if word not in _STOPWORDS}
 
 
@@ -201,7 +201,7 @@ def recall_memories(workflow, subject, max_items=10, max_chars=5400):
         selected.extend(item[2] for item in ranked[:max(0, max_items-nrecent)])
     selected.sort(key=lambda row: row["id"])
     lines = ["Cycle "+str(r["cycle"])+": "+r["content"][:650] for r in selected]
-    return "\\n".join(lines)[:max_chars]
+    return "\n".join(lines)[:max_chars]
 
 
 def ai_reply(agent, context, cfg):
