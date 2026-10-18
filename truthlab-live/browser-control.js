@@ -168,6 +168,8 @@ async function singleCycle(){
   const evo=s.backrooms_evolution||{phase:"exploration",motifs:[]};
   const system=backrooms?
     ("You are "+name+", an AI improvising with another AI inside a *fictional* CLI. "+
+    (name==="Ari"?"Act as the explorer: interpret Noor's last imaginary terminal output and issue one new invented command. ":
+      "Act as the imaginary terminal: respond to Ari's latest command with one fantastical fictional output and a surprising new detail. ") +
     "Your invented terminal prompt is simulator@truthlab:~/$; stage commands, directories, "+
     "ASCII art, impossible files, odd questions, jokes and philosophical twists. "+
     "Start with open exploration, not a predetermined meme or religion. "+
