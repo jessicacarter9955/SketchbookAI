@@ -58,3 +58,12 @@ jobs:
         run: bash truthlab-live/start-local-llama.sh
       - name: Exercise real model, database, restart, two-agent pause, scheduler
         run: python truthlab-live/e2e_live.py
+      - name: Record verified E2E scope
+        if: success()
+        shell: bash
+        run: |
+          {
+            echo '### TruthLab live integration'
+            echo 'Qwen CPU inference plus disposable PostgreSQL: two real agent cycles, distinct-process recall, due-time skip, individual pause, and global pause.'
+            echo 'No operator data or production database credentials were accessed.'
+          } >> "$GITHUB_STEP_SUMMARY"
