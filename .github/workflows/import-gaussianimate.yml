@@ -1,0 +1,54 @@
+name: Import pinned GaussiAnimate source
+on:
+  push:
+    branches: [img2threejs-runner]
+    paths:
+      - ".github/workflows/import-gaussianimate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gaussianimate-import-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  vendor-upstream:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 1
+      - name: Clone exact upstream commit in isolated folder
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone https://github.com/Net-Maker/GaussiAnimate.git /tmp/GaussiAnimate
+          git -C /tmp/GaussiAnimate checkout --detach 77e356856379b098f67f2a50083b6df10fab9ea4
+          test "$(git -C /tmp/GaussiAnimate rev-parse HEAD)" = "77e356856379b098f67f2a50083b6df10fab9ea4"
+          mkdir -p img2three/gaussianimate/upstream
+          cp -a /tmp/GaussiAnimate/. img2three/gaussianimate/upstream/
+          rm -rf img2three/gaussianimate/upstream/.git
+          test -f img2three/gaussianimate/upstream/LICENSE
+          test -f img2three/gaussianimate/upstream/pyproject.toml
+          test -f img2three/gaussianimate/upstream/THIRD_PARTY_NOTICES.md
+          test -f img2three/gaussianimate/upstream/partmm/__init__.py
+          test -f img2three/gaussianimate/upstream/skelebone/__init__.py
+          echo "Vendored $(find img2three/gaussianimate/upstream -type f | wc -l) upstream files"
+      - name: Commit imported source to this branch only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- img2three/gaussianimate/upstream
+          if git diff --cached --quiet; then
+            echo "GaussiAnimate source already synchronized" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git commit -m "Vendor GaussiAnimate upstream pinned at 77e3568"
+          git push origin HEAD:img2threejs-runner
+          echo "Imported Net-Maker/GaussiAnimate at 77e356856379b098f67f2a50083b6df10fab9ea4 into img2three/gaussianimate/upstream" >> "$GITHUB_STEP_SUMMARY"
