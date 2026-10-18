@@ -93,13 +93,13 @@ async function refresh(){
  try{
   const s=await request("GET");
   const w=s.config.workflow||"truthlab";
-  if(s.messages.length){
+  if(s.messages.length || s.memories.length || s.reports.length){
     try{
       const snapshot={workflow:w,messages:s.messages,reports:s.reports,memories:s.memories,updated:new Date().toISOString()};
       localStorage.setItem(snapshotKey(w),JSON.stringify(snapshot));
     }catch(e){localStatus.textContent="Browser backup unavailable; export JSON";}
   }else if(!restoring && s.config.status!=="active"){
-    const saved=localStorage.getItem(snapshotKey(w));
+    let saved=null;try{saved=localStorage.getItem(snapshotKey(w));}catch(e){localStatus.textContent="Local backup unavailable";}
     if(saved){
       restoring=true;
       try{await request("POST","restore_snapshot",{snapshot:JSON.parse(saved)});notify("Restored "+w+" from this browser's saved memory");}
