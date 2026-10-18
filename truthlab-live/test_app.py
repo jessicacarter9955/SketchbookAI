@@ -99,6 +99,22 @@ class TruthLabTests(unittest.TestCase):
         app.save_setting("noor_enabled", "0")
         self.assertFalse(app.cycle_is_due())
 
+    def test_recall_old_relevant_memory_and_workflow_isolation(self):
+        with app.connect() as db:
+            for i in range(24):
+                body = ("Ari: Violet lighthouse protocol for good testing."
+                        if i == 0 else "Noor: A routine note about drafts and reviews.")
+                db.execute("INSERT INTO memories(ts,workflow,cycle,content) VALUES(?,?,?,?)",
+                           ("2026-10-18","truthlab",i+1,body))
+            db.execute("INSERT INTO memories(ts,workflow,cycle,content) VALUES(?,?,?,?)",
+                       ("2026-10-18","backrooms",1,"A second workflow story."))
+        text = app.recall_memories("truthlab","violet lighthouse protocol")
+        self.assertIn("Violet lighthouse protocol",text)
+        self.assertNotIn("second workflow story",text)
+        irrelevant = app.recall_memories("truthlab","unrelated winter apples")
+        self.assertNotIn("Violet lighthouse protocol",irrelevant)
+        self.assertLessEqual(len(text),5400)
+
     def test_external_runner_requires_explicit_secure_opt_in(self):
         old_model, old_key = app.MODEL, app.API_KEY
         try:
