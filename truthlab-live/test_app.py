@@ -157,6 +157,16 @@ class TruthLabTests(unittest.TestCase):
         app.release_cycle_lease(lease)
         self.assertIsNotNone(app.claim_cycle_lease())
 
+    def test_generated_reply_cannot_impersonate_partner(self):
+        message = ("Noor: Noor: Here is a real measurable criterion.\\n"
+                   "Ari: I am a fabricated turn that must never be attributed to Ari.")
+        result = app.clean_agent_reply("Noor", message)
+        self.assertEqual(result, "Here is a real measurable criterion.")
+        self.assertNotIn("fabricated", result)
+        self.assertEqual(app.clean_agent_reply("Ari", "Ari: Direct response."), "Direct response.")
+        with self.assertRaises(RuntimeError):
+            app.clean_agent_reply("Noor", "Noor:   ")
+
     def test_ari_replies_after_noor_and_single_agent_gets_one_turn(self):
         self.assertEqual(app.planned_turns({"Ari":True,"Noor":True},"Noor"),
                          ["Ari","Noor","Ari","Noor"])
