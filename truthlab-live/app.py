@@ -214,6 +214,22 @@ def planned_turns(enabled, last_speaker=None):
     return [first, second, first, second]
 
 
+def clean_agent_reply(agent, raw):
+    """Ensure a model cannot create extra turns by impersonating its partner.
+
+    Small local models sometimes output 'Noor: ...\\nAri: ...' in a single
+    completion. Preserve only the first own-speaker contribution.
+    """
+    if agent not in ("Ari", "Noor") or not isinstance(raw, str):
+        raise RuntimeError("Unusable agent reply")
+    body = raw.strip()
+    body = re.sub(r"^(?:(?:Ari|Noor)\\s*:\\s*)+", "", body, flags=re.I)
+    body = re.split(r"(?m)^\\s*(?:Ari|Noor)\\s*:", body, maxsplit=1, flags=re.I)[0].strip()
+    if not body:
+        raise RuntimeError("Model returned no usable single-agent response")
+    return body[:4500]
+
+
 def ai_reply(agent, context, cfg):
     reserve_call()
     traits=", ".join(k+" "+str(v)+"/100" for k,v in cfg["traits"].items())
@@ -241,7 +257,9 @@ def ai_reply(agent, context, cfg):
             "\nDialogue rule: respond directly to "+other+"'s latest point, "
             "propose one NEW concrete insight, test, or evidence criterion, "
             "and avoid restating earlier agreements. Do not claim a completed "
-            "action without proof. If you disagree, explain constructively."
+            "action without proof. If you disagree, explain constructively. "
+            "Output ONLY your own contribution, without any Ari: or Noor: "
+            "speaker labels, and NEVER write the other agent's next turn."
         )
     else:
         system += (
@@ -261,9 +279,7 @@ def ai_reply(agent, context, cfg):
     with urllib.request.urlopen(req,timeout=48) as resp:
         data=json.loads(resp.read(1000000))
     text=data["choices"][0]["message"]["content"]
-    if not isinstance(text,str) or not text.strip():
-        raise RuntimeError("Model returned no usable response")
-    return text.strip()[:4500]
+    return clean_agent_reply(agent, text)
 
 def demo_cycle(cycle):
     publish("Ari","[SIMULATED EXAMPLE] We could test a small AI research newsletter. First, choose a measurable audience need and draft a transparent AI authorship policy. No site, mailing list or customers exist yet.","demo",cycle)
