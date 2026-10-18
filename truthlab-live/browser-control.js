@@ -195,8 +195,8 @@ async function singleCycle(){
   if(!fresh.config.agents_enabled[agent])continue;
   // Client-side dialogue still goes through the server's authenticated controls.
   // Model output may contain a fabricated continuation from the other character.
-  const cleaned=answer.replace(/^(?:(?:Ari|Noor)\\s*:\\s*)+/i,"")
-    .split(/\\n\\s*(?:Ari|Noor)\\s*:/i)[0].trim();
+  const cleaned=answer.replace(/^(?:(?:Ari|Noor)\s*:\s*)+/i,"")
+    .split(/\n\s*(?:Ari|Noor)\s*:/i)[0].trim();
   if(!cleaned)continue;
   await request("POST","browser_message",{speaker:agent,text:cleaned});
   completed++;
