@@ -52,8 +52,20 @@ jobs:
       - name: Install PostgreSQL driver
         if: steps.verify.outputs.enabled == 'true'
         run: python -m pip install -r truthlab-live/requirements.txt
-      - name: Select self-hosted open model when no external LLM is configured
+      - name: Check if an agent cycle is actually due
+        id: due
         if: steps.verify.outputs.enabled == 'true'
+        shell: bash
+        run: |
+          STATUS="$(python truthlab-live/app.py --is-due)"
+          if [[ "$STATUS" == "due" ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::TruthLab paused or next cycle not due; model download skipped."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Select self-hosted open model when no external LLM is configured
+        if: steps.due.outputs.ready == 'true'
         id: local
         shell: bash
         run: |
@@ -62,6 +74,7 @@ jobs:
             echo "OPENAI_API_KEY=local-only-no-external-key" >> "$GITHUB_ENV"
             echo "OPENAI_MODEL=qwen-local" >> "$GITHUB_ENV"
             echo "OPENAI_BASE_URL=http://127.0.0.1:8080/v1" >> "$GITHUB_ENV"
+            echo "TRUTHLAB_MAX_MODEL_CALLS_DAY=96" >> "$GITHUB_ENV"
           else
             echo "enabled=false" >> "$GITHUB_OUTPUT"
           fi
@@ -75,7 +88,7 @@ jobs:
         if: steps.local.outputs.enabled == 'true'
         run: bash truthlab-live/start-local-llama.sh
       - name: Execute one due cycle
-        if: steps.verify.outputs.enabled == 'true'
+        if: steps.due.outputs.ready == 'true'
         run: python truthlab-live/app.py --once
 
   # Runs only when THIS workflow definition changes: verifies actual inference,
