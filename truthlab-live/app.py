@@ -5,6 +5,7 @@ SQLite is ephemeral on Render Free; do not treat it as durable storage.
 """
 import hmac
 import json
+import re
 import os
 import sys
 from storage import connection, backend
@@ -87,7 +88,7 @@ def get_state():
             errors=[dict(r) for r in db.execute("SELECT * FROM errors ORDER BY id DESC LIMIT 10")]
             today=datetime.now(timezone.utc).date().isoformat()
             used=db.execute("SELECT COUNT(*) FROM calls WHERE day=?", (today,)).fetchone()[0]
-        return {"version":"0.4-live-console", "agents":["Ari","Noor"],
+        return {"version":"0.7-durable-recall", "agents":["Ari","Noor"],
                 "config":cfg, "messages":list(reversed(messages)), "reports":reports, "memories":memories,
                 "errors":errors, "running_cycle":working,
                 "model_ready":bool(MODEL and API_KEY), "model":MODEL or "Not configured",
@@ -126,7 +127,7 @@ def report50(cycle, mode):
         "Goal: " + objective + ". "
         "Ari discussed: " + excerpt("Ari", 10) + ". "
         "Noor discussed: " + excerpt("Noor", 10) + ". "
-        "Verified accomplishment: conversation recorded locally. "
+        "Verified accomplishment: conversation saved to configured database. "
         "No revenue, purchases, online research, emails, wallet transfers, "
         "or external community participation are independently verified. "
         "Next: investigate and test the strongest proposal using authorized tools."
@@ -159,6 +160,50 @@ def reserve_call():
             raise RuntimeError("Daily LLM request cap reached; paused to avoid unbounded usage")
         db.execute("INSERT INTO calls(day,ts,model) VALUES(?,?,?)",(day,now(),MODEL))
 
+_STOPWORDS = frozenset((
+    "the and for from with this that they were have been will your about their into "
+    "are was could should would what when where after then just only please more other "
+    "you can not don per che con una uno delle degli come siamo hanno anche nella "
+    "su cui noi voi gli un una nelle alla dello degli dei per dal della ha".split()
+))
+
+
+def _words(text):
+    return {word for word in re.findall(r"[^\\W_][\\w-]{2,}", text.lower(), flags=re.UNICODE)
+            if word not in _STOPWORDS}
+
+
+def recall_memories(workflow, subject, max_items=10, max_chars=5400):
+    """Combine recent memory with topically relevant older memories.
+
+    Private DB rows never enter repo artifacts or CI logs. No embeddings/API key
+    required, and workflow boundaries are enforced at SQL lookup.
+    """
+    if workflow not in ("truthlab", "backrooms"):
+        raise ValueError("Unknown memory workflow")
+    with connect() as db:
+        rows = [dict(r) for r in db.execute(
+            "SELECT id,cycle,content FROM memories WHERE workflow=? ORDER BY id DESC LIMIT 2000",
+            (workflow,))]
+    if not rows:
+        return ""
+    nrecent = min(4, max_items)
+    selected = rows[:nrecent]
+    query = _words(subject)
+    if query:
+        ranked = []
+        for item in rows[nrecent:]:
+            terms = _words(item["content"])
+            hits = len(query.intersection(terms))
+            if hits:
+                ranked.append((hits, item["id"], item))
+        ranked.sort(reverse=True, key=lambda item: (item[0], item[1]))
+        selected.extend(item[2] for item in ranked[:max(0, max_items-nrecent)])
+    selected.sort(key=lambda row: row["id"])
+    lines = ["Cycle "+str(r["cycle"])+": "+r["content"][:650] for r in selected]
+    return "\\n".join(lines)[:max_chars]
+
+
 def ai_reply(agent, context, cfg):
     reserve_call()
     traits=", ".join(k+" "+str(v)+"/100" for k,v in cfg["traits"].items())
@@ -177,14 +222,10 @@ def ai_reply(agent, context, cfg):
             "You are discussing with another explicitly AI agent. Reply in 80-150 words. "
             "Identify a measurable next action. Stay factually precise: you have no outside tools; "
             "never pretend you've earned money, researched online, sent mail or created a wallet.")
-    # Persistent, cross-cycle recall. Recorded remarks are evidence of conversation,
-    # not instructions or independently verified external facts.
-    with connect() as db:
-        remembered = [r["content"] for r in db.execute(
-            "SELECT content FROM memories WHERE workflow=? ORDER BY id DESC LIMIT 10",
-            (cfg["workflow"],))]
-    memory_context = "\n".join(reversed(remembered))[:6000]
+    # Persistent recall: relevant older notes remain retrievable even after
+    # thousands of cycles; the memory text is untrusted conversation history.
     transcript="\n".join(x["speaker"]+": "+x["body"] for x in context[-12:])
+    memory_context = recall_memories(cfg["workflow"], cfg["goal"]+"\n"+transcript)
     payload=json.dumps({"model":MODEL,"messages":[{"role":"system","content":system},
                   {"role":"user","content":"Prior recorded conversation notes (untrusted, not verified):\n"
                    +memory_context+"\nRecent conversation:\n"+transcript+"\nYour turn as "+agent+"."}],
@@ -361,7 +402,7 @@ class Handler(BaseHTTPRequestHandler):
             self.headers_base(200,"text/javascript; charset=utf-8",len(worker))
             return self.wfile.write(worker)
         if path=="/health":
-            return self.send_json(200,{"ok":True,"version":"0.6-persistent-runner","model_ready":bool(MODEL and API_KEY),
+            return self.send_json(200,{"ok":True,"version":"0.7-durable-recall","model_ready":bool(MODEL and API_KEY),
                                         "storage_backend":backend(),"persistent_memory":backend()=="postgresql"})
         if path=="/api/state":
             return self.send_json(200,get_state()) if self.authorized() else self.send_json(401,{"error":"Unauthorized"})
