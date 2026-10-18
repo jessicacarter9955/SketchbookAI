@@ -1,4 +1,10 @@
 // Shared source-state fixtures avoid repeating complete inventories per case.
+import { SourceActorBindings } from './ue2three-objects.mjs';
+export function blueprintFixtureActors(report) {
+    const bindings = new SourceActorBindings(report);
+    if (report.character_source) bindings.bind(report.character_source.package, {fixture:'explicit standalone source actor'});
+    return bindings;
+}
 export function blueprintFixtureState(fixture, test, report) {
     for (const [name, hash] of Object.entries(test.tables || {}))
         if (report.table_sources?.[name]?.source_sha256 !== hash) throw new Error('Source fixture table differs from source');

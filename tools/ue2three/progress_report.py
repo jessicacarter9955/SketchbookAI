@@ -185,6 +185,19 @@ def project_progress(workspace, published, character_dir=None):
         milestones.append({'title': 'Lettura dei valori originali di vitalità', 'status': 'green',
                            'evidence': f"{len(source_metrics)} getter e {len(metrics)} casi; consumo, danni e rigenerazione esclusi"})
     audit = documents.get('audit_blueprints', {})
+    owners = live.get('owner_results', [])
+    def verified_owner(result):
+        graph = blueprint_report.get('actor_graph', {}).get('roots', {}).get(result.get('source_class'), {})
+        component = next((entry for entry in graph.get('components', []) if entry.get('package') == result.get('package')), {})
+        return (graph and component and result.get('owner_is_player') is True and result.get('scope') == 'standalone_no_drivers'
+                and result.get('actor_source_sha256') == graph.get('source', {}).get('source_sha256')
+                and result.get('scs_sha256') == graph.get('scs_sha256')
+                and result.get('source_sha256') == component.get('source', {}).get('source_sha256')
+                and result.get('component') == component.get('variable')
+                and all(result.get(key) == component.get(key) for key in ('class_export_index', 'scs_node_export_index', 'template_sha256')))
+    if (live_valid and owners and live.get('owners_checked') == len(owners) and all(verified_owner(result) for result in owners)):
+        milestones.append({'title': 'Proprietà sorgente dei componenti sul personaggio della scena', 'status': 'green',
+                           'evidence': f"{len(owners)} componenti associati al giocatore reale con classe, nodo, template e checksum sorgenti verificati; construction script, BeginPlay e rete esclusi"})
     if (blueprint_report and audit.get('status') == 'passed' and audit.get('project') == project
             and audit.get('programs_content_sha256') == blueprint_report.get('content_sha256')
             and outputs['audit_blueprint_screenshot'] and audit.get('screenshot_sha256') == outputs['audit_blueprint_screenshot']):

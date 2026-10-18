@@ -30,6 +30,8 @@ def property_schema(package, prop):
         return schema
     if type_name == 'ObjectProperty':
         identity = import_path(package, prop.get('PropertyClass'))
+        if identity == ('/Script/Engine', 'Actor'):
+            return {'type': type_name, 'class': list(identity), 'reference_kind': 'runtime_actor', 'default': None}
         if identity: return {'type': type_name, 'class': list(identity), 'default': None}
     if type_name == 'ClassProperty':
         identity, meta = import_path(package, prop.get('PropertyClass')), import_path(package, prop.get('MetaClass'))

@@ -47,6 +47,9 @@ def serialized_value(package, prop, schema, value):
         return [serialized_value(package, prop['Inner'], schema['element'], item) for item in items]
     if type_name in ('ObjectProperty', 'ClassProperty'):
         reference = value.get('Value')
+        if schema.get('reference_kind') == 'runtime_actor':
+            if type(reference) is int and reference == 0: return None
+            raise ValueError('Non-null source actor defaults require world-object migration')
         if type_name == 'ClassProperty' and reference != 0:
             if (type(reference) is not int or not -len(package.imports) <= reference < 0
                     or package.imports[-reference-1].get('ClassName') not in ('Class', 'BlueprintGeneratedClass')):

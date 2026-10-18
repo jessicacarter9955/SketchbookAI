@@ -1,5 +1,46 @@
 # DDS migration checklist · 2026-10-13
 
+## Slot ownership batch · 2026-10-18
+
+179 translated /321 blocked; 60 delegate declarations, six empty functions,
+56 empty callbacks, 64 event helpers and 263 uncached packages. Added original
+SCS owner graph validation and runtime Actor identities. The real scene player
+owns its original inventory component; cached class/field/template/SCS/source
+witnesses are checked before binding. Four cached ActorComponent types available.
+No construction scripts, BeginPlay, native template behavior or replication run.
+GetOwner and ForceNetUpdate require explicit standalone/no-game-or-demo-driver
+bindings. ForceNetUpdate records a transactional call receipt; it does not provide
+networking. Class overrides and incompatible component multiplicity fail explicitly.
+
+New functions: SetSlotData, ClearSlot, SwapSlotData, MergeSlots,
+CycleInjectorSlot and CycleUtilitySlot. Added 97 independent source cases, including
+all fixed slots, invalid storage indices, no-resize writes, null owner context,
+stack overflow arithmetic, all injector/utility occupancy combinations and old
+pre-swap notification payloads. No source rules corrected or invented.
+
+Verification: **131 Python /84 JavaScript tests PASS**, editor build PASS.
+Browser audit: **179 functions /537 generic /620 source cases PASS**.
+Actual scene: **24 input /35 metrics /4 events /454 inventory /31 math cases
+PASS**, inventory owner is the actual player; horizontal movement 1.3533333027.
+Source report SHA: 329dd1ad150a723bebcfacd2fb46f6e792e622c19e470141f2da6e0109a2b250.
+Evidence JSON saved in build/local-scenes/ue2three/verification/source-slot-ownership/.
+
+**Visual acceptance remains pending:** integrated browser Page.captureScreenshot
+repeatedly timed out for both audit and game tabs, despite successful DOM-visible
+PASS summaries. Do not reuse an old screenshot with this new program checksum.
+Current published proofs explicitly omit screenshot hashes, so visual green gates
+expire honestly. No gameplay failure was observed in these source cases. New JS
+test setup initially omitted its required Count property and used an invalid object
+constant; corrected the test setup to exercise typed asset rejection properly.
+All tests now pass. Editor revision21 with optional chunk421 shipped together.
+No Unreal start, source rescan, new parsed packages, export or upload this batch.
+
+Next: acquire fresh integrated-browser screenshots when capture works, then
+continue original equip/transfer dependencies (native calls, casts, array literals,
+source Text constants), cross-component events and original UI wiring. Animations
+stay yellow with verification deferred; lighting last. Broad gameplay stays partial.
+
+
 The tool generates `progress.json` and `progress.html` from cached source metadata
 and checksum-verified published outputs. Open **Avanzamento del progetto completo**
 in the level preview, or select the checklist from the manager's scene list.
@@ -32,9 +73,9 @@ are not a percentage of completed gameplay.
 | Animation clips | 🟡 | 45 unique clip files published; assumed functioning to continue at the user's request. Unreal fidelity, curves, notifies, root motion and transitions are deferred |
 | Animation systems | 🔴 | Translate nine AnimBlueprints, 105 montages, 10 blendspaces, pose databases, chooser and Control Rig behavior |
 | Weapons and armed movement | 🟡 | Two accessories published; compare grip, aim, recoil, reload, hit detection and original damage rules |
-| Blueprint and native behavior | 🟡 | 33 functions translated (six empty in source); 467 blocked functions in read packages and 263 packages not cached. Same-class calls and out parameters work; cross-object/native calls, dynamic jumps and timers remain |
+| Blueprint and native behavior | 🟡 | 179 functions translated (six empty in source); 321 blocked functions in read packages and 263 packages not cached. Same-class calls and out parameters work; cross-object/native calls, dynamic jumps and timers remain |
 | Menu, HUD and UI | 🟡 | One hierarchy published among 57 source widgets; migrate styles, assets, bindings and events |
-| Inventory, loot and saves | 🔴 | Translate original item, container, equipment and persistence rules |
+| Inventory, loot and saves | 🟡 | Source slot writes/clear/swap/merge/cycling now execute; original equip, UI, persistence and complete transfers remain |
 | NPC, shop, dialogue and missions | 🔴 | Translate actual source interactions, AI, prices, conditions and progression |
 | Modes, lobby and extraction | 🔴 | Translate session, raid, extraction, death and level-change flows |
 | Collision and physics | 🔴 | Compare primitives, channels, queries, contacts and ragdolls; 11 PhysicsAssets in registry |

@@ -31,7 +31,7 @@ def property_type(prop, package=None):
     result = prop.get('SerializedType')
     if result == 'ObjectProperty' and package:
         schema = property_schema(package, prop)
-        if schema and schema.get('class') == ['/Script/Engine', 'DataTable']: return result
+        if schema and (schema.get('class') == ['/Script/Engine', 'DataTable'] or schema.get('reference_kind') == 'runtime_actor'): return result
     if result == 'EnumProperty':
         result = prop.get('UnderlyingProp', {}).get('SerializedType')
     if result not in ('BoolProperty', 'ByteProperty', 'IntProperty', 'FloatProperty',
@@ -149,8 +149,15 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         from blueprint_effects import array_context
         adapted = array_context(value, package, owner, reads, outputs, depth)
         if adapted is not None: return adapted
+        from blueprint_objects import native_actor_context
+        adapted = native_actor_context(value, package, owner, reads, outputs, depth)
+        if adapted is not None: return adapted
         raise BlueprintTranslationError('Unsupported opcode: EX_Context')
     if token in ('EX_LocalVirtualFunction', 'EX_LocalFinalFunction', 'EX_FinalFunction'):
+        if token == 'EX_FinalFunction' and package:
+            from blueprint_objects import native_owner
+            adapted = native_owner(value, package, owner)
+            if adapted is not None: return adapted
         return local_call(value, package, owner, reads, outputs, depth)
     if token == 'EX_StructMemberContext':
         return {'op': 'member', 'field': field(value.get('StructMemberExpression')),
@@ -569,7 +576,11 @@ def translate_package(package, structs=None, tables=None):
         except BlueprintTranslationError: continue
         schema = property_schema(package, prop)
         if type_name == 'ObjectProperty':
-            default_state[name] = asset_reference(package, defaults.get(name, 0), schema['class'])
+            if schema.get('reference_kind') == 'runtime_actor':
+                if type(defaults.get(name, 0)) is not int or defaults.get(name, 0) != 0:
+                    raise BlueprintTranslationError('Source actor defaults require an original world-object binding: ' + name)
+                default_state[name] = None
+            else: default_state[name] = asset_reference(package, defaults.get(name, 0), schema['class'])
         elif schema and schema['type'] == 'StructProperty' and (name not in defaults or isinstance(defaults[name], dict)):
             default_state[name] = {**schema['default'], **defaults.get(name, {})}
         elif name in defaults: default_state[name] = defaults[name]
@@ -595,7 +606,8 @@ def translate_package(package, structs=None, tables=None):
         if len(owners) != 1: continue
         try: signatures[name] = delegate_signature(package, owners[0], name)
         except BlueprintTranslationError: continue
-    return {'functions': functions, 'event_programs': events, 'event_blocked': event_blocked, 'delegate_signatures': signatures,
+    from blueprint_objects import class_metadata
+    return {'functions': functions, 'event_programs': events, 'event_blocked': event_blocked, 'delegate_signatures': signatures, 'class_metadata': class_metadata(package),
             'blocked': blocked, 'declarations': declarations, 'default_state': default_state,
             'counts': counts}
 
@@ -728,6 +740,7 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
                           'implementation': file_hash(Path(__file__)),
                           'events_implementation': file_hash(Path(__file__).with_name('blueprint_events.py')),
                           'effects_implementation': file_hash(Path(__file__).with_name('blueprint_effects.py')),
+                          'objects_implementation': file_hash(Path(__file__).with_name('blueprint_objects.py')),
                           'values_implementation': file_hash(Path(__file__).with_name('blueprint_values.py')),
                           'types_implementation': file_hash(Path(__file__).with_name('blueprint_types.py'))})
     report_file = output / 'blueprint-programs.json'
@@ -736,29 +749,35 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
         if prior.get('fingerprint') == fingerprint and prior.get('content_sha256') == digest({k: v for k, v in prior.items() if k != 'content_sha256'}):
             return prior
     except (OSError, ValueError): pass
-    packages, counts = {}, Counter()
+    packages, source_packages, counts = {}, {}, Counter()
     for name, cache in cached:
-        packages[name] = translate_package(Package(read_json(cache)), structs, tables)
+        source_packages[name] = Package(read_json(cache))
+        packages[name] = translate_package(source_packages[name], structs, tables)
         packages[name]['source'] = key_inputs[name]
         counts.update(packages[name]['counts'])
-    guards = {}
+    guards, character_source = {}, None
     if controls_file.is_file():
         controls = read_json(controls_file)
         source = controls.get('sources', {}).get('character_blueprint', {})
         if controls.get('project') == str(project) and key_inputs.get(source.get('package'), {}).get('source_sha256') == source.get('sha256'):
+            character_source = source
             cache_path = dict(cached).get(source['package'])
             guards = character_guards(controls, packages, Package(read_json(cache_path)))
+    from blueprint_objects import actor_graph
     report = {'schema_version': 1, 'project': str(project), 'fingerprint': fingerprint,
               'packages': packages, 'counts': dict(counts), 'missing_cached_packages': missing,
               'source_types': [{'package': name[0], 'object': name[1], **schema} for name, schema in structs.items()], 'type_sources': type_inputs,
               'tables': tables, 'table_sources': table_inputs, 'table_blocked': table_blocked,
               'character_guards': guards, 'character_metrics': character_metrics(guards, packages),
+              'character_source': character_source,
+              'actor_graph': actor_graph(source_packages, key_inputs),
               'limitations': ['Locals, instance state, comparisons, static jumps and same-source-class calls with out parameters execute.',
                              'Struct member reads, typed source-struct field writes/defaults, typed Array_Get copies and ASCII FName equality execute.',
                              'Cached typed DataTable row reads retain primitive/array/native-vector fields, FText identities and data-only asset references.',
                              'Asset references do not execute or convert their referenced assets. Other FText histories, unsupported identity characters and nested writes remain blocked.',
                              'Typed source struct constants and array Get/Length/IsValidIndex/Set/Remove/Clear/Add/Append execute; other array operations and Unicode FName comparisons remain blocked.',
                              'Original property-dirty witnesses and typed multicast emissions execute locally. Explicitly registered translated handlers run transactionally; original world/UI bindings and network replication are not migrated.',
+                             'Original SCS component ownership can bind to a scene actor. GetOwner and ForceNetUpdate require explicit standalone actor bindings with no game/demo net drivers; other object methods and full lifecycle remain blocked.',
                              'Constant source event entries, flow stacks and per-instance persistent primitive fields execute on fully translated reachable paths.',
                              'Event callbacks with no source effects are counted separately; animation dispatch, native effects and complete game events are not implied.',
                              'Cross-object calls, derived-class virtual overrides, arbitrary dynamic jumps, latent actions and replication remain blocked.',

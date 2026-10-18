@@ -1,5 +1,5 @@
 import { executeBlueprint } from '/src/editor/ue2three-blueprint.mjs';
-import { blueprintFixtureState, blueprintFixtureMembers, blueprintFixtureEqual } from '/src/editor/ue2three-fixtures.mjs';
+import { blueprintFixtureState, blueprintFixtureMembers, blueprintFixtureEqual, blueprintFixtureActors } from '/src/editor/ue2three-fixtures.mjs';
 const status = document.querySelector('#status');
 const applyFilter = () => {
     const term = document.querySelector('#function-filter').value.toLowerCase();
@@ -13,6 +13,7 @@ try {
     const response = await fetch('/' + path, {cache: 'no-store'});
     if (!response.ok) throw new Error('Programmi Blueprint non disponibili');
     const report = await response.json();
+    const actors = blueprintFixtureActors(report);
     let passed = 0, scenarios = 0;
     const evidence = [], rowsByFunction = new Map();
     for (const [packageName, packageData] of Object.entries(report.packages)) {
@@ -33,13 +34,13 @@ try {
                     : program.schemas?.local?.[name] ? structuredClone(program.schemas.local[name].default)
                     : program.field_types?.local?.[name] === 'StructProperty' ? {}
                     : ['NameProperty', 'StrProperty'].includes(program.field_types?.local?.[name]) ? sample ? 'Fixture_' + sample : 'None' : 1;
-                const result = executeBlueprint(program, self, inputs, {functions: {...packageData.functions, ...packageData.event_programs}, tables: report.tables || {}, signatures: packageData.delegate_signatures || {}});
+                const result = executeBlueprint(program, self, inputs, {functions: {...packageData.functions, ...packageData.event_programs}, tables: report.tables || {}, signatures: packageData.delegate_signatures || {}, native:actors.context(packageName)});
                 // Independently check each translated source assignment against
                 // the provided fixture or literal; this does not emulate native calls.
                 for (const executed of result.trace.filter(step => step.op === 'set')) {
                     const step = program.steps.find(step => step.source_index === executed.source_index);
                     if (executed.scope === 'persistent' || step.value.op === 'get' && step.value.scope !== 'self') continue;
-                    if (['math', 'call', 'member', 'table_get', 'typed_literal', 'struct_literal', 'array_valid', 'array_mutate', 'array_set', 'array_add'].includes(step.value.op)) continue;
+                    if (['math', 'call', 'member', 'table_get', 'typed_literal', 'struct_literal', 'array_valid', 'array_mutate', 'array_set', 'array_add', 'native_get_owner'].includes(step.value.op)) continue;
                     const expected = step.value.op === 'get' ? self[step.value.field] : step.value.value;
                     const actual = executed.value;
                     if ((step.scope === 'self' || program.output_fields.includes(step.field)) && JSON.stringify(actual) !== JSON.stringify(expected))
@@ -74,7 +75,7 @@ try {
             for (const [name, hash] of Object.entries(test.types || {}))
                 if (report.type_sources?.[name]?.source_sha256 !== hash) throw new Error(`Tipo sorgente non aggiornato: ${name}`);
             const self = blueprintFixtureState(fixture, test, report);
-            const result = executeBlueprint(program, self, test.inputs, {functions: {...report.packages[test.package].functions, ...report.packages[test.package].event_programs}, tables: report.tables || {}, signatures: report.packages[test.package].delegate_signatures || {}});
+            const result = executeBlueprint(program, self, test.inputs, {functions: {...report.packages[test.package].functions, ...report.packages[test.package].event_programs}, tables: report.tables || {}, signatures: report.packages[test.package].delegate_signatures || {}, native:actors.context(test.package)});
             for (const [field, expected] of Object.entries(test.outputs))
                 if (JSON.stringify(result.outputs[field]) !== JSON.stringify(expected)) throw new Error(`Confronto sorgente fallito: ${test.function}.${field}`);
             for (const [field, expected] of Object.entries(test.state || {}))

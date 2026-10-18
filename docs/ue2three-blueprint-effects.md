@@ -96,3 +96,43 @@ Reading reload, sound and class references does not migrate the referenced
 animations, sounds or native effects. Server-named event bodies execute locally;
 authority/RPC transport, equip wiring, damage delivery and regeneration remain
 separate unfinished work.
+
+## Source component ownership and slot writes (2026-10-18)
+
+The offline compiler follows the original generated actor class's
+SimpleConstructionScript pointer, validates its original AllNodes/RootNodes
+reachable tree, typed component property, ComponentClass and template owner.
+Original script overrides are typed; unrecognized overrides block that component.
+The runtime binds source component identities to the actual scene player using
+these witnesses. Audit-only tests use an explicitly separate surrogate actor.
+References carry per-runtime identity; data asset identities cannot act as Actors.
+
+Exact direct UActorComponent::GetOwner and typed AActor::ForceNetUpdate contexts
+are supported only with explicit standalone bindings and no active game/demo
+net drivers. ForceNetUpdate emits a local receipt: Actor.cpp's no-driver path
+has no network update. Unknown native actor subclasses and source overrides are
+not accepted. Native receipts commit with state/events and snapshot transactionally.
+Physical scene ownership is immutable for supported programs, across snapshots.
+Original construction scripts, BeginPlay, world creation, timers and network
+lifecycle remain unimplemented.
+
+Original slot quirks retained:
+
+- SetSlotData copies fixed-slot metadata unchanged. Melee omits dirty/OnRep.
+- Storage writes do not extend arrays. Invalid indices still emit the original
+  dirty -> ForceNetUpdate -> dirty -> OnRep sequence.
+- ClearSlot takes an explicit OwningActor parameter. Null contexts log Accessed
+  None and skip that native call; remaining source operations still execute.
+  CurrentLootContainer only removes, with no notification or network receipt.
+- SwapSlotData rewrites destination SlotType/index and preserves HP, but its
+  direct slot notifications carry the OLD source slot data. Weight recalculates.
+- MergeSlots uses original max-stack arithmetic without added clamps, resets
+  reconstructed HP to -1, does not renumber remaining metadata after remove,
+  and does not recalculate weight. An overfull target can transfer negatively.
+- Injector and utility cycles rotate original slot structs without relabeling
+  metadata; all four injector and sixteen utility occupancy patterns compared.
+
+Contracts read from local UE5.7 source only: ActorComponent.h GetOwner,
+Actor.h ForceNetUpdate, Actor.cpp ForceNetUpdate; Pawn/Character do not override
+this method. Unreal was not launched. These source comparisons still do not
+constitute runtime equivalence against Unreal or a complete inventory UI.

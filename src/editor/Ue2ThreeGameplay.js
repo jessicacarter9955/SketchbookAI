@@ -73,6 +73,8 @@ export class Ue2ThreeGameplay {
         if (!active) return;
         if (this.blueprints) {
             this.blueprints = new BlueprintActorRuntime(this.blueprints.report, this.blueprints.report.project);
+            const sourceActor = this.blueprints.report.character_source;
+            if (sourceActor) this.blueprints.bindSourceActor(sourceActor.package, active);
             active.userData.ue2threeBlueprintRuntime = this.blueprints;
             this.blueprintInputs = bindBlueprintInputs(active, this.blueprints, result => {
                 if (this.sourceStatus) this.sourceStatus.textContent = result.error

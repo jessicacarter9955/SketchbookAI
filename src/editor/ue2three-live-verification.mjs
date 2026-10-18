@@ -4,6 +4,7 @@ import { blueprintFixtureState, blueprintFixtureMembers, blueprintFixtureEqual }
 export async function verifyLiveBlueprintInputs(player, runtime, fixture) {
     const snapshot = runtime.snapshot(), results = [], metricResults = [], eventResults = [], inventoryResults = [], calculationResults = [];
     const guards = runtime.report.character_guards || {};
+    const ownerResults = new Map();
     const priorActions = Object.fromEntries([...Object.keys(guards), 'up'].map(action => [action, !!player.actions[action]?.isPressed]));
     let movementDistance = null;
     try {
@@ -68,6 +69,11 @@ export async function verifyLiveBlueprintInputs(player, runtime, fixture) {
                 if (library[name]?.source_bytecode_sha256 !== hash) throw new Error('Inventory dependency source differs: '+name);
             for (const [name, hash] of Object.entries(test.types || {}))
                 if (runtime.report.type_sources?.[name]?.source_sha256 !== hash) throw new Error('Inventory source type differs');
+            if (test.native_owner) {
+                const witness = runtime.actorBindings.witness(test.package);
+                if (!witness || runtime.actorBindings.ownerTarget(test.package) !== player) throw new Error('Original component is not bound to the real scene player');
+                ownerResults.set(test.package, {package:test.package,...witness,owner_is_player:true,scope:'standalone_no_drivers'});
+            }
             runtime.restore(snapshot); Object.assign(runtime.states[test.package], blueprintFixtureState(fixture, test, runtime.report));
             const result = runtime.call(test.package, test.function, test.inputs);
             for (const [field, expected] of Object.entries(test.outputs))
@@ -88,6 +94,7 @@ export async function verifyLiveBlueprintInputs(player, runtime, fixture) {
                 movement_axis: 'horizontal_xz', results, metric_results: metricResults, events_checked: eventResults.length, event_results: eventResults,
                 inventory_checked: inventoryResults.length, inventory_results: inventoryResults,
                 calculations_checked: calculationResults.length, calculation_results: calculationResults,
+                owners_checked:ownerResults.size,owner_results:[...ownerResults.values()],
                 scope: 'Original sprint/jump prerequisites applied to the real scene input; excludes complete Mover, timers, stamina consumption and replication'};
     } finally {
         runtime.restore(snapshot);

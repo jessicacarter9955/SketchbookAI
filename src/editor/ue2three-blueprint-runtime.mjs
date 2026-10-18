@@ -1,4 +1,5 @@
 import { executeBlueprint } from './ue2three-blueprint.mjs';
+import { SourceActorBindings } from './ue2three-objects.mjs';
 
 export class BlueprintActorRuntime {
     constructor(report, project) {
@@ -9,6 +10,8 @@ export class BlueprintActorRuntime {
         this.bindings = Object.create(null);
         this.notifications = [];
         this.dirty = Object.create(null);
+        this.actorBindings = new SourceActorBindings(report);
+        this.nativeRequests = [];
         this.nextBindingId = 1;
         for (const [name, data] of Object.entries(report.packages)) this.states[name] = structuredClone(data.default_state || {});
         this.last = null;
@@ -20,7 +23,7 @@ export class BlueprintActorRuntime {
         if (!program || !Object.hasOwn(this.states, packageName)) throw new Error(`Untranslated source function: ${functionName}`);
         const result = executeBlueprint(program, this.states[packageName], inputs,
             {functions: {...data.functions, ...data.event_programs}, frames: this.frames[packageName] || {}, tables: this.report.tables || {},
-                bindings: this.bindings[packageName] || {}, signatures: data.delegate_signatures || {}});
+                bindings: this.bindings[packageName] || {}, signatures: data.delegate_signatures || {}, native:this.actorBindings.context(packageName)});
         this.states[packageName] = result.state;
         this.frames[packageName] = result.frames;
         for (const effect of result.effects) {
@@ -28,9 +31,19 @@ export class BlueprintActorRuntime {
                 this.dirty[packageName] ||= Object.create(null);
                 this.dirty[packageName][effect.field] = effect.source_rep_index;
             } else if (effect.op === 'broadcast') this.notifications.push({package: packageName, ...structuredClone(effect)});
+            else if (effect.op === 'force_net_update') this.nativeRequests.push({package:packageName,...structuredClone(effect)});
         }
         if (this.notifications.length > 1000) this.notifications.splice(0, this.notifications.length-1000);
+        if (this.nativeRequests.length > 1000) this.nativeRequests.splice(0, this.nativeRequests.length-1000);
         return result;
+    }
+    bindSourceActor(sourceClass, target) {
+        const wasBound = !!this.actorBindings.root;
+        const binding = this.actorBindings.bind(sourceClass,target);
+        if (!wasBound) for (const [packageName, component] of this.actorBindings.components)
+            Object.assign(this.states[packageName], structuredClone(component.source_overrides));
+        this.guardCache.clear(); this.metricCache.clear();
+        return binding;
     }
     // Same-instance translated source handlers only. World/UI construction and
     // cross-object delegate wiring require their original object adapters.
@@ -74,10 +87,11 @@ export class BlueprintActorRuntime {
             return {...metric, value, current_value: state[metric.current], maximum_value: state[metric.maximum]};
         });
     }
-    snapshot() { return structuredClone({states: this.states, frames: this.frames, bindings: this.bindings, notifications: this.notifications, dirty: this.dirty}); }
+    snapshot() { return structuredClone({states: this.states, frames: this.frames, bindings: this.bindings, notifications: this.notifications, dirty: this.dirty, nativeRequests:this.nativeRequests}); }
     restore(snapshot) {
         this.states = structuredClone(snapshot.states); this.frames = structuredClone(snapshot.frames);
         this.bindings = structuredClone(snapshot.bindings || {}); this.notifications = structuredClone(snapshot.notifications || []); this.dirty = structuredClone(snapshot.dirty || {});
+        this.nativeRequests = structuredClone(snapshot.nativeRequests || []);
         this.guardCache.clear(); this.metricCache.clear(); this.last = null;
     }
 }

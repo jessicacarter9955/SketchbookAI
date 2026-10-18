@@ -77,6 +77,29 @@ class ProgressReportTests(unittest.TestCase):
         report = project_progress(self.workspace, self.published, self.character)
         self.assertFalse(any('vitalità' in m['title'] for m in report['milestones']))
 
+    def test_owner_evidence_requires_actual_player_and_matching_source_graph_and_visual_proof(self):
+        component = {'package': '/Game/Component', 'variable': 'Inventory', 'class_export_index': 2,
+                     'scs_node_export_index': 5, 'template_sha256': 'template', 'source': {'source_sha256': 'component'}}
+        graph = {'source': {'source_sha256': 'actor'}, 'scs_sha256': 'scs', 'components': [component]}
+        program = {'project': self.project, 'packages': {}, 'actor_graph': {'roots': {'/Game/Pawn': graph}}}
+        program['content_sha256'] = digest(program); atomic_json(self.published / 'blueprint-programs.json', program)
+        folder = self.published / 'verification'; folder.mkdir(); image = folder / 'blueprint-live.jpg'; image.write_bytes(b'live')
+        owner = {'package': '/Game/Component', 'source_class': '/Game/Pawn', 'component': 'Inventory',
+                 'class_export_index': 2, 'scs_node_export_index': 5, 'template_sha256': 'template',
+                 'source_sha256': 'component', 'actor_source_sha256': 'actor', 'scs_sha256': 'scs',
+                 'owner_is_player': True, 'scope': 'standalone_no_drivers'}
+        proof = {'schema_version': 1, 'project': self.project, 'status': 'passed',
+                 'programs_content_sha256': program['content_sha256'], 'screenshot_sha256': file_hash(image),
+                 'owners_checked': 1, 'owner_results': [owner]}
+        def green():
+            atomic_json(self.published / 'blueprint-live-verification.json', proof)
+            return any(m['title'].startswith('Proprietà sorgente') for m in project_progress(self.workspace, self.published, self.character)['milestones'])
+        self.assertTrue(green())
+        for key in ['source_sha256', 'actor_source_sha256', 'scs_sha256', 'template_sha256', 'scs_node_export_index', 'class_export_index', 'component', 'owner_is_player', 'scope']:
+            original = owner[key]; owner[key] = 'wrong'
+            self.assertFalse(green(), key); owner[key] = original
+        image.write_bytes(b'changed'); self.assertFalse(green())
+
     def test_source_audit_requires_exact_outputs_and_matching_programs(self):
         program = {'project': self.project, 'packages': {'/Game/A': {'functions': {'Probe': {'source_bytecode_sha256': 'bytecode',
                    'steps': [{'op': 'evaluate', 'value': {'op': 'table_get'}}]}}}}}

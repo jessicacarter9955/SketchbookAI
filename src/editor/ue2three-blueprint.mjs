@@ -1,5 +1,6 @@
 // Executes normalized source-derived instructions; never evaluates generated JS.
 import { evaluateNativeMath } from './ue2three-native-math.mjs';
+import { validActorReference, sourceComponentOwner, sourceForceNetUpdate } from './ue2three-objects.mjs';
 const owns = (object, key) => object != null && Object.hasOwn(object, key);
 const safeField = key => typeof key === 'string' && key.length > 0 && !['__proto__', 'constructor', 'prototype'].includes(key);
 const validPrimitive = (type, value) => type === 'BoolProperty' && typeof value === 'boolean'
@@ -19,6 +20,10 @@ function validateSchema(schema, value, depth = 0) {
             validateSchema(child, value[field], depth+1);
         }
     } else if (schema.type === 'ObjectProperty' || schema.type === 'ClassProperty') {
+        if (schema.reference_kind === 'runtime_actor') {
+            if (value !== null && !validActorReference(value)) throw new Error('Invalid source runtime actor reference');
+            return;
+        }
         if (value !== null && (!value || typeof value !== 'object' || typeof value.asset !== 'string'
             || !/^\/(Game|Engine|Script)\/[A-Za-z0-9_\/.]+$/.test(value.asset)
             || JSON.stringify(value.declared_class) !== JSON.stringify(schema.class)
@@ -30,9 +35,9 @@ function validateSchema(schema, value, depth = 0) {
     } else if (!validPrimitive(schema.type, value)) throw new Error('Invalid typed source member: ' + schema.type);
 }
 
-export function executeBlueprint(program, self = {}, inputs = {}, { functions = {}, frames = {}, tables = {}, bindings = {}, signatures = {} } = {}) {
+export function executeBlueprint(program, self = {}, inputs = {}, { functions = {}, frames = {}, tables = {}, bindings = {}, signatures = {}, native } = {}) {
     return runBlueprint(program, self, inputs, functions, { remaining: 10000 }, 0, structuredClone(frames), tables,
-        {bindings: structuredClone(bindings), signatures, effects: []});
+        {bindings: structuredClone(bindings), signatures, native: structuredClone(native), effects: []});
 }
 
 function runBlueprint(program, self, inputs, functions, budget, depth, frames, tables, notifications) {
@@ -92,6 +97,19 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
     };
     const evaluate = (expression, depth = 0) => {
         if (!expression || depth > 48) throw new Error('Invalid Blueprint expression');
+        if (expression.op === 'native_get_owner') {
+            if (expression.source_owner_index !== program.source_owner_index) throw new Error('Original component class differs');
+            return sourceComponentOwner(notifications.native, expression.source_owner_index);
+        }
+        if (expression.op === 'native_force_net_update') {
+            const reference = evaluate(expression.target, depth+1);
+            if (reference === null) {
+                trace.push({source_index:sourceIndex,op:'warning',message:'Accessed None: Actor.ForceNetUpdate context skipped'});
+                return null;
+            }
+            notifications.effects.push(sourceForceNetUpdate(notifications.native, reference));
+            return null;
+        }
         if (expression.op === 'typed_literal') {
             validateSchema(expression.schema, expression.value);
             return structuredClone(expression.value);
