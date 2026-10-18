@@ -4,7 +4,7 @@ This script must only be used with TRUTHLAB_TEST_DATABASE_URL pointing to a
 fresh CI service container. No production credentials or real conversations.
 It launches the existing one-shot process separately, verifies durable messages
 and recall after reconnect, proves skip-not-due and pause, and tests per-agent
-enablement with a second live cycle. Never run against the operator's DB.
+enablement with a second full two-agent cycle, then one individually paused cycle. Never run against the operator's DB.
 """
 import json
 import os
@@ -84,24 +84,57 @@ run_one(expect_run=False)
 assert app.settings()["cycles"] == 1, "Duplicate cycle ran despite next-run timestamp"
 print("TRUTHLAB_E2E_STEP_2_OK: distinct process recall and idempotent schedule", flush=True)
 
-# Individual agent controls persist and affect the next independently run tick.
-app.save_setting("ari_enabled", "0")
+# Directly verify the next turn can retrieve actual first-cycle model content
+# from a new PostgreSQL connection, not just recent process memory.
+memory_before_second=app.recall_memories("truthlab", first_msgs[0]["body"], max_items=10)
+assert first_msgs[0]["body"][:30] in memory_before_second, "First-cycle answer not found in persistent recall"
+print("TRUTHLAB_E2E_MEMORY_RECALL first_turn_retrieved=True", flush=True)
+
+# Second complete conversation with both agents; new worker process reuses the
+# first cycle's messages as both context and explicit durable memories.
 app.save_setting("next_run", "0")
 run_one()
 second = app.get_state()
 assert second["config"]["cycles"] == 2
-new_msgs = [m for m in second["messages"] if m["mode"] == "live" and m["cycle"] == 2]
-assert len(new_msgs) == 2
-assert all(m["speaker"] == "Noor" for m in new_msgs)
-assert len(second["memories"]) == 6
-assert len(second["reports"]) == 2
-assert second["daily_calls"] == 6
-print("TRUTHLAB_E2E_STEP_3_OK: individual pause respected with real inference", flush=True)
+second_msgs = [m for m in second["messages"] if m["mode"]=="live" and m["cycle"]==2]
+assert [m["speaker"] for m in second_msgs] == ["Ari","Noor","Ari","Noor"]
+assert len(second["memories"]) == 8 and len(second["reports"]) == 2
+assert second["daily_calls"] == 8
+print("TRUTHLAB_E2E_STEP_3_OK: two successive real AI pair conversations with recalled memory", flush=True)
+
+# Individual agent controls persist across independent workers too.
+app.save_setting("ari_enabled", "0")
+app.save_setting("next_run", "0")
+run_one()
+third = app.get_state()
+assert third["config"]["cycles"] == 3
+third_msgs = [m for m in third["messages"] if m["mode"]=="live" and m["cycle"]==3]
+assert len(third_msgs) == 2 and all(m["speaker"]=="Noor" for m in third_msgs)
+assert len(third["memories"]) == 10
+assert len(third["reports"]) == 3
+assert third["daily_calls"] == 10
+print("TRUTHLAB_E2E_STEP_4_OK: Ari individually paused and Noor continued", flush=True)
 
 app.save_setting("status", "paused")
 app.save_setting("next_run", "0")
 assert not app.cycle_is_due()
 run_one(expect_run=False)
-assert app.settings()["cycles"] == 2, "Paused agents should not run"
-print("TRUTHLAB_E2E_STEP_4_OK: global pause is durable and blocks next tick", flush=True)
-print("TRUTHLAB_E2E_COMPLETE real_model=Qwen cycles=2 messages=6 memories=6 reports=2", flush=True)
+assert app.settings()["cycles"] == 3, "Paused agents should not run"
+print("TRUTHLAB_E2E_STEP_5_OK: global pause is durable and blocks next tick", flush=True)
+
+# Publish ONLY synthetic CI conversations. The production application NEVER
+# logs private transcripts, passwords, DB strings, or user messages.
+transcript = [{"cycle":m["cycle"],"speaker":m["speaker"],"body":m["body"]}
+              for m in third["messages"] if m["mode"]=="live"]
+reports = [{"cycle":r["cycle"], "body":r["body"]}
+           for r in sorted(third["reports"],key=lambda r:r["cycle"])]
+assert len(transcript) == 10
+print("TRUTHLAB_E2E_PUBLIC_CONVERSATION_JSON="+json.dumps({
+    "environment":"isolated CI; synthetic project goal, not production",
+    "model":"Qwen2.5 1.5B Instruct Q4_K_M through llama.cpp",
+    "database":"disposable PostgreSQL 16",
+    "memory_verified":True,
+    "model_messages":transcript,
+    "reports":reports
+}, ensure_ascii=False), flush=True)
+print("TRUTHLAB_E2E_COMPLETE real_model=Qwen1.5B cycles=3 messages=10 memories=10 reports=3", flush=True)
