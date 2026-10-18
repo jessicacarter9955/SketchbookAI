@@ -158,7 +158,7 @@ class TruthLabTests(unittest.TestCase):
         self.assertIsNotNone(app.claim_cycle_lease())
 
     def test_generated_reply_cannot_impersonate_partner(self):
-        message = ("Noor: Noor: Here is a real measurable criterion.\\n"
+        message = ("Noor: Noor: Here is a real measurable criterion.\n"
                    "Ari: I am a fabricated turn that must never be attributed to Ari.")
         result = app.clean_agent_reply("Noor", message)
         self.assertEqual(result, "Here is a real measurable criterion.")
