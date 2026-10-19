@@ -67,11 +67,13 @@ def _event_entry_points(package):
                 continue
             for parameter in expression.get("Parameters", []):
                 parameter_type = str(parameter.get("$type", "")).rsplit(".", 1)[-1].split(",", 1)[0]
-                if parameter_type == "EX_IntConst" and isinstance(parameter.get("Value"), int):
+                if parameter_type == "EX_IntConst" and type(parameter.get("Value")) is int and parameter["Value"] >= 0:
+                    if entry is not None: raise UMGMigrationError("Ambiguous input event entry: " + name)
                     entry = parameter["Value"]
                     break
-            if entry is not None:
-                break
+            # Inspect every matching call; multiple entries are ambiguous.
+        if entry is None:
+            raise UMGMigrationError("Missing constant input event entry: " + name)
         if entry is not None:
             events.append({"action": action, "function": name, "ubergraph_entry_point": entry})
     if not events:

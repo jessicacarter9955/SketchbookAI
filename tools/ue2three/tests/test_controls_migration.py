@@ -43,6 +43,26 @@ class ControlMigrationTests(unittest.TestCase):
             "ubergraph_entry_point": 28983,
         }])
 
+
+    def test_input_events_reject_invalid_or_ambiguous_source_entries(self):
+        from controls_migration import UMGMigrationError
+        for mode in ("bool", "negative", "missing", "duplicate", "wrong_graph"):
+            with self.subTest(mode=mode):
+                call = {"$type": "UAssetAPI.Kismet.Bytecode.Expressions.EX_FinalFunction, UAssetAPI",
+                        "StackNode": 1, "Parameters": [
+                            {"$type": "UAssetAPI.Kismet.Bytecode.Expressions.EX_IntConst, UAssetAPI", "Value": 5}]}
+                if mode == "bool": call["Parameters"][0]["Value"] = True
+                elif mode == "negative": call["Parameters"][0]["Value"] = -1
+                elif mode == "wrong_graph": call["StackNode"] = 9
+                bytecode = [] if mode == "missing" else [call]
+                if mode == "duplicate": bytecode.append(dict(call))
+                package = Package({"Exports": [
+                    {"ObjectName": "ExecuteUbergraph_CBP_Fixers_Mover"},
+                    {"ObjectName": "InpActEvt_IA_Fire_K2Node_EnhancedInputActionEvent_14",
+                     "ScriptBytecode": bytecode}]})
+                with self.assertRaises(UMGMigrationError):
+                    _event_entry_points(package)
+
     def test_input_function_calls_are_reported_from_compiled_blueprint(self):
         package = Package({"Imports": [{"ObjectName": "K2_AddDataToCollection"}], "Exports": [
             {"ObjectName": "ProduceInput", "ScriptBytecode": [
