@@ -74,11 +74,15 @@ export function addUrbanMiamiCoast(group,plan,config,box){
     ]);
     for(const tex of [diffuse,normal,rough]){
       tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
-      tex.repeat.set(12,12);
+      // Geometric UVs already use world-space meters / 2.7m.
+      // Repeating again would make the photo texture visibly noisy/tiling.
+      tex.repeat.set(1,1);
       tex.anisotropy=8;
     }
     diffuse.colorSpace=THREE.SRGBColorSpace;
-    sand.map=diffuse;sand.normalMap=normal;sand.roughnessMap=rough;sand.needsUpdate=true;
+    sand.color.set(0xffffff);sand.map=diffuse;
+    sand.normalMap=normal;sand.normalScale.set(.78,.78);
+    sand.roughnessMap=rough;sand.needsUpdate=true;
 
     const model=palm.scene;model.updateMatrixWorld(true);
     const bb=new THREE.Box3().setFromObject(model);

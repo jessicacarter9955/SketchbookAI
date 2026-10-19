@@ -640,6 +640,8 @@ export class UrbanRuntime {
     this.world.urbanLighting?.update();
     this.streamPhotorealDetails();
     const now=performance.now();
+    // Same sun tracking and wave animation as the original TWO-ISLAND scene.
+    this.coast?.updateWater?.(this.world.sky.sunPosition,now/1000);
     if(now-this.lastOcclusionTick>(this.fps&&this.fps<40?540:320)){this.lastOcclusionTick=now;this.updateBuildingOcclusion();}
     if(now-this.lastFoliageTick>160){
       this.lastFoliageTick=now;

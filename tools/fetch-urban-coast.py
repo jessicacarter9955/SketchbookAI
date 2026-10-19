@@ -64,7 +64,7 @@ def main():
         ("nor_gl", "sand-nor_gl.jpg"),
         ("Rough", "sand-rough.jpg"),
     ):
-        resource = files[channel]["1k"]["jpg"]
+        resource = files[channel]["2k"]["jpg"]
         checksum = resource["md5"].lower()
         save_verified(resource["url"], ROOT / basename,
                       lambda content, expected=checksum: hashlib.md5(content).hexdigest() == expected,
