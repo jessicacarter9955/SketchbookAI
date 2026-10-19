@@ -7,6 +7,11 @@ on:
       - '.github/workflows/dds-port-parallel.yml'
       - 'tools/ue2three/dds_parallel_prepare.py'
       - 'tools/ue2three/dds_porting_lanes.json'
+      - 'tools/ue2three/**'
+      - 'src/editor/**'
+      - 'docs/ue2three-progress.md'
+      - 'dds-manual-playtest.html'
+      - 'dds-parallel-status.html'
   workflow_dispatch:
 permissions:
   contents: read
@@ -15,7 +20,7 @@ jobs:
     name: DDS · ${{ matrix.lane }}
     strategy:
       fail-fast: false
-      max-parallel: 17
+      max-parallel: 18
       matrix:
         lane:
           - tool-verifier
