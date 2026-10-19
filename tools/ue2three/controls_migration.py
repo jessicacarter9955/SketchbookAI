@@ -113,32 +113,31 @@ def _event_entry_points(package):
 
 
 def _source_input_functions(package):
+    """Record compiled input calls in source order, without recursive depth limits."""
     wanted = {"SetupInput", "ProduceInput", "Get_MoveInput", "Get_AimingRotation",
               "Get_RotationMode", "Get_OrientationIntent", "Get_Gait", "Get_MovementDirectionAndOffset"}
     functions = {}
     call_types = {"EX_FinalFunction", "EX_LocalFinalFunction", "EX_VirtualFunction",
                   "EX_LocalVirtualFunction", "EX_CallMath"}
 
-    def visit(value):
-        if isinstance(value, dict):
-            kind = str(value.get("$type", "")).rsplit(".", 1)[-1].split(",", 1)[0]
-            if kind in call_types:
-                name = value.get("VirtualFunctionName") or _resolve_reference(package, value.get("StackNode"))
-                if name:
-                    calls.append(str(name))
-            for key, child in value.items():
-                if key != "$type":
-                    visit(child)
-        elif isinstance(value, list):
-            for child in value:
-                visit(child)
-
     for export in package.exports:
         name = export.get("ObjectName")
         if name not in wanted:
             continue
         calls = []
-        visit(export.get("ScriptBytecode", []))
+        for expression in _iter_compiled_expressions(export.get("ScriptBytecode", [])):
+            kind = str(expression.get("$type", "")).rsplit(".", 1)[-1].split(",", 1)[0]
+            if kind not in call_types:
+                continue
+            virtual_name = expression.get("VirtualFunctionName")
+            if virtual_name is not None:
+                if not isinstance(virtual_name, str) or not virtual_name.strip():
+                    raise UMGMigrationError("Invalid compiled input function name: " + name)
+                calls.append(virtual_name)
+                continue
+            target = _resolve_reference(package, expression.get("StackNode"))
+            if isinstance(target, str) and target:
+                calls.append(target)
         functions[name] = calls
     return functions
 

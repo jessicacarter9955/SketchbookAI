@@ -187,5 +187,29 @@ class ControlMigrationTests(unittest.TestCase):
         })
 
 
+    def test_input_function_calls_traverse_deeply_nested_bytecode(self):
+        # A source bytecode tree can exceed Python's recursion limit.
+        call = {"$type": "EX_FinalFunction", "StackNode": -1}
+        for _ in range(1200):
+            call = {"$type": "EX_Let", "AssignmentExpression": call}
+        package = Package({"Imports": [{"ObjectName": "K2_AddDataToCollection"}],
+                           "Exports": [{"ObjectName": "ProduceInput", "ScriptBytecode": [call]}]})
+        self.assertEqual(_source_input_functions(package), {
+            "ProduceInput": ["K2_AddDataToCollection"],
+        })
+
+    def test_input_function_calls_reject_invalid_virtual_function_names(self):
+        from controls_migration import UMGMigrationError
+        for invalid_name in (True, 123, [], {}, "", "  "):
+            with self.subTest(virtual_name=invalid_name):
+                package = Package({"Imports": [{"ObjectName": "K2_AddDataToCollection"}],
+                                   "Exports": [{"ObjectName": "ProduceInput", "ScriptBytecode": [
+                                       {"$type": "EX_VirtualFunction",
+                                        "VirtualFunctionName": invalid_name, "StackNode": -1},
+                                   ]}]})
+                with self.assertRaises(UMGMigrationError):
+                    _source_input_functions(package)
+
+
 if __name__ == "__main__":
     unittest.main()
