@@ -93,3 +93,14 @@ test('four contiguous PBR shoreline sides surround the city and use imported pal
   assert.match(read('tools/fetch-urban-coast.py'),/palm-detailed-a8777b8c/);
   assert.match(read('src/editor/UrbanRuntime.js'),/this\.coast\.loadOriginalAssets\(\)/);
 });
+
+test('ambient collision shapes actually contact dynamic player-like rigid bodies',()=>{
+  const world=new CANNON.World({gravity:new CANNON.Vec3(0,0,0)});
+  const traffic=createUrbanAgentCollider('car');
+  traffic.position.set(0,0,0);
+  const player=new CANNON.Body({mass:3,position:new CANNON.Vec3(0,0,2.2)});
+  player.addShape(new CANNON.Sphere(.65));
+  world.addBody(traffic);world.addBody(player);
+  world.step(1/60);
+  assert.ok(world.contacts.length>0,'no Cannon contact between ambient car and dynamic player');
+});
