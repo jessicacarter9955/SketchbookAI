@@ -38,6 +38,7 @@ footer{color:#b3c7db;margin-top:28px}
 <a class="button secondary" href="editor.html?scene=ue2three-character&amp;play=1" target="_blank" rel="noopener">Apri personaggio ue2three</a>
 <a class="button secondary" href="ue2three-blueprint.html" target="_blank" rel="noopener">Apri ispettore Blueprint</a>
 <a class="button secondary" href="ue2three-ui.html" target="_blank" rel="noopener">Apri anteprima UI</a>
+<a class="button secondary" href="editor.html?scene=sandbox&amp;play=1" target="_blank" rel="noopener">Apri Sketchbook base (senza DDS)</a>
 </nav>
 <section>
 <h2>Verifica dei file effettivamente pubblicati</h2>
@@ -123,8 +124,8 @@ async function check(path,type) {
    const valid=!!(json.mesh&&json.clips&&json.clips.crouch_walk&&json.weapons&&json.weapons.pistol&&json.weapons.rifle);
    return {path,ok:valid,reason:valid?'Manifest DDS (nomi soltanto; GLB ancora da verificare)':'Manifest DDS incompleto'};
   }
-  const valid=!!(json.mesh&&json.clips&&Object.keys(json.clips).length);
-  return {path,ok:valid,reason:valid?'Manifest character (nomi soltanto; GLB ancora da verificare)':'Manifest non valido'};
+  const valid=type==='other' ? !!(Array.isArray(json.sectors)&&Array.isArray(json.spawns)) : !!(json.mesh&&json.clips&&Object.keys(json.clips).length);
+  return {path,ok:valid,reason:valid?(type==='other'?'Manifest città (settori non ancora verificati)':'Manifest character (nomi soltanto; GLB ancora da verificare)'):'Manifest non valido'};
  }catch(e){return {path,ok:false,reason:e.name==='SyntaxError'?'Risposta non JSON':String(e.message||e)}}
 }
 async function refresh(){
