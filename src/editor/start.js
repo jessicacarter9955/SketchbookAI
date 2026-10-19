@@ -212,19 +212,22 @@ function sceneControls(editor) {
     if (world.levelRuntime) {
         const district = document.createElement('select'); district.setAttribute('aria-label', current.world==='liberty-city' ? 'Quartiere Liberty City' : 'Punto di partenza');
         world.levelRuntime.manifest.spawns.forEach(spawn => { const option = document.createElement('option'); option.value = spawn.id; option.textContent = spawn.name; district.append(option); });
-        district.value = current.spawn || world.levelRuntime.manifest.spawns[0].id;
+        const requestedSpawn=query.get('spawn')||current.spawn;
+        district.value=world.levelRuntime.manifest.spawns.some(sp=>sp.id===requestedSpawn)?
+          requestedSpawn:world.levelRuntime.manifest.spawns[0].id;
         district.onchange = async () => {
             district.disabled = true; const spawn = world.levelRuntime.manifest.spawns.find(s => s.id === district.value);
             const wasPlaying = !editor.active; editor.setActive(true); loading.style.display = 'flex';
             world.levelRuntime.transitioning = true; world.levelRuntime.ready = false;
             try {
+                report('Caricamento area '+spawn.name+' · terreno PBR, GLB CC0 e collider…');
                 await world.levelRuntime.ensure(new THREE.Vector3(...spawn.position), 350);
                 const y = world.levelRuntime.groundAt(spawn.position[0], spawn.position[2], spawn.position[1] + 5) ?? spawn.position[1];
                 world.actorLayer.spawn.set(spawn.position[0], y + 1.2, spawn.position[2]);
                 world.respawnPosition.set(...world.actorLayer.spawn.toArray()); world.actorLayer.resetPlayer();
                 world.levelRuntime.refreshPhysics(world.actorLayer.spawn); editor.setActive(!wasPlaying);
             } catch (error) { editor.message(error.message); }
-            finally { world.levelRuntime.transitioning = false; world.levelRuntime.lastRefresh = 0; district.disabled = false; loading.style.display = 'none'; }
+            finally { world.levelRuntime.ready=true;world.levelRuntime.transitioning = false; world.levelRuntime.lastRefresh = 0; district.disabled = false; loading.style.display = 'none'; }
         };
         hud.prepend(district);
     }
@@ -325,7 +328,9 @@ try {
     const actors = new ActorLayer(world); await actors.initialize(current.playerProfile);
     report('Personaggio e veicoli caricati. Preparazione giocatore…');
     if (world.levelRuntime) {
-        const spawn = world.levelRuntime.manifest.spawns.find(s => s.id === current.spawn)?.position || [0,0,0];
+        const selectedSpawn=query.get('spawn')||current.spawn;
+        const spawn = world.levelRuntime.manifest.spawns.find(s=>s.id===selectedSpawn)?.position ||
+          world.levelRuntime.manifest.spawns[0]?.position || [0,0,0];
         world.levelRuntime.transitioning = true;
         try { await world.levelRuntime.ensure(new THREE.Vector3(...spawn), 350);
             actors.spawn.set(spawn[0], (world.levelRuntime.groundAt(spawn[0], spawn[2], spawn[1]+5) ?? spawn[1]) + 0.67, spawn[2]);
@@ -367,7 +372,7 @@ try {
         }]}); sceneEditor.commit();
     }
     if (!hadSaved && current.world === 'procedural-city') {
-        if(['urban-photoreal','urban-photoreal-dds','urban-photoreal-sunset'].includes(current.id)) {
+        if(['urban-photoreal','urban-photoreal-dds','urban-photoreal-sunset','stylescape-biomes'].includes(current.id)) {
             const preset={...sceneEditor.generator,...globalThis.cityInitialPreset};
             sceneEditor.restore({version:1,world:current.world,objects:[],generator:preset});
         }
@@ -500,6 +505,7 @@ try {
     if(current.world==='san-andreas' && query.get('play')==='1')sceneEditor.message('San Andreas · mappa GLB originale caricata dal browser · WASD muovi · F guida vicino a un veicolo · F2 editor. I dati GTA non sono pubblicati.');
     if(current.id==='coastal-districts' && query.get('play')==='1') sceneEditor.message('Quattro quartieri collegati · WASD guida · E/T parla con NPC · F2 editor · UE: '+(world.levelRuntime.unreal?.items.length||0)+'/4 zone importate.');
     if(current.world==='procedural-city' && query.get('play')==='1') sceneEditor.message('Free roam · WASD muovi · E parla con un abitante · 1-4 scegli risposta · F entra in auto · F2 editor.');
+    if(current.id==='stylescape-biomes')sceneEditor.message('Stylescape-inspired · sei biomi CC0 collegati · usa il selettore Punto di partenza per cambiare ambiente. NON contiene gli asset commerciali UE.');
     document.title = `${current.name} · Sketchbook`;
 } catch (error) {
     bootFailed=true;

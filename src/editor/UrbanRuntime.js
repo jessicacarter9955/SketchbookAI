@@ -9,6 +9,8 @@ import { buildUrbanStreets } from './UrbanStreets.js';
 import { UrbanSignals } from './UrbanSignals.js';
 import { createVegetation } from './UrbanVegetation.js';
 import { addUrbanMiamiCoast } from './UrbanCoast.js';
+import {StylescapeStudy} from './StylescapeStudy.js';
+import {stylescapeLayout,stylescapeSpawns,stylescapeTileAt,stylescapeGroundAt} from './stylescape-study-data.mjs';
 import {createUrbanOceanFloorBodies,applyUrbanOceanFlotation,urbanCoastGroundHeight} from './urban-coast-physics.mjs';
 import { withUrbanLoadDeadline } from './urban-load-deadline.mjs';
 import { isHiddenBehindBuildings,isOccludedSector,isOccludedTree } from './urban-visibility.mjs';
@@ -188,6 +190,7 @@ export class UrbanRuntime {
     this.bodies.forEach(body=>this.world.physicsWorld.removeBody(body)); this.bodies=[];
     this.root.traverse(node=>{if(node.userData.sharedUrbanAsset)return;node.geometry?.dispose();for(const m of [].concat(node.material||[])){for(const v of Object.values(m||{}))if(v?.isTexture)v.dispose?.();m?.dispose?.();}});
     this.root.clear();
+    this.stylescapeStudy=null;this.stylescapeLoading=null;this.stylescapeLayout=null;
   }
   generate(raw){
     const config=validateUrban(raw); if(JSON.stringify(config)===JSON.stringify(this.config))return;
@@ -316,7 +319,9 @@ export class UrbanRuntime {
       this.fallbackBuildingNodes.get(id).push(node);
     }
 
-    this.plan=plan;this.config=config;this.manifest={spawns:plan.spawns};this.applySky(config.sky);this.ready=true;
+    this.stylescapeLayout=stylescapeLayout(plan.bounds);
+    this.manifest={spawns:[...plan.spawns,...stylescapeSpawns(this.stylescapeLayout)]};
+    this.plan=plan;this.config=config;this.applySky(config.sky);this.ready=true;
     // The procedural geometry and physics are already playable at this point.
     // Never hide the whole city behind optional remote photoreal assets.
     group.visible=true;
@@ -604,8 +609,30 @@ export class UrbanRuntime {
     const settings={day:{elevation:47,azimuth:145,haze:2.2,fog:0xaec2cb,sun:0xffefd6,intensity:.72},sunset:{elevation:8,azimuth:245,haze:5,fog:0xb98d85,sun:0xffaa63,intensity:.45},haze:{elevation:30,azimuth:160,haze:14,fog:0x9ea9ad,sun:0xd0d4d5,intensity:.28}}[preset];
     this.world.sky.setAtmosphere(settings.elevation,settings.azimuth,settings.haze,settings.sun,settings.intensity);this.world.graphicsWorld.fog=new THREE.Fog(settings.fog,330,1450);
   }
-  async ensure(){this.ready=true;} refreshPhysics(){}
+  async ensure(point){
+    // Only load the CC0 biome area when the user actually selects a biome
+    // spawn. This keeps the original Urban Photoreal loading and FPS intact.
+    const layout=this.stylescapeLayout;
+    const tile=point&&stylescapeTileAt(layout,point.x,point.z);
+    if(tile&&!this.stylescapeStudy?.loaded){
+      if(!this.stylescapeLoading){
+        const study=new StylescapeStudy(this.world,layout);
+        this.stylescapeStudy=study;
+        this.stylescapeLoading=study.build(text=>globalThis.cityDiagnostics?.activity(text))
+          .then(()=>{
+            // register bodies for complete physics disposal on city regeneration
+            this.bodies.push(...study.bodies);
+            return study;
+          }).catch(error=>{this.stylescapeStudy=null;throw error;})
+          .finally(()=>{this.stylescapeLoading=null;});
+      }
+      await this.stylescapeLoading;
+    }
+    this.ready=true;
+  } refreshPhysics(){}
   groundAt(x,z){
+    const style=stylescapeGroundAt(this.stylescapeLayout,x,z);
+    if(style!==null)return style;
     const coast=urbanCoastGroundHeight(this.coast,x,z);
     return coast===null?urbanGroundHeight(x,z,this.config||DEFAULT_URBAN):coast;
   }
@@ -662,6 +689,7 @@ export class UrbanRuntime {
       const vegetation=this.root.getObjectByName('CC0 photoreal vegetation');
       vegetation?.userData.stream?.(this.world.camera,tree=>!isOccludedTree(this.world.camera.position,tree,this.plan.buildings));
       this.coast?.updateVisibility?.(this.world.camera);
+      this.stylescapeStudy?.stream?.(this.world.camera);
       vegetation?.children.forEach(lod=>{if(lod.isLOD&&lod.visible)lod.update(this.world.camera);});
     }
     const player=this.world.editorPlayer,p=player?.controlledObject?.position||player?.position;if(p)this.world.actorLayer?.update(p);

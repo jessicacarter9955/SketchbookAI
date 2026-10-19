@@ -5,9 +5,13 @@ import subprocess
 root=Path(__file__).resolve().parents[1]
 out=root/'artifacts'/'urban-playable'
 out.mkdir(parents=True,exist_ok=True)
+# Package the free CC0 study only after its source material and model files
+# have been downloaded and checksum-verified. A missing source fails the deploy,
+# rather than serving an empty/fake biome.
+subprocess.run(['python',str(root/'tools/fetch-stylescape-study.py')],check=True,timeout=400)
 for name in ['editor.html','mobile.html','sa-navigation.html','urban-examples.html','urban-assets.html','urban-webgpu.html','ue2three-native-newyork.html','3dPicker.js','city-assets-sw.js','_headers']:
     shutil.copy2(root/name,out/name)
-for name in ['src/editor','build/assets','assets/roadforge','assets/urban-kits' ,'node_modules/three']:
+for name in ['src/editor','build/assets','assets/roadforge','assets/urban-kits','assets/stylescape-study' ,'node_modules/three']:
     shutil.copytree(root/name,out/name,dirs_exist_ok=True,ignore=shutil.ignore_patterns('*.part','__pycache__'))
 (out/'tools/ue2three').mkdir(parents=True,exist_ok=True)
 shutil.copy2(root/'tools/ue2three/native-newyork-viewer.js',out/'tools/ue2three/native-newyork-viewer.js')

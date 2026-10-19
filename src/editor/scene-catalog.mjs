@@ -14,6 +14,7 @@ export const BUILTIN_SCENES = [
     { id: 'urban-photoreal', name: 'Urban Photoreal · boulevard', world: 'procedural-city', spawn:'urban-center', playerProfile:'mannequin' },
     { id: 'urban-photoreal-dds', name: 'Urban Photoreal · DDS armed mannequin', world: 'procedural-city', spawn:'urban-center', playerProfile:'dds' },
     { id: 'urban-photoreal-sunset', name: 'Urban Photoreal · sunset', world: 'procedural-city', spawn:'urban-center', playerProfile:'mannequin' },
+    { id: 'stylescape-biomes', name: 'Stylescape-inspired · Six Biomes CC0', world: 'procedural-city', spawn:'stylescape-grassland', playerProfile:'mannequin' },
     { id: 'san-andreas-local', name: 'San Andreas · mappa GLB importata', world: 'san-andreas', playerProfile:'mannequin' },
     { id: 'san-andreas-streetlab', name: 'San Andreas · StreetLab · auto e personaggi', world: 'san-andreas', playerProfile:'mannequin' }
 ];
