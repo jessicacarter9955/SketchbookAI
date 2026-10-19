@@ -1,0 +1,97 @@
+name: DDS · 8 filoni dopo collaudo manuale
+
+# NON esegue automaticamente test a ogni push.
+# Prima si pubblica la preview, poi l'utente prova e approva una revisione.
+# workflow_dispatch: disponibile quando il workflow è presente anche sul default branch.
+# Per le branch non ancora integrate, la PR riceve il label manual-qa-approved
+# SOLTANTO DOPO che l'utente ha provato e approvato la preview.
+on:
+  workflow_dispatch:
+    inputs:
+      approved_revision:
+        description: 'SHA a 40 caratteri provato manualmente (deve coincidere con HEAD)'
+        required: true
+        type: string
+      verdict:
+        description: 'Esito dichiarato dal tester nella pagina DDS'
+        required: true
+        type: choice
+        options:
+          - APPROVED
+          - NEEDS_FIXES
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: Controllo approvazione manuale
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.label.name == 'manual-qa-approved')
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require actual QA approval, not a generic successful unit test
+        env:
+          EVENT: ${{ github.event_name }}
+          VERDICT: ${{ inputs.verdict }}
+          APPROVED_REVISION: ${{ inputs.approved_revision }}
+          CHECKED_OUT_SHA: ${{ github.sha }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if [ "$EVENT" = workflow_dispatch ]; then
+            test "$VERDICT" = "APPROVED" || { echo "::error::Manual playtest not approved"; exit 1; }
+            test "$APPROVED_REVISION" = "$CHECKED_OUT_SHA" || { echo "::error::Tested SHA must match dispatched SHA"; exit 1; }
+          else
+            echo "Manual QA label supplied on pull request: $PR_TITLE"
+          fi
+          echo "## Manual-first QA gate satisfied" >> "$GITHUB_STEP_SUMMARY"
+          echo "This gate does not assert that original DDS Unreal gameplay is complete." >> "$GITHUB_STEP_SUMMARY"
+
+  parallel-lanes:
+    name: DDS · ${{ matrix.lane }}
+    needs: gate
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        lane:
+          - character-weapons
+          - animations
+          - blueprints-inventory
+          - maps-materials
+          - shop-dialogues
+          - physics-fx-audio
+          - multiplayer
+          - lighting
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install existing project dependencies (no Unreal / private DDS asset downloads)
+        run: npm ci
+      - name: Source-scoped tests for this single lane
+        run: python tools/ue2three/dds_parallel_lanes.py --lane "${{ matrix.lane }}" --report "reports/${{ matrix.lane }}.json"
+      - name: Publish a precise scope statement
+        if: always()
+        run: |
+          echo "## ${{ matrix.lane }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Unit and fixture checks only. No UE runtime, visual source equivalence, assets or actual multiplayer are inferred." >> "$GITHUB_STEP_SUMMARY"
+          if test -f "reports/${{ matrix.lane }}.json"; then
+            cat "reports/${{ matrix.lane }}.json" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dds-${{ matrix.lane }}-report
+          path: reports/${{ matrix.lane }}.json
+          if-no-files-found: warn
+          retention-days: 14

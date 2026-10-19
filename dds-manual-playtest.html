@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DDS · Prova manuale prima dei test automatici</title>
+<style>
+:root{color-scheme:dark;font:16px/1.55 system-ui,Segoe UI,sans-serif;background:#0c1521;color:#eaf1f9}
+*{box-sizing:border-box}body{margin:0}main{max-width:1150px;margin:auto;padding:24px 18px 70px}
+h1{font-size:clamp(1.5rem,4vw,2.3rem);margin:.25rem 0}h2{font-size:1.16rem;margin:.15rem 0}
+p{margin:.5rem 0 1rem}.muted{color:#aabbd0}.lead{color:#c1d9f3;font-size:1.08rem}
+nav{display:flex;gap:10px;flex-wrap:wrap;margin:20px 0}a.button,button{background:#22527e;border:1px solid #5180b5;padding:10px 13px;border-radius:8px;color:#fff;text-decoration:none;font:inherit;cursor:pointer}
+a.button:hover,button:hover{background:#326da1}a.button.secondary,button.secondary{background:#192b3e;border-color:#53657c}
+a{color:#91c8ff}section{background:#122235;border:1px solid #2c4360;border-radius:12px;padding:17px;margin:15px 0}
+article{background:#0f1b2b;border:1px solid #28435e;border-radius:10px;padding:15px;margin:12px 0}
+.status{font-weight:700}.good{color:#a0ecc3}.warn{color:#ffd68a}.bad{color:#ffb1a9}
+code{background:#192d44;padding:2px 5px;border-radius:4px;font-size:.92em;overflow-wrap:anywhere}
+.check{display:flex;gap:9px;align-items:flex-start;margin:10px 0;cursor:pointer}
+.check input{margin-top:6px;accent-color:#59baff;transform:scale(1.1)}
+textarea{width:100%;min-height:150px;resize:vertical;background:#091521;color:#eff7ff;border:1px solid #5d768f;border-radius:8px;padding:12px;font:14px/1.5 ui-monospace,Consolas,monospace}
+pre{white-space:pre-wrap;word-break:break-word;font-size:13px;margin:8px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:12px}
+.grid article{margin:0}small{font-size:12px}.pill{border-radius:16px;border:1px solid #496784;color:#bad2e9;padding:3px 9px;display:inline-block;font-size:12px}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+header{background:linear-gradient(125deg,#122740,#0d1e31);padding:16px;border:1px solid #365471;border-radius:12px}
+footer{color:#b3c7db;margin-top:28px}
+</style>
+</head>
+<body>
+<main>
+<header>
+<p class="muted">SKETCHBOOKAI · DDS / UE2THREE · REVISIONE <code id="revision">da confermare</code></p>
+<h1>Prima giochi tu. Poi partono i test automatici.</h1>
+<p class="lead">Questa è la pagina di collaudo manuale per il porting DDS. Nessun componente viene dichiarato completo soltanto perché supera un unit test.</p>
+<p id="overall" class="status warn">Controllo disponibilità asset originali…</p>
+</header>
+<nav aria-label="Scene testabili">
+<a class="button" href="editor.html?scene=dds-portland&amp;play=1" target="_blank" rel="noopener">Apri DDS · Portland</a>
+<a class="button secondary" href="editor.html?scene=ue2three-character&amp;play=1" target="_blank" rel="noopener">Apri personaggio ue2three</a>
+<a class="button secondary" href="ue2three-blueprint.html" target="_blank" rel="noopener">Apri ispettore Blueprint</a>
+<a class="button secondary" href="ue2three-ui.html" target="_blank" rel="noopener">Apri anteprima UI</a>
+</nav>
+<section>
+<h2>Verifica dei file effettivamente pubblicati</h2>
+<p class="muted">L'esportatore Unreal e il codice di gioco sono in GitHub, ma molti GLB e i cache sorgenti sono privati e non fanno parte del repository. Se manca un file, lo segnaliamo senza mostrare un manichino finto.</p>
+<div id="assets" role="status" aria-live="polite">In verifica…</div>
+<div class="actions"><button id="retry" class="secondary">Ricontrolla file</button></div>
+</section>
+<section>
+<h2>Il tuo giro di prova</h2>
+<p class="muted">Spunta soltanto ciò che hai provato nel browser. Apri la scena, premi <strong>Prova</strong> se necessario e registra cosa succede. Il risultato resta sul tuo dispositivo fino a quando lo copi o scarichi.</p>
+<div class="grid" id="lanes"></div>
+</section>
+<section>
+<h2>Feedback manuale per questa revisione</h2>
+<label for="outcome">Esito del tuo collaudo</label>
+<select id="outcome" style="display:block;background:#091521;color:#fff;border:1px solid #5d768f;border-radius:7px;padding:10px;margin:6px 0 14px">
+<option value="pending">Non ancora provato</option>
+<option value="blocked">Bloccato: file mancanti / schermata d'errore</option>
+<option value="needs-fixes">Problemi trovati, da correggere</option>
+<option value="approved">Approvo questa revisione per i test automatici</option>
+</select>
+<label for="notes">Note, errori, FPS, clip che non partono, problemi di inventario o altre osservazioni</label>
+<textarea id="notes" placeholder="Esempio: manichino bloccato al 60%; console: HTTP 404 build/local-scenes/dds/manifest.json; telefono o desktop; FPS…"></textarea>
+<div class="actions" style="margin-top:13px">
+<button id="copy">Copia feedback per ChatGPT</button>
+<button id="download" class="secondary">Scarica report JSON</button>
+<button id="clear" class="secondary">Azzera spunte</button>
+</div>
+<p id="message" class="muted" role="status"></p>
+</section>
+<section>
+<h2>Cosa succede dopo la tua approvazione?</h2>
+<p>Al momento nessun test automatico è avviato da questa pagina. Dopo il tuo feedback potremo eseguire il workflow manuale <code>ue2three-parallel-after-manual.yml</code> con otto job paralleli, ciascuno con il suo rapporto.</p>
+<p class="warn"><strong>Limiti attuali:</strong> animazioni 1:1 rimandate, multiplayer reale non implementato, MetaHuman originale non esportato e asset DDS locali da recuperare. Gli screenshot del browser e l'integrazione nella Realistic City richiedono ancora verifica.</p>
+</section>
+<footer><p>Fonte: ramo <code>codex/dds-parallel-manual-first</code>, derivato da <code>1cf9cbf</code> di Codex. Questa pagina non carica né invia il tuo feedback a servizi esterni.</p></footer>
+</main>
+<script>
+(() => {
+'use strict';
+const $=id=>document.getElementById(id);
+const search=new URLSearchParams(location.search);
+const revision=/^[0-9a-f]{7,40}$/i.test(search.get('revision')||'') ? search.get('revision') : 'branch-latest';
+$('revision').textContent=revision;
+const key='dds-manual-first:v1:'+revision;
+const areas=[
+['character','Personaggio e armi','Muovi il personaggio, prova 1/2/3, mira, sparo e ricarica. Controlla che il modello non abbia parti statiche o traslazioni errate.'],
+['animations','Animazioni','Controlla idle, camminata, sprint, salto, crouch, equip e transizioni. Segnala quali clip sono mancanti o diverse da Unreal.'],
+['blueprints','Blueprint e inventario','Apri inventario con I, cambia equipaggiamento, verifica ammo, valuta, peso, salvataggio e gli eventi disponibili.'],
+['maps','Mappe e materiali','Verifica terreno, collisioni, texture, scala delle mesh, orientamento e materiali. La City Realistic di un altro ramo non è ancora unita a questo.'],
+['shop','Shop, dialoghi e modalità','Interagisci con E; prova guide, mercante, missione e riavvio quando i sorgenti sono disponibili.'],
+['physics','Fisica, VFX e audio','Prova salti, collisioni, colpi contro ostacoli, effetti e audio; annota gli elementi non presenti.'],
+['multiplayer','Multiplayer','Non è disponibile in questa build. Segnala soltanto le prove effettuate; non attribuire PASS a RPC o replicazione.'],
+['lighting','Illuminazione','Osserva colori, ombre, esposizione e riflessi. Per ora solo confronti parziali, non fedeltà Unreal 1:1.']
+];
+const read=()=>{try{return JSON.parse(localStorage.getItem(key)||'{}')}catch{return {}}};
+const state=read();
+const persist=()=>{try{localStorage.setItem(key,JSON.stringify(state))}catch{$('message').textContent='Impossibile salvare nel browser; usa Scarica JSON.'}};
+const lanes=$('lanes');
+for(const [id,title,description] of areas){
+ const card=document.createElement('article');
+ const h=document.createElement('h2');h.textContent=title;card.append(h);
+ const p=document.createElement('p');p.textContent=description;p.className='muted';card.append(p);
+ const lab=document.createElement('label');lab.className='check';
+ const cb=document.createElement('input');cb.type='checkbox';cb.checked=!!state[id];cb.dataset.lane=id;cb.addEventListener('change',()=>{state[id]=cb.checked;persist()});
+ const s=document.createElement('span');s.textContent='Ho provato questa parte';lab.append(cb,s);card.append(lab);lanes.append(card);
+}
+$('notes').value=state.notes||'';
+$('outcome').value=['pending','blocked','needs-fixes','approved'].includes(state.outcome)?state.outcome:'pending';
+$('notes').addEventListener('input',()=>{state.notes=$('notes').value;persist()});
+$('outcome').addEventListener('change',()=>{state.outcome=$('outcome').value;persist()});
+let assets=[];
+async function check(path,type) {
+ try {
+  const response=await fetch(path,{cache:'no-store'});
+  if(!response.ok)return {path,ok:false,reason:'HTTP '+response.status};
+  if(type==='js') {
+   const contentType=response.headers.get('content-type')||'';
+   return {path,ok:/javascript|octet-stream/.test(contentType),reason:contentType||'Tipo contenuto non disponibile'};
+  }
+  const json=await response.json();
+  if(type==='dds'){
+   const valid=!!(json.mesh&&json.clips&&json.clips.crouch_walk&&json.weapons&&json.weapons.pistol&&json.weapons.rifle);
+   return {path,ok:valid,reason:valid?'Manifest DDS (nomi soltanto; GLB ancora da verificare)':'Manifest DDS incompleto'};
+  }
+  const valid=!!(json.mesh&&json.clips&&Object.keys(json.clips).length);
+  return {path,ok:valid,reason:valid?'Manifest character (nomi soltanto; GLB ancora da verificare)':'Manifest non valido'};
+ }catch(e){return {path,ok:false,reason:e.name==='SyntaxError'?'Risposta non JSON':String(e.message||e)}}
+}
+async function refresh(){
+ $('assets').textContent='Verifico gli URL senza usare asset sostitutivi…';
+ assets=await Promise.all([
+  check('build/editor.min.js','js'),
+  check('build/local-scenes/dds/manifest.json','dds'),
+  check('build/local-scenes/liberty-city/manifest.json','other'),
+  check('build/local-scenes/ue2three/current/manifest.json','character')
+ ]);
+ const rows=document.createElement('ul');
+ for(const a of assets){
+  const li=document.createElement('li');const tag=document.createElement('strong');
+  tag.className=a.ok?'good':'bad';tag.textContent=a.ok?'TROVATO · ':'ASSENTE / BLOCCATO · ';
+  li.append(tag,document.createTextNode(a.path+' — '+a.reason));rows.append(li);
+ }
+ $('assets').replaceChildren(rows);
+ const dds=assets.find(a=>a.path.includes('/dds/'));
+ $('overall').className='status '+(dds?.ok?'warn':'bad');
+ $('overall').textContent=dds?.ok?'Manifest DDS rilevato: prova il gioco e verifica i GLB.':'DDS non avviabile con asset originali finché il manifest o i GLB non vengono pubblicati.';
+}
+const report=()=>({
+ schema:'dds-manual-feedback-v1',revision,generated_at:new Date().toISOString(),
+ tested:areas.filter(([id])=>!!state[id]).map(([id])=>id),
+ outcome:$('outcome').value,notes:$('notes').value,asset_checks:assets,
+ source_commit:'1cf9cbfde8df5a42b7026beab488bcb841112231',
+ caveats:['External Unreal source files are not stored in GitHub','Unit tests do not establish runtime fidelity','Multiplayer and original Metahuman not yet available']
+});
+$('retry').onclick=refresh;
+$('copy').onclick=async()=>{
+ const text=JSON.stringify(report(),null,2);
+ try {await navigator.clipboard.writeText(text);$('message').textContent='Feedback copiato: incollalo nella nostra chat.'}
+ catch {$('message').textContent='Clipboard bloccata: usa Scarica JSON e incolla il contenuto nella chat.'}
+};
+$('download').onclick=()=>{
+ const blob=new Blob([JSON.stringify(report(),null,2)],{type:'application/json'});
+ const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='dds-feedback-'+revision.slice(0,12)+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ $('message').textContent='Rapporto salvato nel dispositivo.';
+};
+$('clear').onclick=()=>{
+ if(!confirm('Azzerare soltanto le spunte di questa revisione?'))return;
+ for(const [id] of areas)state[id]=false;
+ lanes.querySelectorAll('input[type=checkbox]').forEach(input=>{input.checked=false});persist();
+};
+refresh();
+})();
+</script>
+</body>
+</html>
