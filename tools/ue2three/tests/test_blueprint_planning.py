@@ -2,6 +2,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from core import atomic_json, digest, file_hash
@@ -41,6 +42,20 @@ class BlueprintPlanningTests(unittest.TestCase):
             self.assertEqual(result['blocked_functions'], 2)
             self.assertEqual(result['event_entry_wrappers'], 1)
             self.assertEqual(result, build_blueprint_plan(workspace, published))
+            old_hash = report.pop('content_sha256')
+            report['runtime_sources'] = {'runtime.js': 'b'*64}
+            report['content_sha256'] = digest(report)
+            atomic_json(published / 'blueprint-programs.json', report)
+            with patch('blueprint_planning.analyze_package', side_effect=AssertionError('Redundant AST decode')):
+                refreshed = build_blueprint_plan(workspace, published)
+            self.assertEqual(result['fingerprint'], refreshed['fingerprint'])
+            self.assertNotEqual(result['content_sha256'], refreshed['content_sha256'])
+            self.assertEqual(refreshed['programs_content_sha256'], report['content_sha256'])
+            for name in refreshed['output_sha256']:
+                if name.endswith('.md'):
+                    text = (published / name).read_text(encoding='utf-8')
+                    self.assertIn('Program version: ' + report['content_sha256'], text)
+                    self.assertNotIn('Program version: ' + old_hash, text)
             packet = published / 'work-packets/events.md'; packet.write_text('damaged', encoding='utf-8')
             build_blueprint_plan(workspace, published)
             self.assertIn('SourceEvent', packet.read_text(encoding='utf-8'))

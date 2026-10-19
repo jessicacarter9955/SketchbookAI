@@ -1,5 +1,29 @@
 # DDS migration checklist · 2026-10-13
 
+## Compilazione incrementale e dipendenze native · 2026-10-19
+
+Implementata cache IR separata da runtime/QA, con invalidazione delle prove a
+ogni modifica runtime e controllo hash dei sorgenti a ogni riuso. Sul DDS,
+iterazione con sola modifica runtime:6,296 s →1,175 s medi,5,36× /−81,3%
+su due campioni per versione. Prima creazione della cache7,850 s; nessuna
+accelerazione globale del porting dedotta da questa misura.
+
+Piano nativo su14 pacchetti,165 entry costanti con layout/percorso verificati:
+oggetti244 funzioni coinvolte, matematica152, timer66. Conteggi sovrapposti,
+non funzioni automaticamente sbloccate. Sette nuovi pacchetti locali per
+adattatori esatti, con witness e contratti; nessun invio esterno.
+GetComponentByClass compare in45 funzioni bloccate: prossimo punto di riuso
+per inizializzazione dei componenti originali. Piano riusato anche quando
+cambia solo runtime, aggiornando versioni e checksum senza rileggere gli AST.
+
+151 test Python /97 JavaScript PASS;719 confronti source /491 inventario PASS.
+187 tradotte /320 bloccate, payload semantico invariato. Nuovo report
+07ee4113eb2dc73d73539315dc870780b535dfb50ef331bae65df3069deba48d.
+Nessun avvio UE, scansione/export/upload o nuova verifica visiva. Resta il
+blocco della scheda integrata già segnalato. Nessun verde gameplay aggiunto:
+percentuali e benefici delle18 aree invariati. Dettagli e misure in
+[ue2three-acceleration.md](ue2three-acceleration.md).
+
 ## Benefici per chi gioca · 2026-10-19
 
 Aggiunta alla baseline di tutte le18 aree la colonna «Cosa cambia per te

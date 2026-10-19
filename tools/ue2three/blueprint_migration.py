@@ -753,7 +753,7 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
             raise BlueprintTranslationError(f'Source changed since cached inspection: {name}')
         key_inputs[name] = {'source_sha256': asset['sha256'], 'parsed_sha256': file_hash(cache)}
         cached.append((name, cache))
-    type_documents, type_inputs = {}, {}
+    type_caches, type_inputs = {}, {}
     for row in registry['assets']:
         name = row['package']
         if row.get('class') not in ('UserDefinedStruct', 'UserDefinedEnum') or name not in assets: continue
@@ -763,11 +763,8 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
         if project.parent not in source.parents or file_hash(source) != asset['sha256']:
             raise BlueprintTranslationError('Source type changed since cached inspection: ' + name)
         type_inputs[name] = {'source_sha256': asset['sha256'], 'parsed_sha256': file_hash(path)}
-        type_documents[name] = read_json(path)
-    structs = source_structs(type_documents, BlueprintTranslationError)
-    from blueprint_values import source_enums
-    enums = source_enums(type_documents)
-    table_documents, table_inputs = {}, {}
+        type_caches[name] = path
+    table_caches, table_inputs = {}, {}
     for row in registry['assets']:
         name = row['package']
         if row.get('class') != 'DataTable' or name not in assets: continue
@@ -777,8 +774,7 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
         if project.parent not in source.parents or file_hash(source) != asset['sha256']:
             raise BlueprintTranslationError('Source table changed since cached inspection: ' + name)
         table_inputs[name] = {'source_sha256': asset['sha256'], 'parsed_sha256': file_hash(path)}
-        table_documents[name] = read_json(path)
-    tables, table_blocked = source_tables(table_documents, structs)
+        table_caches[name] = path
     controls_file = output / 'character-controls.json'
     repository = Path(__file__).resolve().parents[2]
     runtime_sources = {name: file_hash(repository / name) for name in (
@@ -787,22 +783,38 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
         'src/editor/Ue2ThreeGameplay.js', 'src/editor/ue2three-live-verification.mjs',
         'src/editor/ue2three-fixtures.mjs', 'src/editor/ue2three-source-verification.mjs',
         'tools/ue2three/blueprint-audit.mjs')}
-    fingerprint = digest({'project': str(project), 'inputs': key_inputs, 'missing': missing, 'types': type_inputs, 'tables': table_inputs,
-                          'runtime_sources': runtime_sources,
+    from blueprint_cache import BlueprintCompileCache, bind_runtime
+    compiler_key = digest({'project': str(project), 'inputs': key_inputs, 'missing': missing, 'types': type_inputs, 'tables': table_inputs,
                           'controls': file_hash(controls_file) if controls_file.is_file() else None,
                           'implementation': file_hash(Path(__file__)),
+                          'core_implementation': file_hash(Path(__file__).with_name('core.py')),
+                          'package_implementation': file_hash(Path(__file__).with_name('umg_migration.py')),
+                          'cache_implementation': file_hash(Path(__file__).with_name('blueprint_cache.py')),
                           'events_implementation': file_hash(Path(__file__).with_name('blueprint_events.py')),
                           'effects_implementation': file_hash(Path(__file__).with_name('blueprint_effects.py')),
                           'objects_implementation': file_hash(Path(__file__).with_name('blueprint_objects.py')),
                           'queries_implementation': file_hash(Path(__file__).with_name('blueprint_queries.py')),
                           'values_implementation': file_hash(Path(__file__).with_name('blueprint_values.py')),
                           'types_implementation': file_hash(Path(__file__).with_name('blueprint_types.py'))})
+    fingerprint = digest({'compiler': compiler_key, 'runtime_sources': runtime_sources})
     report_file = output / 'blueprint-programs.json'
     try:
         prior = read_json(report_file)
         if prior.get('fingerprint') == fingerprint and prior.get('content_sha256') == digest({k: v for k, v in prior.items() if k != 'content_sha256'}):
             return prior
     except (OSError, ValueError): pass
+    compiled_cache = BlueprintCompileCache(workspace / 'artifacts/blueprint-compiled', project)
+    payload = compiled_cache.load(compiler_key)
+    if payload is not None:
+        report = bind_runtime(payload, compiler_key, runtime_sources)
+        atomic_json(report_file, report)
+        return report
+    type_documents = {name: read_json(path) for name, path in type_caches.items()}
+    structs = source_structs(type_documents, BlueprintTranslationError)
+    from blueprint_values import source_enums
+    enums = source_enums(type_documents)
+    table_documents = {name: read_json(path) for name, path in table_caches.items()}
+    tables, table_blocked = source_tables(table_documents, structs)
     packages, source_packages, counts = {}, {}, Counter()
     source_packages = {name: Package(read_json(cache)) for name, cache in cached}
     for source in source_packages.values():
@@ -824,8 +836,7 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
             cache_path = dict(cached).get(source['package'])
             guards = character_guards(controls, packages, Package(read_json(cache_path)))
     from blueprint_objects import actor_graph
-    report = {'schema_version': 1, 'project': str(project), 'fingerprint': fingerprint,
-              'runtime_sources': runtime_sources,
+    payload = {'schema_version': 1, 'project': str(project),
               'packages': packages, 'counts': dict(counts), 'missing_cached_packages': missing,
               'source_types': [{'package': name[0], 'object': name[1], **schema} for name, schema in structs.items()], 'type_sources': type_inputs,
               'tables': tables, 'table_sources': table_inputs, 'table_blocked': table_blocked,
@@ -844,6 +855,7 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
                              'Read-only original queries between explicitly bound source SCS components execute transactionally. Cross-object mutation, reentrant component aliases, derived-class virtual overrides, arbitrary dynamic jumps, latent actions and replication remain blocked.',
                              'Original named enum class defaults resolve through cached source enum identities; unresolved native enum defaults are listed as unavailable and never guessed.',
                              'Translated functions are not connected to the complete game runtime yet.']}
-    report['content_sha256'] = digest(report)
+    compiled_cache.save(compiler_key, payload)
+    report = bind_runtime(payload, compiler_key, runtime_sources)
     atomic_json(report_file, report)
     return report

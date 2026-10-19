@@ -1,0 +1,77 @@
+{
+  "baseline_commit": "8b29b14",
+  "samples": [
+    {
+      "counts": {
+        "blocked": 320,
+        "declarations": 60,
+        "empty_event_functions": 56,
+        "event_entries": 67,
+        "no_op_functions": 6,
+        "translated": 187
+      },
+      "iteration": 0,
+      "payload_sha256": "7f9e24a00fde073dedd4217d810adfb6ea0f5b080e09fc3d1b4c220df59cb992",
+      "seconds": 5.402023000060581,
+      "version": "before"
+    },
+    {
+      "counts": {
+        "blocked": 320,
+        "declarations": 60,
+        "empty_event_functions": 56,
+        "event_entries": 67,
+        "no_op_functions": 6,
+        "translated": 187
+      },
+      "iteration": 1,
+      "payload_sha256": "7f9e24a00fde073dedd4217d810adfb6ea0f5b080e09fc3d1b4c220df59cb992",
+      "seconds": 7.1900292000500485,
+      "version": "before"
+    },
+    {
+      "counts": {
+        "blocked": 320,
+        "declarations": 60,
+        "empty_event_functions": 56,
+        "event_entries": 67,
+        "no_op_functions": 6,
+        "translated": 187
+      },
+      "iteration": 0,
+      "payload_sha256": "7f9e24a00fde073dedd4217d810adfb6ea0f5b080e09fc3d1b4c220df59cb992",
+      "seconds": 7.850182899972424,
+      "version": "after"
+    },
+    {
+      "counts": {
+        "blocked": 320,
+        "declarations": 60,
+        "empty_event_functions": 56,
+        "event_entries": 67,
+        "no_op_functions": 6,
+        "translated": 187
+      },
+      "iteration": 1,
+      "payload_sha256": "7f9e24a00fde073dedd4217d810adfb6ea0f5b080e09fc3d1b4c220df59cb992",
+      "seconds": 1.3435440000612289,
+      "version": "after"
+    },
+    {
+      "counts": {
+        "blocked": 320,
+        "declarations": 60,
+        "empty_event_functions": 56,
+        "event_entries": 67,
+        "no_op_functions": 6,
+        "translated": 187
+      },
+      "iteration": 2,
+      "payload_sha256": "7f9e24a00fde073dedd4217d810adfb6ea0f5b080e09fc3d1b4c220df59cb992",
+      "seconds": 1.007275199983269,
+      "version": "after"
+    }
+  ],
+  "scenario": "Two runtime-only hash changes, same DDS cached sources and compiler semantics; unprofiled wall time.",
+  "warmup": "after iteration 0 creates the private IR cache"
+}

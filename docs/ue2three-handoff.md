@@ -1,5 +1,37 @@
 # ue2three saved handoff · 2026-10-18
 
+## Compilazione incrementale e priorità native · 2026-10-19
+
+Latest user asks for drastic acceleration of the reusable converter.
+Implemented private content-addressed IR cache independent of runtime/QA;
+runtime changes still expire the published proof identity. Actual source,
+parsed AST, types/tables, controls and compiler-module hashes are verified.
+Corrupt IR rebuilds. Changed original source is rejected until reinspection.
+
+DDS controlled runtime-only benchmark: baseline8b29b14 two samples5.402/7.190 s;
+new cache reuse1.344/1.007 s. Mean6.296→1.175 s,5.36× /81.3% less time.
+First population7.850 s; do not claim whole-game/development acceleration from
+these timings. Semantic payload identical in all samples. See acceleration.md
+and acceleration-results.json. No Unreal launch, rescan, export or upload.
+
+Planner now observes exact native API identities, arities and source witnesses,
+including165 verified constant-entry event slices,0 slice failures. Native
+families overlap: objects244, math152, timers66, data37, animation33,
+audio/VFX15, physics6 blocked source functions involved. Exact
+Actor.GetComponentByClass appears in45 blocked functions. Implement shared
+typed source component lookup/lifecycle next for character/weapons; counts
+are NOT predicted automatic unlocks. Seven native work packets plus3 existing
+structural packets stay local. Removed stale packet support boilerplate.
+Runtime-only plan updates reuse analysis but refresh program versions/checksums.
+
+151 Python /97 JS tests PASS;719 source comparisons including491 inventory
+PASS.187 translated /320 blocked and all gameplay estimates unchanged.
+Current program SHA07ee4113eb2dc73d73539315dc870780b535dfb50ef331bae65df3069deba48d.
+Compiler key4ffafda428db50f2d1c49c32e81d8d3e28ee4fbc4eee829cc9e895d90a0168a7.
+No fresh visual acceptance: integrated browser protocol/error state unresolved;
+do not bypass via another browser, CDP, AutoGLM or a new-tab workaround.
+Animations1:1 deferred, lighting last, source behaviors only.
+
 ## Benefici per chi gioca · 2026-10-19
 
 Aggiunta alla baseline di tutte le18 aree la colonna «Cosa cambia per te
