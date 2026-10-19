@@ -23,9 +23,61 @@ class ControlMigrationTests(unittest.TestCase):
             }],
         })
         self.assertEqual(_input_bindings(package), [
-            {"key": "W", "action": "IA_Move", "modifiers": ["InputModifierNegate"]},
-            {"key": "D", "action": "IA_Move", "modifiers": []},
+            {"key": "W", "action": "IA_Move", "modifiers": ["InputModifierNegate"], "triggers": []},
+            {"key": "D", "action": "IA_Move", "modifiers": [], "triggers": []},
         ])
+
+    def test_input_mapping_triggers_keep_source_order(self):
+        package = Package({
+            "Imports": [
+                {"ObjectName": "InputModifierNegate"},
+                {"ObjectName": "IA_Move"},
+                {"ObjectName": "InputTriggerHold"},
+                {"ObjectName": "InputTriggerDown"},
+            ],
+            "Exports": [{"ObjectName": "IMC_Fixers", "Data": [
+                prop("DefaultKeyMappings", {"Mappings": [
+                    {"Key": {"KeyName": "W"}, "Action": -2,
+                     "Modifiers": [-1], "Triggers": [-3, -4]},
+                ]}),
+            ]}],
+        })
+        self.assertEqual(_input_bindings(package), [
+            {"key": "W", "action": "IA_Move", "modifiers": ["InputModifierNegate"],
+             "triggers": ["InputTriggerHold", "InputTriggerDown"]},
+        ])
+
+    def test_input_mapping_rejects_incomplete_source_semantics(self):
+        from controls_migration import UMGMigrationError
+        good = {"Key": {"KeyName": "W"}, "Action": -1}
+        malformed = [
+            dict(good, Modifiers=[-99]),
+            dict(good, Triggers=[-99]),
+            dict(good, Modifiers=[True]),
+            dict(good, Triggers=None),
+            dict(good, Modifiers="InputModifierNegate"),
+            dict(good, Action=True),
+            dict(good, Key={}),
+            None,
+        ]
+        for mapping in malformed:
+            with self.subTest(mapping=mapping):
+                package = Package({
+                    "Imports": [{"ObjectName": "IA_Move"}],
+                    "Exports": [{"ObjectName": "IMC_Fixers", "Data": [
+                        prop("DefaultKeyMappings", {"Mappings": [mapping]}),
+                    ]}],
+                })
+                with self.assertRaises(UMGMigrationError):
+                    _input_bindings(package)
+
+    def test_input_mapping_rejects_invalid_source_array(self):
+        from controls_migration import UMGMigrationError
+        package = Package({"Exports": [{"ObjectName": "IMC_Fixers", "Data": [
+            prop("DefaultKeyMappings", {"Mappings": "not-an-array"}),
+        ]}]})
+        with self.assertRaises(UMGMigrationError):
+            _input_bindings(package)
 
     def test_source_reference_rejects_boolean_as_export_or_import_index(self):
         from controls_migration import _resolve_reference

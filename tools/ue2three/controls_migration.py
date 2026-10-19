@@ -27,21 +27,31 @@ def _input_bindings(package):
     if not context:
         raise UMGMigrationError("IMC_Fixers has no exported input mapping context")
     values = package.props(context).get("DefaultKeyMappings", {})
-    mappings = values.get("Mappings", []) if isinstance(values, dict) else []
+    if not isinstance(values, dict) or not isinstance(values.get("Mappings"), list):
+        raise UMGMigrationError("IMC_Fixers has an invalid DefaultKeyMappings array")
+    mappings = values["Mappings"]
     result = []
     for mapping in mappings:
         if not isinstance(mapping, dict):
-            continue
+            raise UMGMigrationError("Enhanced Input mapping is not an object")
         key_data = mapping.get("Key", {})
         key = key_data.get("KeyName") if isinstance(key_data, dict) else None
         action = _resolve_reference(package, mapping.get("Action"))
-        if not isinstance(key, str) or not action:
-            continue
+        if not isinstance(key, str) or not key or not isinstance(action, str) or not action:
+            raise UMGMigrationError("Enhanced Input mapping has an invalid key or action")
+        modifiers = mapping.get("Modifiers", [])
+        triggers = mapping.get("Triggers", [])
+        if not isinstance(modifiers, list) or not isinstance(triggers, list):
+            raise UMGMigrationError("Enhanced Input modifiers/triggers must be arrays")
+        modifier_names = [_resolve_reference(package, ref) for ref in modifiers]
+        trigger_names = [_resolve_reference(package, ref) for ref in triggers]
+        if any(not isinstance(name, str) or not name for name in modifier_names + trigger_names):
+            raise UMGMigrationError("Enhanced Input modifier/trigger reference is unresolved")
         result.append({
             "key": key,
             "action": action,
-            "modifiers": [name for value in mapping.get("Modifiers", [])
-                          if (name := _resolve_reference(package, value))],
+            "modifiers": modifier_names,
+            "triggers": trigger_names,
         })
     if not result:
         raise UMGMigrationError("IMC_Fixers contained no readable action-to-key mappings")
@@ -154,6 +164,7 @@ def migrate_controls(project, workspace, publish_dir, logger=None, force=False):
         "limitations": [
             "This batch extracts original key mappings and compiled Blueprint entry points only.",
             "The extracted function-call paths expose the original Blueprint input flow but do not execute it.",
+            "Modifier and trigger references are metadata only; their runtime behavior is not translated.",
             "The Mover plugin simulation is not translated yet.",
         ],
     }
