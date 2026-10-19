@@ -16,6 +16,22 @@ on:
 permissions:
   contents: read
 jobs:
+  credential-readiness:
+    name: DDS · unattended capabilities (no secrets exposed)
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      contents: read
+    env:
+      HAVE_NETLIFY_SECRET: ${{ secrets.NETLIFY_AUTH_TOKEN != '' }}
+      HAVE_OPENCODE_KEY: ${{ secrets.OPENCODE_API_KEY != '' }}
+    steps:
+      - name: Verify availability only (no API calls or costs)
+        shell: bash
+        run: |
+          echo "Netlify secure secret available: $HAVE_NETLIFY_SECRET" >> "$GITHUB_STEP_SUMMARY"
+          echo "OpenCode provider key available: $HAVE_OPENCODE_KEY (not invoked or billed)" >> "$GITHUB_STEP_SUMMARY"
+          echo "No automated Unreal export inferred from key availability." >> "$GITHUB_STEP_SUMMARY"
   source-and-code:
     name: DDS · ${{ matrix.lane }}
     strategy:
