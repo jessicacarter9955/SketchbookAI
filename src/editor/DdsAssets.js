@@ -2,13 +2,12 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
 const BASE = 'build/local-scenes/dds/';
-export async function loadDdsPlayer() {
-    const response = await fetch(`${BASE}manifest.json`);
+export async function loadDdsPlayer({fetchImpl=fetch,loader=new GLTFLoader()}={}) {
+    const response = await fetchImpl(`${BASE}manifest.json`);
     if (!response.ok) throw new Error('DDS assets missing. Run tools/export-dds.ps1 with your editable Unreal project, then reload this scene.');
     const manifest = await response.json();
     if(!manifest.clips?.crouch_walk || !manifest.clips?.heal || !manifest.weapons?.rifle || !manifest.weapons?.pistol)
         throw new Error('DDS export is outdated. Run tools/export-dds.ps1 again to add the single-player assets.');
-    const loader = new GLTFLoader();
     const safeURL = file => {
         if (typeof file !== 'string' || !/^[a-z0-9_-]+\.glb$/i.test(file)) throw new Error('Invalid DDS asset filename');
         return BASE + file;

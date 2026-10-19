@@ -5,6 +5,8 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { Character } from '../ts/characters/Character';
 import { Car } from '../ts/vehicles/Car';
 import { loadDdsPlayer } from './DdsAssets';
+import { loadPrivateLegacyDdsPlayer } from './DdsPrivateLegacyAssets';
+import { loadPrivateUe2ThreeCharacter } from './DdsPrivateUe2ThreeAssets';
 import { DdsCharacter } from './DdsCharacter';
 import { loadUe2ThreeCharacter } from './Ue2ThreeAssets';
 
@@ -13,8 +15,8 @@ export class ActorLayer {
     async initialize(profile, options = {}) {
         [this.person, this.car] = await Promise.all(['boxman', 'car'].map(name => new GLTFLoader().loadAsync(`build/assets/${name}.glb`)));
         this.person.scene.animations = this.person.animations;
-        if (profile === 'dds') this.playerModel = await loadDdsPlayer();
-        else if (profile === 'ue2three') this.playerModel = await loadUe2ThreeCharacter(options.characterBase || 'build/local-scenes/ue2three/current/');
+        if (profile === 'dds') this.playerModel = (await loadPrivateLegacyDdsPlayer()) || await loadDdsPlayer();
+        else if (profile === 'ue2three') this.playerModel = (await loadPrivateUe2ThreeCharacter()) || await loadUe2ThreeCharacter(options.characterBase || 'build/local-scenes/ue2three/current/');
         else this.playerModel = this.person;
         this.playerProfile = profile;
         this.playerOptions = options;

@@ -46,6 +46,20 @@ footer{color:#b3c7db;margin-top:28px}
 <div id="assets" role="status" aria-live="polite">In verifica…</div>
 <div class="actions"><button id="retry" class="secondary">Ricontrolla file</button></div>
 </section>
+<section id="private-import">
+<h2>Importa GLB DDS originali e prova immediatamente</h2>
+<p>Il convertitore <code>tools/ue2three</code> produce un <code>manifest.json</code> con mesh e clip GLB. Se possiedi il suo output sul dispositivo, seleziona una sola volta la cartella: i file vengono conservati <strong>solo nel tuo browser</strong> e caricati dal player senza upload a GitHub, Netlify o server esterni.</p>
+<p class="warn">Questa operazione <strong>non</strong> estrae automaticamente i pacchetti <code>.uasset</code> mancanti da Google Drive e non certifica ancora la fedeltà Unreal 1:1. Per l'export originale occorrono gli asset sorgente reali.</p>
+<div class="actions">
+<button data-import-format="ue2three">Importa export ue2three · GLB + manifest</button>
+<button class="secondary" data-import-format="dds">Importa export DDS legacy</button>
+<button id="check-import" class="secondary">Verifica import locale</button>
+</div>
+<input id="pack-folder" type="file" webkitdirectory multiple hidden>
+<input id="pack-files" type="file" accept=".json,.glb" multiple hidden>
+<p id="pack-status" class="muted" role="status" aria-live="polite">Nessun file esce da questo browser. Le importazioni persistono su questo dominio e profilo browser.</p>
+<div class="actions"><button id="clear-import" class="secondary">Rimuovi l'ultimo pacchetto selezionato dal browser</button></div>
+</section>
 <section>
 <h2>Il tuo giro di prova</h2>
 <p class="muted">Spunta soltanto ciò che hai provato nel browser. Apri la scena, premi <strong>Prova</strong> se necessario e registra cosa succede. Il risultato resta sul tuo dispositivo fino a quando lo copi o scarichi.</p>
@@ -172,6 +186,47 @@ $('clear').onclick=()=>{
 };
 refresh();
 })();
+</script>
+<script type="module">
+import {importPrivateExport,privateExportStatus,clearPrivateExport} from './src/editor/dds-private-import.mjs';
+const status=document.querySelector('#pack-status');
+const selected={format:'ue2three'};
+const input=document.querySelector('#pack-folder');
+const setStatus=text=>{status.textContent=text};
+async function showStatus(){
+ try{
+  const packs=await Promise.all(['ue2three','dds'].map(privateExportStatus));
+  setStatus(packs.map(p=>p.available
+    ? p.format+': '+p.files+' GLB ('+Math.round(p.bytes/1048576)+' MiB) salvati nel browser · origine non verificata'
+    : p.format+': nessun export locale').join(' | '));
+  const found=packs.filter(p=>p.available).length;
+  if(found){
+   const banner=document.querySelector('#overall');
+   banner.textContent='Importazione privata disponibile nel browser: apri la scena corrispondente. Verifica ancora scheletro, clip, armamenti e collisioni.';
+   banner.className='status warn';
+  }
+ }catch(e){setStatus('Impossibile leggere pacchetto privato: '+e.message)}
+}
+document.querySelectorAll('[data-import-format]').forEach(button=>button.onclick=()=>{
+ selected.format=button.dataset.importFormat;
+ input.value='';input.click();
+});
+input.onchange=async()=>{
+ const files=[...input.files];
+ if(!files.length)return;
+ try{
+  await importPrivateExport(selected.format,files,setStatus);
+  await showStatus();
+  setStatus(status.textContent+' · Ora apri '+(selected.format==='ue2three'?'personaggio ue2three':'DDS Portland')+' per il test manuale.');
+ }catch(e){setStatus('IMPORT FALLITO: '+e.message)}
+ finally{input.value=''}
+};
+document.querySelector('#check-import').onclick=showStatus;
+document.querySelector('#clear-import').onclick=async()=>{
+ if(!confirm('Rimuovere il pacchetto '+selected.format+' da questo browser?'))return;
+ try{await clearPrivateExport(selected.format);await showStatus()}catch(e){setStatus(e.message)}
+};
+showStatus();
 </script>
 </body>
 </html>
