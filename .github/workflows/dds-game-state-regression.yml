@@ -1,0 +1,20 @@
+name: DDS game-state regression
+on:
+  push:
+    branches:
+      - codex/dds-parallel-manual-first
+    paths:
+      - 'src/editor/dds-game-state.mjs'
+      - 'tests/dds-game.test.mjs'
+      - '.github/workflows/dds-game-state-regression.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  game-state:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run DDS inventory and gameplay-state tests
+        run: node --test tests/dds-game.test.mjs

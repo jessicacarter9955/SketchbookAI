@@ -16,7 +16,7 @@ export class DdsGameState {
             magazine:bounded(data.ammo?.[id]?.magazine,w.capacity,w.capacity),
             reserve:bounded(data.ammo?.[id]?.reserve,w.reserve,999)
         }]));
-        this.owned=Array.isArray(data.owned) ? [...new Set(data.owned.filter(id=>WEAPONS[id]))] : ['rifle','pistol'];
+        this.owned=Array.isArray(data.owned) ? [...new Set(data.owned.filter(id=>Object.hasOwn(WEAPONS,id)))] : ['rifle','pistol'];
         this.equipped=this.owned.includes(data.equipped) ? data.equipped : (data.equipped===null ? null : this.owned[0]??null);
         this.caseCollected=data.caseCollected===true; this.suppliesCollected=data.suppliesCollected===true;
         this.targets=Array.from({length:3},(_,i)=>bounded(data.targets?.[i],100,100));
@@ -29,7 +29,7 @@ export class DdsGameState {
     get currentWeight(){return this.owned.reduce((sum,id)=>sum+(id==='rifle'?3.6:0.9),0)+(this.ammo.rifle.magazine+this.ammo.rifle.reserve)*0.012+(this.ammo.pistol.magazine+this.ammo.pistol.reserve)*0.01+this.medkits*0.4+(this.caseCollected?2:0);}
     buy(id) {
         if(!this.health||this.extracted)return {ok:false,message:'Incursione conclusa.'};
-        const offer=SHOP_OFFERS[id];if(!offer)return {ok:false,message:'Articolo non disponibile.'};
+        const offer=Object.hasOwn(SHOP_OFFERS,id) ? SHOP_OFFERS[id] : null;if(!offer)return {ok:false,message:'Articolo non disponibile.'};
         if(this.credits<offer.price)return {ok:false,message:'Crediti insufficienti.'};
         const current=offer.weapon?this.ammo[offer.weapon].reserve:this.medkits, limit=offer.weapon?999:10;
         const addedWeight=offer.quantity*(offer.weapon?(offer.weapon==='rifle'?0.012:0.01):0.4);

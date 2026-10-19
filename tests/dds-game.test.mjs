@@ -30,3 +30,13 @@ test('shop checks currency and carrying limits before changing inventory',()=>{
     s.npcHealth.merchant=0;assert.equal(new DdsGameState(s.snapshot()).npcHealth.merchant,0);
     const ended=new DdsGameState();ended.health=0;assert.equal(ended.buy('medkit').ok,false);assert.equal(ended.credits,250);
 });
+
+test('shop and saved inventory reject inherited object keys',()=>{
+ const s=new DdsGameState({version:1,owned:['__proto__','constructor','toString','rifle'],equipped:'__proto__'});
+ assert.deepEqual(s.owned,['rifle']);assert.equal(s.equipped,'rifle');
+ const before=s.snapshot();
+ for(const id of ['__proto__','constructor','toString']) {
+  assert.equal(s.equip(id),false);assert.equal(s.buy(id).ok,false);
+  assert.deepEqual(s.snapshot(),before);
+ }
+});
