@@ -1,6 +1,6 @@
 // Reusable data comparisons, independent of browser rendering and source project.
 import {executeBlueprint} from './ue2three-blueprint.mjs';
-import {blueprintFixtureState, blueprintFixtureMembers, blueprintFixtureEqual, blueprintFixtureActors} from './ue2three-fixtures.mjs';
+import {blueprintFixtureEnvironment, blueprintFixtureMembers, blueprintFixtureEqual, blueprintFixtureActors} from './ue2three-fixtures.mjs';
 
 export function verifySourceCases(report, fixture) {
     if (report?.schema_version !== 1 || typeof report.content_sha256 !== 'string' || !report.content_sha256 || typeof report.project !== 'string' || !report.packages
@@ -21,8 +21,9 @@ export function verifySourceCases(report, fixture) {
                 if (library[name]?.source_bytecode_sha256 !== hash) throw new Error('Source dependency differs: '+name);
             for (const [name, hash] of Object.entries(sample.types || {}))
                 if (report.type_sources?.[name]?.source_sha256 !== hash) throw new Error('Source type differs: '+name);
-            const result = executeBlueprint(program, blueprintFixtureState(fixture, sample, report), sample.inputs,
-                {functions:library, tables:report.tables, signatures:data.delegate_signatures, native:actors.context(sample.package)});
+            const context=blueprintFixtureEnvironment(fixture,sample,report,actors);
+            const result = executeBlueprint(program, context.self, sample.inputs,
+                {functions:library, tables:report.tables, signatures:data.delegate_signatures, native:context.native,queries:context.queries});
             for (const [key, expected] of Object.entries(sample.outputs || {}))
                 if (!blueprintFixtureEqual(result.outputs[key], expected)) throw new Error('Source output differs: '+key);
             for (const [key, expected] of Object.entries(sample.state || {}))
@@ -33,6 +34,8 @@ export function verifySourceCases(report, fixture) {
             if (!evidence.has(key)) evidence.set(key, {package:sample.package, function:sample.function,
                 source_bytecode_sha256:program.source_bytecode_sha256, source_cases:[]});
             evidence.get(key).source_cases.push({runtime:sample.runtime, inputs:sample.inputs, outputs:result.outputs, expected:sample.outputs || {},
+                ...(sample.fixture_objects ? {fixture_objects:sample.fixture_objects,query_dependencies:sample.query_dependencies,
+                    object_scope:'Explicit offline object identities; no spawning, possession, scene or lifecycle verification'} : {}),
                 ...(sample.state ? {resulting_state:result.state, expected_state:sample.state} : {}),
                 ...(sample.effects ? {effects:result.effects, expected_effects:sample.effects} : {}),
                 ...(sample.output_members ? {actual_members:members, expected_members:sample.output_members} : {})});

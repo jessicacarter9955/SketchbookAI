@@ -1,5 +1,5 @@
 import { executeBlueprint } from '/src/editor/ue2three-blueprint.mjs';
-import { blueprintFixtureState, blueprintFixtureMembers, blueprintFixtureEqual, blueprintFixtureActors } from '/src/editor/ue2three-fixtures.mjs';
+import { blueprintFixtureEnvironment, blueprintFixtureMembers, blueprintFixtureEqual, blueprintFixtureActors } from '/src/editor/ue2three-fixtures.mjs';
 const status = document.querySelector('#status');
 const applyFilter = () => {
     const term = document.querySelector('#function-filter').value.toLowerCase();
@@ -40,7 +40,7 @@ try {
                 for (const executed of result.trace.filter(step => step.op === 'set')) {
                     const step = program.steps.find(step => step.source_index === executed.source_index);
                     if (executed.scope === 'persistent' || step.value.op === 'get' && step.value.scope !== 'self') continue;
-                    if (['math', 'call', 'member', 'table_get', 'typed_literal', 'struct_literal', 'array_valid', 'array_mutate', 'array_set', 'array_add', 'array_literal', 'native_get_owner'].includes(step.value.op)) continue;
+                    if (['math', 'call', 'member', 'table_get', 'typed_literal', 'struct_literal', 'array_valid', 'array_mutate', 'array_set', 'array_add', 'array_literal', 'native_get_owner','native_object_valid','component_query'].includes(step.value.op)) continue;
                     const expected = step.value.op === 'get' ? self[step.value.field] : step.value.value;
                     const actual = executed.value;
                     if ((step.scope === 'self' || program.output_fields.includes(step.field)) && JSON.stringify(actual) !== JSON.stringify(expected))
@@ -74,8 +74,8 @@ try {
                 if (library[name]?.source_bytecode_sha256 !== hash) throw new Error(`Dipendenza sorgente non aggiornata: ${name}`);
             for (const [name, hash] of Object.entries(test.types || {}))
                 if (report.type_sources?.[name]?.source_sha256 !== hash) throw new Error(`Tipo sorgente non aggiornato: ${name}`);
-            const self = blueprintFixtureState(fixture, test, report);
-            const result = executeBlueprint(program, self, test.inputs, {functions: {...report.packages[test.package].functions, ...report.packages[test.package].event_programs}, tables: report.tables || {}, signatures: report.packages[test.package].delegate_signatures || {}, native:actors.context(test.package)});
+            const context = blueprintFixtureEnvironment(fixture,test,report,actors);
+            const result = executeBlueprint(program, context.self, test.inputs, {functions: {...report.packages[test.package].functions, ...report.packages[test.package].event_programs}, tables: report.tables || {}, signatures: report.packages[test.package].delegate_signatures || {}, native:context.native,queries:context.queries});
             for (const [field, expected] of Object.entries(test.outputs))
                 if (JSON.stringify(result.outputs[field]) !== JSON.stringify(expected)) throw new Error(`Confronto sorgente fallito: ${test.function}.${field}`);
             for (const [field, expected] of Object.entries(test.state || {}))

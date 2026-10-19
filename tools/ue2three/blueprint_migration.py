@@ -33,7 +33,7 @@ def property_type(prop, package=None):
         schema = property_schema(package, prop)
         from blueprint_values import STATIC_ASSET_CLASSES
         if schema and (schema.get('class', [None, None])[0] == '/Script/Engine'
-                       and schema['class'][1] in STATIC_ASSET_CLASSES or schema.get('reference_kind') == 'runtime_actor'): return result
+                       and schema['class'][1] in STATIC_ASSET_CLASSES or schema.get('reference_kind') in ('runtime_actor', 'runtime_component')): return result
     if result == 'EnumProperty':
         result = prop.get('UnderlyingProp', {}).get('SerializedType')
     if result not in ('BoolProperty', 'ByteProperty', 'IntProperty', 'FloatProperty',
@@ -161,6 +161,9 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         from blueprint_objects import native_actor_context
         adapted = native_actor_context(value, package, owner, reads, outputs, depth)
         if adapted is not None: return adapted
+        from blueprint_queries import component_query
+        adapted = component_query(value, package, owner, reads, outputs, depth)
+        if adapted is not None: return adapted
         raise BlueprintTranslationError('Unsupported opcode: EX_Context')
     if token in ('EX_LocalVirtualFunction', 'EX_LocalFinalFunction', 'EX_FinalFunction'):
         if token == 'EX_FinalFunction' and package:
@@ -184,6 +187,9 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         return multicast(value, package, owner, reads, outputs, depth)
     if token == 'EX_CallMath':
         if package:
+            from blueprint_queries import object_validity
+            adapted = object_validity(value, package, owner, reads, outputs, depth)
+            if adapted is not None: return adapted
             from blueprint_effects import dirty_call
             adapted = dirty_call(value, package, owner)
             if adapted is not None: return adapted
@@ -463,10 +469,20 @@ def translate_package(package, structs=None, tables=None):
     class_properties = {prop['Name']: prop for export in package.exports
                         if str(export.get('ObjectName', '')).endswith('_C')
                         for prop in export.get('LoadedProperties', []) if prop.get('Name')}
-    defaults = {}
+    defaults, unavailable_defaults = {}, {}
     for export in package.exports:
         if str(export.get('ObjectName', '')).startswith('Default__'):
             defaults.update(package.props(export))
+            for value in export.get('Data', []):
+                if value.get('ByteType') != 'FName': continue
+                name = value.get('Name'); prop = class_properties.get(name)
+                schema = property_schema(package, prop) if prop else None
+                try:
+                    from blueprint_values import serialized_value
+                    if not schema: raise ValueError('Original enum property schema is unavailable')
+                    defaults[name] = serialized_value(package, prop, schema, value)
+                except ValueError as error:
+                    defaults.pop(name, None); unavailable_defaults[name] = str(error)
     package.source_defaults = defaults
     pending = [(index, export, None) for index, export in enumerate(package.exports, 1)]
     requested = set()
@@ -496,10 +512,14 @@ def translate_package(package, structs=None, tables=None):
                             raise BlueprintTranslationError('Write through original const input')
                         if value.get('op') == 'array_mutate' and target.get('scope') == 'self':
                             program['self_writes'] = sorted(set(program['self_writes']) | {target['field']})
-                        if value.get('op') == 'call' and any(binding.get('mode') == 'output'
+                        if value.get('op') in ('call', 'component_query') and any(binding.get('mode') == 'output'
                                 and binding.get('target', {}).get('scope') == 'local'
                                 and binding['target'].get('field') in const_inputs for binding in value.get('bindings', [])):
                             raise BlueprintTranslationError('Output binding writes original const input')
+                        if value.get('op') == 'component_query':
+                            program['self_writes'] = sorted(set(program['self_writes']) | {
+                                binding['target']['field'] for binding in value['bindings']
+                                if binding['mode'] == 'output' and binding['target']['scope'] == 'self'})
                         if value.get('scope') == 'local': used_locals.add(value['field'])
                         if value.get('scope') == 'persistent':
                             frame_index, field_name = value['frame'], value['field']
@@ -594,11 +614,12 @@ def translate_package(package, structs=None, tables=None):
         if not changed: break
     default_state = {}
     for name, prop in class_properties.items():
+        if name in unavailable_defaults: continue
         try: type_name = property_type(prop, package)
         except BlueprintTranslationError: continue
         schema = property_schema(package, prop)
         if type_name == 'ObjectProperty':
-            if schema.get('reference_kind') == 'runtime_actor':
+            if schema.get('reference_kind') in ('runtime_actor', 'runtime_component'):
                 if type(defaults.get(name, 0)) is not int or defaults.get(name, 0) != 0:
                     raise BlueprintTranslationError('Source actor defaults require an original world-object binding: ' + name)
                 default_state[name] = None
@@ -631,7 +652,7 @@ def translate_package(package, structs=None, tables=None):
     from blueprint_objects import class_metadata
     return {'functions': functions, 'event_programs': events, 'event_blocked': event_blocked, 'delegate_signatures': signatures, 'class_metadata': class_metadata(package),
             'blocked': blocked, 'declarations': declarations, 'default_state': default_state,
-            'counts': counts}
+            'unavailable_default_fields': unavailable_defaults, 'counts': counts}
 
 
 def character_guards(controls, packages, source_package):
@@ -744,6 +765,8 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
         type_inputs[name] = {'source_sha256': asset['sha256'], 'parsed_sha256': file_hash(path)}
         type_documents[name] = read_json(path)
     structs = source_structs(type_documents, BlueprintTranslationError)
+    from blueprint_values import source_enums
+    enums = source_enums(type_documents)
     table_documents, table_inputs = {}, {}
     for row in registry['assets']:
         name = row['package']
@@ -771,6 +794,7 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
                           'events_implementation': file_hash(Path(__file__).with_name('blueprint_events.py')),
                           'effects_implementation': file_hash(Path(__file__).with_name('blueprint_effects.py')),
                           'objects_implementation': file_hash(Path(__file__).with_name('blueprint_objects.py')),
+                          'queries_implementation': file_hash(Path(__file__).with_name('blueprint_queries.py')),
                           'values_implementation': file_hash(Path(__file__).with_name('blueprint_values.py')),
                           'types_implementation': file_hash(Path(__file__).with_name('blueprint_types.py'))})
     report_file = output / 'blueprint-programs.json'
@@ -780,11 +804,17 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
             return prior
     except (OSError, ValueError): pass
     packages, source_packages, counts = {}, {}, Counter()
+    source_packages = {name: Package(read_json(cache)) for name, cache in cached}
+    for source in source_packages.values():
+        source.source_packages = source_packages
+        source.source_structs = structs
+        source.source_enums = enums
     for name, cache in cached:
-        source_packages[name] = Package(read_json(cache))
         packages[name] = translate_package(source_packages[name], structs, tables)
         packages[name]['source'] = key_inputs[name]
-        counts.update(packages[name]['counts'])
+    from blueprint_queries import prune_queries
+    prune_queries(packages)
+    for package in packages.values(): counts.update(package['counts'])
     guards, character_source = {}, None
     if controls_file.is_file():
         controls = read_json(controls_file)
@@ -811,7 +841,8 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
                              'Original SCS component ownership can bind to a scene actor. GetOwner and ForceNetUpdate require explicit standalone actor bindings with no game/demo net drivers; other object methods and full lifecycle remain blocked.',
                              'Constant source event entries, flow stacks and per-instance persistent primitive fields execute on fully translated reachable paths.',
                              'Event callbacks with no source effects are counted separately; animation dispatch, native effects and complete game events are not implied.',
-                             'Cross-object calls, derived-class virtual overrides, arbitrary dynamic jumps, latent actions and replication remain blocked.',
+                             'Read-only original queries between explicitly bound source SCS components execute transactionally. Cross-object mutation, reentrant component aliases, derived-class virtual overrides, arbitrary dynamic jumps, latent actions and replication remain blocked.',
+                             'Original named enum class defaults resolve through cached source enum identities; unresolved native enum defaults are listed as unavailable and never guessed.',
                              'Translated functions are not connected to the complete game runtime yet.']}
     report['content_sha256'] = digest(report)
     atomic_json(report_file, report)

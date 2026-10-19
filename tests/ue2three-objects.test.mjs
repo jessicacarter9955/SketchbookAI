@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SourceActorBindings, sourceComponentOwner, sourceForceNetUpdate} from '../src/editor/ue2three-objects.mjs';
+import {SourceActorBindings, sourceComponentOwner, sourceForceNetUpdate, sourceObjectValid} from '../src/editor/ue2three-objects.mjs';
 import {BlueprintActorRuntime} from '../src/editor/ue2three-blueprint-runtime.mjs';
 import {executeBlueprint} from '../src/editor/ue2three-blueprint.mjs';
 
@@ -23,6 +23,70 @@ function fixture() {
     const runtime=new BlueprintActorRuntime(report,report.project),player={actualPlayer:true};
     return {report,runtime,player,program};
 }
+
+function queryFixture() {
+    const {report,player}=fixture();
+    const child=report.packages['/Game/Component'];
+    child.functions.Read={schema_version:1,name:'Read',status:'translated_straight_line',source_owner_index:2,source_export_index:4,
+        input_fields:[],output_fields:['Value'],self_reads:['Count'],self_writes:[],field_types:{self:{Count:'IntProperty'},local:{Value:'IntProperty'}},schemas:{},steps:[
+            {op:'set',scope:'local',field:'Value',value:{op:'get',scope:'self',field:'Count'}},end]};
+    const schema={type:'ObjectProperty',class:['/Game/Component','Component_C'],reference_kind:'runtime_component',default:null};
+    const call={op:'component_query',target:{op:'get',scope:'self',field:'Inventory'},package:'/Game/Component',class_object:'Component_C',function:'Read',export_index:4,
+        bindings:[{mode:'output',parameter:'Value',target:{op:'get',scope:'local',field:'Result'}}]};
+    const program={schema_version:1,name:'Query',status:'translated_straight_line',source_owner_index:2,source_export_index:3,
+        input_fields:[],output_fields:['Result'],self_reads:['Inventory'],self_writes:[],field_types:{self:{Inventory:'ObjectProperty'},local:{Result:'IntProperty'}},
+        schemas:{self:{Inventory:schema}},steps:[{op:'evaluate',value:call},end]};
+    const meta={export_index:2,object:'Combat_C',native_base:['/Script/Engine','ActorComponent'],force_net_update_override:false};
+    report.packages['/Game/Combat']={class_metadata:meta,source:{source_sha256:'combat'},default_state:{Inventory:null},functions:{Query:program}};
+    report.actor_graph.roots['/Game/Pawn'].components.push({variable:'Combat',package:'/Game/Combat',class_object:'Combat_C',class_export_index:2,
+        scs_node_export_index:7,template_export_index:8,template_sha256:'combat-template',source:{source_sha256:'combat'},source_overrides:{}});
+    const runtime=new BlueprintActorRuntime(report,report.project);runtime.bindSourceActor('/Game/Pawn',player);
+    runtime.states['/Game/Combat'].Inventory=runtime.actorBindings.componentReference('/Game/Component');
+    return {report,player,runtime,program,call,child,schema};
+}
+
+test('component queries read the actual bound other component state and copy original out parameters',()=>{
+    const {runtime}=queryFixture(),initial=runtime.snapshot();
+    const result=runtime.call('/Game/Combat','Query');
+    assert.equal(result.outputs.Result,123);assert.deepEqual(result.effects,[]);
+    assert.equal(runtime.states['/Game/Component'].Count,123);
+    runtime.states['/Game/Component'].Count=456;
+    assert.equal(runtime.call('/Game/Combat','Query').outputs.Result,456);
+    assert.equal(result.trace.find(t=>t.op==='component_query').package,'/Game/Component');
+    runtime.restore(initial);assert.equal(runtime.call('/Game/Combat','Query').outputs.Result,123);
+});
+
+test('null component contexts retain caller out storage; unknown and foreign instances fail atomically',()=>{
+    const {runtime}=queryFixture();runtime.states['/Game/Combat'].Inventory=null;
+    const result=runtime.call('/Game/Combat','Query');
+    assert.equal(result.outputs.Result,0);assert.match(result.trace[0].message,/Accessed None/);
+    for(const patch of [{realm:'foreign'},{component_variable:'Unknown'},{actor_id:'other-actor'}]) {
+        runtime.states['/Game/Combat'].Inventory={...runtime.actorBindings.componentReference('/Game/Component'),...patch};
+        const before=runtime.snapshot();assert.throws(()=>runtime.call('/Game/Combat','Query'));assert.deepEqual(runtime.snapshot(),before);
+    }
+});
+
+test('component queries reject state writes, effects, wrong exports and receiver classes',()=>{
+    for(const corrupt of [
+        x=>x.child.functions.Read.self_writes.push('Count'),
+        x=>x.child.functions.Read.steps.unshift({op:'set',scope:'self',field:'Count',value:c(999)}),
+        x=>x.child.functions.Read.steps.unshift({op:'evaluate',value:{op:'mark_dirty',field:'Count',source_rep_index:1}}),
+        x=>x.call.export_index=999,
+        x=>x.call.class_object='Different_C',
+        x=>x.child.functions.Read.persistent_types={'3':{Value:'IntProperty'}}]) {
+        const f=queryFixture();corrupt(f);const before=f.runtime.snapshot();
+        assert.throws(()=>f.runtime.call('/Game/Combat','Query'));assert.deepEqual(f.runtime.snapshot(),before);
+    }
+});
+
+test('original IsValid distinguishes null and explicit bound objects without accepting arbitrary JS identities',()=>{
+    const {runtime,schema}=queryFixture(),context=runtime.actorBindings.context('/Game/Combat');
+    assert.equal(sourceObjectValid(undefined,null,schema),false);
+    assert.equal(sourceObjectValid(context,runtime.actorBindings.componentReference('/Game/Component'),schema),true);
+    assert.equal(sourceObjectValid(context,context.actors['actor-1'].reference,{reference_kind:'runtime_actor',class:['/Script/Engine','Pawn']}),true);
+    assert.throws(()=>sourceObjectValid(context,{},schema),/receiver/);
+    assert.throws(()=>sourceObjectValid(context,context.actors['actor-1'].reference,{reference_kind:'runtime_actor',class:['/Script/Engine','Character']}),/class differs/);
+});
 
 test('original component graph binds the actual actor and applies source template overrides once',()=>{
     const {runtime,player}=fixture();

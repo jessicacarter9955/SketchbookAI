@@ -40964,6 +40964,2441 @@
       },
       "effects": [],
       "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "runtime": "weapon_query",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanReload",
+      "source_bytecode_sha256": "6596f1224f0881ce5b88d6da03b5e8273dbd78a829c8318b241c66f0398a597f",
+      "base_state": "combat-query-defaults",
+      "self": {
+        "CachedCurrentAmmo": 5,
+        "CachedMagazineSize": 18
+      },
+      "inputs": {},
+      "outputs": {
+        "CanReload": true
+      },
+      "effects": [],
+      "fixture_objects": {
+        "InventoryComp": {
+          "kind": "component",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_states": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6",
+          "base_state": "inventory-defaults",
+          "self": {
+            "CarryContents": [
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 12,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              }
+            ]
+          }
+        }
+      },
+      "query_dependencies": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+          "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444"
+        }
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037"
+      },
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96"
+      },
+      "source_note": "WEAPON_RELOAD_QUERY: partially loaded. Explicit offline object identities; tests original condition and original inventory lookup, not spawning, shooting, reload transfer/timers or scene acceptance."
+    },
+    {
+      "runtime": "weapon_query",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanReload",
+      "source_bytecode_sha256": "6596f1224f0881ce5b88d6da03b5e8273dbd78a829c8318b241c66f0398a597f",
+      "base_state": "combat-query-defaults",
+      "self": {
+        "CachedCurrentAmmo": 0,
+        "CachedMagazineSize": 18
+      },
+      "inputs": {},
+      "outputs": {
+        "CanReload": true
+      },
+      "effects": [],
+      "fixture_objects": {
+        "InventoryComp": {
+          "kind": "component",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_states": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6",
+          "base_state": "inventory-defaults",
+          "self": {
+            "CarryContents": [
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 12,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              }
+            ]
+          }
+        }
+      },
+      "query_dependencies": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+          "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444"
+        }
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037"
+      },
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96"
+      },
+      "source_note": "WEAPON_RELOAD_QUERY: empty magazine. Explicit offline object identities; tests original condition and original inventory lookup, not spawning, shooting, reload transfer/timers or scene acceptance."
+    },
+    {
+      "runtime": "weapon_query",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanReload",
+      "source_bytecode_sha256": "6596f1224f0881ce5b88d6da03b5e8273dbd78a829c8318b241c66f0398a597f",
+      "base_state": "combat-query-defaults",
+      "self": {
+        "CachedCurrentAmmo": 18,
+        "CachedMagazineSize": 18
+      },
+      "inputs": {},
+      "outputs": {
+        "CanReload": false
+      },
+      "effects": [],
+      "fixture_objects": {
+        "InventoryComp": {
+          "kind": "component",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_states": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6",
+          "base_state": "inventory-defaults",
+          "self": {
+            "CarryContents": [
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 12,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              }
+            ]
+          }
+        }
+      },
+      "query_dependencies": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+          "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444"
+        }
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037"
+      },
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96"
+      },
+      "source_note": "WEAPON_RELOAD_QUERY: full magazine. Explicit offline object identities; tests original condition and original inventory lookup, not spawning, shooting, reload transfer/timers or scene acceptance."
+    },
+    {
+      "runtime": "weapon_query",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanReload",
+      "source_bytecode_sha256": "6596f1224f0881ce5b88d6da03b5e8273dbd78a829c8318b241c66f0398a597f",
+      "base_state": "combat-query-defaults",
+      "self": {
+        "CachedCurrentAmmo": 19,
+        "CachedMagazineSize": 18
+      },
+      "inputs": {},
+      "outputs": {
+        "CanReload": false
+      },
+      "effects": [],
+      "fixture_objects": {
+        "InventoryComp": {
+          "kind": "component",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_states": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6",
+          "base_state": "inventory-defaults",
+          "self": {
+            "CarryContents": [
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 12,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              }
+            ]
+          }
+        }
+      },
+      "query_dependencies": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+          "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444"
+        }
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037"
+      },
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96"
+      },
+      "source_note": "WEAPON_RELOAD_QUERY: overfull source value. Explicit offline object identities; tests original condition and original inventory lookup, not spawning, shooting, reload transfer/timers or scene acceptance."
+    },
+    {
+      "runtime": "weapon_query",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanReload",
+      "source_bytecode_sha256": "6596f1224f0881ce5b88d6da03b5e8273dbd78a829c8318b241c66f0398a597f",
+      "base_state": "combat-query-defaults",
+      "self": {
+        "CachedCurrentAmmo": -1,
+        "CachedMagazineSize": 18
+      },
+      "inputs": {},
+      "outputs": {
+        "CanReload": true
+      },
+      "effects": [],
+      "fixture_objects": {
+        "InventoryComp": {
+          "kind": "component",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_states": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6",
+          "base_state": "inventory-defaults",
+          "self": {
+            "CarryContents": [
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 12,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              }
+            ]
+          }
+        }
+      },
+      "query_dependencies": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+          "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444"
+        }
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037"
+      },
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96"
+      },
+      "source_note": "WEAPON_RELOAD_QUERY: negative source ammo. Explicit offline object identities; tests original condition and original inventory lookup, not spawning, shooting, reload transfer/timers or scene acceptance."
+    },
+    {
+      "runtime": "weapon_query",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanReload",
+      "source_bytecode_sha256": "6596f1224f0881ce5b88d6da03b5e8273dbd78a829c8318b241c66f0398a597f",
+      "base_state": "combat-query-defaults",
+      "self": {
+        "CachedCurrentAmmo": 5,
+        "CachedMagazineSize": 18
+      },
+      "inputs": {},
+      "outputs": {
+        "CanReload": false
+      },
+      "effects": [],
+      "fixture_objects": {
+        "InventoryComp": {
+          "kind": "component",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_states": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6",
+          "base_state": "inventory-defaults",
+          "self": {
+            "CarryContents": [
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 0,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              }
+            ]
+          }
+        }
+      },
+      "query_dependencies": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+          "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444"
+        }
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037"
+      },
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96"
+      },
+      "source_note": "WEAPON_RELOAD_QUERY: no reserve. Explicit offline object identities; tests original condition and original inventory lookup, not spawning, shooting, reload transfer/timers or scene acceptance."
+    },
+    {
+      "runtime": "weapon_query",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanReload",
+      "source_bytecode_sha256": "6596f1224f0881ce5b88d6da03b5e8273dbd78a829c8318b241c66f0398a597f",
+      "base_state": "combat-query-defaults",
+      "self": {
+        "CachedCurrentAmmo": 5,
+        "CachedMagazineSize": 18
+      },
+      "inputs": {},
+      "outputs": {
+        "CanReload": false
+      },
+      "effects": [],
+      "fixture_objects": {
+        "InventoryComp": {
+          "kind": "component",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_states": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6",
+          "base_state": "inventory-defaults",
+          "self": {
+            "CarryContents": [
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": -1,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              }
+            ]
+          }
+        }
+      },
+      "query_dependencies": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+          "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444"
+        }
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037"
+      },
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96"
+      },
+      "source_note": "WEAPON_RELOAD_QUERY: negative reserve. Explicit offline object identities; tests original condition and original inventory lookup, not spawning, shooting, reload transfer/timers or scene acceptance."
+    },
+    {
+      "runtime": "weapon_query",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanReload",
+      "source_bytecode_sha256": "6596f1224f0881ce5b88d6da03b5e8273dbd78a829c8318b241c66f0398a597f",
+      "base_state": "combat-query-defaults",
+      "self": {
+        "CachedCurrentAmmo": 5,
+        "CachedMagazineSize": 18
+      },
+      "inputs": {},
+      "outputs": {
+        "CanReload": false
+      },
+      "effects": [],
+      "fixture_objects": {
+        "InventoryComp": {
+          "kind": "component",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_states": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6",
+          "base_state": "inventory-defaults",
+          "self": {
+            "CarryContents": [
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 12,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              }
+            ]
+          }
+        }
+      },
+      "query_dependencies": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+          "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444"
+        }
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037"
+      },
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96"
+      },
+      "source_note": "WEAPON_RELOAD_QUERY: wrong reserve type. Explicit offline object identities; tests original condition and original inventory lookup, not spawning, shooting, reload transfer/timers or scene acceptance."
+    },
+    {
+      "runtime": "weapon_query",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanReload",
+      "source_bytecode_sha256": "6596f1224f0881ce5b88d6da03b5e8273dbd78a829c8318b241c66f0398a597f",
+      "base_state": "combat-query-defaults",
+      "self": {
+        "CachedCurrentAmmo": 5,
+        "CachedMagazineSize": 18,
+        "bIsReloading": true
+      },
+      "inputs": {},
+      "outputs": {
+        "CanReload": false
+      },
+      "effects": [],
+      "fixture_objects": {
+        "InventoryComp": {
+          "kind": "component",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_states": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6",
+          "base_state": "inventory-defaults",
+          "self": {
+            "CarryContents": [
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 12,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              }
+            ]
+          }
+        }
+      },
+      "query_dependencies": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+          "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444"
+        }
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037"
+      },
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96"
+      },
+      "source_note": "WEAPON_RELOAD_QUERY: already reloading. Explicit offline object identities; tests original condition and original inventory lookup, not spawning, shooting, reload transfer/timers or scene acceptance."
+    },
+    {
+      "runtime": "weapon_query",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanReload",
+      "source_bytecode_sha256": "6596f1224f0881ce5b88d6da03b5e8273dbd78a829c8318b241c66f0398a597f",
+      "base_state": "combat-query-defaults",
+      "self": {
+        "CachedCurrentAmmo": 5,
+        "CachedMagazineSize": 18,
+        "bIsEquipping": true
+      },
+      "inputs": {},
+      "outputs": {
+        "CanReload": false
+      },
+      "effects": [],
+      "fixture_objects": {
+        "InventoryComp": {
+          "kind": "component",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_states": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6",
+          "base_state": "inventory-defaults",
+          "self": {
+            "CarryContents": [
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 12,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              }
+            ]
+          }
+        }
+      },
+      "query_dependencies": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+          "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444"
+        }
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037"
+      },
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96"
+      },
+      "source_note": "WEAPON_RELOAD_QUERY: equipping. Explicit offline object identities; tests original condition and original inventory lookup, not spawning, shooting, reload transfer/timers or scene acceptance."
+    },
+    {
+      "runtime": "weapon_query",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanReload",
+      "source_bytecode_sha256": "6596f1224f0881ce5b88d6da03b5e8273dbd78a829c8318b241c66f0398a597f",
+      "base_state": "combat-query-defaults",
+      "self": {
+        "CachedCurrentAmmo": 5,
+        "CachedMagazineSize": 18,
+        "bIsUnequipping": true
+      },
+      "inputs": {},
+      "outputs": {
+        "CanReload": true
+      },
+      "effects": [],
+      "fixture_objects": {
+        "InventoryComp": {
+          "kind": "component",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_states": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6",
+          "base_state": "inventory-defaults",
+          "self": {
+            "CarryContents": [
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 12,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              }
+            ]
+          }
+        }
+      },
+      "query_dependencies": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+          "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444"
+        }
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037"
+      },
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96"
+      },
+      "source_note": "WEAPON_RELOAD_QUERY: unequipping is not a reload guard. Explicit offline object identities; tests original condition and original inventory lookup, not spawning, shooting, reload transfer/timers or scene acceptance."
+    },
+    {
+      "runtime": "weapon_query",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanReload",
+      "source_bytecode_sha256": "6596f1224f0881ce5b88d6da03b5e8273dbd78a829c8318b241c66f0398a597f",
+      "base_state": "combat-query-defaults",
+      "self": {
+        "CachedCurrentAmmo": 5,
+        "CachedMagazineSize": 18,
+        "bIsFiring": true
+      },
+      "inputs": {},
+      "outputs": {
+        "CanReload": true
+      },
+      "effects": [],
+      "fixture_objects": {
+        "InventoryComp": {
+          "kind": "component",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_states": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6",
+          "base_state": "inventory-defaults",
+          "self": {
+            "CarryContents": [
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 12,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              }
+            ]
+          }
+        }
+      },
+      "query_dependencies": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+          "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444"
+        }
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037"
+      },
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96"
+      },
+      "source_note": "WEAPON_RELOAD_QUERY: firing is not a reload guard. Explicit offline object identities; tests original condition and original inventory lookup, not spawning, shooting, reload transfer/timers or scene acceptance."
+    },
+    {
+      "runtime": "weapon_query",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanReload",
+      "source_bytecode_sha256": "6596f1224f0881ce5b88d6da03b5e8273dbd78a829c8318b241c66f0398a597f",
+      "base_state": "combat-query-defaults",
+      "self": {
+        "CachedCurrentAmmo": 5,
+        "CachedMagazineSize": 18
+      },
+      "inputs": {},
+      "outputs": {
+        "CanReload": false
+      },
+      "effects": [],
+      "fixture_objects": {
+        "InventoryComp": {
+          "kind": "component",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6"
+        }
+      },
+      "query_states": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6",
+          "base_state": "inventory-defaults",
+          "self": {
+            "CarryContents": [
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 12,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              }
+            ]
+          }
+        }
+      },
+      "query_dependencies": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+          "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444"
+        }
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037"
+      },
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96"
+      },
+      "source_note": "WEAPON_RELOAD_QUERY: missing weapon. Explicit offline object identities; tests original condition and original inventory lookup, not spawning, shooting, reload transfer/timers or scene acceptance."
+    },
+    {
+      "runtime": "weapon_query",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanReload",
+      "source_bytecode_sha256": "6596f1224f0881ce5b88d6da03b5e8273dbd78a829c8318b241c66f0398a597f",
+      "base_state": "combat-query-defaults",
+      "self": {
+        "CachedCurrentAmmo": 5,
+        "CachedMagazineSize": 18
+      },
+      "inputs": {},
+      "outputs": {
+        "CanReload": false
+      },
+      "effects": [],
+      "fixture_objects": {
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_states": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6",
+          "base_state": "inventory-defaults",
+          "self": {
+            "CarryContents": [
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 12,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              }
+            ]
+          }
+        }
+      },
+      "query_dependencies": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+          "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444"
+        }
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037"
+      },
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96"
+      },
+      "source_note": "WEAPON_RELOAD_QUERY: missing inventory. Explicit offline object identities; tests original condition and original inventory lookup, not spawning, shooting, reload transfer/timers or scene acceptance."
+    },
+    {
+      "runtime": "weapon_query",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanReload",
+      "source_bytecode_sha256": "6596f1224f0881ce5b88d6da03b5e8273dbd78a829c8318b241c66f0398a597f",
+      "base_state": "combat-query-defaults",
+      "self": {
+        "CachedCurrentAmmo": 5,
+        "CachedMagazineSize": 18
+      },
+      "inputs": {},
+      "outputs": {
+        "CanReload": false
+      },
+      "effects": [],
+      "fixture_objects": {},
+      "query_states": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6",
+          "base_state": "inventory-defaults",
+          "self": {
+            "CarryContents": [
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 12,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              }
+            ]
+          }
+        }
+      },
+      "query_dependencies": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+          "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444"
+        }
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037"
+      },
+      "types": {
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96"
+      },
+      "source_note": "WEAPON_RELOAD_QUERY: both missing. Explicit offline object identities; tests original condition and original inventory lookup, not spawning, shooting, reload transfer/timers or scene acceptance."
+    },
+    {
+      "runtime": "weapon_query",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "OnRep_CachedCurrentAmmo",
+      "source_bytecode_sha256": "c080628d065cb0d2a02ce706d6ca3dee1fc05ebb4479afa7e479426e72684ec9",
+      "base_state": "combat-ammo-notification-defaults",
+      "self": {
+        "CachedCurrentAmmo": 0,
+        "CurrentEquippedSlot": 0
+      },
+      "inputs": {},
+      "outputs": {},
+      "effects": [
+        {
+          "op": "broadcast",
+          "delegate": "OnAmmoChanged",
+          "parameters": {
+            "CurrentAmmo": 0,
+            "ReserveAmmo": 21
+          },
+          "listeners": 0
+        }
+      ],
+      "fixture_objects": {
+        "InventoryComp": {
+          "kind": "component",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6"
+        }
+      },
+      "query_states": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6",
+          "base_state": "inventory-defaults",
+          "self": {
+            "CarryContents": [
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 12,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              },
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 15,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              },
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 6,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              },
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Shotgun",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 9,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              }
+            ],
+            "Slot_Primary": {
+              "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+              "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+              "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+              "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Rifle",
+              "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+              "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+              "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+              "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+              "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+              "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+              "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+              "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+            }
+          }
+        }
+      },
+      "query_dependencies": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "GetReserveAmmoForWeapon ": "190764cd7dcf102419f4617fee2778e11c8f3ead10261bc2de62b8ec51c3814d",
+          "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+          "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+          "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a"
+        }
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      },
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "source_note": "WEAPON_AMMO_NOTIFICATION: original cached-ammo notification using the original inventory reserve query. Offline component/notification comparison only; no shot, reload transfer, UI subscription or network execution."
+    },
+    {
+      "runtime": "weapon_query",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "OnRep_CachedCurrentAmmo",
+      "source_bytecode_sha256": "c080628d065cb0d2a02ce706d6ca3dee1fc05ebb4479afa7e479426e72684ec9",
+      "base_state": "combat-ammo-notification-defaults",
+      "self": {
+        "CachedCurrentAmmo": 7,
+        "CurrentEquippedSlot": 0
+      },
+      "inputs": {},
+      "outputs": {},
+      "effects": [
+        {
+          "op": "broadcast",
+          "delegate": "OnAmmoChanged",
+          "parameters": {
+            "CurrentAmmo": 7,
+            "ReserveAmmo": 21
+          },
+          "listeners": 0
+        }
+      ],
+      "fixture_objects": {
+        "InventoryComp": {
+          "kind": "component",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6"
+        }
+      },
+      "query_states": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6",
+          "base_state": "inventory-defaults",
+          "self": {
+            "CarryContents": [
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 12,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              },
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 15,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              },
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 6,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              },
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Shotgun",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 9,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              }
+            ],
+            "Slot_Primary": {
+              "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+              "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+              "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+              "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Rifle",
+              "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+              "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+              "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+              "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+              "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+              "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+              "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+              "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+            }
+          }
+        }
+      },
+      "query_dependencies": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "GetReserveAmmoForWeapon ": "190764cd7dcf102419f4617fee2778e11c8f3ead10261bc2de62b8ec51c3814d",
+          "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+          "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+          "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a"
+        }
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      },
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "source_note": "WEAPON_AMMO_NOTIFICATION: original cached-ammo notification using the original inventory reserve query. Offline component/notification comparison only; no shot, reload transfer, UI subscription or network execution."
+    },
+    {
+      "runtime": "weapon_query",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "OnRep_CachedCurrentAmmo",
+      "source_bytecode_sha256": "c080628d065cb0d2a02ce706d6ca3dee1fc05ebb4479afa7e479426e72684ec9",
+      "base_state": "combat-ammo-notification-defaults",
+      "self": {
+        "CachedCurrentAmmo": 0,
+        "CurrentEquippedSlot": 0
+      },
+      "inputs": {},
+      "outputs": {},
+      "effects": [
+        {
+          "op": "broadcast",
+          "delegate": "OnAmmoChanged",
+          "parameters": {
+            "CurrentAmmo": 0,
+            "ReserveAmmo": 12
+          },
+          "listeners": 0
+        }
+      ],
+      "fixture_objects": {
+        "InventoryComp": {
+          "kind": "component",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6"
+        }
+      },
+      "query_states": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6",
+          "base_state": "inventory-defaults",
+          "self": {
+            "CarryContents": [
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 12,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              },
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 15,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              },
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 6,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              },
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Shotgun",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 9,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              }
+            ],
+            "Slot_Primary": {
+              "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+              "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+              "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+              "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Pistol",
+              "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+              "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+              "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+              "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+              "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+              "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+              "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+              "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+            }
+          }
+        }
+      },
+      "query_dependencies": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "GetReserveAmmoForWeapon ": "190764cd7dcf102419f4617fee2778e11c8f3ead10261bc2de62b8ec51c3814d",
+          "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+          "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+          "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a"
+        }
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      },
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "source_note": "WEAPON_AMMO_NOTIFICATION: original cached-ammo notification using the original inventory reserve query. Offline component/notification comparison only; no shot, reload transfer, UI subscription or network execution."
+    },
+    {
+      "runtime": "weapon_query",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "OnRep_CachedCurrentAmmo",
+      "source_bytecode_sha256": "c080628d065cb0d2a02ce706d6ca3dee1fc05ebb4479afa7e479426e72684ec9",
+      "base_state": "combat-ammo-notification-defaults",
+      "self": {
+        "CachedCurrentAmmo": 7,
+        "CurrentEquippedSlot": 0
+      },
+      "inputs": {},
+      "outputs": {},
+      "effects": [
+        {
+          "op": "broadcast",
+          "delegate": "OnAmmoChanged",
+          "parameters": {
+            "CurrentAmmo": 7,
+            "ReserveAmmo": 12
+          },
+          "listeners": 0
+        }
+      ],
+      "fixture_objects": {
+        "InventoryComp": {
+          "kind": "component",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6"
+        }
+      },
+      "query_states": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6",
+          "base_state": "inventory-defaults",
+          "self": {
+            "CarryContents": [
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 12,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              },
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 15,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              },
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 6,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              },
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Shotgun",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 9,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              }
+            ],
+            "Slot_Primary": {
+              "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+              "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+              "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+              "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Pistol",
+              "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+              "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+              "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+              "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+              "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+              "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+              "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+              "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+            }
+          }
+        }
+      },
+      "query_dependencies": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "GetReserveAmmoForWeapon ": "190764cd7dcf102419f4617fee2778e11c8f3ead10261bc2de62b8ec51c3814d",
+          "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+          "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+          "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a"
+        }
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      },
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "source_note": "WEAPON_AMMO_NOTIFICATION: original cached-ammo notification using the original inventory reserve query. Offline component/notification comparison only; no shot, reload transfer, UI subscription or network execution."
+    },
+    {
+      "runtime": "weapon_query",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "OnRep_CachedCurrentAmmo",
+      "source_bytecode_sha256": "c080628d065cb0d2a02ce706d6ca3dee1fc05ebb4479afa7e479426e72684ec9",
+      "base_state": "combat-ammo-notification-defaults",
+      "self": {
+        "CachedCurrentAmmo": 0,
+        "CurrentEquippedSlot": 0
+      },
+      "inputs": {},
+      "outputs": {},
+      "effects": [
+        {
+          "op": "broadcast",
+          "delegate": "OnAmmoChanged",
+          "parameters": {
+            "CurrentAmmo": 0,
+            "ReserveAmmo": 9
+          },
+          "listeners": 0
+        }
+      ],
+      "fixture_objects": {
+        "InventoryComp": {
+          "kind": "component",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6"
+        }
+      },
+      "query_states": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6",
+          "base_state": "inventory-defaults",
+          "self": {
+            "CarryContents": [
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 12,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              },
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 15,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              },
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 6,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              },
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Shotgun",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 9,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              }
+            ],
+            "Slot_Primary": {
+              "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+              "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+              "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+              "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_AutoShotgun",
+              "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+              "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+              "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+              "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+              "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+              "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+              "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+              "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+            }
+          }
+        }
+      },
+      "query_dependencies": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "GetReserveAmmoForWeapon ": "190764cd7dcf102419f4617fee2778e11c8f3ead10261bc2de62b8ec51c3814d",
+          "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+          "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+          "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a"
+        }
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      },
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "source_note": "WEAPON_AMMO_NOTIFICATION: original cached-ammo notification using the original inventory reserve query. Offline component/notification comparison only; no shot, reload transfer, UI subscription or network execution."
+    },
+    {
+      "runtime": "weapon_query",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "OnRep_CachedCurrentAmmo",
+      "source_bytecode_sha256": "c080628d065cb0d2a02ce706d6ca3dee1fc05ebb4479afa7e479426e72684ec9",
+      "base_state": "combat-ammo-notification-defaults",
+      "self": {
+        "CachedCurrentAmmo": 7,
+        "CurrentEquippedSlot": 0
+      },
+      "inputs": {},
+      "outputs": {},
+      "effects": [
+        {
+          "op": "broadcast",
+          "delegate": "OnAmmoChanged",
+          "parameters": {
+            "CurrentAmmo": 7,
+            "ReserveAmmo": 9
+          },
+          "listeners": 0
+        }
+      ],
+      "fixture_objects": {
+        "InventoryComp": {
+          "kind": "component",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6"
+        }
+      },
+      "query_states": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6",
+          "base_state": "inventory-defaults",
+          "self": {
+            "CarryContents": [
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 12,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              },
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 15,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              },
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 6,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              },
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Shotgun",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 9,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              }
+            ],
+            "Slot_Primary": {
+              "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+              "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+              "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+              "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_AutoShotgun",
+              "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+              "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+              "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+              "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+              "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+              "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+              "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+              "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+            }
+          }
+        }
+      },
+      "query_dependencies": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "GetReserveAmmoForWeapon ": "190764cd7dcf102419f4617fee2778e11c8f3ead10261bc2de62b8ec51c3814d",
+          "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+          "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+          "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a"
+        }
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      },
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "source_note": "WEAPON_AMMO_NOTIFICATION: original cached-ammo notification using the original inventory reserve query. Offline component/notification comparison only; no shot, reload transfer, UI subscription or network execution."
+    },
+    {
+      "runtime": "weapon_query",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "OnRep_CachedCurrentAmmo",
+      "source_bytecode_sha256": "c080628d065cb0d2a02ce706d6ca3dee1fc05ebb4479afa7e479426e72684ec9",
+      "base_state": "combat-ammo-notification-defaults",
+      "self": {
+        "CachedCurrentAmmo": 0,
+        "CurrentEquippedSlot": 0
+      },
+      "inputs": {},
+      "outputs": {},
+      "effects": [
+        {
+          "op": "broadcast",
+          "delegate": "OnAmmoChanged",
+          "parameters": {
+            "CurrentAmmo": 0,
+            "ReserveAmmo": 12
+          },
+          "listeners": 0
+        }
+      ],
+      "fixture_objects": {
+        "InventoryComp": {
+          "kind": "component",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6"
+        }
+      },
+      "query_states": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6",
+          "base_state": "inventory-defaults",
+          "self": {
+            "CarryContents": [
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 12,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              },
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 15,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              },
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 6,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              },
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Shotgun",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 9,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              }
+            ],
+            "Slot_Primary": {
+              "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+              "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+              "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+              "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Missing_Weapon",
+              "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+              "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+              "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+              "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+              "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+              "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+              "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+              "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+            }
+          }
+        }
+      },
+      "query_dependencies": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "GetReserveAmmoForWeapon ": "190764cd7dcf102419f4617fee2778e11c8f3ead10261bc2de62b8ec51c3814d",
+          "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+          "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+          "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a"
+        }
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      },
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "source_note": "WEAPON_AMMO_NOTIFICATION: original cached-ammo notification using the original inventory reserve query. Offline component/notification comparison only; no shot, reload transfer, UI subscription or network execution."
+    },
+    {
+      "runtime": "weapon_query",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "OnRep_CachedCurrentAmmo",
+      "source_bytecode_sha256": "c080628d065cb0d2a02ce706d6ca3dee1fc05ebb4479afa7e479426e72684ec9",
+      "base_state": "combat-ammo-notification-defaults",
+      "self": {
+        "CachedCurrentAmmo": 7,
+        "CurrentEquippedSlot": 0
+      },
+      "inputs": {},
+      "outputs": {},
+      "effects": [
+        {
+          "op": "broadcast",
+          "delegate": "OnAmmoChanged",
+          "parameters": {
+            "CurrentAmmo": 7,
+            "ReserveAmmo": 12
+          },
+          "listeners": 0
+        }
+      ],
+      "fixture_objects": {
+        "InventoryComp": {
+          "kind": "component",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6"
+        }
+      },
+      "query_states": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6",
+          "base_state": "inventory-defaults",
+          "self": {
+            "CarryContents": [
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 12,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              },
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 15,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              },
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 6,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              },
+              {
+                "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+                "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+                "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+                "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Shotgun",
+                "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+                "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+                "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+                "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+                "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+                "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 9,
+                "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+                "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+              }
+            ],
+            "Slot_Primary": {
+              "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+              "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+              "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 0.0,
+              "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Missing_Weapon",
+              "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+              "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+              "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+              "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+              "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+              "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+              "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+              "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+            }
+          }
+        }
+      },
+      "query_dependencies": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "GetReserveAmmoForWeapon ": "190764cd7dcf102419f4617fee2778e11c8f3ead10261bc2de62b8ec51c3814d",
+          "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+          "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+          "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a"
+        }
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      },
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "source_note": "WEAPON_AMMO_NOTIFICATION: original cached-ammo notification using the original inventory reserve query. Offline component/notification comparison only; no shot, reload transfer, UI subscription or network execution."
+    },
+    {
+      "runtime": "weapon_query",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "OnRep_CachedCurrentAmmo",
+      "source_bytecode_sha256": "c080628d065cb0d2a02ce706d6ca3dee1fc05ebb4479afa7e479426e72684ec9",
+      "base_state": "combat-ammo-notification-defaults",
+      "self": {
+        "CachedCurrentAmmo": 0,
+        "CurrentEquippedSlot": 0
+      },
+      "inputs": {},
+      "outputs": {},
+      "effects": [
+        {
+          "op": "broadcast",
+          "delegate": "OnAmmoChanged",
+          "parameters": {
+            "CurrentAmmo": 0,
+            "ReserveAmmo": 0
+          },
+          "listeners": 0
+        }
+      ],
+      "fixture_objects": {
+        "InventoryComp": {
+          "kind": "component",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6"
+        }
+      },
+      "query_states": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6",
+          "base_state": "inventory-defaults",
+          "self": {
+            "CarryContents": []
+          }
+        }
+      },
+      "query_dependencies": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "GetReserveAmmoForWeapon ": "190764cd7dcf102419f4617fee2778e11c8f3ead10261bc2de62b8ec51c3814d",
+          "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+          "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+          "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a"
+        }
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      },
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "source_note": "WEAPON_AMMO_NOTIFICATION: original cached-ammo notification using the original inventory reserve query. Offline component/notification comparison only; no shot, reload transfer, UI subscription or network execution."
+    },
+    {
+      "runtime": "weapon_query",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "OnRep_CachedCurrentAmmo",
+      "source_bytecode_sha256": "c080628d065cb0d2a02ce706d6ca3dee1fc05ebb4479afa7e479426e72684ec9",
+      "base_state": "combat-ammo-notification-defaults",
+      "self": {
+        "CachedCurrentAmmo": 7,
+        "CurrentEquippedSlot": 0
+      },
+      "inputs": {},
+      "outputs": {},
+      "effects": [
+        {
+          "op": "broadcast",
+          "delegate": "OnAmmoChanged",
+          "parameters": {
+            "CurrentAmmo": 7,
+            "ReserveAmmo": 0
+          },
+          "listeners": 0
+        }
+      ],
+      "fixture_objects": {
+        "InventoryComp": {
+          "kind": "component",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6"
+        }
+      },
+      "query_states": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "source_sha256": "c33f8c28b92178bccb251e534c9a26ca47f78d5ff199e26a9835aba3d198c3d6",
+          "base_state": "inventory-defaults",
+          "self": {
+            "CarryContents": []
+          }
+        }
+      },
+      "query_dependencies": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "GetReserveAmmoForWeapon ": "190764cd7dcf102419f4617fee2778e11c8f3ead10261bc2de62b8ec51c3814d",
+          "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+          "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+          "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a"
+        }
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      },
+      "types": {
+        "/Game/Blueprints/Data/CharacterInputState": "6eac58d670747f21a6bf8a31c663bb5b5fdb9006074c82dc7821f4c39115233e",
+        "/Game/Blueprints/Data/S_MovementDirectionThresholds": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+        "/Game/Blueprints/Data/S_PlayerInputState": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+        "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e"
+      },
+      "source_note": "WEAPON_AMMO_NOTIFICATION: original cached-ammo notification using the original inventory reserve query. Offline component/notification comparison only; no shot, reload transfer, UI subscription or network execution."
+    },
+    {
+      "runtime": "weapon_query",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "OnRep_CachedCurrentAmmo",
+      "source_bytecode_sha256": "c080628d065cb0d2a02ce706d6ca3dee1fc05ebb4479afa7e479426e72684ec9",
+      "base_state": "combat-ammo-notification-defaults",
+      "self": {
+        "CachedCurrentAmmo": 7
+      },
+      "inputs": {},
+      "outputs": {},
+      "effects": [],
+      "query_dependencies": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers": {
+          "GetReserveAmmoForWeapon ": "190764cd7dcf102419f4617fee2778e11c8f3ead10261bc2de62b8ec51c3814d"
+        }
+      },
+      "source_note": "WEAPON_AMMO_NOTIFICATION: null original InventoryComp skips notification. Offline source-data comparison."
     }
   ],
   "schema_version": 1,
@@ -41283,6 +43718,114 @@
       "types": {
         "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
         "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e"
+      }
+    },
+    "combat-query-defaults": {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "source_sha256": "0ed9db150534632a0cd02e7321eff11a57375a263c7b0094ce80d5a507834cd0",
+      "state": {
+        "CachedCurrentAmmo": 0,
+        "CachedMagazineSize": 0,
+        "CachedWeaponData": {
+          "ADSMovementMult_99_16EEEFC34CE9FAA368CAD29CD7495F5A": 0.0,
+          "ADSTime_97_6B992B1144EE2F5BE325DD86F43F31A2": 0.0,
+          "ADSZoom_98_13C1F9C842FF9B28B01B8DB5DBF8B481": 0.0,
+          "AimSpreadMultiplier_256_254C68A54CCF41488586B5A16BEFDA7C": 0.3,
+          "AmmoType_81_C19C975448FBCB6C085D41B6D098637F": 0,
+          "Anim_Reload_117_E182DDD542282CA2702E2C9FD6CEC882": null,
+          "Anim_Reload_Empty_292_8C60CDCB4C0BA81185A6C596F59FE162": null,
+          "Anim_WeaponReload_321_8159F57649F87B1182B4859DFD7E9253": null,
+          "Anim_WeaponReload_Empty_322_5895634A4F2A32EFBA9D1681ABC96999": null,
+          "BaseDamage_74_EED27D5542A964C175C7DD9906082211": 0.0,
+          "BaseSpread_254_59D65E3B4D9E48DFA9385A9B6D1A50CF": 0.5,
+          "BurstCount_175_917E2B4345853B9F9A360294B5852944": 3,
+          "CameraShake_Fire_232_0C90518947C1D8E3C81ECCAEF6BB0856": null,
+          "CrouchSpreadMultiplier_264_DEEA037040E6925525F133A8BAD8E208": 0.7,
+          "EffectiveRange_77_B95A235A498075AB62D4459CBA7CC6D2": 0.0,
+          "FireSpreadAdd_266_20D181EB4A6017BFE5A911B4E2FA6BAE": 0.2,
+          "FiringMode_172_952FC4FD44A7ABC7C83962AFB87097F9": 0,
+          "HeadshotMultiplier_75_065A139A46EA66A4705B0D8BC83AF39A": 0.0,
+          "HipFireSpreadMultiplier_272_BDCF9CDE4CA8C54090BB9FB4813063A1": 1.5,
+          "HolsterRotationOffset_251_EB86144B4BE4AE5C25D52D8629A0D379": {
+            "Pitch": 0.0,
+            "Roll": 0.0,
+            "Yaw": 0.0
+          },
+          "ItemID_53_4307572A4C31602F6D1F628755B38392": "None",
+          "JumpSpreadAdd_262_8BEC459E46C9635957E1B9A4CB2B0A32": 4.0,
+          "LeftHand_Location_129_F5AEEBAD4EFE0208A4A7FF8DFB530CD1": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0
+          },
+          "LeftHand_Rotation_132_89E1AF494DFBF57F007BC0ABDF959555": {
+            "Pitch": 0.0,
+            "Roll": 0.0,
+            "Yaw": 0.0
+          },
+          "MagBoneName_317_C8DA56A24E90727F450FBF866D07F8CB": "None",
+          "MagDropMeshSAWNOFF_304_9FA48A2F410DB933D109D181CFE5C776": null,
+          "MagDropMesh_302_430B8A894B690B73C8A34F9EA7F40DE5": null,
+          "MagazineSize_84_FD2F632342262ABF35E587B560B2F9B6": 0,
+          "MaxRange_78_BB09E405474D117DC1CC2096ED17663C": 0.0,
+          "MaxSpreadRecoil_323_874934F147AF51E7DE0DA08A3BF33D3F": 8.0,
+          "MinDamagePercent_286_7AF477FD4867978BDA838D9D6FBF2CD7": 0.25,
+          "MoveSpreadAdd_258_96B835EA43C6ECA51B1958990FA8BEF4": 0.5,
+          "MuzzleTraceLength_162_373A9105425161CB966267919D2A83D7": 50.0,
+          "NS_BulletTracer_289_10A9E22A4FE375AFBE02A3B7C3AF5CFC": null,
+          "NS_CasingEject_239_372A420B4DE82381BA50B6932EF910C0": null,
+          "NS_Impact_326_696FE7704AB72BC5E4CDDF813AB6E6E5": null,
+          "NS_MuzzleFlash_235_7F3D029448102A4A3B176EA09CFF4D0C": null,
+          "ObstructionThreshold_164_1831BED7495014474396E99BC5200607": 30.0,
+          "PelletCount_SHOTGUN_280_FC5731EC4E3C2A33316532A1045D5C74": 0,
+          "PelletSpreadAngle_SHOTGUN_279_FC3A73184A673C1908224A8B5AA38AD2": 4.0,
+          "RPM_76_F8958CE8431038B13B5C68BCC143A304": 0.0,
+          "RecoilKickback_240_84DBABA6409C59D91D8983945A01BFCF": -3.0,
+          "RecoilMultiplier_214_9A96478740381064076516A8D1BC6A55": 1.0,
+          "RecoilPitchMax_218_8465C2614D2EE73D24B2B18DB04494BF": -6.0,
+          "RecoilPitchMin_216_91D628B64FB25619A8464C9E57B57614": -3.0,
+          "RecoilRecoverySpeed_243_BB3C47D540844C36A45C208F2C491D0F": 12.0,
+          "RecoilYawMax_222_37CDE47947471EB5A43F108B82CB7EED": 2.0,
+          "RecoilYawMin_220_90455D89413BB7C56F016E8DB186AC0F": -2.0,
+          "ReloadTime_87_42438381423C0A09445A92834B5153B1": 0.0,
+          "ReloadTime_Empty_299_44B709B84307CF6760058184B3D11DC0": 0.0,
+          "Sound_CasingDrop_229_3C482DBA483A983D7A86AA9ADDED29E6": null,
+          "Sound_Fire_227_ED32B643431BEC47A3FFA6B4DEAE6FDF": null,
+          "Sound_MagIn_312_6172D6734CDC4282227254A0C1D44CEE": null,
+          "Sound_MagOut_310_FF4B1F97459C7E79D081B1BC2A72B9AC": null,
+          "Sound_Rack_314_0738A3024810F9236AD1D0A160F5641F": null,
+          "SpreadRecoveryRate_268_4BE3170546F7E20D53F0BC9C0BB072CB": 5.0,
+          "SprintSpreadAdd_260_C7076EC444C09D6188EBB4B5D3849BCA": 2.0,
+          "Stat_Accuracy_70_CA34C7D04EBCAA8FB8A4678137D9AB00": 0.0,
+          "Stat_Control_73_33F2B0E84F8580CEE5B6CD942F854DAB": 0.0,
+          "Stat_Firepower_69_9CC52E404C8116DC05DA1489E9B063B7": 0.0,
+          "Stat_Handling_71_22701CED482ADF91B6AB8D84E96B5C52": 0.0,
+          "Stat_Range_72_E4903C094678A34850137AA2975817DE": 0.0,
+          "WeaponFireAnim_144_877BC71640992237E69D78B9EFC35C77": null,
+          "WeaponMesh_137_D402138144D70766736C39864A8452D0": null,
+          "bCanSwitchFiringMode_178_2D13E0DA4693A74A09E28A81F2DD497C": false,
+          "bEjectCasingOnFire_245_55CB2CF64983394045BC2EAEDBA3259F": false,
+          "bHasGripSlot_108_C189A7A7493ADACCAC065EB9B21EA695": false,
+          "bHasMagazineSlot_109_F86179714F392D098E1267BFAB25E446": false,
+          "bHasMuzzleSlot_107_4F8D69D54C52D4E1DA9972A9368AEC74": false,
+          "bHasOpticSlot_102_2418056A4E2D63173637CA833A9875A8": false,
+          "bHasStockSlot_110_0FF73C7F45DCF4DE3A5BFB852658C699": false,
+          "bIsBreakActionSAWNOFF_307_242F605740AA278C7E7B42B26662B191": false,
+          "bIsShotgun_283_2FA65DF74548BABA4E179B8D3DFABC71": false
+        },
+        "EquippedWeapon": null,
+        "InventoryComp": null,
+        "bIsEquipping": false,
+        "bIsReloading": false
+      }
+    },
+    "combat-ammo-notification-defaults": {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "source_sha256": "0ed9db150534632a0cd02e7321eff11a57375a263c7b0094ce80d5a507834cd0",
+      "state": {
+        "CachedCurrentAmmo": 0,
+        "CurrentEquippedSlot": 21,
+        "InventoryComp": null
       }
     }
   }

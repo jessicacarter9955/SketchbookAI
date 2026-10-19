@@ -48,6 +48,16 @@ test('portable source verifier requires original shared-state and table witnesse
     assert.throws(()=>verifySourceCases(report,fixture),/independent expected/);
 });
 
+test('object and related-state fixtures require explicit source bindings and dependency witnesses',()=>{
+    for(const corrupt of [
+        f=>f.fixture_objects={Count:{kind:'actor',package:'/Game/Original',source_sha256:'original'}},
+        f=>f.query_states={'/Game/Other':{package:'/Game/Other',self:{Count:7}}},
+        f=>f.query_dependencies={'/Game/Other':{Read:'stale'}}]) {
+        const {report,fixture}=source();corrupt(fixture.cases[0]);
+        assert.throws(()=>verifySourceCases(report,fixture),/Fixture|fixture/);
+    }
+});
+
 test('verification command writes only outside source project and preserves its input files',async t=>{
     const folder=await fs.mkdtemp(path.join(os.tmpdir(),'ue2three-source-qa-'));
     t.after(()=>fs.rm(folder,{recursive:true,force:true}));

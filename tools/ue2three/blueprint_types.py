@@ -30,8 +30,18 @@ def property_schema(package, prop):
         return schema
     if type_name == 'ObjectProperty':
         identity = import_path(package, prop.get('PropertyClass'))
-        if identity == ('/Script/Engine', 'Actor'):
+        if identity in {('/Script/Engine', name) for name in ('Actor', 'Pawn', 'Character')}:
             return {'type': type_name, 'class': list(identity), 'reference_kind': 'runtime_actor', 'default': None}
+        source = getattr(package, 'source_packages', {}).get((identity or (None,))[0])
+        if source and identity:
+            from blueprint_objects import class_metadata
+            meta = class_metadata(source)
+            if meta and meta['object'] == identity[-1]:
+                base = meta['native_base']
+                reference_kind = 'runtime_component' if base == ['/Script/Engine', 'ActorComponent'] else (
+                    'runtime_actor' if tuple(base) in {('/Script/Engine', name) for name in ('Actor', 'Pawn', 'Character')} else None)
+                if reference_kind:
+                    return {'type': type_name, 'class': list(identity), 'reference_kind': reference_kind, 'default': None}
         if identity: return {'type': type_name, 'class': list(identity), 'default': None}
     if type_name == 'ClassProperty':
         identity, meta = import_path(package, prop.get('PropertyClass')), import_path(package, prop.get('MetaClass'))

@@ -1,5 +1,56 @@
 # ue2three saved handoff · 2026-10-18
 
+## Source weapon reload/component queries · 2026-10-19
+
+187 translated /320 blocked, 67 event helpers, 60 declarations, six no-op
+functions and56 empty callbacks. The denominator is now507 functions rather
+than500 because one bounded original BPA_Weapon_Fixers read added seven real
+functions, all still blocked. Uncached packages262. Do not compare the blocker
+count as if the source inventory had stayed unchanged.
+
+Added generic, source-typed read-only queries between explicitly bound SCS
+components. Original parameter schemas, export/class identities, context byte
+offsets and query dependencies must match. Out parameters copy into caller
+storage. Null receivers keep caller out storage and produce an Accessed None
+warning, matching admitted void/out calls. Query receivers use current component
+state on each call, with no persistent copy/cache. Mutation, dirty properties,
+multicast effects, persistent frames, reentrant aliases and unsupported calls
+reject transactionally. Component initialization, world creation and mutation
+are NOT implemented by this adapter.
+
+New original source bodies: CanReload and OnRep_CachedCurrentAmmo. Fifteen
+independent reload predicate cases cover ammo below/equal/above capacity, empty,
+negative ammo/reserve, wrong ammo, busy flags and missing objects. Eleven ammo
+notification cases reuse independently expected original inventory reserve
+results. Object fixtures are explicit OFFLINE source-class identities; they
+never spawn/register actors in the live game and cannot grant scene acceptance.
+Total719 source comparisons /491 inventory PASS. Generic regression:143 Python,
+97 JavaScript PASS. Editor build PASS, revision23 ue-source-weapon-queries-23.
+Source report SHAd04bf2919f7bb9c0f4737c9eff4c85e0b08dc1b965882918dc935d02bbf01324.
+
+Fixed a separate source default decoding bug: BytePropertyData with ByteType
+FName has EnumValue rather than Value. The old generic property helper returned
+null for these original class defaults. Now source enum identities resolve the
+real values (combat CurrentEquippedSlot21); unavailable named native enum
+fields are omitted and explicitly listed, never replaced with invented zero.
+Combat TraceChannel still lacks its native enum mapping.
+
+BPA_Weapon_Fixers cached SHA417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206.
+Its seven blocked bodies: GetLeftHandIKTransform, GetMuzzleTransform,
+GetRightHandIKTransform, GetShellEjectTransform, InitializeWeapon,
+OnRep_WeaponMeshAsset, UpdateCachedAmmo. These need original native skeletal
+mesh/socket/state adapters; do not replace them with hand-authored weapon rules.
+
+Complete character/weapons remains YELLOW. Actual live R/fire/weapon changes
+are still mainly presentation. Next: original component initialization and
+cross-object delegate wiring; typed native mesh/socket/world actor lifecycle;
+original equip/unequip, source game clock/fire cadence/trace/ammo and actual
+reload transfer/timers. See docs/ue2three-character-weapons.md. No Unreal launch,
+rescan/export/upload or new tool installation. Animations1:1 deferred, lighting
+last. The integrated browser still lists connection-error documents, even though
+127.0.0.1:8401 is listening. Its prior protocol access block needs manual reload;
+no fresh screenshot/browser acceptance claimed or bypass attempted.
+
 ## Original weapon montage selectors · 2026-10-19
 
 Character/weapons priority: source getters GetEquipMontageForGripType and

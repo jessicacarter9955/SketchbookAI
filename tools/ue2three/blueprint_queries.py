@@ -1,0 +1,112 @@
+"""Read-only original component calls. Mutating/lifecycle calls stay blocked."""
+from blueprint_types import import_path, property_schema
+from blueprint_effects import variable
+
+
+def object_validity(value, package, owner, reads, outputs, depth):
+    from blueprint_migration import BlueprintTranslationError as Error
+    if import_path(package, value.get('StackNode')) != ('/Script/Engine', 'KismetSystemLibrary', 'IsValid'): return None
+    args = value.get('Parameters')
+    if not isinstance(args, list) or len(args) != 1: raise Error('Original IsValid arity differs')
+    target, schema = variable(args[0], package, owner, reads, outputs, depth)
+    if schema.get('reference_kind') not in ('runtime_actor', 'runtime_component'):
+        raise Error('IsValid requires an explicit original live-object binding; asset loading is not implied')
+    return {'op': 'native_object_valid', 'target': target, 'schema': schema}
+
+
+def component_query(value, package, owner, reads, outputs, depth):
+    from blueprint_migration import kind, expression, memory_size, BlueprintTranslationError as Error
+    call = value.get('ContextExpression', {})
+    if kind(call) not in ('EX_LocalVirtualFunction', 'EX_VirtualFunction'): return None
+    target, schema = variable(value.get('ObjectExpression', {}), package, owner, reads, outputs, depth)
+    if schema.get('reference_kind') != 'runtime_component': return None
+    identity = tuple(schema['class']); source = getattr(package, 'source_packages', {}).get(identity[0])
+    if source is package: raise Error('Same-instance component aliases require shared active storage')
+    from blueprint_objects import class_metadata
+    meta = class_metadata(source) if source else None
+    if not meta or meta['object'] != identity[1]: raise Error('Original component class is unavailable')
+    candidates = [(i, e) for i, e in enumerate(source.exports, 1) if e.get('ObjectName') == call.get('VirtualFunctionName')
+                  and e.get('OuterIndex') == meta['export_index'] and e.get('ScriptBytecode')]
+    if len(candidates) != 1: raise Error('Original component query implementation is unresolved')
+    index, function = candidates[0]
+    props = [p for p in function.get('LoadedProperties', []) if 'CPF_Parm' in str(p.get('PropertyFlags'))]
+    if any('CPF_ReturnParm' in str(p.get('PropertyFlags')) for p in props):
+        raise Error('Component query return storage requires an explicit adapter')
+    args = call.get('Parameters')
+    if not isinstance(args, list) or len(args) != len(props) or value.get('Offset') != memory_size(call, package=package):
+        raise Error('Original component query signature or context offset differs')
+    bindings = []
+    for prop, arg in zip(props, args):
+        parameter_schema = property_schema(source, prop)
+        if not parameter_schema: raise Error('Original component query parameter schema is unavailable')
+        if 'CPF_OutParm' in str(prop.get('PropertyFlags')) and 'CPF_ConstParm' not in str(prop.get('PropertyFlags')):
+            destination, output_schema = variable(arg, package, owner, reads, outputs, depth)
+            if parameter_schema != output_schema: raise Error('Original component query output schema differs')
+            bindings.append({'mode': 'output', 'parameter': prop['Name'], 'target': destination})
+        else:
+            bindings.append({'mode': 'input', 'parameter': prop['Name'],
+                             'value': expression(arg, reads, outputs, depth+1, package, owner), 'schema': parameter_schema})
+    return {'op': 'component_query', 'target': target, 'package': identity[0], 'class_object': identity[1],
+            'function': function['ObjectName'], 'export_index': index, 'bindings': bindings}
+
+
+def expressions(value):
+    if isinstance(value, dict):
+        if 'op' in value: yield value
+        for child in value.values(): yield from expressions(child)
+    elif isinstance(value, list):
+        for child in value: yield from expressions(child)
+
+
+def query_safe(program, library, visited=None, packages=None, package_name=None, receiver_chain=None):
+    visited = set() if visited is None else visited
+    name = (package_name, program.get('name'))
+    if name in visited: return False  # No recursive cross-object query graph.
+    if program.get('self_writes') or program.get('persistent_types'): return False
+    visited = visited | {name}
+    for node in expressions(program.get('steps', [])):
+        if node['op'] in ('broadcast', 'mark_dirty', 'native_force_net_update'): return False
+        if node['op'] == 'call':
+            child = library.get(node.get('function'))
+            if not child or child['source_export_index'] != node['export_index'] or not query_safe(
+                    child, library, visited, packages, package_name, receiver_chain): return False
+        if node['op'] == 'component_query' and packages is not None:
+            target_name = node['package']; chain = receiver_chain or {package_name}
+            if target_name in chain: return False
+            target = packages.get(target_name, {}); child = target.get('functions', {}).get(node['function'])
+            child_library = {**target.get('functions', {}), **target.get('event_programs', {})}
+            if not child or child['source_export_index'] != node['export_index'] or not query_safe(
+                    child, child_library, visited, packages, target_name, chain | {target_name}): return False
+    return True
+
+
+def prune_queries(packages):
+    """Never publish a caller whose required original receiver failed migration."""
+    while True:
+        changed = False
+        for package_name, data in packages.items():
+            library = {**data['functions'], **data['event_programs']}
+            for name, program in list(library.items()):
+                reason = None
+                for node in expressions(program['steps']):
+                    if node['op'] == 'call' and node.get('function') not in library:
+                        reason = 'Untranslated function dependency: ' + node['function']; break
+                    if node['op'] != 'component_query': continue
+                    target = packages.get(node['package'], {})
+                    callee = target.get('functions', {}).get(node['function'])
+                    target_library = {**target.get('functions', {}), **target.get('event_programs', {})}
+                    if (node['package'] == package_name or not callee or callee['source_export_index'] != node['export_index']
+                            or not query_safe(callee, target_library, packages=packages, package_name=node['package'],
+                                              receiver_chain={package_name, node['package']})):
+                        reason = 'Untranslated or effectful component query: ' + node['package'] + ':' + node['function']; break
+                if reason:
+                    group = 'event_programs' if program.get('internal_event_entry') else 'functions'
+                    del data[group][name]
+                    row = {'function': name, 'source_export_index': program['source_export_index'], 'reason': reason}
+                    data['event_blocked' if group == 'event_programs' else 'blocked'].append(row)
+                    changed = True
+        if not changed: break
+    for data in packages.values():
+        data['counts']['translated'] = len(data['functions'])
+        data['counts']['blocked'] = len(data['blocked'])
+        if 'event_entries' in data['counts']: data['counts']['event_entries'] = len(data['event_programs'])

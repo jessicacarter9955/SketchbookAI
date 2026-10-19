@@ -65,7 +65,7 @@ def serialized_value(package, prop, schema, value):
         return [serialized_value(package, prop['Inner'], schema['element'], item) for item in items]
     if type_name in ('ObjectProperty', 'ClassProperty'):
         reference = value.get('Value')
-        if schema.get('reference_kind') == 'runtime_actor':
+        if schema.get('reference_kind') in ('runtime_actor', 'runtime_component'):
             if type(reference) is int and reference == 0: return None
             raise ValueError('Non-null source actor defaults require world-object migration')
         if type_name == 'ClassProperty' and reference != 0:
@@ -114,10 +114,14 @@ def serialized_value(package, prop, schema, value):
     return raw
 
 
+def source_enums(documents):
+    return {(name, export['ObjectName']): {v['Item1']: v['Item2'] for v in export['Enum'].get('Names', [])}
+             for name, doc in documents.items() for export in doc.get('Exports', []) if 'Enum' in export}
+
+
 def construct_source_structs(documents):
     from blueprint_types import property_schema
-    enums = {(name, export['ObjectName']): {v['Item1']: v['Item2'] for v in export['Enum'].get('Names', [])}
-             for name, doc in documents.items() for export in doc.get('Exports', []) if 'Enum' in export}
+    enums = source_enums(documents)
     structs = {}
     pending = [(name, doc, export) for name, doc in documents.items() for export in doc.get('Exports', []) if 'StructData' in export]
     for _ in range(len(pending)+1):

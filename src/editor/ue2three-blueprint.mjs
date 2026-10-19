@@ -1,6 +1,7 @@
 // Executes normalized source-derived instructions; never evaluates generated JS.
 import { evaluateNativeMath } from './ue2three-native-math.mjs';
-import { validActorReference, sourceComponentOwner, sourceForceNetUpdate } from './ue2three-objects.mjs';
+import { validActorReference, validComponentReference, sourceComponentOwner, sourceForceNetUpdate,
+    sourceQueryReceiver, sourceObjectValid } from './ue2three-objects.mjs';
 const owns = (object, key) => object != null && Object.hasOwn(object, key);
 const safeField = key => typeof key === 'string' && key.length > 0 && !['__proto__', 'constructor', 'prototype'].includes(key);
 const validPrimitive = (type, value) => type === 'BoolProperty' && typeof value === 'boolean'
@@ -24,6 +25,11 @@ function validateSchema(schema, value, depth = 0) {
             if (value !== null && !validActorReference(value)) throw new Error('Invalid source runtime actor reference');
             return;
         }
+        if (schema.reference_kind === 'runtime_component') {
+            if (value !== null && (!validComponentReference(value)
+                || JSON.stringify(value.declared_class) !== JSON.stringify(schema.class))) throw new Error('Invalid original component reference');
+            return;
+        }
         if (value !== null && (!value || typeof value !== 'object' || typeof value.asset !== 'string'
             || !/^\/(Game|Engine|Script)\/[A-Za-z0-9_\/.]+$/.test(value.asset)
             || JSON.stringify(value.declared_class) !== JSON.stringify(schema.class)
@@ -35,9 +41,10 @@ function validateSchema(schema, value, depth = 0) {
     } else if (!validPrimitive(schema.type, value)) throw new Error('Invalid typed source member: ' + schema.type);
 }
 
-export function executeBlueprint(program, self = {}, inputs = {}, { functions = {}, frames = {}, tables = {}, bindings = {}, signatures = {}, native } = {}) {
+export function executeBlueprint(program, self = {}, inputs = {}, { functions = {}, frames = {}, tables = {}, bindings = {}, signatures = {}, native, queries = {} } = {}) {
     return runBlueprint(program, self, inputs, functions, { remaining: 10000 }, 0, structuredClone(frames), tables,
-        {bindings: structuredClone(bindings), signatures, native: structuredClone(native), effects: []});
+        {bindings: structuredClone(bindings), signatures, native: structuredClone(native), queries,
+            queryStack:native?.source_package ? [native.source_package] : [], effects: []});
 }
 
 function runBlueprint(program, self, inputs, functions, budget, depth, frames, tables, notifications) {
@@ -97,6 +104,54 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
     };
     const evaluate = (expression, depth = 0) => {
         if (!expression || depth > 48) throw new Error('Invalid Blueprint expression');
+        if (expression.op === 'native_object_valid') {
+            const reference=evaluate(expression.target,depth+1);
+            validateSchema(expression.schema,reference);
+            return sourceObjectValid(notifications.native,reference,expression.schema);
+        }
+        if (expression.op === 'component_query') {
+            const reference=evaluate(expression.target,depth+1);
+            if (reference === null) {
+                // These admitted calls have out parameters and no return value:
+                // UE skips the call and leaves caller-owned out storage intact.
+                trace.push({source_index:sourceIndex,op:'warning',message:'Accessed None: original component query skipped'});
+                return null;
+            }
+            const descriptor=sourceQueryReceiver(notifications.native,reference,expression.package,expression.class_object);
+            if (notifications.queryStack.includes(expression.package)) throw new Error('Reentrant original component queries require shared active storage');
+            const query=owns(notifications.queries,expression.package) ? notifications.queries[expression.package] : null;
+            const callee=query?.functions?.[expression.function];
+            if (!query || query.source_sha256 !== descriptor.source_sha256 || !callee
+                || callee.source_owner_index !== descriptor.class_export_index || callee.source_export_index !== expression.export_index
+                || !Array.isArray(callee.self_writes) || callee.self_writes.length || Object.keys(callee.persistent_types || {}).length
+                || !Array.isArray(expression.bindings)) throw new Error('Untranslated or effectful original component query');
+            const args=Object.create(null),targets=[];
+            for (const binding of expression.bindings) {
+                if (!safeField(binding.parameter) || owns(args,binding.parameter)) throw new Error('Invalid component query parameter');
+                if (binding.mode === 'input') {
+                    const value=evaluate(binding.value,depth+1);validateSchema(binding.schema,value);
+                    args[binding.parameter]=structuredClone(value);
+                } else if (binding.mode === 'output' && binding.target?.op === 'get' && safeField(binding.target.field)
+                    && ['local','self'].includes(binding.target.scope)) {
+                    const owner=ownerFor(binding.target.scope);
+                    if (owns(owner,binding.target.field)) args[binding.parameter]=structuredClone(owner[binding.target.field]);
+                    targets.push(binding);
+                } else throw new Error('Unsupported original component query binding');
+            }
+            const nested=runBlueprint(callee,query.state,args,query.functions,budget,callDepth+1,{},tables,
+                {bindings:{},signatures:query.signatures || {},native:structuredClone(query.native),queries:notifications.queries,
+                    queryStack:[...notifications.queryStack,expression.package],effects:[]});
+            if (nested.effects.length || Object.keys(nested.frames).length || JSON.stringify(nested.state) !== JSON.stringify(query.state))
+                throw new Error('Original component query attempted a state change or effect');
+            for (const binding of targets) {
+                if (!owns(nested.outputs,binding.parameter)) throw new Error('Missing original component query output');
+                checkType(binding.target.scope,binding.target.field,nested.outputs[binding.parameter]);
+            }
+            for (const binding of targets) ownerFor(binding.target.scope)[binding.target.field]=structuredClone(nested.outputs[binding.parameter]);
+            trace.push({source_index:sourceIndex,op:'component_query',package:expression.package,function:expression.function,
+                outputs:structuredClone(nested.outputs),trace:nested.trace});
+            return nested.value;
+        }
         if (expression.op === 'native_get_owner') {
             if (expression.source_owner_index !== program.source_owner_index) throw new Error('Original component class differs');
             return sourceComponentOwner(notifications.native, expression.source_owner_index);

@@ -23,7 +23,8 @@ export class BlueprintActorRuntime {
         if (!program || !Object.hasOwn(this.states, packageName)) throw new Error(`Untranslated source function: ${functionName}`);
         const result = executeBlueprint(program, this.states[packageName], inputs,
             {functions: {...data.functions, ...data.event_programs}, frames: this.frames[packageName] || {}, tables: this.report.tables || {},
-                bindings: this.bindings[packageName] || {}, signatures: data.delegate_signatures || {}, native:this.actorBindings.context(packageName)});
+                bindings: this.bindings[packageName] || {}, signatures: data.delegate_signatures || {}, native:this.actorBindings.context(packageName),
+                queries:this.componentQueries()});
         this.states[packageName] = result.state;
         this.frames[packageName] = result.frames;
         for (const effect of result.effects) {
@@ -36,6 +37,14 @@ export class BlueprintActorRuntime {
         if (this.notifications.length > 1000) this.notifications.splice(0, this.notifications.length-1000);
         if (this.nativeRequests.length > 1000) this.nativeRequests.splice(0, this.nativeRequests.length-1000);
         return result;
+    }
+    componentQueries() {
+        return Object.fromEntries([...this.actorBindings.components].map(([name,component])=>{
+            const data=this.report.packages[name];
+            return [name,{source_sha256:component.source.source_sha256,state:this.states[name],
+                functions:{...data.functions,...data.event_programs},signatures:data.delegate_signatures,
+                native:this.actorBindings.context(name)}];
+        }));
     }
     bindSourceActor(sourceClass, target) {
         const wasBound = !!this.actorBindings.root;
