@@ -1,5 +1,36 @@
 # ue2three saved handoff · 2026-10-18
 
+## Original injector table batch · 2026-10-19
+
+**183 translated /317 blocked**, 67 event helpers; other counts unchanged.
+Read only three original inventoried assets, 22,203 bytes total: S_InjectorData,
+DT_Injectors and E_InjectorEffect. The first two reads correctly left the table
+blocked while its original enum schema was unavailable. Reading that enum
+resolved the dependency; no fallback row/type was invented.
+GetInjectorData now uses the existing generic typed-table adapter. DT_Injectors
+contains one original nine-field Test_Inj_HealthStim row: EffectValue30,
+UseTime2.7, UsesPerItem1, EffectType0, duration/cooldown0, original montage and
+sound asset identities. Those identities do not execute the montage/audio or
+implement the heal/use timer. Missing-row source code explicitly sets both
+asset references null, unlike the non-null original struct constructor defaults.
+
+Added four independent cases (exact ID, ASCII case variant, missing ID, None),
+comparing every row/fallback field. **657 source cases /491 inventory PASS**
+through the reusable verifier. Prior full-code regression result remains136
+Python/92 JS PASS; no code changed after that run, so no redundant full rebuild
+or regression rerun for this data-only batch. Editor remains revision22.
+Current source report SHA: 97c3c67c39b8ea78eab97717c964f784ee77ad873a8c7a06b21b8d793c78c2c6.
+Proof: published blueprint-offline-verification.json; visual acceptance stays
+pending under the browser access block described below. Source private assets
+and generated reports remain local; tracked code/fixtures/docs are pushed.
+
+Next: fresh integrated-browser scene/audit screenshots after manual tab reload
+requested earlier; source actor lifecycle, IsValid, GetComponentByClass/casts and
+cross-component calls for equip/transfer/use. No Unreal launch, full source
+scan, export, upload or new dependency install. Lighting last; animation1:1
+verification remains deferred. Whole game is still incomplete.
+
+
 ## Original inventory events batch · 2026-10-19
 
 **182 translated /318 blocked**, 67 event helpers, 60 declarations, six empty

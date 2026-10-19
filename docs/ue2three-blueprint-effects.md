@@ -170,3 +170,15 @@ outputs, selected state, members and ordered effects before displaying data coun
 offline data never grants visual acceptance. Runtime and QA source checksums are
 part of the program fingerprint, preventing reuse of old visual evidence after
 interpreter changes. Full inventory/UI/world and multiplayer remain incomplete.
+
+## Original injector data (2026-10-19)
+
+The generic table/struct/enum pipeline now has the cached original S_InjectorData,
+DT_Injectors and E_InjectorEffect (three inputs, 22,203 bytes). The initially
+unavailable row schema was resolved by reading its actual enum dependency.
+GetInjectorData is translated without special DDS runtime rules. Its one
+HealthStim row preserves all nine fields, including value30, use2.7s, one use,
+effect0 and original sound/montage identities. Four source comparisons include
+case-insensitive ASCII lookup and two missing-row paths. Missing-row code resets
+sound/montage references to null despite non-null struct constructor defaults.
+No heal, timer, audio or animation execution is implied by this data migration.

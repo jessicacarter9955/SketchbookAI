@@ -40154,6 +40154,174 @@
         "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
       },
       "source_note": "TEXT_EVENTS_BATCH: Original rejection path only. The original cached DT_Items has no Category21 accessory record; do not claim a positive attachment flow or fabricate a mod row."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "GetInjectorData",
+      "source_bytecode_sha256": "f0b6ffa0549f5f911a40cb95ab6b1d51f6fc404a6faa50369034e5c1c65cbdfc",
+      "inputs": {
+        "ItemID": "Test_Inj_HealthStim"
+      },
+      "outputs": {
+        "bFound": true
+      },
+      "output_members": {
+        "InjectorData": {
+          "ItemID_2_00D501FF402587B7FBB7CC9E2CF325CE": "Test_Inj_HealthStim",
+          "EffectType_5_DE720B174061F931CFC4D28CA1FA7C72": 0,
+          "EffectValue_8_1A51997D49160B26E9615F84FCFD8CAD": 30,
+          "EffectDuration_10_F0B9FE4B4DBD5C2D3A2579852A33C6BB": 0,
+          "Cooldown_12_09D241F64723F7C64E5AEEA2424A73CF": 0,
+          "UseTime_24_CB830B554A7ADBB13E7521AD72B77BFD": 2.7,
+          "UsesPerItem_15_14B70FD547AF245E1B73C38442567489": 1,
+          "Sound_Inject_18_CCBA038A4014751D2C700FAF949D93A0": {
+            "asset": "/Game/Fixers/Core/Audio/Props/Injector/SC_Injector_Use.SC_Injector_Use",
+            "declared_class": [
+              "/Script/Engine",
+              "SoundBase"
+            ]
+          },
+          "Anim_Use_21_4784B02E43956D3640C598A12E4C76CD": {
+            "asset": "/Game/Fixers/Core/Blueprints/Animation/Montages/Injector/Mover_Injector_Use_Montage.Mover_Injector_Use_Montage",
+            "declared_class": [
+              "/Script/Engine",
+              "AnimMontage"
+            ]
+          }
+        }
+      },
+      "self": {},
+      "base_state": "inventory-defaults",
+      "runtime": "inventory",
+      "effects": [],
+      "types": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InjectorEffect": "109ca24cd6a61cf3a6f24028de65abadb8b4aec5a2cde5dca1431b837110432a",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InjectorData": "89d3e093bbbf35c855ea959d777e240b6669e47175b564f3fccde1ef837a3266"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Injectors": "ed9b8d8bb32c4f1388297fddb563b93331e25d82465fff58f439668db279d02f"
+      },
+      "source_note": "INJECTOR_SOURCE_BATCH: Original nine-field row or explicit missing-row fallback. HealthStim value30/use2.7s/one use; montage and sound are data identities, not executed effects. Missing-row fallback clears both references despite non-null UDS defaults."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "GetInjectorData",
+      "source_bytecode_sha256": "f0b6ffa0549f5f911a40cb95ab6b1d51f6fc404a6faa50369034e5c1c65cbdfc",
+      "inputs": {
+        "ItemID": "test_inj_healthstim"
+      },
+      "outputs": {
+        "bFound": true
+      },
+      "output_members": {
+        "InjectorData": {
+          "ItemID_2_00D501FF402587B7FBB7CC9E2CF325CE": "Test_Inj_HealthStim",
+          "EffectType_5_DE720B174061F931CFC4D28CA1FA7C72": 0,
+          "EffectValue_8_1A51997D49160B26E9615F84FCFD8CAD": 30,
+          "EffectDuration_10_F0B9FE4B4DBD5C2D3A2579852A33C6BB": 0,
+          "Cooldown_12_09D241F64723F7C64E5AEEA2424A73CF": 0,
+          "UseTime_24_CB830B554A7ADBB13E7521AD72B77BFD": 2.7,
+          "UsesPerItem_15_14B70FD547AF245E1B73C38442567489": 1,
+          "Sound_Inject_18_CCBA038A4014751D2C700FAF949D93A0": {
+            "asset": "/Game/Fixers/Core/Audio/Props/Injector/SC_Injector_Use.SC_Injector_Use",
+            "declared_class": [
+              "/Script/Engine",
+              "SoundBase"
+            ]
+          },
+          "Anim_Use_21_4784B02E43956D3640C598A12E4C76CD": {
+            "asset": "/Game/Fixers/Core/Blueprints/Animation/Montages/Injector/Mover_Injector_Use_Montage.Mover_Injector_Use_Montage",
+            "declared_class": [
+              "/Script/Engine",
+              "AnimMontage"
+            ]
+          }
+        }
+      },
+      "self": {},
+      "base_state": "inventory-defaults",
+      "runtime": "inventory",
+      "effects": [],
+      "types": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InjectorEffect": "109ca24cd6a61cf3a6f24028de65abadb8b4aec5a2cde5dca1431b837110432a",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InjectorData": "89d3e093bbbf35c855ea959d777e240b6669e47175b564f3fccde1ef837a3266"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Injectors": "ed9b8d8bb32c4f1388297fddb563b93331e25d82465fff58f439668db279d02f"
+      },
+      "source_note": "INJECTOR_SOURCE_BATCH: Original nine-field row or explicit missing-row fallback. HealthStim value30/use2.7s/one use; montage and sound are data identities, not executed effects. Missing-row fallback clears both references despite non-null UDS defaults."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "GetInjectorData",
+      "source_bytecode_sha256": "f0b6ffa0549f5f911a40cb95ab6b1d51f6fc404a6faa50369034e5c1c65cbdfc",
+      "inputs": {
+        "ItemID": "SourceMissingInjector"
+      },
+      "outputs": {
+        "bFound": false
+      },
+      "output_members": {
+        "InjectorData": {
+          "ItemID_2_00D501FF402587B7FBB7CC9E2CF325CE": "None",
+          "EffectType_5_DE720B174061F931CFC4D28CA1FA7C72": 0,
+          "EffectValue_8_1A51997D49160B26E9615F84FCFD8CAD": 0,
+          "EffectDuration_10_F0B9FE4B4DBD5C2D3A2579852A33C6BB": 0,
+          "Cooldown_12_09D241F64723F7C64E5AEEA2424A73CF": 0,
+          "UseTime_24_CB830B554A7ADBB13E7521AD72B77BFD": 0,
+          "UsesPerItem_15_14B70FD547AF245E1B73C38442567489": 0,
+          "Sound_Inject_18_CCBA038A4014751D2C700FAF949D93A0": null,
+          "Anim_Use_21_4784B02E43956D3640C598A12E4C76CD": null
+        }
+      },
+      "self": {},
+      "base_state": "inventory-defaults",
+      "runtime": "inventory",
+      "effects": [],
+      "types": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InjectorEffect": "109ca24cd6a61cf3a6f24028de65abadb8b4aec5a2cde5dca1431b837110432a",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InjectorData": "89d3e093bbbf35c855ea959d777e240b6669e47175b564f3fccde1ef837a3266"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Injectors": "ed9b8d8bb32c4f1388297fddb563b93331e25d82465fff58f439668db279d02f"
+      },
+      "source_note": "INJECTOR_SOURCE_BATCH: Original nine-field row or explicit missing-row fallback. HealthStim value30/use2.7s/one use; montage and sound are data identities, not executed effects. Missing-row fallback clears both references despite non-null UDS defaults."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "GetInjectorData",
+      "source_bytecode_sha256": "f0b6ffa0549f5f911a40cb95ab6b1d51f6fc404a6faa50369034e5c1c65cbdfc",
+      "inputs": {
+        "ItemID": "None"
+      },
+      "outputs": {
+        "bFound": false
+      },
+      "output_members": {
+        "InjectorData": {
+          "ItemID_2_00D501FF402587B7FBB7CC9E2CF325CE": "None",
+          "EffectType_5_DE720B174061F931CFC4D28CA1FA7C72": 0,
+          "EffectValue_8_1A51997D49160B26E9615F84FCFD8CAD": 0,
+          "EffectDuration_10_F0B9FE4B4DBD5C2D3A2579852A33C6BB": 0,
+          "Cooldown_12_09D241F64723F7C64E5AEEA2424A73CF": 0,
+          "UseTime_24_CB830B554A7ADBB13E7521AD72B77BFD": 0,
+          "UsesPerItem_15_14B70FD547AF245E1B73C38442567489": 0,
+          "Sound_Inject_18_CCBA038A4014751D2C700FAF949D93A0": null,
+          "Anim_Use_21_4784B02E43956D3640C598A12E4C76CD": null
+        }
+      },
+      "self": {},
+      "base_state": "inventory-defaults",
+      "runtime": "inventory",
+      "effects": [],
+      "types": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InjectorEffect": "109ca24cd6a61cf3a6f24028de65abadb8b4aec5a2cde5dca1431b837110432a",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InjectorData": "89d3e093bbbf35c855ea959d777e240b6669e47175b564f3fccde1ef837a3266"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Injectors": "ed9b8d8bb32c4f1388297fddb563b93331e25d82465fff58f439668db279d02f"
+      },
+      "source_note": "INJECTOR_SOURCE_BATCH: Original nine-field row or explicit missing-row fallback. HealthStim value30/use2.7s/one use; montage and sound are data identities, not executed effects. Missing-row fallback clears both references despite non-null UDS defaults."
     }
   ],
   "schema_version": 1,
