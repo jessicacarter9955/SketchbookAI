@@ -27,6 +27,33 @@ class ControlMigrationTests(unittest.TestCase):
             {"key": "D", "action": "IA_Move", "modifiers": []},
         ])
 
+    def test_source_reference_rejects_boolean_as_export_or_import_index(self):
+        from controls_migration import _resolve_reference
+        package = Package({"Imports": [{"ObjectName": "IA_Move"}],
+                           "Exports": [{"ObjectName": "IMC_Fixers"}]})
+        self.assertIsNone(_resolve_reference(package, True))
+        self.assertIsNone(_resolve_reference(package, False))
+        self.assertEqual(_resolve_reference(package, -1), "IA_Move")
+        self.assertEqual(_resolve_reference(package, 1), "IMC_Fixers")
+
+    def test_input_events_reject_ambiguous_ubergraphs_and_invalid_call_signatures(self):
+        from controls_migration import UMGMigrationError
+        arg = {"$type": "UAssetAPI.Kismet.Bytecode.Expressions.EX_IntConst, UAssetAPI", "Value": 7}
+        event = {"ObjectName": "InpActEvt_IA_Fire_K2Node_EnhancedInputActionEvent_14",
+                 "ScriptBytecode": [{"$type": "UAssetAPI.Kismet.Bytecode.Expressions.EX_FinalFunction, UAssetAPI",
+                                     "StackNode": 1, "Parameters": [arg]}]}
+        graph = {"ObjectName": "ExecuteUbergraph_CBP_Fixers_Mover"}
+        with self.assertRaises(UMGMigrationError):
+            _event_entry_points(Package({"Exports": [graph, graph, event]}))
+        for parameters in ([], [arg, arg], [dict(arg, Value=True)], [dict(arg, Value=-1)],
+                           [{"$type": "UAssetAPI.Kismet.Bytecode.Expressions.EX_StringConst, UAssetAPI",
+                             "Value": "7"}]):
+            with self.subTest(parameters=parameters):
+                invalid = dict(event, ScriptBytecode=[dict(event["ScriptBytecode"][0],
+                                                           Parameters=parameters)])
+                with self.assertRaises(UMGMigrationError):
+                    _event_entry_points(Package({"Exports": [graph, invalid]}))
+
     def test_input_events_keep_the_compiled_ubergraph_entry_points(self):
         package = Package({"Imports": [], "Exports": [
             {"ObjectName": "ExecuteUbergraph_CBP_Fixers_Mover"},

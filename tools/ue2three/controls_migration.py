@@ -13,7 +13,7 @@ EVENT_SUFFIX = "_K2Node_EnhancedInputActionEvent_"
 
 
 def _resolve_reference(package, reference):
-    if not isinstance(reference, int) or reference == 0:
+    if type(reference) is not int or reference == 0:
         return None
     if reference < 0 and -reference <= len(package.imports):
         return package.imports[-reference - 1].get("ObjectName")
@@ -49,10 +49,11 @@ def _input_bindings(package):
 
 
 def _event_entry_points(package):
-    ubergraph = next((index + 1 for index, export in enumerate(package.exports)
-                      if export.get("ObjectName") == "ExecuteUbergraph_CBP_Fixers_Mover"), None)
-    if not ubergraph:
-        raise UMGMigrationError("CBP_Fixers_Mover has no compiled ubergraph export")
+    ubergraphs = [index + 1 for index, export in enumerate(package.exports)
+                  if export.get("ObjectName") == "ExecuteUbergraph_CBP_Fixers_Mover"]
+    if len(ubergraphs) != 1:
+        raise UMGMigrationError("CBP_Fixers_Mover must have exactly one compiled ubergraph export")
+    ubergraph = ubergraphs[0]
     events = []
     for export in package.exports:
         name = export.get("ObjectName", "")
@@ -65,12 +66,16 @@ def _event_entry_points(package):
             kind = str(expression.get("$type", "")).rsplit(".", 1)[-1].split(",", 1)[0]
             if kind not in {"EX_LocalFinalFunction", "EX_FinalFunction"} or expression.get("StackNode") != ubergraph:
                 continue
-            for parameter in expression.get("Parameters", []):
-                parameter_type = str(parameter.get("$type", "")).rsplit(".", 1)[-1].split(",", 1)[0]
-                if parameter_type == "EX_IntConst" and type(parameter.get("Value")) is int and parameter["Value"] >= 0:
-                    if entry is not None: raise UMGMigrationError("Ambiguous input event entry: " + name)
-                    entry = parameter["Value"]
-                    break
+            parameters = expression.get("Parameters")
+            if not isinstance(parameters, list) or len(parameters) != 1 or not isinstance(parameters[0], dict):
+                raise UMGMigrationError("Invalid input event entry signature: " + name)
+            parameter = parameters[0]
+            parameter_type = str(parameter.get("$type", "")).rsplit(".", 1)[-1].split(",", 1)[0]
+            if parameter_type != "EX_IntConst" or type(parameter.get("Value")) is not int or parameter["Value"] < 0:
+                raise UMGMigrationError("Invalid constant input event entry: " + name)
+            if entry is not None:
+                raise UMGMigrationError("Ambiguous input event entry: " + name)
+            entry = parameter["Value"]
             # Inspect every matching call; multiple entries are ambiguous.
         if entry is None:
             raise UMGMigrationError("Missing constant input event entry: " + name)
