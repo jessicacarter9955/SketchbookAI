@@ -35,6 +35,17 @@ jobs:
         if: steps.cc0.outputs.cache-hit != 'true'
         run: python tools/fetch-urban-kits.py
 
+      - name: Restore CC0 Miami coast source assets
+        uses: actions/cache@v4
+        id: coast-assets
+        with:
+          path: assets/urban-kits/miami-coast
+          key: ubuntu-miami-coast-v1-${{ hashFiles('tools/fetch-urban-coast.py') }}
+
+      - name: Download original palm GLB and photo-scanned beach PBR channels
+        if: steps.coast-assets.outputs.cache-hit != 'true'
+        run: python tools/fetch-urban-coast.py
+
       - name: Protect original City Player asset fidelity
         run: npm test
 

@@ -1,69 +1,112 @@
 import * as THREE from 'three';
+import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {miamiCoastLayout} from './urban-coast-layout.mjs';
 
-// Lightweight Miami-style shoreline at the EAST edge of Urban Photoreal.
-// This is a clearly procedural extension, not a converted Unreal level.
+// City shoreline uses FOUR real-sand PBR bands and an authored CC0 palm GLB.
+// One reflective ocean plane fills the exterior, without covering city streets.
 export function addUrbanMiamiCoast(group,plan,config,box){
-  const coast=miamiCoastLayout(plan.bounds,config.seed);
-  const sand=new THREE.MeshStandardMaterial({color:0xe6cca0,roughness:.96,metalness:0});
-  const waterMat=new THREE.MeshStandardMaterial({color:0x218ba5,roughness:.27,metalness:.16,side:THREE.DoubleSide});
-  // A physical beach floor connects the last road to the shoreline.
-  const beach=box([coast.beachWidth,.24,coast.beachDepth],
-    [coast.beachCenter,-.09,0],sand,true);
-  beach.name='Miami beach · walkable sand';
-  beach.userData.urbanCoast=true;
+  const layout=miamiCoastLayout(plan.bounds,config.seed);
+  const sand=new THREE.MeshStandardMaterial({color:0xe8d0aa,roughness:1,metalness:0});
+  for(const side of layout.sides){
+    const [x,z]=side.center,[w,d]=side.size;
+    const beach=box([w,.24,d],[x,-.09,z],sand,true);
+    beach.name='Miami '+side.name+' · original PBR beach sand';
+    beach.userData.urbanCoast=true;
+  }
 
-  const waterGeo=new THREE.PlaneGeometry(coast.seaWidth,coast.seaDepth,48,36);
-  const a=waterGeo.getAttribute('position');
-  for(let i=0;i<a.count;i++){
-    const x=a.getX(i),z=a.getY(i);
-    a.setZ(i,.045*Math.sin(x*.09+z*.035)+.025*Math.sin(z*.16-x*.075));
+  const waterGeo=new THREE.PlaneGeometry(...layout.waterSize,96,96);
+  const vertices=waterGeo.getAttribute('position');
+  for(let i=0;i<vertices.count;i++){
+    const x=vertices.getX(i),z=vertices.getY(i);
+    vertices.setZ(i,.05*Math.sin(x*.055+z*.071)+.025*Math.sin(z*.12-x*.035));
   }
   waterGeo.computeVertexNormals();
-  const sea=new THREE.Mesh(waterGeo,waterMat);
-  sea.rotation.x=-Math.PI/2;
-  sea.position.set(coast.seaCenter,-.19,0);
-  sea.receiveShadow=true;sea.name='Miami Atlantic coast · ocean';
-  group.add(sea);
+  const water=new THREE.Mesh(waterGeo,new THREE.MeshPhysicalMaterial({
+    color:0x51aabb,roughness:.18,metalness:.05,clearcoat:.68,clearcoatRoughness:.14,envMapIntensity:1.15,
+    side:THREE.DoubleSide
+  }));
+  water.rotation.x=-Math.PI/2;water.position.set(layout.waterCenter[0],-.24,layout.waterCenter[1]);
+  water.receiveShadow=true;water.name='Miami · surrounding Atlantic water';
+  group.add(water);
 
-  // Two subtle surf lines; all palms share one trunk and one leaf draw call.
-  const surfMat=new THREE.MeshStandardMaterial({color:0xb4e1d9,transparent:true,opacity:.72,roughness:.54});
-  for(const shift of [1.2,3.4]){
-    const foam=new THREE.Mesh(new THREE.PlaneGeometry(.55,coast.beachDepth),surfMat);
-    foam.rotation.x=-Math.PI/2;foam.position.set(coast.shoreX+shift,-.115,0);
-    foam.name='Miami beach · shore foam';group.add(foam);
-  }
-  const trunkGeo=new THREE.CylinderGeometry(.17,.33,5.6,7);
-  const trunkMat=new THREE.MeshStandardMaterial({color:0x886247,roughness:.97});
-  const trunks=new THREE.InstancedMesh(trunkGeo,trunkMat,Math.max(1,coast.palms.length));
-  trunks.name='Miami palms · trunks (GPU instanced)';
-  const leafGeo=new THREE.BufferGeometry(),vertices=[],triangles=[];
-  for(let k=0;k<=8;k++){
-    const t=k/8,spread=.48*Math.pow(Math.sin(Math.PI*t),.8);
-    const elevation=Math.sin(Math.PI*t)*.75-t*1.15;
-    vertices.push(t*3.7,elevation,-spread,t*3.7,elevation,spread);
-    if(k<8){const n=k*2;triangles.push(n,n+1,n+2,n+1,n+3,n+2);}
-  }
-  leafGeo.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
-  leafGeo.setIndex(triangles);leafGeo.computeVertexNormals();
-  const leafMat=new THREE.MeshStandardMaterial({color:0x397958,side:THREE.DoubleSide,roughness:.92});
-  const leavesPerTree=8,leaves=new THREE.InstancedMesh(leafGeo,leafMat,Math.max(1,coast.palms.length*leavesPerTree));
-  leaves.name='Miami palms · fronds (GPU instanced)';
-  const matrix=new THREE.Matrix4(),quat=new THREE.Quaternion(),pos=new THREE.Vector3(),scale=new THREE.Vector3();
-  const up=new THREE.Vector3(0,1,0);
-  for(let i=0;i<coast.palms.length;i++){
-    const palm=coast.palms[i],s=palm.scale;
-    matrix.compose(pos.set(palm.x,2.8*s,palm.z),quat.identity(),scale.set(s,s,s));
-    trunks.setMatrixAt(i,matrix);
-    for(let j=0;j<leavesPerTree;j++){
-      quat.setFromAxisAngle(up,j*Math.PI*2/leavesPerTree+i*.21);
-      matrix.compose(pos.set(palm.x,5.6*s,palm.z),quat,scale.set(s,s,s));
-      leaves.setMatrixAt(i*leavesPerTree+j,matrix);
+  const foamMat=new THREE.MeshStandardMaterial({color:0xc9e2d9,transparent:true,opacity:.65,roughness:.5,depthWrite:false});
+  for(const side of layout.sides){
+    for(const dist of [.9,2.5]){
+      const alongX=side.axis==='z';
+      const foam=new THREE.Mesh(new THREE.PlaneGeometry(alongX?side.size[0]:.52,alongX?.52:side.size[1]),foamMat);
+      foam.rotation.x=-Math.PI/2;
+      foam.position.set(alongX?layout.waterCenter[0]:side.shore+dist*side.sign,-.16,
+        alongX?side.shore+dist*side.sign:layout.waterCenter[1]);
+      foam.name='Miami · '+side.name+' shoreline surf';
+      group.add(foam);
     }
   }
-  trunks.instanceMatrix.needsUpdate=true;leaves.instanceMatrix.needsUpdate=true;
-  trunks.castShadow=true;trunks.receiveShadow=true;leaves.castShadow=false;
-  group.add(trunks,leaves);
-  group.userData.miamiCoast={palms:coast.palms.length,shoreX:coast.shoreX,beachWidth:coast.beachWidth};
-  return coast;
+
+  const palms=new THREE.Group();
+  palms.name='Miami · CC0 authored palm models (4 sides)';
+  group.add(palms);
+  let batches=[];
+  layout.updateVisibility=camera=>{
+    if(!camera||!batches.length)return;
+    const near=layout.allPalms.filter(p=>Math.hypot(p.x-camera.position.x,p.z-camera.position.z)<235);
+    for(const b of batches){
+      b.instance.count=near.length;
+      for(let i=0;i<near.length;i++){
+        const palm=near[i],q=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),i*1.76);
+        const m=new THREE.Matrix4().compose(
+          new THREE.Vector3(palm.x,.13,palm.z),q,
+          new THREE.Vector3(palm.scale,palm.scale,palm.scale));
+        m.multiply(b.base);
+        b.instance.setMatrixAt(i,m);
+      }
+      b.instance.instanceMatrix.needsUpdate=true;
+    }
+  };
+
+  layout.loadOriginalAssets=async()=>{
+    const local='assets/urban-kits/miami-coast/';
+    const loader=new THREE.TextureLoader();
+    const [palm,diffuse,normal,rough]=await Promise.all([
+      new GLTFLoader().loadAsync(local+'palm-detailed.glb'),
+      loader.loadAsync(local+'sand-diff.jpg'),
+      loader.loadAsync(local+'sand-nor_gl.jpg'),
+      loader.loadAsync(local+'sand-rough.jpg')
+    ]);
+    for(const tex of [diffuse,normal,rough]){
+      tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
+      tex.repeat.set(12,12);
+      tex.anisotropy=8;
+    }
+    diffuse.colorSpace=THREE.SRGBColorSpace;
+    sand.map=diffuse;sand.normalMap=normal;sand.roughnessMap=rough;sand.needsUpdate=true;
+
+    const model=palm.scene;model.updateMatrixWorld(true);
+    const bb=new THREE.Box3().setFromObject(model);
+    const height=bb.getSize(new THREE.Vector3()).y;
+    if(!Number.isFinite(height)||height<1||!Number.isFinite(bb.min.y))
+      throw Error('Palm CC0 original GLB has invalid bounds');
+    const center=bb.getCenter(new THREE.Vector3());
+    const normalize=new THREE.Matrix4().makeTranslation(-center.x,-bb.min.y,-center.z);
+    // The authored model is ~8.9m tall. Preserve its real proportions.
+    const size=new THREE.Matrix4().makeScale(9/height,9/height,9/height);
+    let count=0;
+    model.traverse(mesh=>{
+      if(!mesh.isMesh||!mesh.geometry)return;
+      const instance=new THREE.InstancedMesh(mesh.geometry,mesh.material,layout.allPalms.length);
+      instance.castShadow=true;instance.receiveShadow=true;instance.frustumCulled=false;
+      instance.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      instance.name='Original CC0 palm detailed · GPU instanced';
+      palms.add(instance);
+      batches.push({instance,base:size.clone().multiply(normalize).multiply(mesh.matrixWorld.clone())});
+      count++;
+    });
+    if(count<1)throw Error('Palm GLB contains no authored geometry');
+    palms.userData.license='CC0';palms.userData.source='https://www.innerscene.com/tools/library/3d-parts/palm-detailed-a8777b8c';
+    layout.palmSource=palms.userData.source;
+    layout.updateVisibility(globalThis.world?.camera||null);
+    group.userData.miamiCoast={sides:4,palms:layout.allPalms.length,sandSource:'Poly Haven sand_03',palmSource:layout.palmSource};
+    globalThis.cityDiagnostics?.activity('Costa HD: 4 lati · '+layout.allPalms.length+' palme CC0 autentiche · sabbia PBR Poly Haven');
+    return {palms:layout.allPalms.length,sides:4,asset:'palm-detailed.glb',materials:'sand_03 CC0'};
+  };
+  return layout;
 }

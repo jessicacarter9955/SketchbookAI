@@ -108,13 +108,15 @@ export function generateUrbanPlan(raw=DEFAULT_URBAN){
     }
   }
 
-  const lampStep=Math.max(18,c.blockSize/2);
+  // Lamps stand near the OUTER sidewalk edge (never in the vehicle lane or
+  // at zebra crossings). One per mid-block stretch, safely off intersections.
+  const lampOffset=c.roadWidth/2+Math.max(1.05,c.sidewalkWidth*.84);
   for(const road of roads){
-    const count=Math.floor(road.length/lampStep);
-    for(let i=0;i<=count;i+=2){
-      const along=-road.length/2+i*lampStep;
-      if(road.axis==='x') lamps.push({x:along,z:road.z+c.roadWidth*.63});
-      else lamps.push({x:road.x+c.roadWidth*.63,z:along});
+    const count=road.axis==='x'?c.blocksX:c.blocksZ;
+    for(let i=0;i<count;i++){
+      const along=(i+.5-count/2)*c.blockSize;
+      if(road.axis==='x') lamps.push({x:along,z:road.z+lampOffset,roadAxis:'x'});
+      else lamps.push({x:road.x+lampOffset,z:along,roadAxis:'z'});
     }
   }
 

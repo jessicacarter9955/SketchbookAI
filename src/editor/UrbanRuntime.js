@@ -232,9 +232,9 @@ export class UrbanRuntime {
       }
     }
     buildUrbanStreets(plan,config,box,{road:matRoad,curb:matCurb,paint:matLane,grass:matGrass,iron:matDrain});
-    // At the east boundary, replace empty horizon with walkable sand, ocean
-    // and GPU-instanced palm trees. The ordinary street/navigation graph stays unchanged.
-    addUrbanMiamiCoast(group,plan,config,box);
+    // Four-sided CC0 Miami shoreline: source model and sand maps are required
+    // by the full-HD asset stage; the city graph stays unchanged.
+    this.coast=addUrbanMiamiCoast(group,plan,config,box);
 
     const facadeMats={};
     for(const style of ['glass','office','brick','stone']){
@@ -281,6 +281,11 @@ export class UrbanRuntime {
       group.children.slice(visualStart).forEach(node=>{node.userData.urbanBuildingVisual=true;node.userData.urbanBuildingIndex=buildingIndex;});
     }
     for(const l of plan.lamps){
+      // A real static rigid body at every photographed street-lamp post.
+      const pole=new CANNON.Body({mass:0});
+      pole.addShape(new CANNON.Box(new CANNON.Vec3(.22,2.38,.22)));
+      pole.position.set(l.x,urbanGroundHeight(l.x,l.z,config)+2.38,l.z);
+      bodies.push(pole);
       const first=group.children.length;
       const y=urbanGroundHeight(l.x,l.z,config);box([.13,4.7,.13],[l.x,y+2.35,l.z],matLamp,false);
       box([1.2,.12,.12],[l.x+.52,y+4.62,l.z],matLamp,false);box([.42,.13,.28],[l.x+1.05,y+4.55,l.z],new THREE.MeshStandardMaterial({color:0xffefb5,emissive:0xffcf70,emissiveIntensity:.22}),false);
@@ -420,6 +425,13 @@ export class UrbanRuntime {
     group.traverse(node=>{if(node.isMesh){const index=[road,pavement,grass].indexOf(node.material);if(index>=0){node.material=materials[index];metricUV(node);}}});
     const batched=batchUrbanPbrSurfaces(group,new Set(materials),this.config?.blockSize||42);
     globalThis.cityDiagnostics?.activity('Superfici PBR originali: '+batched.drawCallsSaved+' draw call risparmiate, UV preservate');
+    // No low-poly substitute: the scanned/co-authored GLB palm model and
+    // photographed sand channels must actually load before declaring HD ready.
+    if(this.coast){
+      globalThis.cityDiagnostics?.activity('Costa Miami: carico palme GLB CC0 e sabbia PBR fotografica');
+      await withUrbanLoadDeadline('Asset HD costa 4 lati',
+        ()=>this.coast.loadOriginalAssets(),90000);
+    }
   }
   async loadPhotorealArchitecture(group,plan,config){
     // Query the persistent processed-HD cache FIRST. On a valid cache hit
@@ -633,6 +645,7 @@ export class UrbanRuntime {
       this.lastFoliageTick=now;
       const vegetation=this.root.getObjectByName('CC0 photoreal vegetation');
       vegetation?.userData.stream?.(this.world.camera,tree=>!isOccludedTree(this.world.camera.position,tree,this.plan.buildings));
+      this.coast?.updateVisibility?.(this.world.camera);
       vegetation?.children.forEach(lod=>{if(lod.isLOD&&lod.visible)lod.update(this.world.camera);});
     }
     const player=this.world.editorPlayer,p=player?.controlledObject?.position||player?.position;if(p)this.world.actorLayer?.update(p);

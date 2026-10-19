@@ -6,11 +6,15 @@ import {reactToPedestrianEvent,advancePedestrianResponse} from './gta-ped-respon
 import {trafficSignalSpeedLimit,URBAN_SIGNAL} from './urban-traffic-signals.mjs';
 import {nextUrbanPedestrianRoute} from './urban-agent-recovery.mjs';
 import {nextUrbanCarSegment} from './urban-car-routing.mjs';
+import {makeUrbanPedestrianSARoute,advanceUrbanPedestrianSA} from './urban-sa-adapter.mjs';
+import {syncUrbanAgentCollider,disposeUrbanAgentColliders} from './urban-agent-physics.mjs';
+import {createUrbanPoliceDispatch,recordUrbanPoliceIncident,advanceUrbanPoliceDispatch} from './urban-police-dispatch.mjs';
 export class UrbanPopulation {
   constructor(world,person,car){
     this.world=world;this.net=urbanNetworks(world.levelRuntime.config);this.group=new THREE.Group();
     this.group.name='Urban AI traffic';world.graphicsWorld.add(this.group);
     this.cars=[];this.pedestrians=[];this.elapsed=0;
+    this.police=createUrbanPoliceDispatch();world.urbanPoliceDispatch=this.police;
     this.visibilityElapsed=0;this.forward=new THREE.Vector3();
     this.simulationStats={activeCars:0,activePedestrians:0,sleepingCars:0,sleepingPedestrians:0,occludedAgents:0};
     const road=this.net.roads,nodes=this.net.pedestrians.nodes;
@@ -87,6 +91,8 @@ export class UrbanPopulation {
     a.routeLeg=(a.routeLeg||0)+1;
     a.path=nextUrbanPedestrianRoute(this.net.pedestrians,{x:a.x,z:a.z},a.seed,a.routeLeg);
     a.index=0;
+    a.saRoute=makeUrbanPedestrianSARoute(a,a.path);
+    a.saPathRef=a.path;
   }
   nearCrosswalk(p){
     return this.net.crosswalks.some(s=>{
@@ -143,6 +149,7 @@ export class UrbanPopulation {
   }
   /** Route world threats to real animated civilians and interrupt conversations. */
   onWorldEvent(event){
+    recordUrbanPoliceIncident(this.police,event,this.elapsed);
     const buildings=this.world.levelRuntime?.plan?.buildings||[];
     let count=0;
     for(const npc of this.pedestrians){
@@ -175,6 +182,7 @@ export class UrbanPopulation {
   update(dt){
     dt=Math.max(0,Math.min(.1,dt||0));
     this.elapsed+=dt;
+    advanceUrbanPoliceDispatch(this.police,this.elapsed);
     const camera=this.world.camera;
     const player=this.world.editorPlayer;
     const focus=player?.controlledObject?.position||player?.position||camera.position;
@@ -266,9 +274,12 @@ export class UrbanPopulation {
       if(!detailDt){sim.sleepingPedestrians++;continue;}
       sim.activePedestrians++;
       if(a.index>=a.path.length){if(a.state==='fleeing')continue;this.nextDestination(a);}
-      const target=a.path[a.index];if(!target)continue;
-      const dx=target.x-a.x,dz=target.z-a.z,d=Math.hypot(dx,dz);
-      if(d<.35){a.index++;continue;}
+      // Incidents may replace the path. Advance its directed, legal sidewalk
+      // links through the same stepper used by the San Andreas port.
+      if(a.saPathRef!==a.path){
+        a.saRoute=makeUrbanPedestrianSARoute(a,a.path);a.saPathRef=a.path;
+      }
+      if(!a.saRoute){if(a.walkAction)a.walkAction.paused=true;continue;}
       if(distance<110){
         const blocked=(this.nearCrosswalk(a)&&this.cars.some(c=>Math.hypot(c.object.position.x-a.x,c.object.position.z-a.z)<7))||
           this.pedestrians.some(b=>b!==a&&b.seed<a.seed&&Math.hypot(a.x-b.x,a.z-b.z)<.9);
@@ -280,13 +291,23 @@ export class UrbanPopulation {
         }
       }
       a.waitingSince=0;
-      if(a.walkAction)a.walkAction.paused=false;
-      const step=Math.min(d,a.speed*detailDt);
-      a.x+=dx/d*step;a.z+=dz/d*step;
-      a.object.rotation.y=Math.atan2(dx,dz);this.placePed(a);
+      const pose=advanceUrbanPedestrianSA(a.saRoute,detailDt,a.speed,a.seed);
+      if(!pose)continue;
+      const travelled=Math.hypot(pose.x-a.x,pose.z-a.z);
+      if(a.walkAction)a.walkAction.paused=travelled<.001;
+      a.x=pose.x;a.z=pose.z;
+      a.index=Math.min(a.path.length,Number(a.saRoute.state.key)||0);
+      if(travelled>.001)a.object.rotation.y=pose.heading;
+      this.placePed(a);
+      if(pose.finished)a.index=a.path.length;
     }
+    // Kinematic Cannon bodies collide with dynamic player/vehicles nearby.
+    for(const car of this.cars)syncUrbanAgentCollider(this.world,car,'car',focus);
+    for(const ped of this.pedestrians)syncUrbanAgentCollider(this.world,ped,'pedestrian',focus);
     this.simulationStats=sim;
     this.stats.simulation=sim;
+    this.stats.wanted=this.police.wanted;
+    this.stats.physicsColliders=this.cars.concat(this.pedestrians).filter(a=>a.colliderAttached).length;
   }
 
   // Deterministic visual QA scene: positions come from the actual lane and
@@ -314,5 +335,10 @@ export class UrbanPopulation {
     const chosen=this.cars.reduce((best,c)=>!best||c.object.position.distanceToSquared(this.pedestrians[0].object.position)<best.object.position.distanceToSquared(this.pedestrians[0].object.position)?c:best,null);
     return {anchor:{x:anchor.x,z:anchor.z},cars:this.cars.length,pedestrians:this.pedestrians.length,conversations:this.conversations.length,nearestCar:chosen.object.position.toArray()};
   }
-  destroy(){this.group.removeFromParent();this.cars=[];this.pedestrians=[];}
+  destroy(){
+    disposeUrbanAgentColliders(this.world,this.cars);
+    disposeUrbanAgentColliders(this.world,this.pedestrians);
+    if(this.world.urbanPoliceDispatch===this.police)this.world.urbanPoliceDispatch=null;
+    this.group.removeFromParent();this.cars=[];this.pedestrians=[];
+  }
 }

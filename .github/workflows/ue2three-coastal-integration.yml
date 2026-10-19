@@ -22,6 +22,15 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci
+      - name: Cache verified authentic Miami coastal assets
+        uses: actions/cache@v4
+        id: coast-assets
+        with:
+          path: assets/urban-kits/miami-coast
+          key: ubuntu-miami-coast-v1-${{ hashFiles('tools/fetch-urban-coast.py') }}
+      - name: Fetch CC0 detailed palms and photographic beach surfaces
+        if: steps.coast-assets.outputs.cache-hit != 'true'
+        run: python tools/fetch-urban-coast.py
       - name: DDS UE2Three + coastal geometry/mapping tests
         run: node --test tests/districts.test.mjs tests/ue2three-districts.test.mjs tests/ue2three-*.test.mjs
       - name: Original Realistic City regression tests
