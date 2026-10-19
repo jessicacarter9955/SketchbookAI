@@ -1,0 +1,24 @@
+name: DDS collision importer regression
+on:
+  push:
+    branches:
+      - codex/dds-parallel-manual-first
+    paths:
+      - 'src/editor/ue2three-collision.mjs'
+      - 'tests/ue2three-collision.test.mjs'
+      - '.github/workflows/dds-collision-regression.yml'
+permissions:
+  contents: read
+jobs:
+  collision-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - name: Validate original geometry collision conversion with offline fixtures
+        run: node --test tests/ue2three-collision.test.mjs
