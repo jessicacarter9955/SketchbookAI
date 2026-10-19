@@ -40,3 +40,45 @@ test('shop and saved inventory reject inherited object keys',()=>{
   assert.deepEqual(s.snapshot(),before);
  }
 });
+
+
+test('merchant UI eligibility matches atomic purchases for funds, capacity and raid status',()=>{
+    const s=new DdsGameState();
+    for(const id of ['rifle-ammo','pistol-ammo','medkit'])assert.equal(s.canBuy(id).ok,true);
+    const original=s.snapshot();
+    for(const id of ['constructor','__proto__','not-in-shop']){
+        assert.equal(s.canBuy(id).message,'Articolo non disponibile.');
+        assert.equal(s.buy(id).ok,false);
+    }
+    assert.deepEqual(s.snapshot(),original);
+    s.credits=0;
+    assert.equal(s.canBuy('medkit').message,'Crediti insufficienti.');
+    assert.equal(s.buy('medkit').ok,false);
+    s.credits=1000;
+    s.medkits=10;
+    assert.equal(s.canBuy('medkit').message,'Spazio o capacità insufficienti.');
+    assert.equal(s.buy('medkit').ok,false);
+    s.medkits=2;
+    s.ammo.rifle.reserve=999;
+    assert.equal(s.canBuy('rifle-ammo').ok,false);
+    s.ammo.rifle.reserve=90;
+    s.maxWeight=s.currentWeight+0.01;
+    assert.equal(s.canBuy('medkit').ok,false);
+    s.maxWeight=18;
+    s.medkits=0;
+    s.carryCapacity=s.usedSlots;
+    assert.equal(s.canBuy('medkit').ok,false);
+    const before=s.snapshot();
+    assert.equal(s.buy('medkit').ok,false);
+    assert.deepEqual(s.snapshot(),before);
+    const extracted=new DdsGameState();extracted.extracted=true;
+    assert.equal(extracted.canBuy('medkit').message,'Incursione conclusa.');
+    const dead=new DdsGameState();dead.health=0;
+    assert.equal(dead.canBuy('medkit').ok,false);
+    const valid=new DdsGameState();
+    const quote=valid.canBuy('medkit');
+    assert.equal(quote.ok,true);
+    assert.equal(valid.buy('medkit').ok,true);
+    assert.equal(valid.credits,205);
+    assert.equal(valid.medkits,3);
+});

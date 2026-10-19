@@ -27,13 +27,21 @@ export class DdsGameState {
     snapshot() { return {version:1,health:this.health,medkits:this.medkits,ammo:structuredClone(this.ammo),owned:[...this.owned],equipped:this.equipped,caseCollected:this.caseCollected,suppliesCollected:this.suppliesCollected,targets:[...this.targets],extracted:this.extracted,credits:this.credits,npcHealth:{...this.npcHealth}}; }
     get usedSlots(){return Number(this.medkits>0)+Number(this.caseCollected)+Object.values(this.ammo).filter(a=>a.reserve>0).length;}
     get currentWeight(){return this.owned.reduce((sum,id)=>sum+(id==='rifle'?3.6:0.9),0)+(this.ammo.rifle.magazine+this.ammo.rifle.reserve)*0.012+(this.ammo.pistol.magazine+this.ammo.pistol.reserve)*0.01+this.medkits*0.4+(this.caseCollected?2:0);}
-    buy(id) {
+    // Read-only purchase eligibility, shared by the merchant UI and the transaction.
+    canBuy(id) {
         if(!this.health||this.extracted)return {ok:false,message:'Incursione conclusa.'};
-        const offer=Object.hasOwn(SHOP_OFFERS,id) ? SHOP_OFFERS[id] : null;if(!offer)return {ok:false,message:'Articolo non disponibile.'};
+        const offer=Object.hasOwn(SHOP_OFFERS,id) ? SHOP_OFFERS[id] : null;
+        if(!offer)return {ok:false,message:'Articolo non disponibile.'};
         if(this.credits<offer.price)return {ok:false,message:'Crediti insufficienti.'};
         const current=offer.weapon?this.ammo[offer.weapon].reserve:this.medkits, limit=offer.weapon?999:10;
         const addedWeight=offer.quantity*(offer.weapon?(offer.weapon==='rifle'?0.012:0.01):0.4);
         if(current+offer.quantity>limit||this.currentWeight+addedWeight>this.maxWeight||(!current&&this.usedSlots>=this.carryCapacity))return {ok:false,message:'Spazio o capacità insufficienti.'};
+        return {ok:true,message:''};
+    }
+    buy(id) {
+        const eligibility=this.canBuy(id);
+        if(!eligibility.ok)return eligibility;
+        const offer=SHOP_OFFERS[id];
         if(offer.weapon)this.ammo[offer.weapon].reserve+=offer.quantity;else this.medkits+=offer.quantity;
         this.credits-=offer.price;return {ok:true,message:`Acquistato: ${offer.name}`};
     }

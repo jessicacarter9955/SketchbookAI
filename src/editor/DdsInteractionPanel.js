@@ -42,8 +42,8 @@ export class DdsInteractionPanel {
     }
     shop(s){
         return `<div class="dds-section-heading"><h3>Rifornimenti disponibili</h3><span>${s.currentWeight.toFixed(1)} / ${s.maxWeight} kg</span></div><div class="dds-shop-offers">${Object.entries(SHOP_OFFERS).map(([id,offer])=>{
-            const owned=offer.weapon?s.ammo[offer.weapon].reserve:s.medkits,unaffordable=s.credits<offer.price;
-            return `<article class="dds-shop-offer">${inventoryIcon(offer.weapon?'ammo':'medkit')}<h3>${offer.weapon?(offer.weapon==='rifle'?'Munizioni fucile':'Munizioni pistola'):'Kit medico'}</h3><p>${offer.weapon?`${offer.quantity} colpi in riserva`:'1 kit · ripristina 50 salute'}</p><button type="button" class="dds-button dds-primary" data-buy="${id}" ${unaffordable||!s.health||s.extracted?'disabled':''} aria-label="Acquista ${offer.name} per ${offer.price} crediti">${unaffordable?'Crediti insufficienti':`Acquista · ${offer.price} ₡`}</button><span class="dds-shop-owned">${owned} ${offer.weapon?'colpi':'kit'} nello zaino</span></article>`;
+            const owned=offer.weapon?s.ammo[offer.weapon].reserve:s.medkits, eligibility=s.canBuy(id);
+            return `<article class="dds-shop-offer">${inventoryIcon(offer.weapon?'ammo':'medkit')}<h3>${offer.weapon?(offer.weapon==='rifle'?'Munizioni fucile':'Munizioni pistola'):'Kit medico'}</h3><p>${offer.weapon?`${offer.quantity} colpi in riserva`:'1 kit · ripristina 50 salute'}</p><button type="button" class="dds-button dds-primary" data-buy="${id}" ${eligibility.ok?'':'disabled'} aria-label="${eligibility.ok?`Acquista ${offer.name} per ${offer.price} crediti`:`${offer.name}: ${eligibility.message}`}">${eligibility.ok?`Acquista · ${offer.price} ₡`:eligibility.message}</button><span class="dds-shop-owned">${owned} ${offer.weapon?'colpi':'kit'} nello zaino</span></article>`;
         }).join('')}</div><p class="dds-interaction-status" role="status" aria-live="polite">${panelText(this.status)}</p>`;
     }
     guide(s){
