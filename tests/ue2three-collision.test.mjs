@@ -36,3 +36,41 @@ test('mirrored instances preserve outward collision winding and instance transfo
         assert.deepEqual(points.slice(9),[4,0,0, 4,0,1, 3,0,0]);
     });
 });
+
+test('DDS collision import updates nested transforms and discards degenerate or nonfinite faces', () => {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute([
+        0,0,0, 1,0,0, 0,0,1,
+        0,0,0, 0,0,0, 0,0,0,
+        0,0,0, NaN,0,0, 0,0,1
+    ], 3));
+    const root = new THREE.Group();
+    root.position.set(5,2,3);
+    const child = new THREE.Mesh(geometry);
+    child.position.x = 1;
+    root.add(child);
+    // Deliberately do not call updateMatrixWorld before importing collision.
+    let triangles = 0;
+    const chunks = forEachCollisionChunk(root, (points, indices) => {
+        assert.deepEqual(points, [6,2,3, 7,2,3, 6,2,4]);
+        const shape = new Trimesh(points, indices);
+        assert.ok(shape.vertices.every(Number.isFinite));
+        triangles += indices.length / 3;
+    });
+    assert.equal(chunks, 1);
+    assert.equal(triangles, 1);
+});
+
+test('DDS collision import skips invalid indexed triangles without losing valid ones', () => {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute([0,0,0, 1,0,0, 0,0,1], 3));
+    geometry.setIndex([0,1,2, 0,1,99]);
+    const mesh = new THREE.Mesh(geometry);
+    let faces = 0;
+    forEachCollisionChunk(mesh, (points, indices) => {
+        assert.equal(indices.length, 3);
+        assert.ok(points.every(Number.isFinite));
+        faces += indices.length / 3;
+    });
+    assert.equal(faces, 1);
+});
