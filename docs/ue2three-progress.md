@@ -1,5 +1,29 @@
 # DDS migration checklist · 2026-10-13
 
+## Original weapon montage selectors · 2026-10-19
+
+Character/weapons priority: source getters GetEquipMontageForGripType and
+GetUnequipMontageForGripType now translate, using typed original AnimMontage
+imports. The adapter accepts an explicit set of static Engine asset classes;
+actors, components, generated classes and foreign-library objects still reject.
+References remain data identities; they do not execute the referenced assets.
+
+185 translated /315 blocked; 693 source comparisons /491 inventory PASS.
+137 Python and92 JavaScript regression tests PASS. No runtime code changed,
+so no redundant editor rebuild/export. Thirty-six independent source cases
+cover every original grip enum branch plus out-of-range defaults. One initial
+expectation failed for unequip grip12: original source explicitly returns null,
+whereas equip grip12 chooses HipLeft. Corrected the independent expectation
+to preserve this original asymmetry; no source/gameplay rule was changed.
+
+This does NOT complete character/weapons. Live scene fire/reload are still
+mostly presentation: source equip lifecycle, cross-component inventory calls,
+clock/cadence, ammo transfer, weapon actor creation and animation/native
+adapters remain required. Animations remain yellow/1:1 verification deferred.
+The integrated browser tab inventory still reports connection-error documents;
+prior Browser Use protocol block remains unresolved. No fresh screenshot or
+visual acceptance claimed. Continue source dependencies without opening Unreal.
+
 ## Original injector table batch · 2026-10-19
 
 **183 translated /317 blocked**, 67 event helpers; other counts unchanged.

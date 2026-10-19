@@ -40322,6 +40322,648 @@
         "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Injectors": "ed9b8d8bb32c4f1388297fddb563b93331e25d82465fff58f439668db279d02f"
       },
       "source_note": "INJECTOR_SOURCE_BATCH: Original nine-field row or explicit missing-row fallback. HealthStim value30/use2.7s/one use; montage and sound are data identities, not executed effects. Missing-row fallback clears both references despite non-null UDS defaults."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetEquipMontageForGripType",
+      "source_bytecode_sha256": "821d163fe5277e1fe21c4b02414cffcf44e236f23235b43147a09edde90a885c",
+      "inputs": {
+        "GripType": 0
+      },
+      "self": {},
+      "outputs": {
+        "Montage": null
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetEquipMontageForGripType",
+      "source_bytecode_sha256": "821d163fe5277e1fe21c4b02414cffcf44e236f23235b43147a09edde90a885c",
+      "inputs": {
+        "GripType": 1
+      },
+      "self": {},
+      "outputs": {
+        "Montage": {
+          "asset": "/Game/Fixers/Core/Blueprints/Animation/Montages/Weapons/Equip_Unequip/AM_Equip_Back.AM_Equip_Back",
+          "declared_class": [
+            "/Script/Engine",
+            "AnimMontage"
+          ]
+        }
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetEquipMontageForGripType",
+      "source_bytecode_sha256": "821d163fe5277e1fe21c4b02414cffcf44e236f23235b43147a09edde90a885c",
+      "inputs": {
+        "GripType": 2
+      },
+      "self": {},
+      "outputs": {
+        "Montage": {
+          "asset": "/Game/Fixers/Core/Blueprints/Animation/Montages/Weapons/Equip_Unequip/AM_Equip_HipRight.AM_Equip_HipRight",
+          "declared_class": [
+            "/Script/Engine",
+            "AnimMontage"
+          ]
+        }
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetEquipMontageForGripType",
+      "source_bytecode_sha256": "821d163fe5277e1fe21c4b02414cffcf44e236f23235b43147a09edde90a885c",
+      "inputs": {
+        "GripType": 3
+      },
+      "self": {},
+      "outputs": {
+        "Montage": {
+          "asset": "/Game/Fixers/Core/Blueprints/Animation/Montages/Weapons/Equip_Unequip/AM_Equip_HipRight.AM_Equip_HipRight",
+          "declared_class": [
+            "/Script/Engine",
+            "AnimMontage"
+          ]
+        }
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetEquipMontageForGripType",
+      "source_bytecode_sha256": "821d163fe5277e1fe21c4b02414cffcf44e236f23235b43147a09edde90a885c",
+      "inputs": {
+        "GripType": 4
+      },
+      "self": {},
+      "outputs": {
+        "Montage": {
+          "asset": "/Game/Fixers/Core/Blueprints/Animation/Montages/Weapons/Equip_Unequip/AM_Equip_Back.AM_Equip_Back",
+          "declared_class": [
+            "/Script/Engine",
+            "AnimMontage"
+          ]
+        }
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetEquipMontageForGripType",
+      "source_bytecode_sha256": "821d163fe5277e1fe21c4b02414cffcf44e236f23235b43147a09edde90a885c",
+      "inputs": {
+        "GripType": 5
+      },
+      "self": {},
+      "outputs": {
+        "Montage": {
+          "asset": "/Game/Fixers/Core/Blueprints/Animation/Montages/Weapons/Equip_Unequip/AM_Equip_Back.AM_Equip_Back",
+          "declared_class": [
+            "/Script/Engine",
+            "AnimMontage"
+          ]
+        }
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetEquipMontageForGripType",
+      "source_bytecode_sha256": "821d163fe5277e1fe21c4b02414cffcf44e236f23235b43147a09edde90a885c",
+      "inputs": {
+        "GripType": 6
+      },
+      "self": {},
+      "outputs": {
+        "Montage": {
+          "asset": "/Game/Fixers/Core/Blueprints/Animation/Montages/Weapons/Equip_Unequip/AM_Equip_Katana.AM_Equip_Katana",
+          "declared_class": [
+            "/Script/Engine",
+            "AnimMontage"
+          ]
+        }
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetEquipMontageForGripType",
+      "source_bytecode_sha256": "821d163fe5277e1fe21c4b02414cffcf44e236f23235b43147a09edde90a885c",
+      "inputs": {
+        "GripType": 7
+      },
+      "self": {},
+      "outputs": {
+        "Montage": {
+          "asset": "/Game/Fixers/Core/Blueprints/Animation/Montages/Weapons/Equip_Unequip/AM_Equip_HipLeft.AM_Equip_HipLeft",
+          "declared_class": [
+            "/Script/Engine",
+            "AnimMontage"
+          ]
+        }
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetEquipMontageForGripType",
+      "source_bytecode_sha256": "821d163fe5277e1fe21c4b02414cffcf44e236f23235b43147a09edde90a885c",
+      "inputs": {
+        "GripType": 8
+      },
+      "self": {},
+      "outputs": {
+        "Montage": {
+          "asset": "/Game/Fixers/Core/Blueprints/Animation/Montages/Weapons/Equip_Unequip/AM_Equip_HipLeft.AM_Equip_HipLeft",
+          "declared_class": [
+            "/Script/Engine",
+            "AnimMontage"
+          ]
+        }
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetEquipMontageForGripType",
+      "source_bytecode_sha256": "821d163fe5277e1fe21c4b02414cffcf44e236f23235b43147a09edde90a885c",
+      "inputs": {
+        "GripType": 9
+      },
+      "self": {},
+      "outputs": {
+        "Montage": {
+          "asset": "/Game/Fixers/Core/Blueprints/Animation/Montages/Weapons/Equip_Unequip/AM_Equip_HipLeft.AM_Equip_HipLeft",
+          "declared_class": [
+            "/Script/Engine",
+            "AnimMontage"
+          ]
+        }
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetEquipMontageForGripType",
+      "source_bytecode_sha256": "821d163fe5277e1fe21c4b02414cffcf44e236f23235b43147a09edde90a885c",
+      "inputs": {
+        "GripType": 10
+      },
+      "self": {},
+      "outputs": {
+        "Montage": {
+          "asset": "/Game/Fixers/Core/Blueprints/Animation/Montages/Weapons/Equip_Unequip/AM_Equip_HipLeft.AM_Equip_HipLeft",
+          "declared_class": [
+            "/Script/Engine",
+            "AnimMontage"
+          ]
+        }
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetEquipMontageForGripType",
+      "source_bytecode_sha256": "821d163fe5277e1fe21c4b02414cffcf44e236f23235b43147a09edde90a885c",
+      "inputs": {
+        "GripType": 11
+      },
+      "self": {},
+      "outputs": {
+        "Montage": {
+          "asset": "/Game/Fixers/Core/Blueprints/Animation/Montages/Weapons/Equip_Unequip/AM_Equip_HipLeft.AM_Equip_HipLeft",
+          "declared_class": [
+            "/Script/Engine",
+            "AnimMontage"
+          ]
+        }
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetEquipMontageForGripType",
+      "source_bytecode_sha256": "821d163fe5277e1fe21c4b02414cffcf44e236f23235b43147a09edde90a885c",
+      "inputs": {
+        "GripType": 12
+      },
+      "self": {},
+      "outputs": {
+        "Montage": {
+          "asset": "/Game/Fixers/Core/Blueprints/Animation/Montages/Weapons/Equip_Unequip/AM_Equip_HipLeft.AM_Equip_HipLeft",
+          "declared_class": [
+            "/Script/Engine",
+            "AnimMontage"
+          ]
+        }
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetEquipMontageForGripType",
+      "source_bytecode_sha256": "821d163fe5277e1fe21c4b02414cffcf44e236f23235b43147a09edde90a885c",
+      "inputs": {
+        "GripType": 13
+      },
+      "self": {},
+      "outputs": {
+        "Montage": null
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetEquipMontageForGripType",
+      "source_bytecode_sha256": "821d163fe5277e1fe21c4b02414cffcf44e236f23235b43147a09edde90a885c",
+      "inputs": {
+        "GripType": 14
+      },
+      "self": {},
+      "outputs": {
+        "Montage": null
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetEquipMontageForGripType",
+      "source_bytecode_sha256": "821d163fe5277e1fe21c4b02414cffcf44e236f23235b43147a09edde90a885c",
+      "inputs": {
+        "GripType": 15
+      },
+      "self": {},
+      "outputs": {
+        "Montage": null
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetEquipMontageForGripType",
+      "source_bytecode_sha256": "821d163fe5277e1fe21c4b02414cffcf44e236f23235b43147a09edde90a885c",
+      "inputs": {
+        "GripType": 16
+      },
+      "self": {},
+      "outputs": {
+        "Montage": null
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetEquipMontageForGripType",
+      "source_bytecode_sha256": "821d163fe5277e1fe21c4b02414cffcf44e236f23235b43147a09edde90a885c",
+      "inputs": {
+        "GripType": 255
+      },
+      "self": {},
+      "outputs": {
+        "Montage": null
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetUnequipMontageForGripType",
+      "source_bytecode_sha256": "875db994ccbfdbb48704a98cc3a1a922b1cd3dfe0c284d8fc2ed18357eb5a6c5",
+      "inputs": {
+        "GripType": 0
+      },
+      "self": {},
+      "outputs": {
+        "Montage": null
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetUnequipMontageForGripType",
+      "source_bytecode_sha256": "875db994ccbfdbb48704a98cc3a1a922b1cd3dfe0c284d8fc2ed18357eb5a6c5",
+      "inputs": {
+        "GripType": 1
+      },
+      "self": {},
+      "outputs": {
+        "Montage": {
+          "asset": "/Game/Fixers/Core/Blueprints/Animation/Montages/Weapons/Equip_Unequip/AM_Unequip_Back.AM_Unequip_Back",
+          "declared_class": [
+            "/Script/Engine",
+            "AnimMontage"
+          ]
+        }
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetUnequipMontageForGripType",
+      "source_bytecode_sha256": "875db994ccbfdbb48704a98cc3a1a922b1cd3dfe0c284d8fc2ed18357eb5a6c5",
+      "inputs": {
+        "GripType": 2
+      },
+      "self": {},
+      "outputs": {
+        "Montage": {
+          "asset": "/Game/Fixers/Core/Blueprints/Animation/Montages/Weapons/Equip_Unequip/AM_Unequip_HipRight.AM_Unequip_HipRight",
+          "declared_class": [
+            "/Script/Engine",
+            "AnimMontage"
+          ]
+        }
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetUnequipMontageForGripType",
+      "source_bytecode_sha256": "875db994ccbfdbb48704a98cc3a1a922b1cd3dfe0c284d8fc2ed18357eb5a6c5",
+      "inputs": {
+        "GripType": 3
+      },
+      "self": {},
+      "outputs": {
+        "Montage": {
+          "asset": "/Game/Fixers/Core/Blueprints/Animation/Montages/Weapons/Equip_Unequip/AM_Unequip_HipRight.AM_Unequip_HipRight",
+          "declared_class": [
+            "/Script/Engine",
+            "AnimMontage"
+          ]
+        }
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetUnequipMontageForGripType",
+      "source_bytecode_sha256": "875db994ccbfdbb48704a98cc3a1a922b1cd3dfe0c284d8fc2ed18357eb5a6c5",
+      "inputs": {
+        "GripType": 4
+      },
+      "self": {},
+      "outputs": {
+        "Montage": {
+          "asset": "/Game/Fixers/Core/Blueprints/Animation/Montages/Weapons/Equip_Unequip/AM_Unequip_Back.AM_Unequip_Back",
+          "declared_class": [
+            "/Script/Engine",
+            "AnimMontage"
+          ]
+        }
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetUnequipMontageForGripType",
+      "source_bytecode_sha256": "875db994ccbfdbb48704a98cc3a1a922b1cd3dfe0c284d8fc2ed18357eb5a6c5",
+      "inputs": {
+        "GripType": 5
+      },
+      "self": {},
+      "outputs": {
+        "Montage": {
+          "asset": "/Game/Fixers/Core/Blueprints/Animation/Montages/Weapons/Equip_Unequip/AM_Unequip_Back.AM_Unequip_Back",
+          "declared_class": [
+            "/Script/Engine",
+            "AnimMontage"
+          ]
+        }
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetUnequipMontageForGripType",
+      "source_bytecode_sha256": "875db994ccbfdbb48704a98cc3a1a922b1cd3dfe0c284d8fc2ed18357eb5a6c5",
+      "inputs": {
+        "GripType": 6
+      },
+      "self": {},
+      "outputs": {
+        "Montage": {
+          "asset": "/Game/Fixers/Core/Blueprints/Animation/Montages/Weapons/Equip_Unequip/AM_Unequip_Katana.AM_Unequip_Katana",
+          "declared_class": [
+            "/Script/Engine",
+            "AnimMontage"
+          ]
+        }
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetUnequipMontageForGripType",
+      "source_bytecode_sha256": "875db994ccbfdbb48704a98cc3a1a922b1cd3dfe0c284d8fc2ed18357eb5a6c5",
+      "inputs": {
+        "GripType": 7
+      },
+      "self": {},
+      "outputs": {
+        "Montage": {
+          "asset": "/Game/Fixers/Core/Blueprints/Animation/Montages/Weapons/Equip_Unequip/AM_Unequip_HipLeft.AM_Unequip_HipLeft",
+          "declared_class": [
+            "/Script/Engine",
+            "AnimMontage"
+          ]
+        }
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetUnequipMontageForGripType",
+      "source_bytecode_sha256": "875db994ccbfdbb48704a98cc3a1a922b1cd3dfe0c284d8fc2ed18357eb5a6c5",
+      "inputs": {
+        "GripType": 8
+      },
+      "self": {},
+      "outputs": {
+        "Montage": {
+          "asset": "/Game/Fixers/Core/Blueprints/Animation/Montages/Weapons/Equip_Unequip/AM_Unequip_HipLeft.AM_Unequip_HipLeft",
+          "declared_class": [
+            "/Script/Engine",
+            "AnimMontage"
+          ]
+        }
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetUnequipMontageForGripType",
+      "source_bytecode_sha256": "875db994ccbfdbb48704a98cc3a1a922b1cd3dfe0c284d8fc2ed18357eb5a6c5",
+      "inputs": {
+        "GripType": 9
+      },
+      "self": {},
+      "outputs": {
+        "Montage": {
+          "asset": "/Game/Fixers/Core/Blueprints/Animation/Montages/Weapons/Equip_Unequip/AM_Unequip_HipLeft.AM_Unequip_HipLeft",
+          "declared_class": [
+            "/Script/Engine",
+            "AnimMontage"
+          ]
+        }
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetUnequipMontageForGripType",
+      "source_bytecode_sha256": "875db994ccbfdbb48704a98cc3a1a922b1cd3dfe0c284d8fc2ed18357eb5a6c5",
+      "inputs": {
+        "GripType": 10
+      },
+      "self": {},
+      "outputs": {
+        "Montage": {
+          "asset": "/Game/Fixers/Core/Blueprints/Animation/Montages/Weapons/Equip_Unequip/AM_Unequip_HipLeft.AM_Unequip_HipLeft",
+          "declared_class": [
+            "/Script/Engine",
+            "AnimMontage"
+          ]
+        }
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetUnequipMontageForGripType",
+      "source_bytecode_sha256": "875db994ccbfdbb48704a98cc3a1a922b1cd3dfe0c284d8fc2ed18357eb5a6c5",
+      "inputs": {
+        "GripType": 11
+      },
+      "self": {},
+      "outputs": {
+        "Montage": {
+          "asset": "/Game/Fixers/Core/Blueprints/Animation/Montages/Weapons/Equip_Unequip/AM_Unequip_HipLeft.AM_Unequip_HipLeft",
+          "declared_class": [
+            "/Script/Engine",
+            "AnimMontage"
+          ]
+        }
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetUnequipMontageForGripType",
+      "source_bytecode_sha256": "875db994ccbfdbb48704a98cc3a1a922b1cd3dfe0c284d8fc2ed18357eb5a6c5",
+      "inputs": {
+        "GripType": 12
+      },
+      "self": {},
+      "outputs": {
+        "Montage": null
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied. Original grip12 equips from HipLeft but returns null for unequip; preserve this asymmetry."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetUnequipMontageForGripType",
+      "source_bytecode_sha256": "875db994ccbfdbb48704a98cc3a1a922b1cd3dfe0c284d8fc2ed18357eb5a6c5",
+      "inputs": {
+        "GripType": 13
+      },
+      "self": {},
+      "outputs": {
+        "Montage": null
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetUnequipMontageForGripType",
+      "source_bytecode_sha256": "875db994ccbfdbb48704a98cc3a1a922b1cd3dfe0c284d8fc2ed18357eb5a6c5",
+      "inputs": {
+        "GripType": 14
+      },
+      "self": {},
+      "outputs": {
+        "Montage": null
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetUnequipMontageForGripType",
+      "source_bytecode_sha256": "875db994ccbfdbb48704a98cc3a1a922b1cd3dfe0c284d8fc2ed18357eb5a6c5",
+      "inputs": {
+        "GripType": 15
+      },
+      "self": {},
+      "outputs": {
+        "Montage": null
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetUnequipMontageForGripType",
+      "source_bytecode_sha256": "875db994ccbfdbb48704a98cc3a1a922b1cd3dfe0c284d8fc2ed18357eb5a6c5",
+      "inputs": {
+        "GripType": 16
+      },
+      "self": {},
+      "outputs": {
+        "Montage": null
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "GetUnequipMontageForGripType",
+      "source_bytecode_sha256": "875db994ccbfdbb48704a98cc3a1a922b1cd3dfe0c284d8fc2ed18357eb5a6c5",
+      "inputs": {
+        "GripType": 255
+      },
+      "self": {},
+      "outputs": {
+        "Montage": null
+      },
+      "effects": [],
+      "source_note": "WEAPON_MONTAGE_SELECTORS: original grip switch targets; reference selection only, montage playback/lifecycle not implied."
     }
   ],
   "schema_version": 1,

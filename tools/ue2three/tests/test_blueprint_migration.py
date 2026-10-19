@@ -11,6 +11,28 @@ def variable(token, name): return node(token, Variable={'New': {'Path': [name], 
 
 
 class BlueprintMigrationTests(unittest.TestCase):
+    def test_asset_constant_retains_original_import_and_rejects_runtime_objects(self):
+        from blueprint_migration import expression
+        imports = [{'ObjectName': 'OriginalEquip', 'OuterIndex': -2, 'ClassName': 'AnimMontage', 'ClassPackage': '/Script/Engine'},
+                   {'ObjectName': '/Game/Animations/OriginalEquip', 'ClassName': 'Package'}]
+        package = Package({'Imports': imports})
+        result = expression(node('EX_ObjectConst', Value=-1), set(), set(), package=package)
+        self.assertEqual(result['schema']['class'], ['/Script/Engine', 'AnimMontage'])
+        self.assertEqual(result['value']['asset'], '/Game/Animations/OriginalEquip.OriginalEquip')
+        self.assertEqual(property_type({'SerializedType': 'ObjectProperty', 'PropertyClass': -3},
+            Package({'Imports': imports + [{'ObjectName': 'AnimMontage', 'OuterIndex': -4},
+                                           {'ObjectName': '/Script/Engine', 'ClassName': 'Package'}]})), 'ObjectProperty')
+        for reference in (0, True, 1, -3):
+            with self.assertRaises(BlueprintTranslationError):
+                expression(node('EX_ObjectConst', Value=reference), set(), set(), package=package)
+        for name in ('Actor', 'ActorComponent', 'BlueprintGeneratedClass', 'Default__KismetMathLibrary'):
+            imports[0]['ClassName'] = name
+            with self.assertRaises(BlueprintTranslationError):
+                expression(node('EX_ObjectConst', Value=-1), set(), set(), package=package)
+        imports[0]['ClassName'] = 'AnimMontage'; imports[0]['ClassPackage'] = '/Game/Fake'
+        with self.assertRaises(BlueprintTranslationError):
+            expression(node('EX_ObjectConst', Value=-1), set(), set(), package=package)
+
     def function(self):
         return {'ObjectName': 'GetState', 'ScriptBytecode': [node('EX_Tracepoint'),
                 node('EX_Let', Variable=variable('EX_LocalOutVariable', 'ReturnValue'),

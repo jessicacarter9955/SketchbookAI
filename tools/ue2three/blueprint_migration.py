@@ -31,7 +31,9 @@ def property_type(prop, package=None):
     result = prop.get('SerializedType')
     if result == 'ObjectProperty' and package:
         schema = property_schema(package, prop)
-        if schema and (schema.get('class') == ['/Script/Engine', 'DataTable'] or schema.get('reference_kind') == 'runtime_actor'): return result
+        from blueprint_values import STATIC_ASSET_CLASSES
+        if schema and (schema.get('class', [None, None])[0] == '/Script/Engine'
+                       and schema['class'][1] in STATIC_ASSET_CLASSES or schema.get('reference_kind') == 'runtime_actor'): return result
     if result == 'EnumProperty':
         result = prop.get('UnderlyingProp', {}).get('SerializedType')
     if result not in ('BoolProperty', 'ByteProperty', 'IntProperty', 'FloatProperty',
@@ -121,6 +123,10 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
     if not isinstance(value, dict) or depth > 48:
         raise BlueprintTranslationError('Invalid or deeply nested Kismet expression')
     token = kind(value)
+    if token == 'EX_ObjectConst' and package:
+        from blueprint_values import asset_constant
+        try: return asset_constant(package, value.get('Value'))
+        except ValueError as error: raise BlueprintTranslationError(str(error))
     if token == 'EX_SetArray' and package:
         from blueprint_effects import array_literal
         return array_literal(value, package, owner, reads, outputs, depth)

@@ -4,6 +4,24 @@ import math
 import re
 from types import SimpleNamespace
 
+# Data identities only. Never treat actors, components or generated classes as
+# static assets merely because their serialized property is ObjectProperty.
+STATIC_ASSET_CLASSES = {'AnimMontage', 'AnimSequence', 'SkeletalMesh', 'StaticMesh',
+                        'Texture2D', 'SoundBase', 'DataTable'}
+
+
+def asset_constant(package, reference):
+    """Retain the actual imported asset class; do not execute/load the asset."""
+    if type(reference) is not int or not -len(package.imports) <= reference < 0:
+        raise ValueError('Asset constant requires an original asset import')
+    imported = package.imports[-reference-1]
+    name = imported.get('ClassName')
+    if imported.get('ClassPackage') != '/Script/Engine' or name not in STATIC_ASSET_CLASSES:
+        raise ValueError('Unsupported original asset constant class')
+    identity = ('/Script/Engine', name)
+    return {'op': 'typed_literal', 'schema': {'type': 'ObjectProperty', 'class': list(identity), 'default': None},
+            'value': asset_reference(package, reference, identity)}
+
 
 def native_schema(identity):
     fields = {('/Script/CoreUObject', 'Vector'): ('X', 'Y', 'Z'),
