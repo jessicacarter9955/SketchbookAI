@@ -58,6 +58,21 @@ def _input_bindings(package):
     return result
 
 
+
+def _iter_compiled_expressions(bytecode):
+    """Visit nested Kismet expressions without inferring execution or entry offsets."""
+    if not isinstance(bytecode, list):
+        return
+    pending = list(reversed(bytecode))
+    while pending:
+        value = pending.pop()
+        if isinstance(value, dict):
+            yield value
+            pending.extend(reversed([child for key, child in value.items() if key != "$type"]))
+        elif isinstance(value, list):
+            pending.extend(reversed(value))
+
+
 def _event_entry_points(package):
     ubergraphs = [index + 1 for index, export in enumerate(package.exports)
                   if export.get("ObjectName") == "ExecuteUbergraph_CBP_Fixers_Mover"]
@@ -72,9 +87,10 @@ def _event_entry_points(package):
         action = name[len(EVENT_PREFIX):].split(EVENT_SUFFIX, 1)[0]
         bytecode = export.get("ScriptBytecode", [])
         entry = None
-        for expression in bytecode if isinstance(bytecode, list) else []:
+        for expression in _iter_compiled_expressions(bytecode):
             kind = str(expression.get("$type", "")).rsplit(".", 1)[-1].split(",", 1)[0]
-            if kind not in {"EX_LocalFinalFunction", "EX_FinalFunction"} or expression.get("StackNode") != ubergraph:
+            if (kind not in {"EX_LocalFinalFunction", "EX_FinalFunction"}
+                    or type(expression.get("StackNode")) is not int or expression["StackNode"] != ubergraph):
                 continue
             parameters = expression.get("Parameters")
             if not isinstance(parameters, list) or len(parameters) != 1 or not isinstance(parameters[0], dict):

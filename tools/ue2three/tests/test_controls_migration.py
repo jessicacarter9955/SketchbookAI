@@ -142,6 +142,36 @@ class ControlMigrationTests(unittest.TestCase):
                 with self.assertRaises(UMGMigrationError):
                     _event_entry_points(package)
 
+    def test_nested_compiled_ubergraph_call_is_discovered(self):
+        # Kismet calls can be expression children, not only top-level statements.
+        call = {"$type": "EX_LocalFinalFunction", "StackNode": 1,
+                "Parameters": [{"$type": "EX_IntConst", "Value": 42}]}
+        event = {"ObjectName": "InpActEvt_IA_Interact_K2Node_EnhancedInputActionEvent_4",
+                 "ScriptBytecode": [{"$type": "EX_Let",
+                                     "AssignmentExpression": {"$type": "EX_Conditional",
+                                                              "Term": [call]}}]}
+        package = Package({"Exports": [
+            {"ObjectName": "ExecuteUbergraph_CBP_Fixers_Mover"}, event]})
+        self.assertEqual(_event_entry_points(package), [{
+            "action": "IA_Interact", "function": event["ObjectName"],
+            "ubergraph_entry_point": 42,
+        }])
+
+    def test_nested_compiled_ubergraph_calls_are_not_silently_disambiguated(self):
+        from controls_migration import UMGMigrationError
+        call = {"$type": "EX_FinalFunction", "StackNode": 1,
+                "Parameters": [{"$type": "EX_IntConst", "Value": 42}]}
+        event = {"ObjectName": "InpActEvt_IA_Interact_K2Node_EnhancedInputActionEvent_4",
+                 "ScriptBytecode": [{"$type": "EX_Let", "AssignmentExpression": [call, dict(call)]}]}
+        package = Package({"Exports": [
+            {"ObjectName": "ExecuteUbergraph_CBP_Fixers_Mover"}, event]})
+        with self.assertRaises(UMGMigrationError):
+            _event_entry_points(package)
+        # Python True == 1 must not be accepted as a source export index.
+        event["ScriptBytecode"] = [dict(call, StackNode=True)]
+        with self.assertRaises(UMGMigrationError):
+            _event_entry_points(package)
+
     def test_input_function_calls_are_reported_from_compiled_blueprint(self):
         package = Package({"Imports": [{"ObjectName": "K2_AddDataToCollection"}], "Exports": [
             {"ObjectName": "ProduceInput", "ScriptBytecode": [
