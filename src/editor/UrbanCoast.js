@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {miamiCoastLayout} from './urban-coast-layout.mjs';
+import {createUrbanIslandOcean,updateUrbanIslandOcean} from './urban-coast-water.mjs';
+import {buildUrbanBeachGeometry,urbanSandHeight} from './urban-coast-sand.mjs';
 
 // City shoreline uses FOUR real-sand PBR bands and an authored CC0 palm GLB.
 // One reflective ocean plane fills the exterior, without covering city streets.
@@ -8,26 +10,32 @@ export function addUrbanMiamiCoast(group,plan,config,box){
   const layout=miamiCoastLayout(plan.bounds,config.seed);
   const sand=new THREE.MeshStandardMaterial({color:0xe8d0aa,roughness:1,metalness:0});
   for(const side of layout.sides){
-    const [x,z]=side.center,[w,d]=side.size;
-    const beach=box([w,.24,d],[x,-.09,z],sand,true);
-    beach.name='Miami '+side.name+' · original PBR beach sand';
+    // The FOUR coastlines use a sculpted mesh with genuine photo-PBR sand.
+    const beach=new THREE.Mesh(buildUrbanBeachGeometry(side,layout),sand);
+    beach.receiveShadow=true;beach.castShadow=false;
+    beach.name='Miami '+side.name+' · photo PBR sand relief';
     beach.userData.urbanCoast=true;
+    group.add(beach);
+    // Cannon support strips approximate the beach grade under the visible mesh.
+    const sections=12,along=side.axis==='x'?side.size[1]:side.size[0];
+    for(let i=0;i<sections;i++){
+      const t=(i+.5)/sections,width=layout.beachWidth/sections+.15;
+      const coord=side.shore-side.sign*layout.beachWidth+side.sign*layout.beachWidth*t;
+      const x=side.axis==='x'?coord:side.center[0];
+      const z=side.axis==='z'?coord:side.center[1];
+      const surface=urbanSandHeight(t,x,z);
+      const floor=box(side.axis==='x'?[width,.18,along]:[along,.18,width],
+        [x,surface-.09,z],sand,true);
+      floor.visible=false; // physical support only, not a geometric placeholder
+    }
   }
 
-  const waterGeo=new THREE.PlaneGeometry(...layout.waterSize,96,96);
-  const vertices=waterGeo.getAttribute('position');
-  for(let i=0;i<vertices.count;i++){
-    const x=vertices.getX(i),z=vertices.getY(i);
-    vertices.setZ(i,.05*Math.sin(x*.055+z*.071)+.025*Math.sin(z*.12-x*.035));
-  }
-  waterGeo.computeVertexNormals();
-  const water=new THREE.Mesh(waterGeo,new THREE.MeshPhysicalMaterial({
-    color:0x51aabb,roughness:.18,metalness:.05,clearcoat:.68,clearcoatRoughness:.14,envMapIntensity:1.15,
-    side:THREE.DoubleSide
-  }));
-  water.rotation.x=-Math.PI/2;water.position.set(layout.waterCenter[0],-.24,layout.waterCenter[1]);
-  water.receiveShadow=true;water.name='Miami · surrounding Atlantic water';
+  // Exact TWO-ISLAND Water shader and procedural normal sampler:
+  // ONE reflective renderer on an ocean ring, not four expensive mirrors.
+  const water=createUrbanIslandOcean(layout);
   group.add(water);
+  layout.updateWater=(sunPosition,elapsedSeconds)=>
+    updateUrbanIslandOcean(water,sunPosition,elapsedSeconds);
 
   const foamMat=new THREE.MeshStandardMaterial({color:0xc9e2d9,transparent:true,opacity:.65,roughness:.5,depthWrite:false});
   for(const side of layout.sides){
