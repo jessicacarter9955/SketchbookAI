@@ -16,7 +16,7 @@ export class DdsGameState {
             magazine:bounded(data.ammo?.[id]?.magazine,w.capacity,w.capacity),
             reserve:bounded(data.ammo?.[id]?.reserve,w.reserve,999)
         }]));
-        this.owned=Array.isArray(data.owned) ? [...new Set(data.owned.filter(id=>Object.hasOwn(WEAPONS,id)))] : ['rifle','pistol'];
+        this.owned=Array.isArray(data.owned) ? [...new Set(data.owned.filter(id=>typeof id==='string' && Object.hasOwn(WEAPONS,id)))] : ['rifle','pistol'];
         this.equipped=this.owned.includes(data.equipped) ? data.equipped : (data.equipped===null ? null : this.owned[0]??null);
         this.caseCollected=data.caseCollected===true; this.suppliesCollected=data.suppliesCollected===true;
         this.targets=Array.from({length:3},(_,i)=>bounded(data.targets?.[i],100,100));
@@ -45,7 +45,7 @@ export class DdsGameState {
         if(offer.weapon)this.ammo[offer.weapon].reserve+=offer.quantity;else this.medkits+=offer.quantity;
         this.credits-=offer.price;return {ok:true,message:`Acquistato: ${offer.name}`};
     }
-    equip(id) { if (id!==null && !this.owned.includes(id)) return false; this.equipped=id; this.reloadRemaining=0; return true; }
+    equip(id) { if (!this.health || this.extracted || (id!==null && (typeof id!=='string' || !this.owned.includes(id)))) return false; this.equipped=id; this.reloadRemaining=0; return true; }
     fire() {
         const w=WEAPONS[this.equipped], ammo=this.ammo[this.equipped];
         if (!w || !this.health || this.extracted || this.reloadRemaining>0 || this.cooldown>0 || !ammo.magazine) return null;
@@ -66,9 +66,9 @@ export class DdsGameState {
         const ammo=this.ammo[this.equipped], capacity=WEAPONS[this.equipped].capacity;
         const amount=Math.min(capacity-ammo.magazine,ammo.reserve); ammo.magazine+=amount; ammo.reserve-=amount; return true;
     }
-    heal() { if (!this.health || this.health===100 || !this.medkits) return false; this.medkits--; this.health=Math.min(100,this.health+50); return true; }
+    heal() { if (!this.health || this.extracted || this.health===100 || !this.medkits) return false; this.medkits--; this.health=Math.min(100,this.health+50); return true; }
     damage(amount) { if (!Number.isFinite(amount) || amount<=0) return; this.health=Math.max(0,this.health-amount); if (!this.health) this.reloadRemaining=0; }
-    hitTarget(index,damage) { if (!Number.isInteger(index) || index<0 || index>2 || !Number.isFinite(damage) || damage<=0) return false; this.targets[index]=Math.max(0,this.targets[index]-damage); return true; }
+    hitTarget(index,damage) { if (!this.health || this.extracted || !Number.isInteger(index) || index<0 || index>2 || !Number.isFinite(damage) || damage<=0 || !this.targets[index]) return false; this.targets[index]=Math.max(0,this.targets[index]-damage); return true; }
     // Preview pickup eligibility without changing the raid state.
     // Apply the same slot and weight constraints used by merchant purchases.
     canCollect(kind) {

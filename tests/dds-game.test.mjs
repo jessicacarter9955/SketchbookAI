@@ -150,3 +150,43 @@ test('unknown, dead and extracted pickups do not mutate inventory',()=>{
         }
     }
 });
+
+test('saved weapon IDs must be primitive strings; invalid equip requests are atomic',()=>{
+    const s=new DdsGameState({version:1,owned:[['rifle'],'pistol','rifle',123],equipped:['rifle']});
+    assert.deepEqual(s.owned,['pistol','rifle']);
+    assert.equal(s.equipped,'pistol');
+    const before=s.snapshot();
+    assert.equal(s.equip(['rifle']),false);
+    assert.equal(s.equip({toString:()=> 'rifle'}),false);
+    assert.deepEqual(s.snapshot(),before);
+    assert.equal(s.equip('rifle'),true);
+});
+
+test('completed and failed raids reject equipment, healing and target mutations',()=>{
+    const complete=new DdsGameState();
+    complete.damage(40);
+    complete.collect('case');
+    for(let i=0;i<3;i++)assert.equal(complete.hitTarget(i,100),true);
+    assert.equal(complete.extract(),true);
+    const snapshot=complete.snapshot();
+    assert.equal(complete.heal(),false);
+    assert.equal(complete.equip(null),false);
+    assert.equal(complete.equip('pistol'),false);
+    assert.equal(complete.hitTarget(0,20),false);
+    assert.deepEqual(complete.snapshot(),snapshot);
+
+    const failed=new DdsGameState();
+    failed.damage(100);
+    const deadSnapshot=failed.snapshot();
+    assert.equal(failed.equip(null),false);
+    assert.equal(failed.heal(),false);
+    assert.equal(failed.hitTarget(0,10),false);
+    assert.deepEqual(failed.snapshot(),deadSnapshot);
+});
+
+test('defeated targets cannot be damaged again',()=>{
+    const s=new DdsGameState();
+    assert.equal(s.hitTarget(0,100),true);
+    assert.equal(s.hitTarget(0,10),false);
+    assert.equal(s.targets[0],0);
+});
