@@ -372,7 +372,7 @@ export class UrbanRuntime {
         // Building these mesh batches at running speed created major stutters.
         try{
           await withUrbanLoadDeadline('Preparazione geometrie/shader facciate HD',
-            ()=>this.prepareAllPhotorealDetails(),120000);
+            async()=>{await this.prepareAllPhotorealDetails();},120000);
           this.visualProgress.completed++;
           this.visualProgress.label='Edifici HD pronti, precompilazione shader…';
           this.onVisualProgress?.({...this.visualProgress});
