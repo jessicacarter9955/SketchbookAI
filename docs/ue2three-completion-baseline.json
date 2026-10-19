@@ -1,0 +1,292 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-10-19",
+  "project": "VIPExtractionKitDDS",
+  "method": "Provisional engineering estimates of functional checklist completion; ranges are not statistical confidence intervals or time estimates.",
+  "source_revision": "0ffde7d2f0fcc24a9f081108263a798c24677928",
+  "programs_content_sha256": "d04bf2919f7bb9c0f4737c9eff4c85e0b08dc1b965882918dc935d02bbf01324",
+  "progress_fingerprint": "e94d6fb9f94558d90e7c35a58208f8173406b323d08a28d77e04630eb2c5deeb",
+  "new_visual_verification": false,
+  "new_scan": false,
+  "rules": [
+    "100% requires the declared source scope inventoried, migrated, integrated and verified.",
+    "Offline data acceptance does not imply live gameplay or visual acceptance.",
+    "Do not sum or average overlapping area estimates into a whole-game percentage.",
+    "Record changes to scope and denominators before revising estimates.",
+    "Report completed range, remaining range, change and remaining acceptance criteria at each progress update.",
+    "Animation 1:1 verification remains deferred by user request; lighting remains last priority."
+  ],
+  "areas": [
+    {
+      "id": "verifier",
+      "title": "Verificatore dei dati supportati",
+      "done_when": "Confronti riproducibili su output, stato ed effetti delle capacità supportate, con identità sorgenti e prove salvate",
+      "estimated_completed_pct": {
+        "low": 100,
+        "high": 100
+      },
+      "estimated_remaining_pct": {
+        "low": 0,
+        "high": 0
+      },
+      "status": "green",
+      "evidence_scope": "Supported data-verifier capabilities only"
+    },
+    {
+      "id": "character_weapons",
+      "title": "Personaggio e armi",
+      "done_when": "Personaggi giocabili, rig/materiali/socket, movimento, equip/unequip, mira, sparo, ricarica, munizioni e danni originali integrati e verificati",
+      "estimated_completed_pct": {
+        "low": 15,
+        "high": 25
+      },
+      "estimated_remaining_pct": {
+        "low": 75,
+        "high": 85
+      },
+      "status": "yellow",
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+    },
+    {
+      "id": "clips",
+      "title": "Clip di animazione",
+      "done_when": "Tutte le clip necessarie ai flussi originali, con curve, root motion e notify pertinenti, riproducibili e confrontate",
+      "estimated_completed_pct": {
+        "low": 5,
+        "high": 10
+      },
+      "estimated_remaining_pct": {
+        "low": 90,
+        "high": 95
+      },
+      "status": "yellow",
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+    },
+    {
+      "id": "animation_systems",
+      "title": "Sistemi di animazione e IK",
+      "done_when": "Stati, transizioni, montage, blending, Motion Matching e IK originali eseguiti con corretta sincronizzazione",
+      "estimated_completed_pct": {
+        "low": 0,
+        "high": 5
+      },
+      "estimated_remaining_pct": {
+        "low": 95,
+        "high": 100
+      },
+      "status": "red",
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+    },
+    {
+      "id": "blueprints",
+      "title": "Blueprint e moduli nativi",
+      "done_when": "Logica usata dal gioco, oggetti, eventi, delegate, timer e chiamate native tradotti ed eseguiti nei flussi completi",
+      "estimated_completed_pct": {
+        "low": 5,
+        "high": 15
+      },
+      "estimated_remaining_pct": {
+        "low": 85,
+        "high": 95
+      },
+      "status": "yellow",
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+    },
+    {
+      "id": "inventory",
+      "title": "Inventario, equipaggiamento e loot",
+      "done_when": "Raccolta, stack, slot, trasferimenti, equipaggiamento, munizioni e notifiche originali collegati alla scena e alla UI",
+      "estimated_completed_pct": {
+        "low": 15,
+        "high": 25
+      },
+      "estimated_remaining_pct": {
+        "low": 75,
+        "high": 85
+      },
+      "status": "yellow",
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+    },
+    {
+      "id": "persistence",
+      "title": "Salvataggi e persistenza",
+      "done_when": "Salvataggio e ripristino dello stato originale previsto, inclusi rientro nel gioco e gestione dei fallimenti",
+      "estimated_completed_pct": {
+        "low": 0,
+        "high": 5
+      },
+      "estimated_remaining_pct": {
+        "low": 95,
+        "high": 100
+      },
+      "status": "red",
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+    },
+    {
+      "id": "geometry",
+      "title": "Geometria e trasformazioni",
+      "done_when": "Geometria, terreno, gerarchie e trasformazioni delle scene originali corretti e confrontati",
+      "estimated_completed_pct": {
+        "low": 10,
+        "high": 20
+      },
+      "estimated_remaining_pct": {
+        "low": 80,
+        "high": 90
+      },
+      "status": "yellow",
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+    },
+    {
+      "id": "materials",
+      "title": "Materiali, texture e shader",
+      "done_when": "Aspetto originale dei contenuti usati, compresi canali, istanze, funzioni e parametri dinamici, senza ripieghi irrisolti",
+      "estimated_completed_pct": {
+        "low": 10,
+        "high": 20
+      },
+      "estimated_remaining_pct": {
+        "low": 80,
+        "high": 90
+      },
+      "status": "yellow",
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+    },
+    {
+      "id": "maps",
+      "title": "Mappe e streaming",
+      "done_when": "Tutte le mappe giocabili previste, spawn, caricamento e passaggi tra livelli funzionanti",
+      "estimated_completed_pct": {
+        "low": 5,
+        "high": 10
+      },
+      "estimated_remaining_pct": {
+        "low": 90,
+        "high": 95
+      },
+      "status": "yellow",
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+    },
+    {
+      "id": "ui",
+      "title": "Menu, HUD e schermate",
+      "done_when": "Layout, immagini, stili, input, binding ed eventi delle schermate originali funzionanti",
+      "estimated_completed_pct": {
+        "low": 0,
+        "high": 5
+      },
+      "estimated_remaining_pct": {
+        "low": 95,
+        "high": 100
+      },
+      "status": "yellow",
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+    },
+    {
+      "id": "npc",
+      "title": "NPC, shop, dialoghi e missioni",
+      "done_when": "Interazioni, AI, condizioni, transazioni, conversazioni e progressione presenti nella sorgente funzionanti",
+      "estimated_completed_pct": {
+        "low": 0,
+        "high": 5
+      },
+      "estimated_remaining_pct": {
+        "low": 95,
+        "high": 100
+      },
+      "status": "red",
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+    },
+    {
+      "id": "modes",
+      "title": "Modalità, lobby e raid",
+      "done_when": "Avvio, lobby, ingresso, partita, morte, estrazione e ritorno secondo i flussi originali",
+      "estimated_completed_pct": {
+        "low": 0,
+        "high": 5
+      },
+      "estimated_remaining_pct": {
+        "low": 95,
+        "high": 100
+      },
+      "status": "red",
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+    },
+    {
+      "id": "physics",
+      "title": "Collisioni e fisica",
+      "done_when": "Collisioni, canali, query, contatti e comportamenti fisici usati dal gioco equivalenti alla sorgente",
+      "estimated_completed_pct": {
+        "low": 0,
+        "high": 5
+      },
+      "estimated_remaining_pct": {
+        "low": 95,
+        "high": 100
+      },
+      "status": "red",
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+    },
+    {
+      "id": "vfx",
+      "title": "Effetti e groom",
+      "done_when": "Effetti visivi originali necessari alle scene, con materiali, trigger e tempi corretti",
+      "estimated_completed_pct": {
+        "low": 0,
+        "high": 5
+      },
+      "estimated_remaining_pct": {
+        "low": 95,
+        "high": 100
+      },
+      "status": "red",
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+    },
+    {
+      "id": "audio",
+      "title": "Audio e sequenze",
+      "done_when": "Suoni, attenuazione, cue, MetaSound e sequenze usati dal gioco, con eventi e sincronizzazione originali",
+      "estimated_completed_pct": {
+        "low": 0,
+        "high": 5
+      },
+      "estimated_remaining_pct": {
+        "low": 95,
+        "high": 100
+      },
+      "status": "red",
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+    },
+    {
+      "id": "network",
+      "title": "Multiplayer e servizi",
+      "done_when": "Autorità, RPC, replica, sessioni e servizi previsti funzionanti tra più client",
+      "estimated_completed_pct": {
+        "low": 0,
+        "high": 0
+      },
+      "estimated_remaining_pct": {
+        "low": 100,
+        "high": 100
+      },
+      "status": "red",
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+    },
+    {
+      "id": "lighting",
+      "title": "Illuminazione e postprocessing",
+      "done_when": "Luci, ambiente, esposizione, ombre, riflessi e postprocessing confrontati nelle scene originali",
+      "estimated_completed_pct": {
+        "low": 5,
+        "high": 10
+      },
+      "estimated_remaining_pct": {
+        "low": 90,
+        "high": 95
+      },
+      "status": "yellow",
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+    }
+  ],
+  "overall_game_percentage": null
+}

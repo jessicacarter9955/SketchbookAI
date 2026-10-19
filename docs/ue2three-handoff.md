@@ -1,5 +1,16 @@
 # ue2three saved handoff · 2026-10-18
 
+## Percentuali per area · 2026-10-19
+
+Riferimento per i prossimi aggiornamenti: [definizioni del100%, stime e lavoro
+restante](ue2three-completion-baseline.md), con dati strutturati nel file omonimo
+.json. Sono stime iniziali della checklist funzionale del DDS completo; gli
+intervalli sono provvisori e non misurano tempo. Personaggio e armi15–25%,
+restante75–85%. Ogni aggiornamento deve indicare area, fatto, restante,
+variazione e criteri di chiusura ancora mancanti. Non dedurre una percentuale
+globale dai conteggi di funzioni/file o dalla media delle aree sovrapposte.
+Nessuna nuova scansione, modifica al runtime o verifica visiva in questo aggiornamento.
+
 ## Source weapon reload/component queries · 2026-10-19
 
 187 translated /320 blocked, 67 event helpers, 60 declarations, six no-op
