@@ -20,7 +20,7 @@ test('imported vehicle body cannot sink below measured ground while wheels conta
 });
 
 test('pedestrian picks reachable nonzero-distance destinations on the real sidewalk graph',()=>{
-  const graph=urbanNetworks(DEFAULT_URBAN);
+  const graph=urbanNetworks(DEFAULT_URBAN).pedestrians;
   const origin=graph.nodes[0];
   const last=[];
   for(let leg=1;leg<=4;leg++){
