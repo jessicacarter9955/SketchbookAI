@@ -9,6 +9,7 @@ import { buildUrbanStreets } from './UrbanStreets.js';
 import { UrbanSignals } from './UrbanSignals.js';
 import { createVegetation } from './UrbanVegetation.js';
 import { addUrbanMiamiCoast } from './UrbanCoast.js';
+import { withUrbanLoadDeadline } from './urban-load-deadline.mjs';
 import { isHiddenBehindBuildings,isOccludedSector,isOccludedTree } from './urban-visibility.mjs';
 import { photographicLighting, loadSurface, metricUV, captureStreetReflections } from './UrbanLighting.js';
 import { prepareFacadeKit, buildModularBuilding, instanceArchitecture } from './UrbanArchitecture.js';
@@ -70,11 +71,25 @@ function loadUrbanKit(loader,assetId){
   return kitPromises.get(assetId);
 }
 async function fetchUrbanKit(loader,assetId){
-  try{return await loader.loadAsync(`assets/urban-kits/${assetId}/scene.gltf`);}
-  catch(localError){
-    const remote=await polyHavenGltfURL(assetId);
-    try{return await loader.loadAsync(remote);}
-    catch(remoteError){remoteError.cause=localError;throw remoteError;}
+  // Bound GLTF loading after network activity stops; never substitute geometry.
+  const local=`assets/urban-kits/${assetId}/scene.gltf`;
+  globalThis.cityDiagnostics?.activity('GLTF: apertura '+local);
+  try{
+    const result=await withUrbanLoadDeadline('GLTF locale '+assetId,
+      ()=>loader.loadAsync(local),60000);
+    globalThis.cityDiagnostics?.activity('GLTF: pronto '+assetId);
+    return result;
+  }catch(localError){
+    globalThis.cityDiagnostics?.problem(localError,'GLTF locale '+assetId);
+    const remote=await withUrbanLoadDeadline('Ricerca CDN '+assetId,
+      ()=>polyHavenGltfURL(assetId),12000);
+    globalThis.cityDiagnostics?.activity('GLTF: riprovo sorgente CC0 originale '+assetId);
+    try{
+      const result=await withUrbanLoadDeadline('GLTF CDN '+assetId,
+        ()=>new GLTFLoader().loadAsync(remote),45000);
+      globalThis.cityDiagnostics?.activity('GLTF: pronto via CDN '+assetId);
+      return result;
+    }catch(remoteError){remoteError.cause=localError;throw remoteError;}
   }
 }
 
@@ -356,7 +371,8 @@ export class UrbanRuntime {
         // Prefetch every original high-detail facade BEFORE allowing gameplay.
         // Building these mesh batches at running speed created major stutters.
         try{
-          await this.prepareAllPhotorealDetails();
+          await withUrbanLoadDeadline('Preparazione geometrie/shader facciate HD',
+            ()=>this.prepareAllPhotorealDetails(),120000);
           this.visualProgress.completed++;
           this.visualProgress.label='Edifici HD pronti, precompilazione shader…';
           this.onVisualProgress?.({...this.visualProgress});
@@ -415,13 +431,24 @@ export class UrbanRuntime {
       if(!clusters.has(key))clusters.set(key,{key,x:minX+(cx+.5)*size,z:minZ+(cz+.5)*size,size,ground:urbanGroundHeight(b.x,b.z,config),buildings:[],node:null});
       clusters.get(key).buildings.push({b,index});
     });
-    let cached=await restoreUrbanFacades(config);
+    let cached=null;
+    try{
+      globalThis.cityDiagnostics?.activity('Facciate: verifico cache IndexedDB originale…');
+      cached=await withUrbanLoadDeadline('Cache HD facciate',
+        ()=>restoreUrbanFacades(config),14000);
+    }catch(error){
+      // Cache is optional; genuine local GLTFs remain authoritative.
+      globalThis.cityDiagnostics?.problem(error,'Cache facciate');
+    }
     const cachedValid=cached && cached.children.length===clusters.size &&
       [...clusters.keys()].every(key=>cached.getObjectByName('PBR city sector '+key));
     if(!cachedValid)cached=null;
     let standard=null,factory=null,available=names;
     if(!cached){
+      globalThis.cityDiagnostics?.activity('Facciate: due kit GLTF originali in caricamento');
       const results=await Promise.allSettled(names.map(id=>loadUrbanKit(new GLTFLoader(),id)));
+      globalThis.cityDiagnostics?.activity('Facciate: sorgenti risolte ('+
+        results.filter(r=>r.status==='fulfilled').length+'/'+names.length+')');
       if(group.parent!==this.root)return [];
       available=results.map((r,i)=>r.status==='fulfilled'?names[i]:null).filter(Boolean);
       if(!available.length)throw new Error('Nessun kit facciate disponibile: '+results.map((r,i)=>names[i]+': '+(r.reason?.message||'errore')).join(' | '));
@@ -518,7 +545,10 @@ export class UrbanRuntime {
       // optional optimization, never a loading failure.
       this.visualProgress.label='Salvataggio facciate HD per gli avvii successivi…';
       this.onVisualProgress?.({...this.visualProgress});
-      await saveUrbanFacades(streamer.config,streamer.clusters);
+      try{
+        await withUrbanLoadDeadline('Salvataggio cache facciate HD',
+          ()=>saveUrbanFacades(streamer.config,streamer.clusters),18000);
+      }catch(error){globalThis.cityDiagnostics?.problem(error,'Cache HD facoltativa');}
     }
     const layer=this.root.getObjectByName('CC0 photoreal vegetation');
     if(!layer)throw new Error('Vegetazione fotorealistica non disponibile');

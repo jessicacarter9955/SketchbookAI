@@ -1,13 +1,30 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
+import {withUrbanLoadDeadline} from './urban-load-deadline.mjs';
 
 // Exactly the original source mesh and material: GPU instances instead of
 // cloning hundreds of glTF scene hierarchies every time an area comes into view.
 let templatesPromise;
+async function loadOriginalTreeLod(level){
+ const url=`assets/urban-kits/tree_small_02/scene-lod${level}.gltf`;
+ globalThis.cityDiagnostics?.activity('Vegetazione: caricamento GLTF originale '+url);
+ try{
+   const kit=await withUrbanLoadDeadline('Vegetazione LOD'+level,
+     ()=>new GLTFLoader().loadAsync(url),55000);
+   globalThis.cityDiagnostics?.activity('Vegetazione: GLTF LOD'+level+' pronto');
+   return kit;
+ }catch(error){
+   globalThis.cityDiagnostics?.problem(error,'Vegetazione LOD'+level);
+   // Retry only the same shipped CC0 asset, bypassing a broken HTTP cache;
+   // do not replace it with a procedural tree or accept partial HD.
+   globalThis.cityDiagnostics?.activity('Vegetazione: riprovo originale LOD'+level+' dalla stessa pubblicazione');
+   return withUrbanLoadDeadline('Vegetazione LOD'+level+' secondo tentativo',
+     ()=>new GLTFLoader().loadAsync(url+'?retry=1'),40000);
+ }
+}
 async function templates(){
- if(!templatesPromise)templatesPromise=Promise.all([0,1].map(level=>
-   new GLTFLoader().loadAsync(`assets/urban-kits/tree_small_02/scene-lod${level}.gltf`)
- )).then(kits=>kits.map(kit=>{
+ if(!templatesPromise)templatesPromise=Promise.all([0,1].map(loadOriginalTreeLod))
+ .then(kits=>kits.map(kit=>{
    const root=kit.scene;
    root.updateMatrixWorld(true);
    root.traverse(n=>{
