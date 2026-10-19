@@ -8,9 +8,10 @@ import {buildUrbanBeachGeometry,buildUrbanSandBlendGeometry,urbanSandHeight} fro
 // One reflective ocean plane fills the exterior, without covering city streets.
 export function addUrbanMiamiCoast(group,plan,config,box){
   const layout=miamiCoastLayout(plan.bounds,config.seed);
-  const sand=new THREE.MeshStandardMaterial({color:0xffffff,roughness:1,metalness:0});
+  const sand=new THREE.MeshStandardMaterial({color:0xe8d0aa,roughness:1,metalness:0});
   const drySand=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.96,metalness:0,transparent:true,vertexColors:true,depthWrite:false});
   const wetSand=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.67,metalness:0,transparent:true,vertexColors:true,depthWrite:false});
+  const sandLayers=[];
   for(const side of layout.sides){
     // The FOUR coastlines use a sculpted mesh with genuine photo-PBR sand.
     const beach=new THREE.Mesh(buildUrbanBeachGeometry(side,layout),sand);
@@ -23,6 +24,8 @@ export function addUrbanMiamiCoast(group,plan,config,box){
     for(const [type,material,order] of [['dry',drySand,1],['wet',wetSand,2]]){
       const layer=new THREE.Mesh(buildUrbanSandBlendGeometry(side,layout,type),material);
       layer.receiveShadow=true;layer.castShadow=false;layer.renderOrder=order;
+      layer.visible=false; // do not show white overlays before photographic PBR is ready
+      sandLayers.push(layer);
       layer.name='Miami '+side.name+' · '+type+' photographic sand CC0';
       layer.userData.urbanCoast=true;
       group.add(layer);
@@ -117,6 +120,7 @@ export function addUrbanMiamiCoast(group,plan,config,box){
       material.normalScale.set(normalStrength,normalStrength);
       material.roughnessMap=roughness;material.needsUpdate=true;
     }
+    sandLayers.forEach(layer=>{layer.visible=true;});
 
     const model=palm.scene;model.updateMatrixWorld(true);
     const bb=new THREE.Box3().setFromObject(model);
