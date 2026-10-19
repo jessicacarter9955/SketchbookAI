@@ -82,3 +82,71 @@ test('merchant UI eligibility matches atomic purchases for funds, capacity and r
     assert.equal(valid.credits,205);
     assert.equal(valid.medkits,3);
 });
+
+test('case pickup respects weight and slots, and rejected pickups are atomic',()=>{
+    const s=new DdsGameState(), before=s.snapshot();
+    s.maxWeight=s.currentWeight+1.9;
+    assert.equal(s.canCollect('case').ok,false);
+    assert.equal(s.collect('case'),false);
+    assert.deepEqual(s.snapshot(),before);
+    s.maxWeight=18;
+    s.carryCapacity=s.usedSlots;
+    assert.equal(s.collect('case'),false);
+    assert.deepEqual(s.snapshot(),before);
+    s.carryCapacity++;
+    assert.equal(s.canCollect('case').ok,true);
+    assert.equal(s.collect('case'),true);
+    assert.equal(s.collect('case'),false);
+    assert.equal(s.usedSlots,before.medkits>0?4:3);
+});
+
+test('supply pickup refuses overweight and missing stack slots without consuming crate',()=>{
+    const s=new DdsGameState(), original=s.snapshot();
+    s.maxWeight=s.currentWeight+1;
+    assert.equal(s.canCollect('supplies').ok,false);
+    assert.equal(s.collect('supplies'),false);
+    assert.deepEqual(s.snapshot(),original);
+    s.maxWeight=18;
+    s.medkits=0;s.ammo.rifle.reserve=0;s.ammo.pistol.reserve=0;
+    s.carryCapacity=2;
+    const before=s.snapshot();
+    assert.equal(s.usedSlots,0);
+    assert.equal(s.canCollect('supplies').ok,false);
+    assert.equal(s.collect('supplies'),false);
+    assert.deepEqual(s.snapshot(),before);
+    s.carryCapacity=3;
+    assert.equal(s.canCollect('supplies').ok,true);
+    assert.equal(s.collect('supplies'),true);
+    assert.equal(s.medkits,1);
+    assert.equal(s.ammo.rifle.reserve,60);
+    assert.equal(s.ammo.pistol.reserve,24);
+    assert.equal(s.collect('supplies'),false);
+});
+
+test('supply pickup computes only granted amounts near stack caps',()=>{
+    const s=new DdsGameState();
+    s.medkits=10;s.ammo.rifle.reserve=995;s.ammo.pistol.reserve=999;
+    s.maxWeight=s.currentWeight+0.05;
+    assert.equal(s.canCollect('supplies').ok,true);
+    assert.equal(s.collect('supplies'),true);
+    assert.equal(s.ammo.rifle.reserve,999);
+    assert.equal(s.ammo.pistol.reserve,999);
+    assert.equal(s.medkits,10);
+    const full=new DdsGameState();
+    full.medkits=10;full.ammo.rifle.reserve=999;full.ammo.pistol.reserve=999;
+    assert.equal(full.canCollect('supplies').ok,false);
+    const before=full.snapshot();
+    assert.equal(full.collect('supplies'),false);
+    assert.deepEqual(full.snapshot(),before);
+});
+
+test('unknown, dead and extracted pickups do not mutate inventory',()=>{
+    for(const state of [new DdsGameState(),new DdsGameState({version:1,health:0}),new DdsGameState({version:1,extracted:true})]){
+        const before=state.snapshot();
+        for(const kind of ['constructor','__proto__','case','supplies']){
+            if(state.health && !state.extracted && ['case','supplies'].includes(kind))continue;
+            assert.equal(state.collect(kind),false);
+            assert.deepEqual(state.snapshot(),before);
+        }
+    }
+});

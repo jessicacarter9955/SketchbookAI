@@ -164,7 +164,10 @@ export class DdsGame {
     interact() {
         if(!this.canAct())return false;
         for(const item of this.loot) {
-            if(item.visible&&this.player.position.distanceTo(item.position)<2.5&&this.state.collect(item.userData.lootKind)) {
+            if(!item.visible||this.player.position.distanceTo(item.position)>=2.5)continue;
+            const eligibility=this.state.canCollect(item.userData.lootKind);
+            if(!eligibility.ok){this.message(eligibility.message);return false;}
+            if(this.state.collect(item.userData.lootKind)) {
                 this.message(item.userData.lootKind==='case'?'Valigetta recuperata.':'Munizioni e kit raccolti.');this.save();this.refreshUI();return true;
             }
         }

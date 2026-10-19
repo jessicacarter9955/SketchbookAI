@@ -69,8 +69,35 @@ export class DdsGameState {
     heal() { if (!this.health || this.health===100 || !this.medkits) return false; this.medkits--; this.health=Math.min(100,this.health+50); return true; }
     damage(amount) { if (!Number.isFinite(amount) || amount<=0) return; this.health=Math.max(0,this.health-amount); if (!this.health) this.reloadRemaining=0; }
     hitTarget(index,damage) { if (!Number.isInteger(index) || index<0 || index>2 || !Number.isFinite(damage) || damage<=0) return false; this.targets[index]=Math.max(0,this.targets[index]-damage); return true; }
+    // Preview pickup eligibility without changing the raid state.
+    // Apply the same slot and weight constraints used by merchant purchases.
+    canCollect(kind) {
+        if (!this.health || this.extracted) return {ok:false,message:'Incursione conclusa.'};
+        if (kind==='case') {
+            if (this.caseCollected) return {ok:false,message:'Valigetta già recuperata.'};
+            if (this.usedSlots+1>this.carryCapacity || this.currentWeight+2>this.maxWeight+1e-9)
+                return {ok:false,message:'Spazio o capacità insufficienti per la valigetta.'};
+            return {ok:true,message:''};
+        }
+        if (kind==='supplies') {
+            if (this.suppliesCollected) return {ok:false,message:'Rifornimenti già raccolti.'};
+            const medkits=Math.max(0,Math.min(1,10-this.medkits));
+            const rifle=Math.max(0,Math.min(WEAPONS.rifle.capacity*2,999-this.ammo.rifle.reserve));
+            const pistol=Math.max(0,Math.min(WEAPONS.pistol.capacity*2,999-this.ammo.pistol.reserve));
+            if (!medkits && !rifle && !pistol)
+                return {ok:false,message:'Rifornimenti già al massimo.'};
+            const newSlots=Number(medkits>0 && this.medkits===0)
+                +Number(rifle>0 && this.ammo.rifle.reserve===0)
+                +Number(pistol>0 && this.ammo.pistol.reserve===0);
+            const addedWeight=medkits*0.4+rifle*0.012+pistol*0.01;
+            if (this.usedSlots+newSlots>this.carryCapacity || this.currentWeight+addedWeight>this.maxWeight+1e-9)
+                return {ok:false,message:'Spazio o capacità insufficienti per i rifornimenti.'};
+            return {ok:true,message:''};
+        }
+        return {ok:false,message:'Bottino non riconosciuto.'};
+    }
     collect(kind) {
-        if (!this.health || this.extracted) return false;
+        if (!this.canCollect(kind).ok) return false;
         if (kind==='case' && !this.caseCollected) {this.caseCollected=true;return true;}
         if (kind==='supplies' && !this.suppliesCollected) {
             this.suppliesCollected=true; this.medkits=Math.min(10,this.medkits+1);
