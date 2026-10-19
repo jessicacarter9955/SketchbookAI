@@ -74,10 +74,17 @@ import urllib.request
 cars=out/'build/assets/supercars'
 cars.mkdir(parents=True,exist_ok=True)
 for model in ('bmw','ferrari','lamborghini'):
-    source='https://sketchbook-fab-bridge.onrender.com/sketchfab/cars/'+model
+    # Immutable prior successful deploys serve the SAME genuine Sketchfab GLBs.
+    # If Render's free-tier bridge returns 503, preserve source fidelity by
+    # downloading a previously validated release, never generating a substitute.
+    sources=(
+        'https://6ad3f6893d1d435487bfcb09--my-test-site3.netlify.app/build/assets/supercars/'+model+'.glb',
+        'https://6ad17e1ae90c7463383f6212--my-test-site3.netlify.app/build/assets/supercars/'+model+'.glb',
+        'https://sketchbook-fab-bridge.onrender.com/sketchfab/cars/'+model,
+    )
     destination=cars/(model+'.glb')
     temp=cars/(model+'.glb.part')
-    for attempt in range(3):
+    for attempt,source in enumerate(sources):
         try:
             request=urllib.request.Request(source,headers={'User-Agent':'SketchbookAI-Urban-Photoreal-Release/1.0'})
             with urllib.request.urlopen(request,timeout=180) as response, temp.open('wb') as output:
@@ -102,7 +109,7 @@ for model in ('bmw','ferrari','lamborghini'):
             break
         except Exception as error:
             temp.unlink(missing_ok=True)
-            if attempt==2:raise RuntimeError('Required Sketchfab '+model+' GLB download failed') from error
+            if attempt==len(sources)-1:raise RuntimeError('Required Sketchfab '+model+' GLB download failed') from error
             time.sleep(3*(attempt+1))
 shutil.copy2(root/'docs/sketchfab-supercars-attribution.txt',cars/'ATTRIBUTION.txt')
 
