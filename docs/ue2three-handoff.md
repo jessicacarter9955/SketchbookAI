@@ -1,5 +1,60 @@
 # ue2three saved handoff · 2026-10-18
 
+## Original inventory events batch · 2026-10-19
+
+**182 translated /318 blocked**, 67 event helpers, 60 declarations, six empty
+functions, 56 empty callbacks and 263 uncached packages. New original local
+bodies: Server_RemoveCurrency, Server_MergeStacks and Server_AttachMod. This
+does not implement server authority, RPC transport or complete equipment flows.
+Server_AttachMod comparisons cover original rejection paths only: the cached
+DT_Items has no Category21 accessory row. Do not fabricate a mod item or claim
+positive attachment acceptance.
+
+The generic compiler now handles EX_SetArray and localized EX_TextConst.
+SetArray clears its target and constructs a default slot BEFORE each expression
+runs, following UE5.7 ScriptCore.cpp. Transactional nested calls require
+reacquiring the resulting array; otherwise a copied state loses assignments.
+Reentrant destination mutation fails explicitly rather than returning wrong data.
+Localized text retains source text, namespace and key; an empty source becomes
+original empty FText. Other text literal kinds remain explicitly unsupported.
+
+Added 33 independent source cases, **653 total /487 inventory**, all PASS using
+the new reusable tools/ue2three/verify-blueprints.mjs command and
+src/editor/ue2three-source-verification.mjs. The verifier requires source,
+type/table/event witnesses and independent expectations; it preserves inputs and
+rejects writing proof into the Unreal source project. CLI output paths resolve
+existing junctions/symlinks before the source-project boundary check.
+**136 Python /92 JavaScript tests PASS; editor build PASS**, revision22.
+Current report SHA: 1c8e0c2652d9e340b3982273336e1be66369232fd84556d7ea869efaa4b51c78.
+
+Source behavior retained: removal notifications subtract the amount again from
+the updated currency balance and emit ChangeAmount0; original enum mapping is
+Low0/Clean1/Ghost2. Server_MergeStacks validates IDs and stackability, calls
+MergeSlots, then re-reads the source slot AFTER removal for OnItemMoved; that
+payload can consequently contain None. Negative transfer on overfull stacks,
+HP reset and stale slot-index metadata remain original behavior.
+
+Current browser verification is **pending**. The integrated browser is on an
+ERR_CONNECTION_REFUSED internal error document (data:). Local server restarted
+with pythonw, responds HTTP200 on127.0.0.1:8401, but Browser Use rejects access to
+that error document under its URL policy. A request for the user to reload the
+existing integrated tab is pending; do not bypass the browser policy or switch
+to an external browser. No new browser audit or visual PASS claimed this batch.
+Published blueprint-offline-verification.json contains current data proof.
+The checklist shows offline counts separately and keeps visual green gates
+closed without current screenshots. Runtime/QA implementation checksums are now
+part of the migration fingerprint, so changing interpreter code expires old
+visual evidence even when original bytecode is unchanged.
+
+No Unreal start, new parser read, source rescan, export, upload or dependency
+installation this batch. Next: acquire fresh integrated-browser audit/game
+screenshots after the tab is accessible; exact IsValid and actor lifecycle,
+GetComponentByClass/casts/cross-object calls for equip and transfers; optionally
+read original S_InjectorData/DT_Injectors (inventoried, not cached). Animations
+remain yellow with 1:1 verification deferred; lighting last. Complete game is
+still partial. Do not equate source-case or asset counts with completion percent.
+
+
 ## Slot ownership batch · 2026-10-18
 
 179 translated /321 blocked; 60 delegate declarations, six empty functions,

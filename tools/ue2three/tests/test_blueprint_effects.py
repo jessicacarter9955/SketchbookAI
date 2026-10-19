@@ -12,6 +12,44 @@ def var(name, owner=1, local=False):
 
 
 class SourceEffectsTests(unittest.TestCase):
+    def test_set_array_retains_original_destination_schema_and_writes(self):
+        p = self.package()
+        literal = node('EX_SetArray', AssigningProperty=var('Items'), ArrayInnerProp=None, Elements=[node('EX_IntOne')])
+        self.assertEqual(memory_size(literal,package=p),12)
+        p.exports[1]['ScriptBytecode'].insert(0,literal)
+        result=translate_package(p)['functions']['Change']
+        self.assertEqual(result['self_writes'],['Items'])
+        self.assertEqual(result['steps'][0]['value']['element']['type'],'IntProperty')
+        self.assertEqual(result['steps'][0]['value']['elements'],[{'op':'constant','value':1}])
+
+    def test_set_array_rejects_const_wrong_owner_and_legacy_layout(self):
+        for failure in ['const','owner','legacy','not_array']:
+            p=self.package(); literal=node('EX_SetArray',AssigningProperty=var('Items'),ArrayInnerProp=None,Elements=[])
+            if failure=='const':
+                p.exports[1]['LoadedProperties']=[dict(p.exports[0]['LoadedProperties'][0],Name='Input',PropertyFlags='CPF_Parm | CPF_ConstParm')]
+                literal['AssigningProperty']=var('Input',2,True)
+            if failure=='owner':literal['AssigningProperty']['Variable']['New']['ResolvedOwner']=2
+            if failure=='legacy':literal['ArrayInnerProp']=-1
+            if failure=='not_array':p.exports[0]['LoadedProperties'][0]['SerializedType']='IntProperty'
+            p.exports[1]['ScriptBytecode'].insert(0,literal)
+            with self.subTest(failure=failure): self.assertFalse(translate_package(p)['functions'])
+        with self.assertRaises(BlueprintTranslationError):memory_size(dict(literal,ArrayInnerProp=-1))
+
+    def test_localized_text_preserves_original_identity_and_utf16_layout(self):
+        value=node('EX_TextConst',Value={'TextLiteralType':'LocalizedText',
+            'LocalizedSource':node('EX_UnicodeStringConst',Value='Slot già in uso 🔒'),
+            'LocalizedKey':node('EX_StringConst',Value='original-key'),
+            'LocalizedNamespace':node('EX_StringConst',Value='source')})
+        result=expression(value,set(),set())
+        self.assertEqual(result['value'],{'history':'base','text':'Slot già in uso 🔒','key':'original-key','namespace':'source','flags':0})
+        self.assertEqual(memory_size(value),2+3+len('Slot già in uso 🔒'.encode('utf-16-le'))+14+8)
+        value['Value']['LocalizedSource']['Value']=''
+        self.assertEqual(expression(value,set(),set())['value'],{'history':'empty','text':'','flags':0})
+        value['Value']['LocalizedKey']=node('EX_IntOne')
+        with self.assertRaisesRegex(BlueprintTranslationError,'constant strings'):expression(value,set(),set())
+        value['Value']['TextLiteralType']='StringTableEntry'
+        with self.assertRaises(BlueprintTranslationError):expression(value,set(),set())
+
     def test_class_values_keep_original_meta_class_and_require_an_imported_class(self):
         p=Package({'Imports': [{'ObjectName':'Class','OuterIndex':-2,'ClassName':'Class'},
             {'ObjectName':'/Script/CoreUObject','ClassName':'Package'},

@@ -5,11 +5,26 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from core import atomic_json, digest, file_hash
-from progress_report import project_progress
+from progress_report import project_progress, offline_source_checks
 from test_map_processing import model
 
 
 class ProgressReportTests(unittest.TestCase):
+    def test_offline_data_comparisons_require_current_source_and_exact_typed_results(self):
+        from copy import deepcopy
+        programs = {'project': 'Original', 'content_sha256': 'current', 'packages': {'/Game/A': {'functions': {'Write': {'source_bytecode_sha256': 'source'}}}}}
+        sample = {'runtime': 'inventory', 'outputs': {}, 'expected': {}, 'resulting_state': {'Count': 2}, 'expected_state': {'Count': 2},
+                  'effects': [], 'expected_effects': []}
+        proof = {'schema_version': 1, 'status': 'passed', 'project': 'Original', 'programs_content_sha256': 'current',
+                 'source_cases': 1, 'inventory_checked': 1, 'evidence': [{'package': '/Game/A', 'function': 'Write',
+                    'source_bytecode_sha256': 'source', 'source_cases': [sample]}]}
+        self.assertEqual(offline_source_checks(programs, proof), {'source_cases': 1, 'inventory_checked': 1})
+        for corrupt in [lambda p:p.update(programs_content_sha256='stale'),lambda p:p.update(source_cases=2),
+                        lambda p:p['evidence'][0].update(source_bytecode_sha256='wrong'),
+                        lambda p:p['evidence'][0]['source_cases'][0].update(resulting_state={'Count': True}),
+                        lambda p:p['evidence'][0]['source_cases'][0].update(effects=[{'op':'invented'}])]:
+            changed=deepcopy(proof);corrupt(changed);self.assertFalse(offline_source_checks(programs,changed))
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(); self.root = Path(self.temp.name)
         self.workspace = self.root / 'work'; self.published = self.root / 'published'; self.character = self.root / 'character'
@@ -38,6 +53,18 @@ class ProgressReportTests(unittest.TestCase):
         self.assertTrue(any(m['title'] == 'Trasformazioni confrontabili' for m in report['milestones']))
         self.assertEqual(report['source_classes']['AnimSequence'], 10)
         self.assertEqual(report, project_progress(self.workspace, self.published, self.character))
+
+    def test_offline_inventory_proof_is_partial_and_never_a_visual_green(self):
+        program={'project':self.project,'packages':{'/Game/A':{'functions':{'Write':{'source_bytecode_sha256':'source'}}}}}
+        program['content_sha256']=digest(program);atomic_json(self.published/'blueprint-programs.json',program)
+        proof={'schema_version':1,'status':'passed','project':self.project,'programs_content_sha256':program['content_sha256'],
+            'source_cases':1,'inventory_checked':1,'evidence':[{'package':'/Game/A','function':'Write','source_bytecode_sha256':'source',
+            'source_cases':[{'runtime':'inventory','outputs':{},'expected':{},'resulting_state':{'Count':2},'expected_state':{'Count':2},'effects':[],'expected_effects':[]}]}]}
+        atomic_json(self.published/'blueprint-offline-verification.json',proof)
+        report=project_progress(self.workspace,self.published,self.character)
+        self.assertEqual(next(row for row in report['rows'] if row['id']=='inventory')['status'],'yellow')
+        self.assertFalse(any('Scritture inventario' in item['title'] for item in report['milestones']))
+        self.assertIn('Prova visiva corrente della scena da completare',(self.published/'progress.html').read_text(encoding='utf-8'))
 
     def test_missing_outputs_and_modified_html_invalidate_report(self):
         original = project_progress(self.workspace, self.published, self.character)

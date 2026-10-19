@@ -226,6 +226,33 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 index, in_bounds: inBounds, length: array.length});
             return result;
         }
+        if (expression.op === 'array_literal') {
+            const target = expression.target, schema = program.schemas?.[target?.scope]?.[target?.field];
+            if (target?.op !== 'get' || !safeField(target.field) || !['local', 'self'].includes(target.scope)
+                || schema?.type !== 'ArrayProperty' || JSON.stringify(schema.element) !== JSON.stringify(expression.element)
+                || !Array.isArray(expression.elements) || expression.elements.length > 100000)
+                throw new Error('Unresolved typed source array literal');
+            let array = evaluate(target, depth+1);
+            if (!Array.isArray(array)) throw new Error('Invalid source SetArray destination');
+            array.length = 0;
+            const canMutate = value => value && typeof value === 'object' &&
+                (['call','array_literal','array_mutate','array_add','array_set'].includes(value.op) || Object.values(value).some(canMutate));
+            for (const item of expression.elements) {
+                // execSetArray constructs each slot BEFORE evaluating its source.
+                validateSchema(schema.element, schema.element.default);
+                const index = array.length; array.push(structuredClone(schema.element.default));
+                const before = canMutate(item) ? JSON.stringify(array) : null;
+                const value = structuredClone(evaluate(item, depth+1));
+                // A transactional nested call may replace the state with a copy.
+                // Reacquire that copy; actual reentrant destination writes fail.
+                array = evaluate(target, depth+1);
+                if (array.length !== index+1 || before !== null && JSON.stringify(array) !== before)
+                    throw new Error('Reentrant SetArray destination mutation is unsupported');
+                validateSchema(schema.element, value); array[index] = value;
+            }
+            trace.push({source_index:sourceIndex,op:'array_literal',scope:target.scope,field:target.field,length:array.length});
+            return null;
+        }
         if (expression.op === 'array_add') {
             const target = expression.target;
             if (target?.op !== 'get' || target.scope !== 'self' || !safeField(target.field))

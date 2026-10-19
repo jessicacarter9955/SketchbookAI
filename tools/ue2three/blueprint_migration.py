@@ -121,6 +121,9 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
     if not isinstance(value, dict) or depth > 48:
         raise BlueprintTranslationError('Invalid or deeply nested Kismet expression')
     token = kind(value)
+    if token == 'EX_SetArray' and package:
+        from blueprint_effects import array_literal
+        return array_literal(value, package, owner, reads, outputs, depth)
     if token == 'EX_Context' and package:
         obj, call = value.get('ObjectExpression', {}), value.get('ContextExpression', {})
         if (kind(obj) == 'EX_ObjectConst' and import_path(package, obj.get('Value')) == ('/Script/Engine', 'Default__DataTableFunctionLibrary')
@@ -200,9 +203,18 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         if token == 'EX_InstanceVariable': reads.add(name)
         if token == 'EX_LocalOutVariable': outputs.add(name)
         return {'op': 'get', 'scope': scopes[token], 'field': name}
-    if token == 'EX_TextConst' and value.get('Value', {}).get('TextLiteralType') == 'Empty':
-        return {'op': 'typed_literal', 'schema': property_schema(package, {'SerializedType': 'TextProperty'}),
-                'value': {'history': 'empty', 'text': '', 'flags': 0}}
+    if token == 'EX_TextConst':
+        text = value.get('Value', {}); literal = text.get('TextLiteralType')
+        if literal == 'Empty': result = {'history': 'empty', 'text': '', 'flags': 0}
+        elif literal == 'LocalizedText':
+            parts = [text.get(key, {}) for key in ('LocalizedSource', 'LocalizedKey', 'LocalizedNamespace')]
+            if any(kind(part) not in ('EX_StringConst', 'EX_UnicodeStringConst') or not isinstance(part.get('Value'), str) for part in parts):
+                raise BlueprintTranslationError('Localized FText requires original constant strings')
+            for part in parts: memory_size(part, package=package)
+            result = {'history': 'base', 'text': parts[0]['Value'], 'key': parts[1]['Value'], 'namespace': parts[2]['Value'], 'flags': 0}
+            if not result['text']: result = {'history': 'empty', 'text': '', 'flags': 0}
+        else: raise BlueprintTranslationError('Unsupported original text literal: ' + str(literal))
+        return {'op': 'typed_literal', 'schema': property_schema(package, {'SerializedType': 'TextProperty'}), 'value': result}
     if token in ('EX_VectorConst', 'EX_RotationConst'):
         memory_size(value, package=package)
         schema = native_schema(('/Script/CoreUObject', 'Vector' if token == 'EX_VectorConst' else 'Rotator'))
@@ -243,6 +255,10 @@ def memory_size(value, depth=0, package=None):
         raise BlueprintTranslationError('Invalid bytecode size expression')
     token = kind(value)
     size = lambda child: memory_size(child, depth+1, package)
+    if token == 'EX_SetArray':
+        if value.get('ArrayInnerProp') is not None or not isinstance(value.get('Elements'), list):
+            raise BlueprintTranslationError('Unverified SetArray memory layout')
+        return 2 + size(value.get('AssigningProperty')) + sum(size(child) for child in value['Elements'])
     if token in ('EX_Tracepoint', 'EX_WireTracepoint', 'EX_Nothing', 'EX_EndOfScript',
                  'EX_True', 'EX_False', 'EX_IntZero', 'EX_IntOne', 'EX_Self',
                  'EX_NoObject', 'EX_PopExecutionFlow'): return 1
@@ -399,7 +415,7 @@ def translate_function(export, package=None, entry_offset=None):
             steps.append({'op': 'return', 'value': expression(instruction.get('ReturnExpression'), reads, outputs, package=package, owner=export.get('OuterIndex')),
                           'source_index': index})
             returned = True
-        elif token in ('EX_LocalVirtualFunction', 'EX_LocalFinalFunction', 'EX_FinalFunction', 'EX_CallMath', 'EX_Context', 'EX_CallMulticastDelegate'):
+        elif token in ('EX_LocalVirtualFunction', 'EX_LocalFinalFunction', 'EX_FinalFunction', 'EX_CallMath', 'EX_Context', 'EX_CallMulticastDelegate', 'EX_SetArray'):
             steps.append({'op': 'evaluate', 'value': expression(instruction, reads, outputs, package=package, owner=export.get('OuterIndex')),
                           'source_index': index})
         else:
@@ -408,7 +424,7 @@ def translate_function(export, package=None, entry_offset=None):
     # This is used by source-backed reports and transitive call-state checks.
     def record_array_writes(node):
         if isinstance(node, dict):
-            if node.get('op') in ('array_set', 'array_add'):
+            if node.get('op') in ('array_set', 'array_add', 'array_literal'):
                 target = node.get('target', {})
                 if target.get('scope') == 'self': writes.add(target['field'])
             for child in node.values(): record_array_writes(child)
@@ -469,7 +485,7 @@ def translate_package(package, structs=None, tables=None):
                 def local_reads(value):
                     if isinstance(value, dict):
                         target = value.get('target', {})
-                        if (value.get('op') in ('array_get', 'array_mutate', 'array_set', 'array_add', 'table_get', 'set_member') and target.get('scope') == 'local'
+                        if (value.get('op') in ('array_get', 'array_mutate', 'array_set', 'array_add', 'array_literal', 'table_get', 'set_member') and target.get('scope') == 'local'
                                 and target.get('field') in const_inputs):
                             raise BlueprintTranslationError('Write through original const input')
                         if value.get('op') == 'array_mutate' and target.get('scope') == 'self':
@@ -735,7 +751,15 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
         table_documents[name] = read_json(path)
     tables, table_blocked = source_tables(table_documents, structs)
     controls_file = output / 'character-controls.json'
+    repository = Path(__file__).resolve().parents[2]
+    runtime_sources = {name: file_hash(repository / name) for name in (
+        'src/editor/ue2three-blueprint.mjs', 'src/editor/ue2three-native-math.mjs',
+        'src/editor/ue2three-objects.mjs', 'src/editor/ue2three-blueprint-runtime.mjs',
+        'src/editor/Ue2ThreeGameplay.js', 'src/editor/ue2three-live-verification.mjs',
+        'src/editor/ue2three-fixtures.mjs', 'src/editor/ue2three-source-verification.mjs',
+        'tools/ue2three/blueprint-audit.mjs')}
     fingerprint = digest({'project': str(project), 'inputs': key_inputs, 'missing': missing, 'types': type_inputs, 'tables': table_inputs,
+                          'runtime_sources': runtime_sources,
                           'controls': file_hash(controls_file) if controls_file.is_file() else None,
                           'implementation': file_hash(Path(__file__)),
                           'events_implementation': file_hash(Path(__file__).with_name('blueprint_events.py')),
@@ -765,6 +789,7 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
             guards = character_guards(controls, packages, Package(read_json(cache_path)))
     from blueprint_objects import actor_graph
     report = {'schema_version': 1, 'project': str(project), 'fingerprint': fingerprint,
+              'runtime_sources': runtime_sources,
               'packages': packages, 'counts': dict(counts), 'missing_cached_packages': missing,
               'source_types': [{'package': name[0], 'object': name[1], **schema} for name, schema in structs.items()], 'type_sources': type_inputs,
               'tables': tables, 'table_sources': table_inputs, 'table_blocked': table_blocked,

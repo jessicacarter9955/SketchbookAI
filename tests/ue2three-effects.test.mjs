@@ -15,6 +15,43 @@ const base = {schema_version:1,status:'translated_straight_line',source_owner_in
 const mutation = (operation,extra={}) => ({op:'evaluate',value:{op:'array_mutate',operation,target:get('Items'),element:schema,...extra}});
 const run = (steps,self={Items:[{Name:'Original',HP:9}]}) => executeBlueprint({...base,steps:[...steps,end]},self);
 
+test('SetArray constructs typed slots before evaluating source expressions and copies structs',()=>{
+    const integer={type:'IntProperty',default:0};
+    const program={...base,field_types:{self:{Items:'ArrayProperty'}},schemas:{self:{Items:{type:'ArrayProperty',element:integer,default:[]}}},steps:[
+        {op:'evaluate',value:{op:'array_literal',target:get('Items'),element:integer,elements:[
+            {op:'array_length',array:get('Items')},{op:'array_length',array:get('Items')}]}},end]};
+    const self={Items:[90,80,70]};assert.deepEqual(executeBlueprint(program,self).state.Items,[1,2]);assert.deepEqual(self.Items,[90,80,70]);
+    const struct={op:'typed_literal',schema,value:{Name:'Source',HP:17}};
+    const result=run([{op:'evaluate',value:{op:'array_literal',target:get('Items'),element:schema,elements:[struct,struct]}}]);
+    result.state.Items[0].HP=4;assert.equal(result.state.Items[1].HP,17);assert.equal(struct.value.HP,17);
+    assert.deepEqual(run([{op:'evaluate',value:{op:'array_literal',target:get('Items'),element:schema,elements:[]}}]).state.Items,[]);
+});
+
+test('SetArray rejects incompatible schemas and rolls back partial construction on invalid elements',()=>{
+    const self={Items:[{Name:'Original',HP:9}]}, literal={op:'array_literal',target:get('Items'),element:schema,elements:[{op:'typed_literal',schema,value:schema.default},constant(true)]};
+    assert.throws(()=>run([{op:'evaluate',value:literal}],self),/typed source struct/);assert.deepEqual(self.Items,[{Name:'Original',HP:9}]);
+    literal.element={type:'IntProperty',default:0};assert.throws(()=>run([{op:'evaluate',value:literal}]),/typed source array literal/);
+});
+
+test('SetArray reacquires transactional state after nested source calls and rejects reentrant writes',()=>{
+    const integer={type:'IntProperty',default:0}, array={type:'ArrayProperty',element:integer,default:[]};
+    const callee={...base,name:'OriginalValue',source_export_index:8,field_types:{self:{Items:'ArrayProperty'}},schemas:{self:{Items:array}},
+        steps:[{op:'return',value:{op:'array_length',array:get('Items')}}]};
+    const caller={...callee,name:'Construct',source_export_index:9,steps:[{op:'evaluate',value:{op:'array_literal',target:get('Items'),element:integer,
+        elements:[{op:'call',function:'OriginalValue',export_index:8,bindings:[]},{op:'call',function:'OriginalValue',export_index:8,bindings:[]}]}},end]};
+    const self={Items:[90,80]};assert.deepEqual(executeBlueprint(caller,self,{}, {functions:{OriginalValue:callee}}).state.Items,[1,2]);
+    callee.steps.unshift({op:'evaluate',value:{op:'array_set',target:get('Items'),element:integer,index:constant(0),item:constant(44),size_to_fit:constant(false)}});
+    assert.throws(()=>executeBlueprint(caller,self,{}, {functions:{OriginalValue:callee}}),/Reentrant SetArray/);
+    assert.deepEqual(self.Items,[90,80]);
+});
+
+test('localized source text retains namespace, key and source string through a typed literal',()=>{
+    const text={history:'base',text:'Slot In Use',namespace:'',key:'C52FCD624614FE4233E099A431659554',flags:0};
+    const program={...base,steps:[{op:'return',value:{op:'typed_literal',schema:{type:'TextProperty'},value:text}}]};
+    assert.deepEqual(executeBlueprint(program).value,text);
+    program.steps[0].value.value={...text,key:null};assert.throws(()=>executeBlueprint(program),/FText/);
+});
+
 test('typed source array Set rejects an untyped struct value',()=>{
     assert.throws(()=>run([mutation('Array_Set',{index:constant(2),value:constant(null),resize:constant(true)})]),/typed source struct/);
 });

@@ -8,6 +8,27 @@ from core import atomic_json, digest, file_hash, read_json
 from map_migration import valid_glb
 
 
+def offline_source_checks(programs, proof):
+    """Data evidence can make migration partial, never grant visual acceptance."""
+    if (not programs or proof.get('schema_version') != 1 or proof.get('status') != 'passed'
+            or proof.get('project') != programs.get('project')
+            or proof.get('programs_content_sha256') != programs.get('content_sha256')): return {}
+    total = inventory = 0
+    for entry in proof.get('evidence', []):
+        program = programs.get('packages', {}).get(entry.get('package'), {}).get('functions', {}).get(entry.get('function'), {})
+        samples = entry.get('source_cases', [])
+        if not program or not samples or program.get('source_bytecode_sha256') != entry.get('source_bytecode_sha256'): return {}
+        for sample in samples:
+            pairs = [('outputs', 'expected'), ('resulting_state', 'expected_state'), ('actual_members', 'expected_members')]
+            if not any(sample.get(expected) for _, expected in pairs) and 'expected_effects' not in sample: return {}
+            for actual, expected in pairs:
+                if not all(key in sample.get(actual, {}) and digest(sample[actual][key]) == digest(value)
+                           for key, value in sample.get(expected, {}).items()): return {}
+            if 'expected_effects' in sample and digest(sample.get('effects')) != digest(sample['expected_effects']): return {}
+            total += 1; inventory += sample.get('runtime') == 'inventory'
+    return {'source_cases': total, 'inventory_checked': inventory} if total and total == proof.get('source_cases') and inventory == proof.get('inventory_checked') else {}
+
+
 def project_progress(workspace, published, character_dir=None):
     workspace, published = Path(workspace).resolve(), Path(published).resolve()
     inputs = {'inventory': workspace / 'artifacts/inventory.json',
@@ -15,7 +36,8 @@ def project_progress(workspace, published, character_dir=None):
               'maps': published / 'map-manifest.json', 'ui': published / 'ui-manifest.json',
               'blueprints': published / 'blueprint-programs.json',
               'live_blueprints': published / 'blueprint-live-verification.json',
-              'audit_blueprints': published / 'blueprint-audit-verification.json'}
+              'audit_blueprints': published / 'blueprint-audit-verification.json',
+              'offline_blueprints': published / 'blueprint-offline-verification.json'}
     if character_dir:
         inputs['character'] = Path(character_dir).resolve() / 'manifest.json'
     for path in sorted((published / 'maps').glob('*.validation.json')):
@@ -130,8 +152,10 @@ def project_progress(workspace, published, character_dir=None):
     ui_layout = bool(ui.get('tree') and ui.get('project') == project)
     row('ui', 'Menu, HUD e schermate', f"{classes['WidgetBlueprintGeneratedClass']} widget sorgenti; {int(ui_layout)} gerarchia UI pubblicata",
         'Migrare altre schermate, immagini, stili, binding, input ed eventi', ui_layout)
-    row('inventory', 'Inventario, loot e salvataggi', 'Comportamento originale non verificato',
-        'Tradurre contenitori, oggetti, limiti, equipaggiamento, persistenza e regole sorgenti')
+    offline = offline_source_checks(blueprint_report, documents.get('offline_blueprints', {}))
+    row('inventory', 'Inventario, loot e salvataggi',
+        f"{offline['inventory_checked']} confronti di dati sorgenti passati fuori dalla scena; accettazione visiva separata" if offline.get('inventory_checked') else 'Comportamento originale non verificato',
+        'Completare equipaggiamento, trasferimenti, UI e persistenza; verificare i flussi nella scena', bool(offline.get('inventory_checked')))
     row('npc', 'NPC, shop, dialoghi e missioni', 'Comportamento originale non verificato',
         'Tradurre interazioni, AI, condizioni, prezzi, conversazioni e progressione presenti nel progetto')
     row('modes', 'Modalità, lobby ed estrazione', 'Flussi originali non verificati',
@@ -285,7 +309,7 @@ def project_progress(workspace, published, character_dir=None):
                                    'evidence': f"{len(verified_notifications)} funzioni con payload e ordine degli eventi confrontati; wiring originale tra oggetti, UI e replica esclusi"})
     report = {'schema_version': 1, 'project': project, 'fingerprint': fingerprint,
               'scope': 'cached registry and published outputs; no full-game percentage inferred',
-              'source_classes': dict(classes), 'rows': rows, 'milestones': milestones,
+              'source_classes': dict(classes), 'rows': rows, 'milestones': milestones, 'offline_source_checks': offline,
               'shader_graphs_recovered': graphs, 'direct_shader_connections': connections,
               'resource_policy': ['Reuse raw exports; process changed dependencies only',
                                   'Reuse source metadata and checksummed visual evidence',
@@ -296,11 +320,13 @@ def project_progress(workspace, published, character_dir=None):
                        ('🟡 Parziale' if r['status'] == 'yellow' else '🔴 Da tradurre/verificare') + '</td><td>' +
                        html.escape(r['evidence']) + '</td><td>' + html.escape(r['next']) + '</td></tr>' for r in rows)
     completed = ''.join('<li>🟢 <b>' + html.escape(m['title']) + '</b>: ' + html.escape(m['evidence']) + '</li>' for m in milestones)
+    offline_note = ('<p>Confronti dei dati sorgenti: ' + str(offline['source_cases']) + ' passati. '
+                    + ('Prova visiva corrente della scena disponibile.' if live_valid else 'Prova visiva corrente della scena da completare.') + '</p>') if offline else ''
     page = '''<!doctype html><html lang="it"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>ue2three · Avanzamento progetto</title>
 <style>body{background:#101923;color:#e8f0f5;font:15px system-ui;margin:24px}h1{font-size:24px}p{color:#bdd0df}table{border-collapse:collapse;width:100%}th,td{border:1px solid #344d61;padding:12px;text-align:left;vertical-align:top}th{background:#1b3040}.yellow{color:#f6d378}.red{color:#ffaaa0}a{color:#8edbff}li{margin:8px 0}</style><h1>''' + html.escape(Path(project).stem) + ''' · Avanzamento</h1>
 <p>Verde = passaggio completato e verificato nel perimetro dichiarato. Giallo = migrazione parziale. Rosso = traduzione o verifica ancora da fare.</p>
 <p>Checklist generata dai dati in cache. Un file esportato non dimostra da solo la fedeltà 1:1.</p><p>Shader sorgenti: ''' + str(connections) + ''' collegamenti diretti recuperati; esecuzione ancora da tradurre.</p>
-<h2>Passaggi completati · perimetro indicato</h2><ul>''' + completed + '''</ul><h2>Sistemi da completare</h2>
+''' + offline_note + '''<h2>Passaggi completati · perimetro indicato</h2><ul>''' + completed + '''</ul><h2>Sistemi da completare</h2>
 <table><thead><tr><th>Area</th><th>Stato</th><th>Prove disponibili</th><th>Prossimo passo</th></tr></thead><tbody>''' + rendered + '</tbody></table></html>'
     (published / 'progress.html').write_text(page, encoding='utf-8')
     report['html_sha256'] = file_hash(published / 'progress.html')

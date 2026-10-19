@@ -136,3 +136,37 @@ Contracts read from local UE5.7 source only: ActorComponent.h GetOwner,
 Actor.h ForceNetUpdate, Actor.cpp ForceNetUpdate; Pawn/Character do not override
 this method. Unreal was not launched. These source comparisons still do not
 constitute runtime equivalence against Unreal or a complete inventory UI.
+
+## Localized errors and original inventory event bodies (2026-10-19)
+
+EX_SetArray uses typed source destinations and element defaults. It clears the
+array first, constructs each slot before evaluating its corresponding expression,
+and retains UE's sequencing when the expression reads Array_Length or Array_Get
+from the destination. After nested transactional function calls it reacquires
+the current state copy before assigning. Reentrant writes of the destination
+remain explicitly unsupported. Legacy SetArray layouts and const-input writes
+are rejected. Memory offsets are checked against original ScriptBytecodeSize.
+
+Localized EX_TextConst retains original FText source/namespace/key and flags0.
+AsLocalizable_Advanced in local UE5.7 Text.cpp returns empty FText for empty source;
+this behavior is preserved. String tables, invariant/literal and dynamic text
+expressions remain blocked. No localization catalog or replacement strings added.
+
+Server_RemoveCurrency preserves original Low0/Clean1/Ghost2 enum mapping, positive
+amount and affordability branches, original errors, dirty marks, OnRep and direct
+notifications. The direct NewAmount payload subtracts again AFTER balance changed;
+ChangeAmount is zero. These quirks are retained, not corrected.
+Server_MergeStacks preserves valid-slot, identical-ID and stackable checks,
+MergeSlots state/effects, carry-grid notification and post-removal source re-read
+for OnItemMoved. Invalid indices and distinct Cannot Stack text identities have
+independent expectations. Server_AttachMod rejection cases preserve Invalid Slot,
+Wrong Item and Wrong Item Type; no positive source mod row was invented.
+
+Use tools/ue2three/verify-blueprints.mjs with explicit --programs and --fixtures
+paths for any project whose source cases are available. Default proof output is
+blueprint-offline-verification.json next to the program report. It neither starts
+Unreal nor drives a browser. The progress report validates current source hashes,
+outputs, selected state, members and ordered effects before displaying data counts;
+offline data never grants visual acceptance. Runtime and QA source checksums are
+part of the program fingerprint, preventing reuse of old visual evidence after
+interpreter changes. Full inventory/UI/world and multiplayer remain incomplete.

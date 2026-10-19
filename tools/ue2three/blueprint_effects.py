@@ -62,6 +62,18 @@ def array_context(value, package, owner, reads, outputs, depth):
     return result
 
 
+def array_literal(value, package, owner, reads, outputs, depth):
+    from blueprint_migration import expression, BlueprintTranslationError as Error
+    if value.get('ArrayInnerProp') is not None:
+        raise Error('Legacy SetArray layout requires explicit version support')
+    target, schema = variable(value.get('AssigningProperty', {}), package, owner, reads, outputs, depth)
+    elements = value.get('Elements')
+    if schema['type'] != 'ArrayProperty' or not isinstance(elements, list) or len(elements) > 100000:
+        raise Error('Unresolved or oversized original SetArray')
+    return {'op': 'array_literal', 'target': target, 'element': schema['element'],
+            'elements': [expression(item, reads, outputs, depth+1, package, owner) for item in elements]}
+
+
 def dirty_call(value, package, owner):
     from blueprint_migration import kind, field, BlueprintTranslationError as Error
     if import_path(package, value.get('StackNode')) != ('/Script/Engine', 'NetPushModelHelpers', 'MarkPropertyDirtyFromRepIndex'):
