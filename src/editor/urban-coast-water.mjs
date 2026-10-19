@@ -5,7 +5,7 @@ import {waterNormals} from './island-water-normals.mjs';
 // Reflective THREE.Water from the original two-island IslandRuntime, but ONE
 // ring-shaped reflector with an actual dry cutout for the city and four beaches.
 // This avoids four expensive water render targets and flooding street surfaces.
-export function urbanOceanGeometry(layout,reach=730){
+export function urbanOceanRegions(layout,reach=730){
   if(!layout?.sides||layout.sides.length!==4||!Number.isFinite(reach)||reach<=0)
     throw Error('Invalid urban ocean layout');
   const east=layout.sides.find(s=>s.name==='east');
@@ -17,6 +17,11 @@ export function urbanOceanGeometry(layout,reach=730){
   if(!(inner.minX<inner.maxX&&inner.minZ<inner.maxZ))throw Error('Invalid ocean dry region');
   const outer={minX:inner.minX-reach,maxX:inner.maxX+reach,
     minZ:inner.minZ-reach,maxZ:inner.maxZ+reach};
+  return {inner,outer};
+}
+
+export function urbanOceanGeometry(layout,reach=730){
+  const {inner,outer}=urbanOceanRegions(layout,reach);
   const [cx,cz]=layout.waterCenter;
   const positions=[],indices=[],uv=[];
   function quad(x0,z0,x1,z1){

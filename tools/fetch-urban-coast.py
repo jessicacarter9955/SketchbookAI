@@ -58,22 +58,31 @@ def save_verified(url, path, check, name):
 def main():
     ROOT.mkdir(parents=True, exist_ok=True)
     save_verified(PALM_SOURCE, ROOT / "palm-detailed.glb", valid_glb, "CC0 detailed palm")
-    files = json.loads(curl_bytes(POLYHAVEN_API))
-    for channel, basename in (
-        ("Diffuse", "sand-diff.jpg"),
-        ("nor_gl", "sand-nor_gl.jpg"),
-        ("Rough", "sand-rough.jpg"),
-    ):
-        resource = files[channel]["2k"]["jpg"]
-        checksum = resource["md5"].lower()
-        save_verified(resource["url"], ROOT / basename,
-                      lambda content, expected=checksum: hashlib.md5(content).hexdigest() == expected,
-                      f"Poly Haven {SAND_ASSET} {channel}")
+    # Dry rippled beach and damp intertidal beach each retain original verified
+    # photographic PBR maps. No generated diffuse colors or unlicensed assets.
+    for asset, prefix in ((SAND_ASSET, "sand"),
+                          ("aerial_beach_01", "dry"),
+                          ("damp_sand", "wet")):
+        files = json.loads(curl_bytes(f"https://api.polyhaven.com/files/{asset}"))
+        for channel, suffix in (
+            ("Diffuse", "diff"),
+            ("nor_gl", "nor_gl"),
+            ("Rough", "rough"),
+        ):
+            resource = files[channel]["2k"]["jpg"]
+            checksum = resource["md5"].lower()
+            save_verified(resource["url"], ROOT / f"{prefix}-{suffix}.jpg",
+                          lambda content, expected=checksum: hashlib.md5(content).hexdigest() == expected,
+                          f"Poly Haven {asset} {channel}")
     (ROOT / "ATTRIBUTION.json").write_text(json.dumps({
         "palm": {"source": PALM_CREDIT, "license": "CC0-1.0",
                  "asset": "palm-detailed.glb", "author": "Innerscene"},
         "sand": {"source": f"https://polyhaven.com/a/{SAND_ASSET}",
                  "license": "CC0", "asset": SAND_ASSET, "author": "Charlotte Baglioni"},
+        "dry_sand": {"source": "https://polyhaven.com/a/aerial_beach_01",
+                     "license": "CC0", "asset": "aerial_beach_01", "author": "Rob Tuytel"},
+        "wet_sand": {"source": "https://polyhaven.com/a/damp_sand",
+                     "license": "CC0", "asset": "damp_sand", "author": "eye-candy.xyz"},
         "original_unreal_asset": False,
     }, indent=2) + "\n", encoding="utf-8")
 

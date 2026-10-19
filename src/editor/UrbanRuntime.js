@@ -9,6 +9,7 @@ import { buildUrbanStreets } from './UrbanStreets.js';
 import { UrbanSignals } from './UrbanSignals.js';
 import { createVegetation } from './UrbanVegetation.js';
 import { addUrbanMiamiCoast } from './UrbanCoast.js';
+import {createUrbanOceanFloorBodies,applyUrbanOceanFlotation,urbanCoastGroundHeight} from './urban-coast-physics.mjs';
 import { withUrbanLoadDeadline } from './urban-load-deadline.mjs';
 import { isHiddenBehindBuildings,isOccludedSector,isOccludedTree } from './urban-visibility.mjs';
 import { photographicLighting, loadSurface, metricUV, captureStreetReflections } from './UrbanLighting.js';
@@ -172,6 +173,13 @@ export class UrbanRuntime {
     world.respawnPosition=new CANNON.Vec3(0,3,0); world.isOutOfBounds=p=>p.y<-25||Math.abs(p.x)>2500||Math.abs(p.z)>2500;
     this.facadeStreamer=null;this.lastDetailTick=0;this.lastFoliageTick=0;this.lastOcclusionTick=0;this.lastHudTick=0;this.fps=0;
     this.fallbackBuildingNodes=new Map();this.occlusionStats={buildingsHidden:0,sectorsHidden:0};
+    // Water is visual, so enforce surface flotation in the Cannon physics
+    // postStep even when HD asset prewarming blocks the renderer's update().
+    this.oceanPhysicsStep=()=>{
+      if(this.world.levelRuntime===this&&this.coast)
+        applyUrbanOceanFlotation(this.world,this.coast,this.world.physicsWorld.time||0);
+    };
+    this.world.physicsWorld.addEventListener('postStep',this.oceanPhysicsStep);
     this.adaptiveQuality();
   }
   initialize(config=DEFAULT_URBAN){this.generate(config);}
@@ -235,6 +243,9 @@ export class UrbanRuntime {
     // Four-sided CC0 Miami shoreline: source model and sand maps are required
     // by the full-HD asset stage; the city graph stays unchanged.
     this.coast=addUrbanMiamiCoast(group,plan,config,box);
+    // The ocean shader supplies no contacts. These four true Cannon seabed
+    // slabs prevent cars and other dynamic actors falling through the map.
+    bodies.push(...createUrbanOceanFloorBodies(this.coast));
 
     const facadeMats={};
     for(const style of ['glass','office','brick','stone']){
@@ -594,7 +605,10 @@ export class UrbanRuntime {
     this.world.sky.setAtmosphere(settings.elevation,settings.azimuth,settings.haze,settings.sun,settings.intensity);this.world.graphicsWorld.fog=new THREE.Fog(settings.fog,330,1450);
   }
   async ensure(){this.ready=true;} refreshPhysics(){}
-  groundAt(x,z){return urbanGroundHeight(x,z,this.config||DEFAULT_URBAN);}
+  groundAt(x,z){
+    const coast=urbanCoastGroundHeight(this.coast,x,z);
+    return coast===null?urbanGroundHeight(x,z,this.config||DEFAULT_URBAN):coast;
+  }
   adaptiveQuality(){
     if(this.mobileLite)return;
     const max=Math.min(devicePixelRatio||1,1.5),min=Math.min(max,0.85);

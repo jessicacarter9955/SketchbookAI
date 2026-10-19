@@ -2,13 +2,15 @@ import * as THREE from 'three';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {miamiCoastLayout} from './urban-coast-layout.mjs';
 import {createUrbanIslandOcean,updateUrbanIslandOcean} from './urban-coast-water.mjs';
-import {buildUrbanBeachGeometry,urbanSandHeight} from './urban-coast-sand.mjs';
+import {buildUrbanBeachGeometry,buildUrbanSandBlendGeometry,urbanSandHeight} from './urban-coast-sand.mjs';
 
 // City shoreline uses FOUR real-sand PBR bands and an authored CC0 palm GLB.
 // One reflective ocean plane fills the exterior, without covering city streets.
 export function addUrbanMiamiCoast(group,plan,config,box){
   const layout=miamiCoastLayout(plan.bounds,config.seed);
-  const sand=new THREE.MeshStandardMaterial({color:0xe8d0aa,roughness:1,metalness:0});
+  const sand=new THREE.MeshStandardMaterial({color:0xffffff,roughness:1,metalness:0});
+  const drySand=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.96,metalness:0,transparent:true,vertexColors:true,depthWrite:false});
+  const wetSand=new THREE.MeshStandardMaterial({color:0xffffff,roughness:.67,metalness:0,transparent:true,vertexColors:true,depthWrite:false});
   for(const side of layout.sides){
     // The FOUR coastlines use a sculpted mesh with genuine photo-PBR sand.
     const beach=new THREE.Mesh(buildUrbanBeachGeometry(side,layout),sand);
@@ -16,6 +18,15 @@ export function addUrbanMiamiCoast(group,plan,config,box){
     beach.name='Miami '+side.name+' · photo PBR sand relief';
     beach.userData.urbanCoast=true;
     group.add(beach);
+    // Two additional independently photographed CC0 surfaces blended by
+    // shoreline distance: pale wind-rippled dry beach and darker damp sand.
+    for(const [type,material,order] of [['dry',drySand,1],['wet',wetSand,2]]){
+      const layer=new THREE.Mesh(buildUrbanSandBlendGeometry(side,layout,type),material);
+      layer.receiveShadow=true;layer.castShadow=false;layer.renderOrder=order;
+      layer.name='Miami '+side.name+' · '+type+' photographic sand CC0';
+      layer.userData.urbanCoast=true;
+      group.add(layer);
+    }
     // Cannon support strips approximate the beach grade under the visible mesh.
     const sections=12,along=side.axis==='x'?side.size[1]:side.size[0];
     for(let i=0;i<sections;i++){
@@ -74,13 +85,19 @@ export function addUrbanMiamiCoast(group,plan,config,box){
   layout.loadOriginalAssets=async()=>{
     const local='assets/urban-kits/miami-coast/';
     const loader=new THREE.TextureLoader();
-    const [palm,diffuse,normal,rough]=await Promise.all([
+    const [palm,diffuse,normal,rough,dryDiffuse,dryNormal,dryRough,wetDiffuse,wetNormal,wetRough]=await Promise.all([
       new GLTFLoader().loadAsync(local+'palm-detailed.glb'),
       loader.loadAsync(local+'sand-diff.jpg'),
       loader.loadAsync(local+'sand-nor_gl.jpg'),
-      loader.loadAsync(local+'sand-rough.jpg')
+      loader.loadAsync(local+'sand-rough.jpg'),
+      loader.loadAsync(local+'dry-diff.jpg'),
+      loader.loadAsync(local+'dry-nor_gl.jpg'),
+      loader.loadAsync(local+'dry-rough.jpg'),
+      loader.loadAsync(local+'wet-diff.jpg'),
+      loader.loadAsync(local+'wet-nor_gl.jpg'),
+      loader.loadAsync(local+'wet-rough.jpg')
     ]);
-    for(const tex of [diffuse,normal,rough]){
+    for(const tex of [diffuse,normal,rough,dryDiffuse,dryNormal,dryRough,wetDiffuse,wetNormal,wetRough]){
       tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
       // Geometric UVs already use world-space meters / 2.7m.
       // Repeating again would make the photo texture visibly noisy/tiling.
@@ -91,6 +108,15 @@ export function addUrbanMiamiCoast(group,plan,config,box){
     sand.color.set(0xffffff);sand.map=diffuse;
     sand.normalMap=normal;sand.normalScale.set(.78,.78);
     sand.roughnessMap=rough;sand.needsUpdate=true;
+    for(const [material,albedo,bump,roughness,normalStrength] of [
+      [drySand,dryDiffuse,dryNormal,dryRough,.69],
+      [wetSand,wetDiffuse,wetNormal,wetRough,.84]
+    ]){
+      albedo.colorSpace=THREE.SRGBColorSpace;
+      material.map=albedo;material.normalMap=bump;
+      material.normalScale.set(normalStrength,normalStrength);
+      material.roughnessMap=roughness;material.needsUpdate=true;
+    }
 
     const model=palm.scene;model.updateMatrixWorld(true);
     const bb=new THREE.Box3().setFromObject(model);
@@ -116,9 +142,9 @@ export function addUrbanMiamiCoast(group,plan,config,box){
     palms.userData.license='CC0';palms.userData.source='https://www.innerscene.com/tools/library/3d-parts/palm-detailed-a8777b8c';
     layout.palmSource=palms.userData.source;
     layout.updateVisibility(globalThis.world?.camera||null);
-    group.userData.miamiCoast={sides:4,palms:layout.allPalms.length,sandSource:'Poly Haven sand_03',palmSource:layout.palmSource};
+    group.userData.miamiCoast={sides:4,palms:layout.allPalms.length,sandSource:'Poly Haven sand_03 + aerial_beach_01 + damp_sand (CC0, PBR)',palmSource:layout.palmSource};
     globalThis.cityDiagnostics?.activity('Costa HD: 4 lati · '+layout.allPalms.length+' palme CC0 autentiche · sabbia PBR Poly Haven');
-    return {palms:layout.allPalms.length,sides:4,asset:'palm-detailed.glb',materials:'sand_03 CC0'};
+    return {palms:layout.allPalms.length,sides:4,asset:'palm-detailed.glb',materials:'sand_03 + aerial_beach_01 + damp_sand · CC0 2K'};
   };
   return layout;
 }
