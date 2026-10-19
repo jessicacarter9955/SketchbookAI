@@ -87,8 +87,13 @@ async function withStore(mode,callback) {
     return await new Promise((resolve,reject)=>{
       const tx=db.transaction(STORE,mode);
       const request=callback(tx.objectStore(STORE));
-      request.onsuccess=()=>resolve(request.result||null);
+      let result=null;
+      // A put() request can succeed before the transaction actually commits.
+      // Wait for oncomplete so an immediate scene reload sees the stored pack.
+      request.onsuccess=()=>{result=request.result??null};
       request.onerror=()=>reject(request.error||Error('Archivio DDS non accessibile.'));
+      tx.oncomplete=()=>resolve(result);
+      tx.onerror=()=>reject(tx.error||Error('Transazione DDS non riuscita.'));
       tx.onabort=()=>reject(tx.error||Error('Scrittura DDS annullata.'));
     });
   } finally { db.close(); }
