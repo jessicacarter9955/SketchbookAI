@@ -1,0 +1,218 @@
+{
+  "schema": 1,
+  "description": "Source-provenance porting workpacks; no synthetic replacements",
+  "source_commit": "1cf9cbfde8df5a42b7026beab488bcb841112231",
+  "lanes": [
+    {
+      "id": "source-assets",
+      "title": "Sorgenti Unreal e GLB",
+      "files": [
+        "tools/ue2three/drive_source.py",
+        "tools/ue2three/engine_runner.py",
+        "tools/ue2three/unreal_character_export.py",
+        "tools/ue2three/recipes/dds-character.json"
+      ],
+      "blocker": "Progetto Unreal e pacchetti binari completi non presenti nel checkout GitHub",
+      "next": "Recuperare e autenticare sorgenti, esportare con Unreal 5.7 e GLTFExporter",
+      "critical": true
+    },
+    {
+      "id": "character-weapons",
+      "title": "Manichino, armi e socket",
+      "files": [
+        "src/editor/ActorLayer.js",
+        "src/editor/DdsCharacter.js",
+        "src/editor/Ue2ThreeAssets.js",
+        "src/editor/ue2three-attachment.mjs"
+      ],
+      "blocker": "GLB originali manichino/armi non esportati",
+      "next": "Importare mesh originali, scheletro e socket palm_r_Socket, verificare grip",
+      "critical": true
+    },
+    {
+      "id": "animation-rig",
+      "title": "Animazioni e retarget",
+      "files": [
+        "tools/ue2three/unreal_character_export.py",
+        "src/editor/DdsCharacter.js",
+        "tools/ue2three/character-audit.mjs"
+      ],
+      "blocker": "Curve originali e corrispondenza UE AnimBP non verificabili senza binari",
+      "next": "Esportare e confrontare clip, curve, notifies e pose frame per frame",
+      "critical": true
+    },
+    {
+      "id": "blueprint-compiler",
+      "title": "Blueprint, compilatore, eventi",
+      "files": [
+        "tools/ue2three/blueprint_migration.py",
+        "tools/ue2three/blueprint_planning.py",
+        "tools/ue2three/blueprint_events.py",
+        "src/editor/ue2three-blueprint.mjs"
+      ],
+      "blocker": "317 funzioni ancora bloccate nel rapporto Codex",
+      "next": "Completare lifecycle Actor e calls cross-component da bytecode originale",
+      "critical": false
+    },
+    {
+      "id": "inventory-economy",
+      "title": "Inventario, equipaggiamento, valuta",
+      "files": [
+        "src/editor/DdsInventory.js",
+        "src/editor/dds-game-state.mjs",
+        "src/editor/DdsGame.js"
+      ],
+      "blocker": "Equip completo, deposito e transfer non equivalenti",
+      "next": "Collegare source-backed slot/stack/equip/drop/consume alla UI Three.js",
+      "critical": false
+    },
+    {
+      "id": "maps-collision",
+      "title": "Mappe, attori e collisioni",
+      "files": [
+        "tools/ue2three/map_migration.py",
+        "tools/ue2three/map_processing.py",
+        "src/editor/Ue2ThreeMapRuntime.js",
+        "src/editor/ue2three-collision.mjs"
+      ],
+      "blocker": "Mappe e collisioni originali complete non disponibili",
+      "next": "Convertire livelli Unreal, collision channels e confrontare transforms",
+      "critical": true
+    },
+    {
+      "id": "materials-pbr",
+      "title": "Materiali, texture e shader PBR",
+      "files": [
+        "tools/ue2three/material_graph.py",
+        "tools/ue2three/map_fixup.py",
+        "tools/ue2three/map-presentation.mjs"
+      ],
+      "blocker": "Shader Unreal ed alcuni bake non equivalenti",
+      "next": "Risolvere collegamenti dei material graphs e confrontare shader/texture",
+      "critical": false
+    },
+    {
+      "id": "umg-ui",
+      "title": "UI, HUD e Widget UMG",
+      "files": [
+        "tools/ue2three/umg_migration.py",
+        "src/editor/DdsInventory.js",
+        "src/editor/DdsInteractionPanel.js"
+      ],
+      "blocker": "UI locale approssimata, non pixel-identica all'originale",
+      "next": "Portare layout/binding/animazioni originali WidgetBlueprint",
+      "critical": false
+    },
+    {
+      "id": "shop-dialogues",
+      "title": "Shop, dialoghi, missioni e modalità",
+      "files": [
+        "src/editor/DdsInteractionPanel.js",
+        "src/editor/DdsPopulation.js",
+        "src/editor/DdsGame.js"
+      ],
+      "blocker": "Flussi originali non completi; demo locali",
+      "next": "Tradurre eventi, transazioni NPC e missioni dalla fonte Unreal",
+      "critical": false
+    },
+    {
+      "id": "movement-input",
+      "title": "Input, locomozione, traversal",
+      "files": [
+        "tools/ue2three/controls_migration.py",
+        "src/editor/DdsCharacter.js",
+        "src/editor/Ue2ThreeGameplay.js"
+      ],
+      "blocker": "EnhancedInput/Mover non corrispondenti 1:1",
+      "next": "Replicare trigger, velocità, stamina, vault e root motion",
+      "critical": false
+    },
+    {
+      "id": "physics",
+      "title": "Fisica, proiettili e hit detection",
+      "files": [
+        "src/editor/DdsGame.js",
+        "src/editor/ue2three-collision.mjs",
+        "src/editor/dds-game-state.mjs"
+      ],
+      "blocker": "Chaos e Cannon non sono ancora equivalenti",
+      "next": "Confrontare collision channels, raycast, colpi e danni contro Unreal",
+      "critical": false
+    },
+    {
+      "id": "vfx-audio",
+      "title": "VFX Niagara, audio, feedback",
+      "files": [
+        "src/editor/DdsGame.js",
+        "src/editor/Ue2ThreeGameplay.js",
+        "tools/ue2three/blueprint_effects.py"
+      ],
+      "blocker": "Risorse originali VFX e Audio non disponibili",
+      "next": "Portare source cues, effetti temporizzati e audio ai sistemi web",
+      "critical": true
+    },
+    {
+      "id": "multiplayer",
+      "title": "Multiplayer, RPC e replicazione",
+      "files": [
+        "src/editor/ue2three-objects.mjs",
+        "src/editor/ue2three-blueprint-runtime.mjs",
+        "src/editor/DdsGame.js",
+        "package.json"
+      ],
+      "blocker": "Trasporto/server autorevole/RPC reali assenti",
+      "next": "Implementare backend authority e verifiche sincronizzazione multi-client",
+      "critical": true
+    },
+    {
+      "id": "metahuman",
+      "title": "MetaHuman, volto e Groom",
+      "files": [
+        "tools/ue2three/unreal_character_export.py",
+        "tools/ue2three/character.py",
+        "src/editor/Ue2ThreeAssets.js"
+      ],
+      "blocker": "Cartelle MetaHumans trovate ma binari indispensabili assenti",
+      "next": "Verificare sorgenti mesh/body/face, rig, Groom e animazioni facciali",
+      "critical": true
+    },
+    {
+      "id": "lighting",
+      "title": "Luci, ombre, Lumen",
+      "files": [
+        "src/editor/Ue2ThreeMapRuntime.js",
+        "tools/ue2three/map-presentation.mjs",
+        "tools/ue2three/material_graph.py"
+      ],
+      "blocker": "Lumen / SkyLight e post-processing Unreal diversi da Three",
+      "next": "Dopo materiali e geometria, confrontare exposure/luci/ombre",
+      "critical": false
+    },
+    {
+      "id": "integrated-play",
+      "title": "Integrazione Three.js e Play",
+      "files": [
+        "dds-manual-playtest.html",
+        "src/editor/start.js",
+        "src/editor/ActorLayer.js",
+        "src/editor/Ue2ThreeAssets.js"
+      ],
+      "blocker": "Nessun GLB originale DDS disponibile sul server: Play fermo",
+      "next": "Pubblicare export originali in hosting autorizzato e fare playtest",
+      "critical": true
+    },
+    {
+      "id": "performance-streaming",
+      "title": "Performance, LOD, streaming, mobile",
+      "files": [
+        "src/editor/ActorLayer.js",
+        "src/editor/Ue2ThreeMapRuntime.js",
+        "src/editor/DdsPopulation.js",
+        "webpack.editor.js"
+      ],
+      "blocker": "Non ci sono benchmark della scena DDS originale nel browser",
+      "next": "Misurare FPS reali, LOD, instancing, culling e streaming",
+      "critical": false
+    }
+  ]
+}

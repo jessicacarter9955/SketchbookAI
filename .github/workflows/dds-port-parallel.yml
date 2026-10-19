@@ -1,0 +1,64 @@
+name: DDS parallel - 17 porting workpacks
+on:
+  push:
+    branches:
+      - codex/dds-parallel-manual-first
+    paths:
+      - '.github/workflows/dds-port-parallel.yml'
+      - 'tools/ue2three/dds_parallel_prepare.py'
+      - 'tools/ue2three/dds_porting_lanes.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-and-code:
+    name: DDS · ${{ matrix.lane }}
+    strategy:
+      fail-fast: false
+      max-parallel: 17
+      matrix:
+        lane:
+          - source-assets
+          - character-weapons
+          - animation-rig
+          - blueprint-compiler
+          - inventory-economy
+          - maps-collision
+          - materials-pbr
+          - umg-ui
+          - shop-dialogues
+          - movement-input
+          - physics
+          - vfx-audio
+          - multiplayer
+          - metahuman
+          - lighting
+          - integrated-play
+          - performance-streaming
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare original-source engineering packet (not a gameplay test)
+        run: python tools/ue2three/dds_parallel_prepare.py --lane "${{ matrix.lane }}"
+      - name: Archive independent lane deliverables
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workpack-${{ matrix.lane }}
+          path: |
+            build/dds-port-workpacks/${{ matrix.lane }}.json
+            build/dds-port-workpacks/${{ matrix.lane }}.md
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Explain accuracy boundaries
+        if: always()
+        run: |
+          echo "## DDS · ${{ matrix.lane }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Independent preparation only; no original Unreal export, UI Play, 1:1 proof or multiplayer claimed." >> "$GITHUB_STEP_SUMMARY"
+          if test -f "build/dds-port-workpacks/${{ matrix.lane }}.md"; then
+            cat "build/dds-port-workpacks/${{ matrix.lane }}.md" >> "$GITHUB_STEP_SUMMARY"
+          fi
