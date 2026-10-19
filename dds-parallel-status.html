@@ -1,4 +1,4 @@
-<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DDS · 17 flussi paralleli</title>
+<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DDS · 18 filoni · stato live</title>
 <style>:root{color-scheme:dark;font:15px/1.5 system-ui;background:#0e1a2a;color:#e8f3ff}
 body{max-width:1190px;margin:auto;padding:20px}header{padding:21px;border-radius:12px;background:#142c45}
 h1{margin:0 0 8px;font-size:clamp(23px,5vw,35px)}a{color:#acd3ff}
@@ -10,7 +10,9 @@ th{background:#213a54}tbody{background:#12263b}.wrap{overflow-x:auto;border-radi
 </style></head><body><header><h1>DDS → Three.js · 18 filoni paralleli</h1>
 <p>I runner GitHub preparano pacchetti tecnici e dipendenze in parallelo. <strong>Un job verde non significa gameplay 1:1 verificato.</strong> Tu fai solo Play.</p>
 <nav><a class="action" href="dds-manual-playtest.html">▶ Play</a><a class="action" target="_blank" rel="noopener" href="https://github.com/jessicacarter9955/SketchbookAI/actions">GitHub Actions</a><button id="refresh">Aggiorna runner</button></nav>
-<p id="info" class="muted">Ricerca dello stato dei job…</p></header>
+<p id="info" class="muted">Ricerca dello stato dei job…</p>
+<p id="live-meta" class="muted" aria-live="polite">Monitoraggio GitHub: primo controllo in corso…</p>
+<p class="muted">Aggiornamento automatico ogni 90 secondi mentre questa pagina è aperta. Stato dei job e progresso reale sono indicatori diversi. Per le notifiche esterne servono le notifiche ChatGPT abilitate.</p></header>
 <div class="panel">🟢 Fedeltà verificata Unreal/Three · 🟡 Codice parziale · 🔴 Sorgenti o sistemi critici mancanti. I risultati dei runner sono mostrati in una colonna distinta.</div>
 <div class="wrap"><table><thead><tr><th>Flusso</th><th>Fedeltà</th><th>GitHub Actions</th><th>Priorità tecnica</th></tr></thead><tbody id="items"></tbody></table></div>
 <div class="panel">Gli export DDS originali non sono stati recuperati: le cartelle trovate su Drive non contengono tutti i binari, e i runner GitHub non hanno Unreal installato. Non vengono creati asset fittizi né richiesti upload. I test gameplay completi attendono il tuo feedback dopo Play.</div>
@@ -18,17 +20,23 @@ th{background:#213a54}tbody{background:#12263b}.wrap{overflow-x:auto;border-radi
 const items=[{"id":"tool-verifier","title":"Verificatore dati sorgenti DDS","color":"green","detail":"657 confronti sorgente riportati PASS da Codex; non equivalgono al gioco 1:1"},{"id":"source-assets","title":"Sorgenti Unreal e GLB","color":"red","detail":"Progetto Unreal e pacchetti binari completi non presenti nel checkout GitHub"},{"id":"character-weapons","title":"Manichino, armi e socket","color":"red","detail":"GLB originali manichino/armi non esportati"},{"id":"animation-rig","title":"Animazioni e retarget","color":"red","detail":"Curve originali e corrispondenza UE AnimBP non verificabili senza binari"},{"id":"blueprint-compiler","title":"Blueprint, compilatore, eventi","color":"yellow","detail":"317 funzioni ancora bloccate nel rapporto Codex"},{"id":"inventory-economy","title":"Inventario, equipaggiamento, valuta","color":"yellow","detail":"Equip completo, deposito e transfer non equivalenti"},{"id":"maps-collision","title":"Mappe, attori e collisioni","color":"red","detail":"Mappe e collisioni originali complete non disponibili"},{"id":"materials-pbr","title":"Materiali, texture e shader PBR","color":"yellow","detail":"Shader Unreal ed alcuni bake non equivalenti"},{"id":"umg-ui","title":"UI, HUD e Widget UMG","color":"yellow","detail":"UI locale approssimata, non pixel-identica all'originale"},{"id":"shop-dialogues","title":"Shop, dialoghi, missioni e modalità","color":"yellow","detail":"Flussi originali non completi; demo locali"},{"id":"movement-input","title":"Input, locomozione, traversal","color":"yellow","detail":"EnhancedInput/Mover non corrispondenti 1:1"},{"id":"physics","title":"Fisica, proiettili e hit detection","color":"yellow","detail":"Chaos e Cannon non sono ancora equivalenti"},{"id":"vfx-audio","title":"VFX Niagara, audio, feedback","color":"red","detail":"Risorse originali VFX e Audio non disponibili"},{"id":"multiplayer","title":"Multiplayer, RPC e replicazione","color":"red","detail":"Trasporto/server autorevole/RPC reali assenti"},{"id":"metahuman","title":"MetaHuman, volto e Groom","color":"red","detail":"Cartelle MetaHumans trovate ma binari indispensabili assenti"},{"id":"lighting","title":"Luci, ombre, Lumen","color":"yellow","detail":"Lumen / SkyLight e post-processing Unreal diversi da Three"},{"id":"integrated-play","title":"Integrazione Three.js e Play","color":"red","detail":"Nessun GLB originale DDS disponibile sul server: Play fermo"},{"id":"performance-streaming","title":"Performance, LOD, streaming, mobile","color":"yellow","detail":"Non ci sono benchmark della scena DDS originale nel browser"}];
 const cells=new Map(),body=document.getElementById('items');
 for(const i of items){const tr=document.createElement('tr'),a=document.createElement('td'),b=document.createElement('td'),c=document.createElement('td'),d=document.createElement('td');a.textContent=i.title;b.textContent=i.color==='red'?'🔴 Bloccato':i.color==='green'?'🟢 Verificatore':'🟡 Parziale';b.className=i.color;c.textContent='In attesa';d.textContent=i.detail;tr.append(a,b,c,d);body.append(tr);cells.set(i.id,c)}
-async function refresh(){const info=document.getElementById('info');info.textContent='Aggiornamento da GitHub…';try{
+let refreshBusy=false;
+async function refresh(){if(refreshBusy)return;refreshBusy=true;const info=document.getElementById('info');info.textContent='Aggiornamento da GitHub…';try{
 const api='https://api.github.com/repos/jessicacarter9955/SketchbookAI';
 const a=await fetch(api+'/actions/runs?branch=codex%2Fdds-parallel-manual-first&per_page=30');if(!a.ok)throw Error('HTTP '+a.status);
 const run=((await a.json()).workflow_runs||[]).find(x=>(x.name||'').startsWith('DDS parallel - 18'));
 if(!run){info.textContent='Runner non ancora avviati/visibili';return}
+const rev=run.head_sha||'';
+const meta=document.getElementById('live-meta');meta.replaceChildren(document.createTextNode('Ultima esecuzione DDS: '+new Date(run.updated_at||run.created_at).toLocaleString('it-IT')+' · Commit '));
+if(/^[a-f0-9]{40}$/.test(rev)){const commit=document.createElement('a');commit.textContent=rev.slice(0,8);commit.href='https://github.com/jessicacarter9955/SketchbookAI/commit/'+rev;commit.rel='noopener';commit.target='_blank';meta.append(commit)}
 const response=await fetch(api+'/actions/runs/'+run.id+'/jobs?per_page=100');if(!response.ok)throw Error('HTTP '+response.status);
 const jobs=(await response.json()).jobs||[];
 for(const [id,cell] of cells){const job=jobs.find(x=>x.name==='DDS · '+id);
 cell.textContent=!job?'In coda':job.conclusion==='success'?'🟢 Preparazione terminata':job.conclusion==='failure'?'🔴 Job fallito':job.status==='in_progress'?'🟡 In esecuzione':'🟡 In coda';
 cell.className=job?.conclusion==='success'?'green':job?.conclusion==='failure'?'red':'yellow'}
-info.replaceChildren(document.createTextNode('Esecuzione '+run.status+' · '));const link=document.createElement('a');link.href=run.html_url;link.textContent='Run #'+run.run_number;link.target='_blank';link.rel='noopener';info.append(link);
-}catch(e){info.textContent='GitHub non disponibile: '+e.message+'; apri GitHub Actions per i job.'}}
+info.replaceChildren(document.createTextNode('Esecuzione '+run.status+' · '));const link=document.createElement('a');link.href=run.html_url;link.textContent='Run #'+run.run_number;link.target='_blank';link.rel='noopener';info.append(link);info.append(document.createTextNode(' · '+jobs.filter(j=>j.conclusion==='success').length+'/'+jobs.length+' preparazioni OK (NON porting completato)'));
+}catch(e){info.textContent='Aggiornamento non disponibile: '+e.message+' (possibile limite API GitHub). Stato dei semafori non aggiornato.'}finally{refreshBusy=false}}
 document.getElementById('refresh').onclick=refresh;refresh();
+setInterval(()=>{if(document.visibilityState==='visible')refresh()},90000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refresh()});
 </script></body></html>
