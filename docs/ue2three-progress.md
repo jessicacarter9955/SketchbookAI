@@ -1,5 +1,14 @@
 # DDS migration checklist · 2026-10-13
 
+## Benefici per chi gioca · 2026-10-19
+
+Aggiunta alla baseline di tutte le18 aree la colonna «Cosa cambia per te
+giocando al100%». Il JSON omonimo conserva player_benefit e main_dependencies
+per ciascuna area. Le prossime tabelle devono mantenere questa spiegazione,
+insieme a percentuale fatta/restante e variazione. I benefici richiedono le
+dipendenze integrate e riguardano solo funzioni effettivamente presenti nel DDS.
+Percentuali e stato di implementazione invariati: aggiornamento documentale.
+
 ## Percentuali per area · 2026-10-19
 
 Riferimento per i prossimi aggiornamenti: [definizioni del100%, stime e lavoro

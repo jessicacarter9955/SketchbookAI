@@ -14,7 +14,8 @@
     "Do not sum or average overlapping area estimates into a whole-game percentage.",
     "Record changes to scope and denominators before revising estimates.",
     "Report completed range, remaining range, change and remaining acceptance criteria at each progress update.",
-    "Animation 1:1 verification remains deferred by user request; lighting remains last priority."
+    "Animation 1:1 verification remains deferred by user request; lighting remains last priority.",
+    "Each area progress table includes the player-facing benefit at completion; benefits require relevant dependencies integrated and refer to features actually present in DDS."
   ],
   "areas": [
     {
@@ -30,7 +31,9 @@
         "high": 0
       },
       "status": "green",
-      "evidence_scope": "Supported data-verifier capabilities only"
+      "evidence_scope": "Supported data-verifier capabilities only",
+      "player_benefit": "Gli errori e le regressioni sui dati supportati vengono intercettati durante la conversione, rendendo gli aggiornamenti più affidabili.",
+      "main_dependencies": []
     },
     {
       "id": "character_weapons",
@@ -45,7 +48,14 @@
         "high": 85
       },
       "status": "yellow",
-      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate",
+      "player_benefit": "Muovi il personaggio, cambi arma, miri, spari e ricarichi con munizioni, cadenza e danni secondo le regole originali.",
+      "main_dependencies": [
+        "animation_systems",
+        "inventory",
+        "physics",
+        "blueprints"
+      ]
     },
     {
       "id": "clips",
@@ -60,7 +70,12 @@
         "high": 95
       },
       "status": "yellow",
-      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate",
+      "player_benefit": "Vedi le animazioni originali delle azioni, come corsa, salto ed equipaggiamento, con i dettagli temporali previsti.",
+      "main_dependencies": [
+        "animation_systems",
+        "character_weapons"
+      ]
     },
     {
       "id": "animation_systems",
@@ -75,7 +90,13 @@
         "high": 100
       },
       "status": "red",
-      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate",
+      "player_benefit": "Le animazioni seguono ciò che fai: transizioni e pose coerenti, con mani e impugnature allineate durante il movimento.",
+      "main_dependencies": [
+        "clips",
+        "character_weapons",
+        "blueprints"
+      ]
     },
     {
       "id": "blueprints",
@@ -90,7 +111,13 @@
         "high": 95
       },
       "status": "yellow",
-      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate",
+      "player_benefit": "Le azioni producono le conseguenze originali: comandi, interazioni, eventi e condizioni fanno avanzare davvero il gioco.",
+      "main_dependencies": [
+        "inventory",
+        "modes",
+        "physics"
+      ]
     },
     {
       "id": "inventory",
@@ -105,7 +132,13 @@
         "high": 85
       },
       "status": "yellow",
-      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate",
+      "player_benefit": "Raccogli loot, organizzi gli slot, sposti oggetti, equipaggi armi e consumi risorse secondo le regole DDS.",
+      "main_dependencies": [
+        "ui",
+        "blueprints",
+        "character_weapons"
+      ]
     },
     {
       "id": "persistence",
@@ -120,7 +153,13 @@
         "high": 100
       },
       "status": "red",
-      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate",
+      "player_benefit": "Quando rientri, ritrovi gli oggetti e i progressi che il DDS originale prevede di conservare.",
+      "main_dependencies": [
+        "inventory",
+        "modes",
+        "blueprints"
+      ]
     },
     {
       "id": "geometry",
@@ -135,7 +174,11 @@
         "high": 90
       },
       "status": "yellow",
-      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate",
+      "player_benefit": "Vedi edifici, scale e terreno con forme, dimensioni e posizioni corrette, inclusa la rimozione delle deformazioni visive.",
+      "main_dependencies": [
+        "maps"
+      ]
     },
     {
       "id": "materials",
@@ -150,7 +193,13 @@
         "high": 90
       },
       "status": "yellow",
-      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate",
+      "player_benefit": "Vedi i colori, le superfici e i dettagli previsti dagli asset originali su mappa, personaggi e armi.",
+      "main_dependencies": [
+        "geometry",
+        "character_weapons",
+        "lighting"
+      ]
     },
     {
       "id": "maps",
@@ -165,7 +214,13 @@
         "high": 95
       },
       "status": "yellow",
-      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate",
+      "player_benefit": "Puoi accedere alle mappe previste e passare tra i luoghi del gioco con spawn e caricamenti corretti.",
+      "main_dependencies": [
+        "geometry",
+        "physics",
+        "modes"
+      ]
     },
     {
       "id": "ui",
@@ -180,7 +235,13 @@
         "high": 100
       },
       "status": "yellow",
-      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate",
+      "player_benefit": "Leggi salute e munizioni e usi menu e schermate originali, con pulsanti e indicatori collegati allo stato reale del gioco.",
+      "main_dependencies": [
+        "blueprints",
+        "inventory",
+        "character_weapons"
+      ]
     },
     {
       "id": "npc",
@@ -195,7 +256,14 @@
         "high": 100
       },
       "status": "red",
-      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate",
+      "player_benefit": "Interagisci con gli NPC e usi shop, conversazioni e missioni effettivamente presenti nel progetto, con le loro condizioni originali.",
+      "main_dependencies": [
+        "ui",
+        "inventory",
+        "blueprints",
+        "modes"
+      ]
     },
     {
       "id": "modes",
@@ -210,7 +278,14 @@
         "high": 100
       },
       "status": "red",
-      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate",
+      "player_benefit": "Segui il ciclo originale: avvio, lobby, ingresso nel raid, morte o estrazione e ritorno, con esiti corretti.",
+      "main_dependencies": [
+        "maps",
+        "character_weapons",
+        "inventory",
+        "blueprints"
+      ]
     },
     {
       "id": "physics",
@@ -225,7 +300,13 @@
         "high": 100
       },
       "status": "red",
-      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate",
+      "player_benefit": "Muri e pavimenti bloccano correttamente il personaggio; urti, query dei colpi e oggetti fisici seguono le regole originali.",
+      "main_dependencies": [
+        "geometry",
+        "character_weapons",
+        "blueprints"
+      ]
     },
     {
       "id": "vfx",
@@ -240,7 +321,13 @@
         "high": 100
       },
       "status": "red",
-      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate",
+      "player_benefit": "Vedi gli effetti originali di armi, impatti, personaggi e ambiente nel momento previsto, rendendo leggibili le azioni.",
+      "main_dependencies": [
+        "character_weapons",
+        "blueprints",
+        "materials"
+      ]
     },
     {
       "id": "audio",
@@ -255,7 +342,13 @@
         "high": 100
       },
       "status": "red",
-      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate",
+      "player_benefit": "Senti i suoni originali, come spari, passi e interazioni, con distanza e tempi coerenti; le sequenze previste sono sincronizzate.",
+      "main_dependencies": [
+        "blueprints",
+        "character_weapons",
+        "modes"
+      ]
     },
     {
       "id": "network",
@@ -270,7 +363,14 @@
         "high": 100
       },
       "status": "red",
-      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate",
+      "player_benefit": "Puoi giocare con altri utenti con giocatori, colpi, loot e stato della partita sincronizzati secondo le regole originali.",
+      "main_dependencies": [
+        "character_weapons",
+        "inventory",
+        "modes",
+        "blueprints"
+      ]
     },
     {
       "id": "lighting",
@@ -285,7 +385,13 @@
         "high": 95
       },
       "status": "yellow",
-      "evidence_scope": "Original DDS game area; provisional functional checklist estimate"
+      "evidence_scope": "Original DDS game area; provisional functional checklist estimate",
+      "player_benefit": "Vedi ambienti con luce, ombre, riflessi ed esposizione coerenti con la sorgente, migliorando profondità e leggibilità.",
+      "main_dependencies": [
+        "geometry",
+        "materials",
+        "maps"
+      ]
     }
   ],
   "overall_game_percentage": null
