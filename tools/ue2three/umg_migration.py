@@ -121,35 +121,48 @@ def _widgets_for_map(registry, map_package):
 def _asset_document(package_name, asset_file, tool, cache_dir, engine_version, force=False):
     cache_dir = Path(cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
-    source_hash = file_hash(asset_file)
+    # Include Unreal sidecars and parser/engine versions in the cache key.
+    asset_file = Path(asset_file)
+    source_files = {".uasset": asset_file}
+    for suffix in (".uexp", ".ubulk", ".uptnl"):
+        companion = asset_file.with_suffix(suffix)
+        if companion.is_file():
+            source_files[suffix] = companion
+    source_hashes = {suffix: file_hash(path) for suffix, path in source_files.items()}
+    source_hash = hashlib.sha256(json.dumps({
+        "package": package_name, "engine_version": str(engine_version),
+        "parser_sha256": UASSETGUI_SHA256, "files": source_hashes,
+    }, sort_keys=True).encode("utf-8")).hexdigest()
     cache_file = cache_dir / f"{source_hash}.json"
     if cache_file.is_file() and not force:
         try:
-            return Package(read_json(cache_file)), source_hash
+            document = read_json(cache_file)
+            if isinstance(document, dict) and isinstance(document.get("Exports"), list) and document["Exports"]:
+                return Package(document), source_hash
         except (OSError, ValueError):
-            cache_file.unlink(missing_ok=True)
+            pass
+        cache_file.unlink(missing_ok=True)
     temporary = cache_file.with_suffix(".json.tmp")
     # UAssetAPI opens input packages with exclusive sharing. A running Unreal
     # export may hold the original (or its hardlink) open. Parse an isolated copy
     # so simultaneous inspection neither locks nor writes the source package.
     with tempfile.TemporaryDirectory(prefix="parse-", dir=cache_dir) as scratch:
         copied = Path(scratch) / Path(asset_file).name
-        shutil.copyfile(asset_file, copied)
-        if file_hash(copied) != source_hash:
-            raise UMGMigrationError(f"Source changed while preparing parser input: {package_name}")
-        for suffix in (".uexp", ".ubulk", ".uptnl"):
-            companion = Path(asset_file).with_suffix(suffix)
-            if companion.is_file():
-                shutil.copyfile(companion, copied.with_suffix(suffix))
+        for suffix, original in source_files.items():
+            target = copied if suffix == ".uasset" else copied.with_suffix(suffix)
+            shutil.copyfile(original, target)
+            if file_hash(target) != source_hashes[suffix]:
+                raise UMGMigrationError(f"Source changed while preparing parser input: {package_name} ({suffix})")
         completed = subprocess.run([str(Path(tool).resolve()), "tojson", str(copied.resolve()),
                                     str(temporary.resolve()), str(engine_version)],
                                    capture_output=True, text=True, timeout=300, check=False)
     if completed.returncode != 0 or not temporary.is_file():
         detail = (completed.stderr or completed.stdout or f"UAssetGUI exited {completed.returncode}").strip()
+        temporary.unlink(missing_ok=True)
         raise UMGMigrationError(f"Could not read {package_name}: {detail[:600]}")
     try:
         document = read_json(temporary)
-        if not document.get("Exports"):
+        if not isinstance(document, dict) or not isinstance(document.get("Exports"), list) or not document["Exports"]:
             raise UMGMigrationError(f"UAssetGUI returned no exports for {package_name}")
         os.replace(temporary, cache_file)
         return Package(document), source_hash
