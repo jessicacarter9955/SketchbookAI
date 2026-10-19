@@ -52,7 +52,8 @@ def characterize(lane_id):
     available=sum(bool(x['found']) for x in paths)
     checked=exports()
     source_ready=any(x['original_assets_available'] for x in checked.values())
-    if selected['critical'] and not source_ready: fidelity='red'
+    if selected.get('verifier_only') and available==len(paths): fidelity='green'
+    elif selected['critical'] and not source_ready: fidelity='red'
     elif available<len(paths): fidelity='red'
     else:fidelity='yellow'
     report={'schema':'dds-port-workpack-v1','id':selected['id'],'title':selected['title'],
@@ -64,6 +65,7 @@ def characterize(lane_id):
             'feature_traffic_light':fidelity,'source_requirement':selected['critical'],
             'blocked_by':selected['blocker'],'next_step':selected['next'],
             'unreal_engine_started':False,'unreal_1_to_1_verified':False,
+            'verifier_scope_only':bool(selected.get('verifier_only')),
             'user_action_required':'Play and feedback only',
             'no_placeholders_as_original_assets':True}
     if lane_id in ('source-assets','character-weapons','animation-rig'):

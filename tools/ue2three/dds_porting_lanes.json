@@ -4,6 +4,20 @@
   "source_commit": "1cf9cbfde8df5a42b7026beab488bcb841112231",
   "lanes": [
     {
+      "id": "tool-verifier",
+      "title": "Verificatore dati sorgenti DDS",
+      "files": [
+        "tools/ue2three/verify-blueprints.mjs",
+        "src/editor/ue2three-source-verification.mjs",
+        "tools/ue2three/progress_report.py",
+        "tests/ue2three-source-verification.test.mjs"
+      ],
+      "blocker": "Il confronto dati sorgente è implementato; non è ancora una verifica visiva/gioco 1:1",
+      "next": "Estendere i casi sorgenti e collegarli alla verifica runtime browser dopo Play",
+      "critical": false,
+      "verifier_only": true
+    },
+    {
       "id": "source-assets",
       "title": "Sorgenti Unreal e GLB",
       "files": [

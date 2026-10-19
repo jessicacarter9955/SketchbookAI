@@ -1,4 +1,4 @@
-# DDS porting: 17 independent concurrent workstreams
+# DDS porting: 18 independent concurrent workstreams
 
 Baseline: Codex commit `1cf9cbf`; no reimplementation from scratch.
 Branch: `codex/dds-parallel-manual-first`.
@@ -8,10 +8,10 @@ required. No unsupported claims of 1:1 Unreal equivalence.
 
 ## How the GitHub jobs operate
 
-Workflow `.github/workflows/dds-port-parallel.yml` schedules **17 matrix
+Workflow `.github/workflows/dds-port-parallel.yml` schedules **18 matrix
 jobs** independently on every change to the manifest or runner. Each
 produces a source-provenance packet (JSON+Markdown) and a specific next
-engineering action. Up to 17 runners can work concurrently, subject to
+engineering action. Up to 18 runners can work concurrently, subject to
 GitHub account availability. One job's failure does not cancel the others.
 
 The jobs prepare independent work areas; they are **not autonomous coding
@@ -37,3 +37,7 @@ run and exposes separate runner/result and fidelity columns.
 - Red: critically missing source or unimplemented system.
 - A green GitHub job means its source/preparation task succeeded, **not**
   a green 1:1 gameplay subsystem.
+
+The independent `tool-verifier` lane is green solely for the source-data
+comparison harness supported by Codex's previously reported source cases.
+It does not claim a 1:1 playable Unreal game or replace user Play.
