@@ -23,7 +23,21 @@ async function templates(){
    });
    const bounds=new THREE.Box3().setFromObject(root),height=bounds.getSize(new THREE.Vector3()).y;
    if(!Number.isFinite(height)||height<=0)throw Error('Albero fotorealistico originale senza dimensioni corrette');
-   const center=bounds.getCenter(new THREE.Vector3());
+   // An asymmetrical crown shifts the box center away from the trunk foot.
+   // Anchor the lowest original mesh vertices at the planned tree position.
+   const lowY=bounds.min.y+Math.max(.25,height*.09);
+   const point=new THREE.Vector3(),base=new THREE.Vector3();
+   let baseCount=0;
+   root.traverse(mesh=>{
+     const positions=mesh.isMesh&&mesh.geometry?.getAttribute('position');
+     if(!positions)return;
+     const stride=Math.max(1,Math.ceil(positions.count/7000));
+     for(let i=0;i<positions.count;i+=stride){
+       point.fromBufferAttribute(positions,i).applyMatrix4(mesh.matrixWorld);
+       if(point.y<=lowY){base.x+=point.x;base.z+=point.z;baseCount++;}
+     }
+   });
+   const center=baseCount>=3?base.multiplyScalar(1/baseCount):bounds.getCenter(new THREE.Vector3());
    root.position.set(-center.x,-bounds.min.y,-center.z);
    root.updateMatrixWorld(true);
    const meshes=[];

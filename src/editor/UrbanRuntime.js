@@ -8,6 +8,7 @@ import {restoreUrbanFacades,saveUrbanFacades} from './UrbanSceneCache.js';
 import { buildUrbanStreets } from './UrbanStreets.js';
 import { UrbanSignals } from './UrbanSignals.js';
 import { createVegetation } from './UrbanVegetation.js';
+import { addUrbanMiamiCoast } from './UrbanCoast.js';
 import { isHiddenBehindBuildings,isOccludedSector,isOccludedTree } from './urban-visibility.mjs';
 import { photographicLighting, loadSurface, metricUV, captureStreetReflections } from './UrbanLighting.js';
 import { prepareFacadeKit, buildModularBuilding, instanceArchitecture } from './UrbanArchitecture.js';
@@ -216,6 +217,9 @@ export class UrbanRuntime {
       }
     }
     buildUrbanStreets(plan,config,box,{road:matRoad,curb:matCurb,paint:matLane,grass:matGrass,iron:matDrain});
+    // At the east boundary, replace empty horizon with walkable sand, ocean
+    // and GPU-instanced palm trees. The ordinary street/navigation graph stays unchanged.
+    addUrbanMiamiCoast(group,plan,config,box);
 
     const facadeMats={};
     for(const style of ['glass','office','brick','stone']){

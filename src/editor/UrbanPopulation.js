@@ -4,6 +4,8 @@ import {urbanNetworks,shortestUrbanPath,safeFollowingSpeed} from './urban-naviga
 import {advanceSimulationClock,isHiddenBehindBuildings} from './urban-visibility.mjs';
 import {reactToPedestrianEvent,advancePedestrianResponse} from './gta-ped-response.mjs';
 import {trafficSignalSpeedLimit,URBAN_SIGNAL} from './urban-traffic-signals.mjs';
+import {nextUrbanPedestrianRoute} from './urban-agent-recovery.mjs';
+import {nextUrbanCarSegment} from './urban-car-routing.mjs';
 export class UrbanPopulation {
   constructor(world,person,car){
     this.world=world;this.net=urbanNetworks(world.levelRuntime.config);this.group=new THREE.Group();
@@ -82,9 +84,9 @@ export class UrbanPopulation {
     a.object.position.set(a.x,this.world.levelRuntime.groundAt(a.x,a.z)+a.groundOffset,a.z);
   }
   nextDestination(a){
-    const nodes=this.net.pedestrians.nodes;
-    const n=nodes[(a.seed*31+Math.floor(this.elapsed/18)*17+nodes.length/3|0)%nodes.length];
-    a.path=shortestUrbanPath(this.net.pedestrians,{x:a.x,z:a.z},n);a.index=0;
+    a.routeLeg=(a.routeLeg||0)+1;
+    a.path=nextUrbanPedestrianRoute(this.net.pedestrians,{x:a.x,z:a.z},a.seed,a.routeLeg);
+    a.index=0;
   }
   nearCrosswalk(p){
     return this.net.crosswalks.some(s=>{
@@ -237,11 +239,9 @@ export class UrbanPopulation {
         if(a.t>=stopT-.0001){a.speed=0;a.waitingSignal=true;}
       }else a.t=nextT;
       if(a.t>=1){
-        const options=this.net.roads.map((r,i)=>({i,d:Math.hypot(r.a.x-s.b.x,r.a.z-s.b.z)}))
-          .filter(o=>o.i!==a.seg&&o.d<this.net.config.roadWidth+3)
-          .sort((x,y)=>x.d-y.d);
-        if(options.length)a.seg=options[(a.seed+Math.floor(this.elapsed/12))%Math.min(2,options.length)].i;
-        a.t=0;
+        const next=nextUrbanCarSegment(this.net.roads,a.seg,a.seed+Math.floor(this.elapsed/12),this.cars.filter(car=>car!==a));
+        if(next===null){a.t=.985;a.speed=0;} // Wait for a free physical lane, never snap back to the start.
+        else {a.seg=next;a.t=0;}
       }
       this.placeCar(a);
     }
@@ -257,6 +257,7 @@ export class UrbanPopulation {
         a.object.visible=a.renderAllowed;
         if(!a.renderAllowed)sim.occludedAgents++;
       }
+      if(a.walkAction)a.walkAction.paused=a.state==='chatting'||a.state==='surrender'||!!a.dialoguePaused||!!a.waitingSince;
       if(a.mixer&&a.renderAllowed&&distance<95&&facing&&a.state!=='dead')a.mixer.update(dt);
       if(a.state==='dead'){sim.sleepingPedestrians++;continue;}
        if(advancePedestrianResponse(a,this.elapsed))this.nextDestination(a);
@@ -269,9 +270,17 @@ export class UrbanPopulation {
       const dx=target.x-a.x,dz=target.z-a.z,d=Math.hypot(dx,dz);
       if(d<.35){a.index++;continue;}
       if(distance<110){
-        if(this.nearCrosswalk(a)&&this.cars.some(c=>Math.hypot(c.object.position.x-a.x,c.object.position.z-a.z)<7))continue;
-        if(this.pedestrians.some(b=>b!==a&&b.seed<a.seed&&Math.hypot(a.x-b.x,a.z-b.z)<.9))continue;
+        const blocked=(this.nearCrosswalk(a)&&this.cars.some(c=>Math.hypot(c.object.position.x-a.x,c.object.position.z-a.z)<7))||
+          this.pedestrians.some(b=>b!==a&&b.seed<a.seed&&Math.hypot(a.x-b.x,a.z-b.z)<.9);
+        if(blocked){
+          if(!a.waitingSince)a.waitingSince=this.elapsed;
+          if(a.walkAction)a.walkAction.paused=true;
+          if(this.elapsed-a.waitingSince>3.5){this.nextDestination(a);a.waitingSince=this.elapsed;}
+          continue;
+        }
       }
+      a.waitingSince=0;
+      if(a.walkAction)a.walkAction.paused=false;
       const step=Math.min(d,a.speed*detailDt);
       a.x+=dx/d*step;a.z+=dz/d*step;
       a.object.rotation.y=Math.atan2(dx,dz);this.placePed(a);

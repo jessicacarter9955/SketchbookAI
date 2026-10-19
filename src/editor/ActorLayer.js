@@ -8,6 +8,7 @@ import { loadDdsPlayer } from './DdsAssets';
 import { DdsCharacter } from './DdsCharacter';
 import { UrbanPopulation } from './UrbanPopulation.js';
 import { SanAndreasPopulation } from './SanAndreasPopulation.js';
+import { groundedVehicleSkinOffset } from './urban-grounding.mjs';
 
 export class ActorLayer {
     constructor(world) { this.world = world; this.actors = []; this.spawn = new THREE.Vector3(0, 2, -5); }
@@ -75,6 +76,8 @@ export class ActorLayer {
                     actor.wheels.forEach(wheel=>{wheel.wheelObject.visible=false;});
                     const visual=clone(skin);visual.name='Imported licensed drivable sports car';
                     visual.position.y=-.78;actor.add(visual);
+                     // Geometry stays byte-for-byte original; only the mounting height moves.
+                     actor.userData.importedVehicleVisual=visual;
                     actor.userData.importedCar=item.assetId;
                 }
                 actor.setPosition(item.position[0], this.ground(item.position[0],item.position[2],item.position[1]) + 0.9, item.position[2]);
@@ -117,6 +120,18 @@ export class ActorLayer {
         if(this.urbanPopulation&&!this.world.sceneEditor?.active)this.urbanPopulation.update(this.world.requestDelta||1/60);
         if(this.saPopulation&&!this.world.sceneEditor?.active)this.saPopulation.update(this.world.requestDelta||1/60);
         for (const actor of this.actors) {
+            // Match the licensed car visual to its actual grounded Cannon chassis.
+            // Re-evaluate while driving: suspension compression changes chassis height.
+            if(actor.userData.importedVehicleVisual && actor.collision && !actor.userData.dormant){
+                const body=actor.collision.position;
+                const target=groundedVehicleSkinOffset(body.y,this.ground(body.x,body.z,0),
+                    actor.rayCastVehicle?.numWheelsOnGround||0);
+                if(target!==null){
+                    const visual=actor.userData.importedVehicleVisual;
+                    visual.position.y=THREE.MathUtils.lerp(visual.position.y,target,
+                        Math.min(1,Math.max(0,this.world.requestDelta||1/60)*12));
+                }
+            }
             if (actor.controllingCharacter === this.world.editorPlayer) continue;
             // Physics vehicles expose an initial Cannon chassis transform before the
             // first visual update. Dormant cars must be tested at their HOME position,
