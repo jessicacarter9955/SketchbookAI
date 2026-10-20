@@ -79,7 +79,8 @@ export class BlueprintActorRuntime {
             const program = this.report.packages[metric.package].functions[metric.function];
             const state = this.states[metric.package];
             const key = JSON.stringify(program.self_reads.map(field => state[field]));
-            const cacheId = JSON.stringify([metric.package, metric.function]);
+            // One source function can expose multiple numeric outputs; cache each output independently.
+            const cacheId = JSON.stringify([metric.package, metric.function, metric.output]);
             const cached = this.metricCache.get(cacheId);
             const value = cached?.key === key ? cached.value : this.call(metric.package, metric.function).outputs[metric.output];
             if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error('Original metric did not return a finite number');

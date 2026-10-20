@@ -135,3 +135,33 @@ test('callable source programs without movement guards remain available; empty r
     assert.equal(await load({...report, packages: {'/Game/Vitals': {default_state: {Stamina: 100}, functions: {}}}}), null);
     assert.equal(await loadBlueprintActorRuntime(path, report.project, async () => ({ok: false, status: 404})), null);
 });
+
+test('HUD metrics from two outputs of the same source function stay distinct across cached reads', () => {
+    const {report, runtime} = fixture();
+    const data = report.packages['/Game/Vitals'];
+    runtime.states['/Game/Vitals'].MaxStamina = 150;
+    data.functions.ReadVitals = {
+        schema_version: 1, status: 'translated_straight_line',
+        input_fields: [], output_fields: ['Current', 'Maximum'],
+        self_reads: ['Stamina', 'MaxStamina'], self_writes: [],
+        steps: [
+            {op: 'set', field: 'Current', value: {op: 'get', scope: 'self', field: 'Stamina'}},
+            {op: 'set', field: 'Maximum', value: {op: 'get', scope: 'self', field: 'MaxStamina'}},
+            {op: 'return', value: {op: 'constant', value: null}}
+        ]
+    };
+    report.character_metrics = ['Current', 'Maximum'].map(output => ({
+        package: '/Game/Vitals', function: 'ReadVitals', output,
+        current: 'Stamina', maximum: 'MaxStamina'
+    }));
+    assert.deepEqual(runtime.readMetrics().map(metric => metric.value), [100, 150]);
+    assert.deepEqual(runtime.readMetrics().map(metric => metric.value), [100, 150]);
+    runtime.states['/Game/Vitals'].Stamina = 37.5;
+    assert.deepEqual(runtime.readMetrics().map(metric => metric.value), [37.5, 150]);
+    runtime.states['/Game/Vitals'].MaxStamina = 175;
+    assert.deepEqual(runtime.readMetrics().map(metric => metric.value), [37.5, 175]);
+    const saved = runtime.snapshot();
+    runtime.states['/Game/Vitals'].Stamina = 0;
+    runtime.restore(saved);
+    assert.deepEqual(runtime.readMetrics().map(metric => metric.value), [37.5, 175]);
+});
