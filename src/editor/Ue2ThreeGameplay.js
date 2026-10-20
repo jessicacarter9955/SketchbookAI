@@ -72,7 +72,9 @@ export class Ue2ThreeGameplay {
         this.aiming = false;
         if (!active) return;
         if (this.blueprints) {
+            const gameTimeSeconds = this.blueprints.gameTimeSeconds;
             this.blueprints = new BlueprintActorRuntime(this.blueprints.report, this.blueprints.report.project);
+            this.blueprints.advanceWorldTime(gameTimeSeconds);
             const sourceActor = this.blueprints.report.character_source;
             if (sourceActor) this.blueprints.bindSourceActor(sourceActor.package, active);
             active.userData.ue2threeBlueprintRuntime = this.blueprints;
@@ -110,6 +112,7 @@ export class Ue2ThreeGameplay {
 
     update(timeStep = 0) {
         this.syncPlayer();
+        this.blueprints?.advanceWorldTime(timeStep);
         this.blueprintInputs?.enforceHeld();
         this.refreshSourceMetrics();
         this.weaponMixer?.update(timeStep);

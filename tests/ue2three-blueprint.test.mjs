@@ -71,6 +71,24 @@ test('typed array copies and struct writes retain original nonzero defaults with
     assert.throws(()=>executeBlueprint({...get,steps:[{...get.steps[1],value:{op:'constant',value:true}},get.steps[2]]},state,{Index:0}),/typed source member/);
 });
 
+test('persistent source struct writes retain frame identity and reacquire storage after nested RHS calls',()=>{
+    const schema={type:'StructProperty',fields:{Count:{type:'IntProperty',default:-1},Other:{type:'IntProperty',default:0}},default:{Count:-1,Other:0}};
+    const storage={persistent_types:{'2':{Item:'StructProperty'}},persistent_schemas:{'2':{Item:schema}}};
+    const target={op:'get',scope:'persistent',frame:2,field:'Item'};
+    const child={...storage,schema_version:1,status:'translated_straight_line',source_export_index:8,source_owner_index:3,
+        input_fields:[],output_fields:[],steps:[{op:'set',scope:'persistent',frame:2,field:'Item',
+            value:{op:'typed_literal',schema,value:{Count:10,Other:5}}},{op:'return',value:{op:'constant',value:9}}]};
+    const program={...storage,schema_version:1,status:'translated_straight_line',source_export_index:2,source_owner_index:3,
+        input_fields:[],output_fields:[],steps:[{op:'set_member',target,field:'Count',member_type:'IntProperty',
+            value:{op:'call',function:'Change',export_index:8,bindings:[]}},{op:'return',value:{op:'constant',value:null}}]};
+    const frames={'2':{Item:{Count:1,Other:2}}},before=structuredClone(frames);
+    const result=executeBlueprint(program,{}, {},{frames,functions:{Change:child}});
+    assert.deepEqual(result.frames['2'].Item,{Count:9,Other:5});assert.deepEqual(frames,before);
+    assert.deepEqual(executeBlueprint({...program,steps:[{...program.steps[0],value:{op:'constant',value:4}},program.steps[1]]}).frames['2'].Item,{Count:4,Other:0});
+    assert.throws(()=>executeBlueprint({...program,persistent_schemas:{}},{},{},{frames,functions:{Change:child}}),/assignment type/);
+    assert.deepEqual(frames,before);
+});
+
 
 test('source Array_Set writes typed instance arrays with source defaults and no aliasing', () => {
     const item={type:'StructProperty',source:'/Game/Item',fields:{

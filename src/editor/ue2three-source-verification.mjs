@@ -34,6 +34,8 @@ export function verifySourceCases(report, fixture) {
             if (!evidence.has(key)) evidence.set(key, {package:sample.package, function:sample.function,
                 source_bytecode_sha256:program.source_bytecode_sha256, source_cases:[]});
             evidence.get(key).source_cases.push({runtime:sample.runtime, inputs:sample.inputs, outputs:result.outputs, expected:sample.outputs || {},
+                ...(Object.hasOwn(sample,'game_time_seconds') ? {game_time_seconds:sample.game_time_seconds} : {}),
+                ...(sample.query_member_sources ? {query_member_sources:sample.query_member_sources} : {}),
                 ...(sample.fixture_objects ? {fixture_objects:sample.fixture_objects,query_dependencies:sample.query_dependencies,
                     object_scope:'Explicit offline object identities; no spawning, possession, scene or lifecycle verification'} : {}),
                 ...(sample.state ? {resulting_state:result.state, expected_state:sample.state} : {}),

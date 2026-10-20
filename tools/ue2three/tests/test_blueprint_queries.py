@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from umg_migration import Package
-from blueprint_migration import translate_package
+from blueprint_migration import translate_package, expression, BlueprintTranslationError
 from blueprint_queries import prune_queries
 
 
@@ -32,6 +32,39 @@ class ComponentQueryTests(unittest.TestCase):
         pool = {'/Game/Inventory': source, '/Game/Combat': caller}
         for package in pool.values(): package.source_packages = pool; package.source_structs = {}
         return pool
+
+    def test_source_component_lookup_checks_actor_class_identity_and_context_memory(self):
+        pool = self.packages(); caller = pool['/Game/Combat']; caller._active_function = caller.exports[1]
+        caller.imports.extend([{'ObjectName': 'Actor', 'OuterIndex': -2},
+                              {'ObjectName': 'GetComponentByClass', 'ClassName': 'Function', 'OuterIndex': -5}])
+        caller.exports[0]['LoadedProperties'].append({'Name': 'Owner', 'SerializedType': 'ObjectProperty', 'PropertyClass': -5})
+        call = node('EX_Context', ObjectExpression=var('EX_InstanceVariable','Owner',1),Offset=19,
+                    ContextExpression=node('EX_FinalFunction',StackNode=-6,Parameters=[node('EX_ObjectConst',Value=-3)]))
+        result = expression(call,set(),set(),package=caller,owner=1)
+        self.assertEqual(result['op'],'native_find_component'); self.assertEqual(result['package'],'/Game/Inventory')
+        call['Offset'] += 1
+        with self.assertRaisesRegex(BlueprintTranslationError,'layout'): expression(call,set(),set(),package=caller,owner=1)
+        call['Offset'] = 19; caller.imports[2]['ObjectName'] = 'Foreign_C'
+        with self.assertRaisesRegex(BlueprintTranslationError,'component class'): expression(call,set(),set(),package=caller,owner=1)
+
+    def test_component_member_requires_original_field_owner_and_schema(self):
+        pool=self.packages();caller=pool['/Game/Combat'];caller._active_function=caller.exports[1]
+        pointer={'New':{'Path':['Count'],'ResolvedOwner':-3}}
+        call=node('EX_Context',ObjectExpression=var('EX_InstanceVariable','Inventory',1),Offset=9,RValuePointer=pointer,
+                  ContextExpression=node('EX_InstanceVariable',Variable=pointer))
+        result=expression(call,set(),set(),package=caller,owner=1)
+        self.assertEqual(result['op'],'component_member');self.assertEqual(result['schema']['type'],'IntProperty')
+        call['ContextExpression']['Variable']={'New':{'Path':['Count'],'ResolvedOwner':-1}}
+        with self.assertRaisesRegex(BlueprintTranslationError,'owner'): expression(call,set(),set(),package=caller,owner=1)
+
+    def test_original_clock_requires_exact_native_function_and_self_world_context(self):
+        caller=self.packages()['/Game/Combat']
+        caller.imports.extend([{'ObjectName':'KismetSystemLibrary','OuterIndex':-2},
+                              {'ObjectName':'GetGameTimeInSeconds','ClassName':'Function','OuterIndex':-5}])
+        call=node('EX_CallMath',StackNode=-6,Parameters=[node('EX_Self')])
+        self.assertEqual(expression(call,set(),set(),package=caller,owner=1),{'op':'native_game_time','source_owner_index':1})
+        call['Parameters']=[node('EX_NoObject')]
+        with self.assertRaisesRegex(BlueprintTranslationError,'world context'): expression(call,set(),set(),package=caller,owner=1)
 
     def test_exact_original_component_query_and_schemas_translate(self):
         pool = self.packages(); result = {name: translate_package(package) for name, package in pool.items()}

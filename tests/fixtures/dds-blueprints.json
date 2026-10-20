@@ -43399,6 +43399,2283 @@
         }
       },
       "source_note": "WEAPON_AMMO_NOTIFICATION: null original InventoryComp skips notification. Offline source-data comparison."
+    },
+    {
+      "runtime": "weapon_fire_prerequisite",
+      "case": "ready",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanFire",
+      "source_bytecode_sha256": "bd443f5112c2534a65afdd4e3044459508a7fa782cc4a6d342b97100378bf428",
+      "base_state": "combat-fire-defaults",
+      "self": {
+        "CachedCurrentAmmo": 10
+      },
+      "game_time_seconds": 1,
+      "inputs": {},
+      "outputs": {
+        "CanFire": true
+      },
+      "effects": [],
+      "fixture_objects": {
+        "OwnerPawn": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+          "use_bound_root": true,
+          "source_sha256": "6836de8c7be7e1077e7b050cd0cb6e90e6c25ccbd1a1ce4dd0fd33fce5f083ea"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_member_sources": {
+        "/Game/Blueprints/AC_TraversalLogic": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f"
+      },
+      "query_states": {
+        "/Game/Blueprints/AC_TraversalLogic": {
+          "package": "/Game/Blueprints/AC_TraversalLogic",
+          "source_sha256": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f",
+          "base_state": "traversal-fire-defaults",
+          "self": {
+            "DoingTraversalAction": false
+          }
+        }
+      }
+    },
+    {
+      "runtime": "weapon_fire_prerequisite",
+      "case": "cooldown-boundary",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanFire",
+      "source_bytecode_sha256": "bd443f5112c2534a65afdd4e3044459508a7fa782cc4a6d342b97100378bf428",
+      "base_state": "combat-fire-defaults",
+      "self": {
+        "CachedCurrentAmmo": 10
+      },
+      "game_time_seconds": 0.1,
+      "inputs": {},
+      "outputs": {
+        "CanFire": true
+      },
+      "effects": [],
+      "fixture_objects": {
+        "OwnerPawn": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+          "use_bound_root": true,
+          "source_sha256": "6836de8c7be7e1077e7b050cd0cb6e90e6c25ccbd1a1ce4dd0fd33fce5f083ea"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_member_sources": {
+        "/Game/Blueprints/AC_TraversalLogic": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f"
+      },
+      "query_states": {
+        "/Game/Blueprints/AC_TraversalLogic": {
+          "package": "/Game/Blueprints/AC_TraversalLogic",
+          "source_sha256": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f",
+          "base_state": "traversal-fire-defaults",
+          "self": {
+            "DoingTraversalAction": false
+          }
+        }
+      }
+    },
+    {
+      "runtime": "weapon_fire_prerequisite",
+      "case": "before-cooldown",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanFire",
+      "source_bytecode_sha256": "bd443f5112c2534a65afdd4e3044459508a7fa782cc4a6d342b97100378bf428",
+      "base_state": "combat-fire-defaults",
+      "self": {
+        "CachedCurrentAmmo": 10
+      },
+      "game_time_seconds": 0.099999999,
+      "inputs": {},
+      "outputs": {
+        "CanFire": false
+      },
+      "effects": [],
+      "fixture_objects": {
+        "OwnerPawn": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+          "use_bound_root": true,
+          "source_sha256": "6836de8c7be7e1077e7b050cd0cb6e90e6c25ccbd1a1ce4dd0fd33fce5f083ea"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_member_sources": {
+        "/Game/Blueprints/AC_TraversalLogic": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f"
+      },
+      "query_states": {
+        "/Game/Blueprints/AC_TraversalLogic": {
+          "package": "/Game/Blueprints/AC_TraversalLogic",
+          "source_sha256": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f",
+          "base_state": "traversal-fire-defaults",
+          "self": {
+            "DoingTraversalAction": false
+          }
+        }
+      }
+    },
+    {
+      "runtime": "weapon_fire_prerequisite",
+      "case": "original-double-roundoff",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanFire",
+      "source_bytecode_sha256": "bd443f5112c2534a65afdd4e3044459508a7fa782cc4a6d342b97100378bf428",
+      "base_state": "combat-fire-defaults",
+      "self": {
+        "CachedCurrentAmmo": 10,
+        "LastFireTime": 0.2
+      },
+      "game_time_seconds": 0.3,
+      "inputs": {},
+      "outputs": {
+        "CanFire": false
+      },
+      "effects": [],
+      "fixture_objects": {
+        "OwnerPawn": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+          "use_bound_root": true,
+          "source_sha256": "6836de8c7be7e1077e7b050cd0cb6e90e6c25ccbd1a1ce4dd0fd33fce5f083ea"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_member_sources": {
+        "/Game/Blueprints/AC_TraversalLogic": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f"
+      },
+      "query_states": {
+        "/Game/Blueprints/AC_TraversalLogic": {
+          "package": "/Game/Blueprints/AC_TraversalLogic",
+          "source_sha256": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f",
+          "base_state": "traversal-fire-defaults",
+          "self": {
+            "DoingTraversalAction": false
+          }
+        }
+      }
+    },
+    {
+      "runtime": "weapon_fire_prerequisite",
+      "case": "original-double-roundoff-above",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanFire",
+      "source_bytecode_sha256": "bd443f5112c2534a65afdd4e3044459508a7fa782cc4a6d342b97100378bf428",
+      "base_state": "combat-fire-defaults",
+      "self": {
+        "CachedCurrentAmmo": 10,
+        "LastFireTime": 0.3
+      },
+      "game_time_seconds": 0.4,
+      "inputs": {},
+      "outputs": {
+        "CanFire": true
+      },
+      "effects": [],
+      "fixture_objects": {
+        "OwnerPawn": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+          "use_bound_root": true,
+          "source_sha256": "6836de8c7be7e1077e7b050cd0cb6e90e6c25ccbd1a1ce4dd0fd33fce5f083ea"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_member_sources": {
+        "/Game/Blueprints/AC_TraversalLogic": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f"
+      },
+      "query_states": {
+        "/Game/Blueprints/AC_TraversalLogic": {
+          "package": "/Game/Blueprints/AC_TraversalLogic",
+          "source_sha256": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f",
+          "base_state": "traversal-fire-defaults",
+          "self": {
+            "DoingTraversalAction": false
+          }
+        }
+      }
+    },
+    {
+      "runtime": "weapon_fire_prerequisite",
+      "case": "not-allowed",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanFire",
+      "source_bytecode_sha256": "bd443f5112c2534a65afdd4e3044459508a7fa782cc4a6d342b97100378bf428",
+      "base_state": "combat-fire-defaults",
+      "self": {
+        "CachedCurrentAmmo": 10,
+        "bCanFire": false
+      },
+      "game_time_seconds": 1,
+      "inputs": {},
+      "outputs": {
+        "CanFire": false
+      },
+      "effects": [],
+      "fixture_objects": {
+        "OwnerPawn": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+          "use_bound_root": true,
+          "source_sha256": "6836de8c7be7e1077e7b050cd0cb6e90e6c25ccbd1a1ce4dd0fd33fce5f083ea"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_member_sources": {
+        "/Game/Blueprints/AC_TraversalLogic": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f"
+      },
+      "query_states": {
+        "/Game/Blueprints/AC_TraversalLogic": {
+          "package": "/Game/Blueprints/AC_TraversalLogic",
+          "source_sha256": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f",
+          "base_state": "traversal-fire-defaults",
+          "self": {
+            "DoingTraversalAction": false
+          }
+        }
+      }
+    },
+    {
+      "runtime": "weapon_fire_prerequisite",
+      "case": "equipping",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanFire",
+      "source_bytecode_sha256": "bd443f5112c2534a65afdd4e3044459508a7fa782cc4a6d342b97100378bf428",
+      "base_state": "combat-fire-defaults",
+      "self": {
+        "CachedCurrentAmmo": 10,
+        "bIsEquipping": true
+      },
+      "game_time_seconds": 1,
+      "inputs": {},
+      "outputs": {
+        "CanFire": false
+      },
+      "effects": [],
+      "fixture_objects": {
+        "OwnerPawn": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+          "use_bound_root": true,
+          "source_sha256": "6836de8c7be7e1077e7b050cd0cb6e90e6c25ccbd1a1ce4dd0fd33fce5f083ea"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_member_sources": {
+        "/Game/Blueprints/AC_TraversalLogic": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f"
+      },
+      "query_states": {
+        "/Game/Blueprints/AC_TraversalLogic": {
+          "package": "/Game/Blueprints/AC_TraversalLogic",
+          "source_sha256": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f",
+          "base_state": "traversal-fire-defaults",
+          "self": {
+            "DoingTraversalAction": false
+          }
+        }
+      }
+    },
+    {
+      "runtime": "weapon_fire_prerequisite",
+      "case": "unequipping",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanFire",
+      "source_bytecode_sha256": "bd443f5112c2534a65afdd4e3044459508a7fa782cc4a6d342b97100378bf428",
+      "base_state": "combat-fire-defaults",
+      "self": {
+        "CachedCurrentAmmo": 10,
+        "bIsUnequipping": true
+      },
+      "game_time_seconds": 1,
+      "inputs": {},
+      "outputs": {
+        "CanFire": false
+      },
+      "effects": [],
+      "fixture_objects": {
+        "OwnerPawn": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+          "use_bound_root": true,
+          "source_sha256": "6836de8c7be7e1077e7b050cd0cb6e90e6c25ccbd1a1ce4dd0fd33fce5f083ea"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_member_sources": {
+        "/Game/Blueprints/AC_TraversalLogic": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f"
+      },
+      "query_states": {
+        "/Game/Blueprints/AC_TraversalLogic": {
+          "package": "/Game/Blueprints/AC_TraversalLogic",
+          "source_sha256": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f",
+          "base_state": "traversal-fire-defaults",
+          "self": {
+            "DoingTraversalAction": false
+          }
+        }
+      }
+    },
+    {
+      "runtime": "weapon_fire_prerequisite",
+      "case": "reloading",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanFire",
+      "source_bytecode_sha256": "bd443f5112c2534a65afdd4e3044459508a7fa782cc4a6d342b97100378bf428",
+      "base_state": "combat-fire-defaults",
+      "self": {
+        "CachedCurrentAmmo": 10,
+        "bIsReloading": true
+      },
+      "game_time_seconds": 1,
+      "inputs": {},
+      "outputs": {
+        "CanFire": false
+      },
+      "effects": [],
+      "fixture_objects": {
+        "OwnerPawn": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+          "use_bound_root": true,
+          "source_sha256": "6836de8c7be7e1077e7b050cd0cb6e90e6c25ccbd1a1ce4dd0fd33fce5f083ea"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_member_sources": {
+        "/Game/Blueprints/AC_TraversalLogic": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f"
+      },
+      "query_states": {
+        "/Game/Blueprints/AC_TraversalLogic": {
+          "package": "/Game/Blueprints/AC_TraversalLogic",
+          "source_sha256": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f",
+          "base_state": "traversal-fire-defaults",
+          "self": {
+            "DoingTraversalAction": false
+          }
+        }
+      }
+    },
+    {
+      "runtime": "weapon_fire_prerequisite",
+      "case": "empty",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanFire",
+      "source_bytecode_sha256": "bd443f5112c2534a65afdd4e3044459508a7fa782cc4a6d342b97100378bf428",
+      "base_state": "combat-fire-defaults",
+      "self": {
+        "CachedCurrentAmmo": 0
+      },
+      "game_time_seconds": 1,
+      "inputs": {},
+      "outputs": {
+        "CanFire": false
+      },
+      "effects": [],
+      "fixture_objects": {
+        "OwnerPawn": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+          "use_bound_root": true,
+          "source_sha256": "6836de8c7be7e1077e7b050cd0cb6e90e6c25ccbd1a1ce4dd0fd33fce5f083ea"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_member_sources": {
+        "/Game/Blueprints/AC_TraversalLogic": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f"
+      },
+      "query_states": {
+        "/Game/Blueprints/AC_TraversalLogic": {
+          "package": "/Game/Blueprints/AC_TraversalLogic",
+          "source_sha256": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f",
+          "base_state": "traversal-fire-defaults",
+          "self": {
+            "DoingTraversalAction": false
+          }
+        }
+      }
+    },
+    {
+      "runtime": "weapon_fire_prerequisite",
+      "case": "negative-ammo",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanFire",
+      "source_bytecode_sha256": "bd443f5112c2534a65afdd4e3044459508a7fa782cc4a6d342b97100378bf428",
+      "base_state": "combat-fire-defaults",
+      "self": {
+        "CachedCurrentAmmo": -1
+      },
+      "game_time_seconds": 1,
+      "inputs": {},
+      "outputs": {
+        "CanFire": false
+      },
+      "effects": [],
+      "fixture_objects": {
+        "OwnerPawn": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+          "use_bound_root": true,
+          "source_sha256": "6836de8c7be7e1077e7b050cd0cb6e90e6c25ccbd1a1ce4dd0fd33fce5f083ea"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_member_sources": {
+        "/Game/Blueprints/AC_TraversalLogic": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f"
+      },
+      "query_states": {
+        "/Game/Blueprints/AC_TraversalLogic": {
+          "package": "/Game/Blueprints/AC_TraversalLogic",
+          "source_sha256": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f",
+          "base_state": "traversal-fire-defaults",
+          "self": {
+            "DoingTraversalAction": false
+          }
+        }
+      }
+    },
+    {
+      "runtime": "weapon_fire_prerequisite",
+      "case": "traversing",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanFire",
+      "source_bytecode_sha256": "bd443f5112c2534a65afdd4e3044459508a7fa782cc4a6d342b97100378bf428",
+      "base_state": "combat-fire-defaults",
+      "self": {
+        "CachedCurrentAmmo": 10
+      },
+      "game_time_seconds": 1,
+      "inputs": {},
+      "outputs": {
+        "CanFire": false
+      },
+      "effects": [],
+      "fixture_objects": {
+        "OwnerPawn": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+          "use_bound_root": true,
+          "source_sha256": "6836de8c7be7e1077e7b050cd0cb6e90e6c25ccbd1a1ce4dd0fd33fce5f083ea"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_member_sources": {
+        "/Game/Blueprints/AC_TraversalLogic": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f"
+      },
+      "query_states": {
+        "/Game/Blueprints/AC_TraversalLogic": {
+          "package": "/Game/Blueprints/AC_TraversalLogic",
+          "source_sha256": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f",
+          "base_state": "traversal-fire-defaults",
+          "self": {
+            "DoingTraversalAction": true
+          }
+        }
+      }
+    },
+    {
+      "runtime": "weapon_fire_prerequisite",
+      "case": "missing-weapon",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanFire",
+      "source_bytecode_sha256": "bd443f5112c2534a65afdd4e3044459508a7fa782cc4a6d342b97100378bf428",
+      "base_state": "combat-fire-defaults",
+      "self": {
+        "CachedCurrentAmmo": 10,
+        "EquippedWeapon": null
+      },
+      "game_time_seconds": 1,
+      "inputs": {},
+      "outputs": {
+        "CanFire": false
+      },
+      "effects": [],
+      "fixture_objects": {
+        "OwnerPawn": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+          "use_bound_root": true,
+          "source_sha256": "6836de8c7be7e1077e7b050cd0cb6e90e6c25ccbd1a1ce4dd0fd33fce5f083ea"
+        }
+      },
+      "query_member_sources": {
+        "/Game/Blueprints/AC_TraversalLogic": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f"
+      },
+      "query_states": {
+        "/Game/Blueprints/AC_TraversalLogic": {
+          "package": "/Game/Blueprints/AC_TraversalLogic",
+          "source_sha256": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f",
+          "base_state": "traversal-fire-defaults",
+          "self": {
+            "DoingTraversalAction": false
+          }
+        }
+      }
+    },
+    {
+      "runtime": "weapon_fire_prerequisite",
+      "case": "future-last-fire",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanFire",
+      "source_bytecode_sha256": "bd443f5112c2534a65afdd4e3044459508a7fa782cc4a6d342b97100378bf428",
+      "base_state": "combat-fire-defaults",
+      "self": {
+        "CachedCurrentAmmo": 10,
+        "LastFireTime": 2
+      },
+      "game_time_seconds": 1,
+      "inputs": {},
+      "outputs": {
+        "CanFire": false
+      },
+      "effects": [],
+      "fixture_objects": {
+        "OwnerPawn": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+          "use_bound_root": true,
+          "source_sha256": "6836de8c7be7e1077e7b050cd0cb6e90e6c25ccbd1a1ce4dd0fd33fce5f083ea"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_member_sources": {
+        "/Game/Blueprints/AC_TraversalLogic": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f"
+      },
+      "query_states": {
+        "/Game/Blueprints/AC_TraversalLogic": {
+          "package": "/Game/Blueprints/AC_TraversalLogic",
+          "source_sha256": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f",
+          "base_state": "traversal-fire-defaults",
+          "self": {
+            "DoingTraversalAction": false
+          }
+        }
+      }
+    },
+    {
+      "runtime": "weapon_fire_prerequisite",
+      "case": "negative-cooldown-preserved",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanFire",
+      "source_bytecode_sha256": "bd443f5112c2534a65afdd4e3044459508a7fa782cc4a6d342b97100378bf428",
+      "base_state": "combat-fire-defaults",
+      "self": {
+        "CachedCurrentAmmo": 10,
+        "FireCooldown": -0.1
+      },
+      "game_time_seconds": 0,
+      "inputs": {},
+      "outputs": {
+        "CanFire": true
+      },
+      "effects": [],
+      "fixture_objects": {
+        "OwnerPawn": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+          "use_bound_root": true,
+          "source_sha256": "6836de8c7be7e1077e7b050cd0cb6e90e6c25ccbd1a1ce4dd0fd33fce5f083ea"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_member_sources": {
+        "/Game/Blueprints/AC_TraversalLogic": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f"
+      },
+      "query_states": {
+        "/Game/Blueprints/AC_TraversalLogic": {
+          "package": "/Game/Blueprints/AC_TraversalLogic",
+          "source_sha256": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f",
+          "base_state": "traversal-fire-defaults",
+          "self": {
+            "DoingTraversalAction": false
+          }
+        }
+      }
+    },
+    {
+      "runtime": "weapon_fire_prerequisite",
+      "case": "firing-flag-not-read",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanFire",
+      "source_bytecode_sha256": "bd443f5112c2534a65afdd4e3044459508a7fa782cc4a6d342b97100378bf428",
+      "base_state": "combat-fire-defaults",
+      "self": {
+        "CachedCurrentAmmo": 10,
+        "bIsFiring": true
+      },
+      "game_time_seconds": 1,
+      "inputs": {},
+      "outputs": {
+        "CanFire": true
+      },
+      "effects": [],
+      "fixture_objects": {
+        "OwnerPawn": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+          "use_bound_root": true,
+          "source_sha256": "6836de8c7be7e1077e7b050cd0cb6e90e6c25ccbd1a1ce4dd0fd33fce5f083ea"
+        },
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_member_sources": {
+        "/Game/Blueprints/AC_TraversalLogic": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f"
+      },
+      "query_states": {
+        "/Game/Blueprints/AC_TraversalLogic": {
+          "package": "/Game/Blueprints/AC_TraversalLogic",
+          "source_sha256": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f",
+          "base_state": "traversal-fire-defaults",
+          "self": {
+            "DoingTraversalAction": false
+          }
+        }
+      }
+    },
+    {
+      "runtime": "weapon_fire_prerequisite",
+      "case": "null-pawn-accessed-none-preserved",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "function": "CanFire",
+      "source_bytecode_sha256": "bd443f5112c2534a65afdd4e3044459508a7fa782cc4a6d342b97100378bf428",
+      "base_state": "combat-fire-defaults",
+      "self": {
+        "CachedCurrentAmmo": 10,
+        "OwnerPawn": null
+      },
+      "game_time_seconds": 1,
+      "inputs": {},
+      "outputs": {
+        "CanFire": true
+      },
+      "effects": [],
+      "fixture_objects": {
+        "EquippedWeapon": {
+          "kind": "actor",
+          "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Weapons/BPA_Weapon_Fixers",
+          "source_sha256": "417038db955fdb077cb1db8ab4052c5073f96f8e476a22c1bfaf9879235a1206"
+        }
+      },
+      "query_member_sources": {
+        "/Game/Blueprints/AC_TraversalLogic": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f"
+      },
+      "query_states": {
+        "/Game/Blueprints/AC_TraversalLogic": {
+          "package": "/Game/Blueprints/AC_TraversalLogic",
+          "source_sha256": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f",
+          "base_state": "traversal-fire-defaults",
+          "self": {
+            "DoingTraversalAction": false
+          }
+        }
+      }
+    },
+    {
+      "runtime": "inventory",
+      "case": "source-reload-rifle-partial",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "Server_ReloadWeapon",
+      "source_bytecode_sha256": "b0f081b1f34cd5e48588d286b088fc1792beb5f5b31aa96b4b94715f2f723cdf",
+      "base_state": "inventory-defaults",
+      "self": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 5,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Rifle",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CurrentHandSlot": 0,
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 50,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 15
+          }
+        ]
+      },
+      "inputs": {},
+      "outputs": {},
+      "state": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 30,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Rifle",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 25,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 15
+          }
+        ],
+        "CurrentHandSlot": 0
+      },
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Inventory_Fixers@18276": "5fd466319bea38c4856b2edf0dd294fe0db980cfcd17150ea23a1240cb3020d6",
+        "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+        "CalculateReloadAmmo": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+        "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a",
+        "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+        "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+        "OnRep_Slot_Secondary": "b89ec46dbf340f79815c22d67791295dbb43fdb0a416f5e3aa0f3d0f2e9d5828",
+        "OnRep_CarryContents": "9c056099a742b35c34d4b965465d6663773b49ce8a6ea299aed71365cf61084e",
+        "ClearSlot": "231cbf4f779ec7d8b1efd9a9d3777fa89fd2d4cd608f1d42ee60ecfe6dc289c1",
+        "OnRep_StashContents": "ded29c125f50b9be900951471d9845d9da47504347827dd27f19f8761465589e",
+        "OnRep_GhostVaultContents": "4b1fa6fc177c3a9e4dca36b0b421b7ac5ada10ac8b762f61c473ec4b3f2b9964",
+        "OnRep_Slot_Backpack": "174acad228b85308108b838bf2927deb6eb0b5eaa3c3dad765631fe1edd45643",
+        "OnRep_Slot_Implant3": "252ca2847359f16c2e7963e15ca9c0cca6e67fd3b8f026b449b0c8faa762531f",
+        "OnRep_Slot_Implant2": "b67656dbe11d7ed958dc03ea21eebe5291c4704cb6c9b9caa154645cf0550afe",
+        "OnRep_Slot_Implant1": "2e6a014add4439d3b0237ad5e572802830e5a2d2ac7a4c06b1233062df347d2b",
+        "OnRep_Slot_Injector2": "714210f2e8c28fe968df6afee11700fd31292fac07f058dc00550330abfdc866",
+        "OnRep_Slot_Injector1": "13c6e3ca0c4f8965cc741f90b1e3217cebfdb86d612b1da0e6db033f6a6b04f4",
+        "OnRep_Slot_Utility_Sub3": "1252e95f80eeba673b644b2a5a7ecf84984a061d68192c7fa7a75cdb88fdb1cf",
+        "OnRep_Slot_Utility_Sub2": "bc58b76fa1f7c42174b1ea5edb619bc2312b1ea934eb474e41c124eda534245b",
+        "OnRep_Slot_Utility_Sub1": "60dd12a03a72a53a08a7812dcbfe1cd132903c63b8c2ef75df6e0403d9d9095e",
+        "OnRep_Slot_Utility_Main": "939ec49c3adeaae8d6d76c50a3d4d8ae95824e741e1dcd6ad363af29801394ed",
+        "OnRep_Slot_Shield": "35d169ecba73a60bf48595773d8c0b446fac79786b7d57c8b090b75cda927041",
+        "OnRep_Slot_Armor": "59a8c286bbb7922585b324c401fb52e4b7ace4434c3d0f2ffb5c2668264caf29",
+        "OnRep_Slot_Primary": "d19ee589bdf6d49a707a5338419b1ca8375f5457adb4be537aded3caeb662b2b"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Injectors": "ed9b8d8bb32c4f1388297fddb563b93331e25d82465fff58f439668db279d02f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "runtime": "inventory",
+      "case": "source-reload-rifle-exhaust-stack",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "Server_ReloadWeapon",
+      "source_bytecode_sha256": "b0f081b1f34cd5e48588d286b088fc1792beb5f5b31aa96b4b94715f2f723cdf",
+      "base_state": "inventory-defaults",
+      "self": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 5,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Rifle",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CurrentHandSlot": 0,
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 7,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 15
+          }
+        ]
+      },
+      "inputs": {},
+      "outputs": {},
+      "state": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 12,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Rifle",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CarryContents": [],
+        "CurrentHandSlot": 0
+      },
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Inventory_Fixers@18276": "5fd466319bea38c4856b2edf0dd294fe0db980cfcd17150ea23a1240cb3020d6",
+        "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+        "CalculateReloadAmmo": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+        "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a",
+        "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+        "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+        "OnRep_Slot_Secondary": "b89ec46dbf340f79815c22d67791295dbb43fdb0a416f5e3aa0f3d0f2e9d5828",
+        "OnRep_CarryContents": "9c056099a742b35c34d4b965465d6663773b49ce8a6ea299aed71365cf61084e",
+        "ClearSlot": "231cbf4f779ec7d8b1efd9a9d3777fa89fd2d4cd608f1d42ee60ecfe6dc289c1",
+        "OnRep_StashContents": "ded29c125f50b9be900951471d9845d9da47504347827dd27f19f8761465589e",
+        "OnRep_GhostVaultContents": "4b1fa6fc177c3a9e4dca36b0b421b7ac5ada10ac8b762f61c473ec4b3f2b9964",
+        "OnRep_Slot_Backpack": "174acad228b85308108b838bf2927deb6eb0b5eaa3c3dad765631fe1edd45643",
+        "OnRep_Slot_Implant3": "252ca2847359f16c2e7963e15ca9c0cca6e67fd3b8f026b449b0c8faa762531f",
+        "OnRep_Slot_Implant2": "b67656dbe11d7ed958dc03ea21eebe5291c4704cb6c9b9caa154645cf0550afe",
+        "OnRep_Slot_Implant1": "2e6a014add4439d3b0237ad5e572802830e5a2d2ac7a4c06b1233062df347d2b",
+        "OnRep_Slot_Injector2": "714210f2e8c28fe968df6afee11700fd31292fac07f058dc00550330abfdc866",
+        "OnRep_Slot_Injector1": "13c6e3ca0c4f8965cc741f90b1e3217cebfdb86d612b1da0e6db033f6a6b04f4",
+        "OnRep_Slot_Utility_Sub3": "1252e95f80eeba673b644b2a5a7ecf84984a061d68192c7fa7a75cdb88fdb1cf",
+        "OnRep_Slot_Utility_Sub2": "bc58b76fa1f7c42174b1ea5edb619bc2312b1ea934eb474e41c124eda534245b",
+        "OnRep_Slot_Utility_Sub1": "60dd12a03a72a53a08a7812dcbfe1cd132903c63b8c2ef75df6e0403d9d9095e",
+        "OnRep_Slot_Utility_Main": "939ec49c3adeaae8d6d76c50a3d4d8ae95824e741e1dcd6ad363af29801394ed",
+        "OnRep_Slot_Shield": "35d169ecba73a60bf48595773d8c0b446fac79786b7d57c8b090b75cda927041",
+        "OnRep_Slot_Armor": "59a8c286bbb7922585b324c401fb52e4b7ace4434c3d0f2ffb5c2668264caf29",
+        "OnRep_Slot_Primary": "d19ee589bdf6d49a707a5338419b1ca8375f5457adb4be537aded3caeb662b2b"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Injectors": "ed9b8d8bb32c4f1388297fddb563b93331e25d82465fff58f439668db279d02f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "runtime": "inventory",
+      "case": "source-reload-rifle-exact-fill",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "Server_ReloadWeapon",
+      "source_bytecode_sha256": "b0f081b1f34cd5e48588d286b088fc1792beb5f5b31aa96b4b94715f2f723cdf",
+      "base_state": "inventory-defaults",
+      "self": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 20,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Rifle",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CurrentHandSlot": 0,
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 10,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 15
+          }
+        ]
+      },
+      "inputs": {},
+      "outputs": {},
+      "state": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 30,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Rifle",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CarryContents": [],
+        "CurrentHandSlot": 0
+      },
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Inventory_Fixers@18276": "5fd466319bea38c4856b2edf0dd294fe0db980cfcd17150ea23a1240cb3020d6",
+        "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+        "CalculateReloadAmmo": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+        "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a",
+        "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+        "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+        "OnRep_Slot_Secondary": "b89ec46dbf340f79815c22d67791295dbb43fdb0a416f5e3aa0f3d0f2e9d5828",
+        "OnRep_CarryContents": "9c056099a742b35c34d4b965465d6663773b49ce8a6ea299aed71365cf61084e",
+        "ClearSlot": "231cbf4f779ec7d8b1efd9a9d3777fa89fd2d4cd608f1d42ee60ecfe6dc289c1",
+        "OnRep_StashContents": "ded29c125f50b9be900951471d9845d9da47504347827dd27f19f8761465589e",
+        "OnRep_GhostVaultContents": "4b1fa6fc177c3a9e4dca36b0b421b7ac5ada10ac8b762f61c473ec4b3f2b9964",
+        "OnRep_Slot_Backpack": "174acad228b85308108b838bf2927deb6eb0b5eaa3c3dad765631fe1edd45643",
+        "OnRep_Slot_Implant3": "252ca2847359f16c2e7963e15ca9c0cca6e67fd3b8f026b449b0c8faa762531f",
+        "OnRep_Slot_Implant2": "b67656dbe11d7ed958dc03ea21eebe5291c4704cb6c9b9caa154645cf0550afe",
+        "OnRep_Slot_Implant1": "2e6a014add4439d3b0237ad5e572802830e5a2d2ac7a4c06b1233062df347d2b",
+        "OnRep_Slot_Injector2": "714210f2e8c28fe968df6afee11700fd31292fac07f058dc00550330abfdc866",
+        "OnRep_Slot_Injector1": "13c6e3ca0c4f8965cc741f90b1e3217cebfdb86d612b1da0e6db033f6a6b04f4",
+        "OnRep_Slot_Utility_Sub3": "1252e95f80eeba673b644b2a5a7ecf84984a061d68192c7fa7a75cdb88fdb1cf",
+        "OnRep_Slot_Utility_Sub2": "bc58b76fa1f7c42174b1ea5edb619bc2312b1ea934eb474e41c124eda534245b",
+        "OnRep_Slot_Utility_Sub1": "60dd12a03a72a53a08a7812dcbfe1cd132903c63b8c2ef75df6e0403d9d9095e",
+        "OnRep_Slot_Utility_Main": "939ec49c3adeaae8d6d76c50a3d4d8ae95824e741e1dcd6ad363af29801394ed",
+        "OnRep_Slot_Shield": "35d169ecba73a60bf48595773d8c0b446fac79786b7d57c8b090b75cda927041",
+        "OnRep_Slot_Armor": "59a8c286bbb7922585b324c401fb52e4b7ace4434c3d0f2ffb5c2668264caf29",
+        "OnRep_Slot_Primary": "d19ee589bdf6d49a707a5338419b1ca8375f5457adb4be537aded3caeb662b2b"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Injectors": "ed9b8d8bb32c4f1388297fddb563b93331e25d82465fff58f439668db279d02f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "runtime": "inventory",
+      "case": "source-reload-rifle-full",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "Server_ReloadWeapon",
+      "source_bytecode_sha256": "b0f081b1f34cd5e48588d286b088fc1792beb5f5b31aa96b4b94715f2f723cdf",
+      "base_state": "inventory-defaults",
+      "self": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 30,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Rifle",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CurrentHandSlot": 0,
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 50,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 15
+          }
+        ]
+      },
+      "inputs": {},
+      "outputs": {},
+      "state": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 30,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Rifle",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 50,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 15
+          }
+        ],
+        "CurrentHandSlot": 0
+      },
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Inventory_Fixers@18276": "5fd466319bea38c4856b2edf0dd294fe0db980cfcd17150ea23a1240cb3020d6",
+        "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+        "CalculateReloadAmmo": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+        "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a",
+        "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+        "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+        "OnRep_Slot_Secondary": "b89ec46dbf340f79815c22d67791295dbb43fdb0a416f5e3aa0f3d0f2e9d5828",
+        "OnRep_CarryContents": "9c056099a742b35c34d4b965465d6663773b49ce8a6ea299aed71365cf61084e",
+        "ClearSlot": "231cbf4f779ec7d8b1efd9a9d3777fa89fd2d4cd608f1d42ee60ecfe6dc289c1",
+        "OnRep_StashContents": "ded29c125f50b9be900951471d9845d9da47504347827dd27f19f8761465589e",
+        "OnRep_GhostVaultContents": "4b1fa6fc177c3a9e4dca36b0b421b7ac5ada10ac8b762f61c473ec4b3f2b9964",
+        "OnRep_Slot_Backpack": "174acad228b85308108b838bf2927deb6eb0b5eaa3c3dad765631fe1edd45643",
+        "OnRep_Slot_Implant3": "252ca2847359f16c2e7963e15ca9c0cca6e67fd3b8f026b449b0c8faa762531f",
+        "OnRep_Slot_Implant2": "b67656dbe11d7ed958dc03ea21eebe5291c4704cb6c9b9caa154645cf0550afe",
+        "OnRep_Slot_Implant1": "2e6a014add4439d3b0237ad5e572802830e5a2d2ac7a4c06b1233062df347d2b",
+        "OnRep_Slot_Injector2": "714210f2e8c28fe968df6afee11700fd31292fac07f058dc00550330abfdc866",
+        "OnRep_Slot_Injector1": "13c6e3ca0c4f8965cc741f90b1e3217cebfdb86d612b1da0e6db033f6a6b04f4",
+        "OnRep_Slot_Utility_Sub3": "1252e95f80eeba673b644b2a5a7ecf84984a061d68192c7fa7a75cdb88fdb1cf",
+        "OnRep_Slot_Utility_Sub2": "bc58b76fa1f7c42174b1ea5edb619bc2312b1ea934eb474e41c124eda534245b",
+        "OnRep_Slot_Utility_Sub1": "60dd12a03a72a53a08a7812dcbfe1cd132903c63b8c2ef75df6e0403d9d9095e",
+        "OnRep_Slot_Utility_Main": "939ec49c3adeaae8d6d76c50a3d4d8ae95824e741e1dcd6ad363af29801394ed",
+        "OnRep_Slot_Shield": "35d169ecba73a60bf48595773d8c0b446fac79786b7d57c8b090b75cda927041",
+        "OnRep_Slot_Armor": "59a8c286bbb7922585b324c401fb52e4b7ace4434c3d0f2ffb5c2668264caf29",
+        "OnRep_Slot_Primary": "d19ee589bdf6d49a707a5338419b1ca8375f5457adb4be537aded3caeb662b2b"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Injectors": "ed9b8d8bb32c4f1388297fddb563b93331e25d82465fff58f439668db279d02f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      },
+      "effects": []
+    },
+    {
+      "runtime": "inventory",
+      "case": "source-reload-rifle-overfull-preserved",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "Server_ReloadWeapon",
+      "source_bytecode_sha256": "b0f081b1f34cd5e48588d286b088fc1792beb5f5b31aa96b4b94715f2f723cdf",
+      "base_state": "inventory-defaults",
+      "self": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 35,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Rifle",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CurrentHandSlot": 0,
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 50,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 15
+          }
+        ]
+      },
+      "inputs": {},
+      "outputs": {},
+      "state": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 35,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Rifle",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 50,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 15
+          }
+        ],
+        "CurrentHandSlot": 0
+      },
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Inventory_Fixers@18276": "5fd466319bea38c4856b2edf0dd294fe0db980cfcd17150ea23a1240cb3020d6",
+        "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+        "CalculateReloadAmmo": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+        "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a",
+        "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+        "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+        "OnRep_Slot_Secondary": "b89ec46dbf340f79815c22d67791295dbb43fdb0a416f5e3aa0f3d0f2e9d5828",
+        "OnRep_CarryContents": "9c056099a742b35c34d4b965465d6663773b49ce8a6ea299aed71365cf61084e",
+        "ClearSlot": "231cbf4f779ec7d8b1efd9a9d3777fa89fd2d4cd608f1d42ee60ecfe6dc289c1",
+        "OnRep_StashContents": "ded29c125f50b9be900951471d9845d9da47504347827dd27f19f8761465589e",
+        "OnRep_GhostVaultContents": "4b1fa6fc177c3a9e4dca36b0b421b7ac5ada10ac8b762f61c473ec4b3f2b9964",
+        "OnRep_Slot_Backpack": "174acad228b85308108b838bf2927deb6eb0b5eaa3c3dad765631fe1edd45643",
+        "OnRep_Slot_Implant3": "252ca2847359f16c2e7963e15ca9c0cca6e67fd3b8f026b449b0c8faa762531f",
+        "OnRep_Slot_Implant2": "b67656dbe11d7ed958dc03ea21eebe5291c4704cb6c9b9caa154645cf0550afe",
+        "OnRep_Slot_Implant1": "2e6a014add4439d3b0237ad5e572802830e5a2d2ac7a4c06b1233062df347d2b",
+        "OnRep_Slot_Injector2": "714210f2e8c28fe968df6afee11700fd31292fac07f058dc00550330abfdc866",
+        "OnRep_Slot_Injector1": "13c6e3ca0c4f8965cc741f90b1e3217cebfdb86d612b1da0e6db033f6a6b04f4",
+        "OnRep_Slot_Utility_Sub3": "1252e95f80eeba673b644b2a5a7ecf84984a061d68192c7fa7a75cdb88fdb1cf",
+        "OnRep_Slot_Utility_Sub2": "bc58b76fa1f7c42174b1ea5edb619bc2312b1ea934eb474e41c124eda534245b",
+        "OnRep_Slot_Utility_Sub1": "60dd12a03a72a53a08a7812dcbfe1cd132903c63b8c2ef75df6e0403d9d9095e",
+        "OnRep_Slot_Utility_Main": "939ec49c3adeaae8d6d76c50a3d4d8ae95824e741e1dcd6ad363af29801394ed",
+        "OnRep_Slot_Shield": "35d169ecba73a60bf48595773d8c0b446fac79786b7d57c8b090b75cda927041",
+        "OnRep_Slot_Armor": "59a8c286bbb7922585b324c401fb52e4b7ace4434c3d0f2ffb5c2668264caf29",
+        "OnRep_Slot_Primary": "d19ee589bdf6d49a707a5338419b1ca8375f5457adb4be537aded3caeb662b2b"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Injectors": "ed9b8d8bb32c4f1388297fddb563b93331e25d82465fff58f439668db279d02f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      },
+      "effects": []
+    },
+    {
+      "runtime": "inventory",
+      "case": "source-reload-negative-mag-preserved",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "Server_ReloadWeapon",
+      "source_bytecode_sha256": "b0f081b1f34cd5e48588d286b088fc1792beb5f5b31aa96b4b94715f2f723cdf",
+      "base_state": "inventory-defaults",
+      "self": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": -2,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Rifle",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CurrentHandSlot": 0,
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 5,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 15
+          }
+        ]
+      },
+      "inputs": {},
+      "outputs": {},
+      "state": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 3,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Rifle",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CarryContents": [],
+        "CurrentHandSlot": 0
+      },
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Inventory_Fixers@18276": "5fd466319bea38c4856b2edf0dd294fe0db980cfcd17150ea23a1240cb3020d6",
+        "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+        "CalculateReloadAmmo": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+        "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a",
+        "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+        "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+        "OnRep_Slot_Secondary": "b89ec46dbf340f79815c22d67791295dbb43fdb0a416f5e3aa0f3d0f2e9d5828",
+        "OnRep_CarryContents": "9c056099a742b35c34d4b965465d6663773b49ce8a6ea299aed71365cf61084e",
+        "ClearSlot": "231cbf4f779ec7d8b1efd9a9d3777fa89fd2d4cd608f1d42ee60ecfe6dc289c1",
+        "OnRep_StashContents": "ded29c125f50b9be900951471d9845d9da47504347827dd27f19f8761465589e",
+        "OnRep_GhostVaultContents": "4b1fa6fc177c3a9e4dca36b0b421b7ac5ada10ac8b762f61c473ec4b3f2b9964",
+        "OnRep_Slot_Backpack": "174acad228b85308108b838bf2927deb6eb0b5eaa3c3dad765631fe1edd45643",
+        "OnRep_Slot_Implant3": "252ca2847359f16c2e7963e15ca9c0cca6e67fd3b8f026b449b0c8faa762531f",
+        "OnRep_Slot_Implant2": "b67656dbe11d7ed958dc03ea21eebe5291c4704cb6c9b9caa154645cf0550afe",
+        "OnRep_Slot_Implant1": "2e6a014add4439d3b0237ad5e572802830e5a2d2ac7a4c06b1233062df347d2b",
+        "OnRep_Slot_Injector2": "714210f2e8c28fe968df6afee11700fd31292fac07f058dc00550330abfdc866",
+        "OnRep_Slot_Injector1": "13c6e3ca0c4f8965cc741f90b1e3217cebfdb86d612b1da0e6db033f6a6b04f4",
+        "OnRep_Slot_Utility_Sub3": "1252e95f80eeba673b644b2a5a7ecf84984a061d68192c7fa7a75cdb88fdb1cf",
+        "OnRep_Slot_Utility_Sub2": "bc58b76fa1f7c42174b1ea5edb619bc2312b1ea934eb474e41c124eda534245b",
+        "OnRep_Slot_Utility_Sub1": "60dd12a03a72a53a08a7812dcbfe1cd132903c63b8c2ef75df6e0403d9d9095e",
+        "OnRep_Slot_Utility_Main": "939ec49c3adeaae8d6d76c50a3d4d8ae95824e741e1dcd6ad363af29801394ed",
+        "OnRep_Slot_Shield": "35d169ecba73a60bf48595773d8c0b446fac79786b7d57c8b090b75cda927041",
+        "OnRep_Slot_Armor": "59a8c286bbb7922585b324c401fb52e4b7ace4434c3d0f2ffb5c2668264caf29",
+        "OnRep_Slot_Primary": "d19ee589bdf6d49a707a5338419b1ca8375f5457adb4be537aded3caeb662b2b"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Injectors": "ed9b8d8bb32c4f1388297fddb563b93331e25d82465fff58f439668db279d02f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "runtime": "inventory",
+      "case": "source-reload-zero-stack-preserved",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "Server_ReloadWeapon",
+      "source_bytecode_sha256": "b0f081b1f34cd5e48588d286b088fc1792beb5f5b31aa96b4b94715f2f723cdf",
+      "base_state": "inventory-defaults",
+      "self": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 5,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Rifle",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CurrentHandSlot": 0,
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 0,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 15
+          }
+        ]
+      },
+      "inputs": {},
+      "outputs": {},
+      "state": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 5,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Rifle",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CarryContents": [],
+        "CurrentHandSlot": 0
+      },
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Inventory_Fixers@18276": "5fd466319bea38c4856b2edf0dd294fe0db980cfcd17150ea23a1240cb3020d6",
+        "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+        "CalculateReloadAmmo": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+        "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a",
+        "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+        "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+        "OnRep_Slot_Secondary": "b89ec46dbf340f79815c22d67791295dbb43fdb0a416f5e3aa0f3d0f2e9d5828",
+        "OnRep_CarryContents": "9c056099a742b35c34d4b965465d6663773b49ce8a6ea299aed71365cf61084e",
+        "ClearSlot": "231cbf4f779ec7d8b1efd9a9d3777fa89fd2d4cd608f1d42ee60ecfe6dc289c1",
+        "OnRep_StashContents": "ded29c125f50b9be900951471d9845d9da47504347827dd27f19f8761465589e",
+        "OnRep_GhostVaultContents": "4b1fa6fc177c3a9e4dca36b0b421b7ac5ada10ac8b762f61c473ec4b3f2b9964",
+        "OnRep_Slot_Backpack": "174acad228b85308108b838bf2927deb6eb0b5eaa3c3dad765631fe1edd45643",
+        "OnRep_Slot_Implant3": "252ca2847359f16c2e7963e15ca9c0cca6e67fd3b8f026b449b0c8faa762531f",
+        "OnRep_Slot_Implant2": "b67656dbe11d7ed958dc03ea21eebe5291c4704cb6c9b9caa154645cf0550afe",
+        "OnRep_Slot_Implant1": "2e6a014add4439d3b0237ad5e572802830e5a2d2ac7a4c06b1233062df347d2b",
+        "OnRep_Slot_Injector2": "714210f2e8c28fe968df6afee11700fd31292fac07f058dc00550330abfdc866",
+        "OnRep_Slot_Injector1": "13c6e3ca0c4f8965cc741f90b1e3217cebfdb86d612b1da0e6db033f6a6b04f4",
+        "OnRep_Slot_Utility_Sub3": "1252e95f80eeba673b644b2a5a7ecf84984a061d68192c7fa7a75cdb88fdb1cf",
+        "OnRep_Slot_Utility_Sub2": "bc58b76fa1f7c42174b1ea5edb619bc2312b1ea934eb474e41c124eda534245b",
+        "OnRep_Slot_Utility_Sub1": "60dd12a03a72a53a08a7812dcbfe1cd132903c63b8c2ef75df6e0403d9d9095e",
+        "OnRep_Slot_Utility_Main": "939ec49c3adeaae8d6d76c50a3d4d8ae95824e741e1dcd6ad363af29801394ed",
+        "OnRep_Slot_Shield": "35d169ecba73a60bf48595773d8c0b446fac79786b7d57c8b090b75cda927041",
+        "OnRep_Slot_Armor": "59a8c286bbb7922585b324c401fb52e4b7ace4434c3d0f2ffb5c2668264caf29",
+        "OnRep_Slot_Primary": "d19ee589bdf6d49a707a5338419b1ca8375f5457adb4be537aded3caeb662b2b"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Injectors": "ed9b8d8bb32c4f1388297fddb563b93331e25d82465fff58f439668db279d02f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "runtime": "inventory",
+      "case": "source-reload-negative-stack-preserved",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "Server_ReloadWeapon",
+      "source_bytecode_sha256": "b0f081b1f34cd5e48588d286b088fc1792beb5f5b31aa96b4b94715f2f723cdf",
+      "base_state": "inventory-defaults",
+      "self": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 5,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Rifle",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CurrentHandSlot": 0,
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": -2,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 15
+          }
+        ]
+      },
+      "inputs": {},
+      "outputs": {},
+      "state": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 3,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Rifle",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CarryContents": [],
+        "CurrentHandSlot": 0
+      },
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Inventory_Fixers@18276": "5fd466319bea38c4856b2edf0dd294fe0db980cfcd17150ea23a1240cb3020d6",
+        "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+        "CalculateReloadAmmo": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+        "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a",
+        "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+        "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+        "OnRep_Slot_Secondary": "b89ec46dbf340f79815c22d67791295dbb43fdb0a416f5e3aa0f3d0f2e9d5828",
+        "OnRep_CarryContents": "9c056099a742b35c34d4b965465d6663773b49ce8a6ea299aed71365cf61084e",
+        "ClearSlot": "231cbf4f779ec7d8b1efd9a9d3777fa89fd2d4cd608f1d42ee60ecfe6dc289c1",
+        "OnRep_StashContents": "ded29c125f50b9be900951471d9845d9da47504347827dd27f19f8761465589e",
+        "OnRep_GhostVaultContents": "4b1fa6fc177c3a9e4dca36b0b421b7ac5ada10ac8b762f61c473ec4b3f2b9964",
+        "OnRep_Slot_Backpack": "174acad228b85308108b838bf2927deb6eb0b5eaa3c3dad765631fe1edd45643",
+        "OnRep_Slot_Implant3": "252ca2847359f16c2e7963e15ca9c0cca6e67fd3b8f026b449b0c8faa762531f",
+        "OnRep_Slot_Implant2": "b67656dbe11d7ed958dc03ea21eebe5291c4704cb6c9b9caa154645cf0550afe",
+        "OnRep_Slot_Implant1": "2e6a014add4439d3b0237ad5e572802830e5a2d2ac7a4c06b1233062df347d2b",
+        "OnRep_Slot_Injector2": "714210f2e8c28fe968df6afee11700fd31292fac07f058dc00550330abfdc866",
+        "OnRep_Slot_Injector1": "13c6e3ca0c4f8965cc741f90b1e3217cebfdb86d612b1da0e6db033f6a6b04f4",
+        "OnRep_Slot_Utility_Sub3": "1252e95f80eeba673b644b2a5a7ecf84984a061d68192c7fa7a75cdb88fdb1cf",
+        "OnRep_Slot_Utility_Sub2": "bc58b76fa1f7c42174b1ea5edb619bc2312b1ea934eb474e41c124eda534245b",
+        "OnRep_Slot_Utility_Sub1": "60dd12a03a72a53a08a7812dcbfe1cd132903c63b8c2ef75df6e0403d9d9095e",
+        "OnRep_Slot_Utility_Main": "939ec49c3adeaae8d6d76c50a3d4d8ae95824e741e1dcd6ad363af29801394ed",
+        "OnRep_Slot_Shield": "35d169ecba73a60bf48595773d8c0b446fac79786b7d57c8b090b75cda927041",
+        "OnRep_Slot_Armor": "59a8c286bbb7922585b324c401fb52e4b7ace4434c3d0f2ffb5c2668264caf29",
+        "OnRep_Slot_Primary": "d19ee589bdf6d49a707a5338419b1ca8375f5457adb4be537aded3caeb662b2b"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Injectors": "ed9b8d8bb32c4f1388297fddb563b93331e25d82465fff58f439668db279d02f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "runtime": "inventory",
+      "case": "source-reload-first-stack-only",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "Server_ReloadWeapon",
+      "source_bytecode_sha256": "b0f081b1f34cd5e48588d286b088fc1792beb5f5b31aa96b4b94715f2f723cdf",
+      "base_state": "inventory-defaults",
+      "self": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 5,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Rifle",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CurrentHandSlot": 0,
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 2,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 15
+          },
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 100,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 1,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 15
+          }
+        ]
+      },
+      "inputs": {},
+      "outputs": {},
+      "state": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 7,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Rifle",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 100,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 1,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 15
+          }
+        ],
+        "CurrentHandSlot": 0
+      },
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Inventory_Fixers@18276": "5fd466319bea38c4856b2edf0dd294fe0db980cfcd17150ea23a1240cb3020d6",
+        "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+        "CalculateReloadAmmo": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+        "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a",
+        "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+        "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+        "OnRep_Slot_Secondary": "b89ec46dbf340f79815c22d67791295dbb43fdb0a416f5e3aa0f3d0f2e9d5828",
+        "OnRep_CarryContents": "9c056099a742b35c34d4b965465d6663773b49ce8a6ea299aed71365cf61084e",
+        "ClearSlot": "231cbf4f779ec7d8b1efd9a9d3777fa89fd2d4cd608f1d42ee60ecfe6dc289c1",
+        "OnRep_StashContents": "ded29c125f50b9be900951471d9845d9da47504347827dd27f19f8761465589e",
+        "OnRep_GhostVaultContents": "4b1fa6fc177c3a9e4dca36b0b421b7ac5ada10ac8b762f61c473ec4b3f2b9964",
+        "OnRep_Slot_Backpack": "174acad228b85308108b838bf2927deb6eb0b5eaa3c3dad765631fe1edd45643",
+        "OnRep_Slot_Implant3": "252ca2847359f16c2e7963e15ca9c0cca6e67fd3b8f026b449b0c8faa762531f",
+        "OnRep_Slot_Implant2": "b67656dbe11d7ed958dc03ea21eebe5291c4704cb6c9b9caa154645cf0550afe",
+        "OnRep_Slot_Implant1": "2e6a014add4439d3b0237ad5e572802830e5a2d2ac7a4c06b1233062df347d2b",
+        "OnRep_Slot_Injector2": "714210f2e8c28fe968df6afee11700fd31292fac07f058dc00550330abfdc866",
+        "OnRep_Slot_Injector1": "13c6e3ca0c4f8965cc741f90b1e3217cebfdb86d612b1da0e6db033f6a6b04f4",
+        "OnRep_Slot_Utility_Sub3": "1252e95f80eeba673b644b2a5a7ecf84984a061d68192c7fa7a75cdb88fdb1cf",
+        "OnRep_Slot_Utility_Sub2": "bc58b76fa1f7c42174b1ea5edb619bc2312b1ea934eb474e41c124eda534245b",
+        "OnRep_Slot_Utility_Sub1": "60dd12a03a72a53a08a7812dcbfe1cd132903c63b8c2ef75df6e0403d9d9095e",
+        "OnRep_Slot_Utility_Main": "939ec49c3adeaae8d6d76c50a3d4d8ae95824e741e1dcd6ad363af29801394ed",
+        "OnRep_Slot_Shield": "35d169ecba73a60bf48595773d8c0b446fac79786b7d57c8b090b75cda927041",
+        "OnRep_Slot_Armor": "59a8c286bbb7922585b324c401fb52e4b7ace4434c3d0f2ffb5c2668264caf29",
+        "OnRep_Slot_Primary": "d19ee589bdf6d49a707a5338419b1ca8375f5457adb4be537aded3caeb662b2b"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Injectors": "ed9b8d8bb32c4f1388297fddb563b93331e25d82465fff58f439668db279d02f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "runtime": "inventory",
+      "case": "source-reload-secondary-pistol",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "Server_ReloadWeapon",
+      "source_bytecode_sha256": "b0f081b1f34cd5e48588d286b088fc1792beb5f5b31aa96b4b94715f2f723cdf",
+      "base_state": "inventory-defaults",
+      "self": {
+        "Slot_Secondary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 2,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Pistol",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 1
+        },
+        "CurrentHandSlot": 1,
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 50,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 15
+          }
+        ]
+      },
+      "inputs": {},
+      "outputs": {},
+      "state": {
+        "Slot_Secondary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 20,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Pistol",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 1
+        },
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1.0,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 32,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 15
+          }
+        ],
+        "CurrentHandSlot": 1
+      },
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Inventory_Fixers@18276": "5fd466319bea38c4856b2edf0dd294fe0db980cfcd17150ea23a1240cb3020d6",
+        "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+        "CalculateReloadAmmo": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+        "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a",
+        "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+        "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+        "OnRep_Slot_Secondary": "b89ec46dbf340f79815c22d67791295dbb43fdb0a416f5e3aa0f3d0f2e9d5828",
+        "OnRep_CarryContents": "9c056099a742b35c34d4b965465d6663773b49ce8a6ea299aed71365cf61084e",
+        "ClearSlot": "231cbf4f779ec7d8b1efd9a9d3777fa89fd2d4cd608f1d42ee60ecfe6dc289c1",
+        "OnRep_StashContents": "ded29c125f50b9be900951471d9845d9da47504347827dd27f19f8761465589e",
+        "OnRep_GhostVaultContents": "4b1fa6fc177c3a9e4dca36b0b421b7ac5ada10ac8b762f61c473ec4b3f2b9964",
+        "OnRep_Slot_Backpack": "174acad228b85308108b838bf2927deb6eb0b5eaa3c3dad765631fe1edd45643",
+        "OnRep_Slot_Implant3": "252ca2847359f16c2e7963e15ca9c0cca6e67fd3b8f026b449b0c8faa762531f",
+        "OnRep_Slot_Implant2": "b67656dbe11d7ed958dc03ea21eebe5291c4704cb6c9b9caa154645cf0550afe",
+        "OnRep_Slot_Implant1": "2e6a014add4439d3b0237ad5e572802830e5a2d2ac7a4c06b1233062df347d2b",
+        "OnRep_Slot_Injector2": "714210f2e8c28fe968df6afee11700fd31292fac07f058dc00550330abfdc866",
+        "OnRep_Slot_Injector1": "13c6e3ca0c4f8965cc741f90b1e3217cebfdb86d612b1da0e6db033f6a6b04f4",
+        "OnRep_Slot_Utility_Sub3": "1252e95f80eeba673b644b2a5a7ecf84984a061d68192c7fa7a75cdb88fdb1cf",
+        "OnRep_Slot_Utility_Sub2": "bc58b76fa1f7c42174b1ea5edb619bc2312b1ea934eb474e41c124eda534245b",
+        "OnRep_Slot_Utility_Sub1": "60dd12a03a72a53a08a7812dcbfe1cd132903c63b8c2ef75df6e0403d9d9095e",
+        "OnRep_Slot_Utility_Main": "939ec49c3adeaae8d6d76c50a3d4d8ae95824e741e1dcd6ad363af29801394ed",
+        "OnRep_Slot_Shield": "35d169ecba73a60bf48595773d8c0b446fac79786b7d57c8b090b75cda927041",
+        "OnRep_Slot_Armor": "59a8c286bbb7922585b324c401fb52e4b7ace4434c3d0f2ffb5c2668264caf29",
+        "OnRep_Slot_Primary": "d19ee589bdf6d49a707a5338419b1ca8375f5457adb4be537aded3caeb662b2b"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Injectors": "ed9b8d8bb32c4f1388297fddb563b93331e25d82465fff58f439668db279d02f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "runtime": "inventory",
+      "case": "source-reload-shotgun",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "Server_ReloadWeapon",
+      "source_bytecode_sha256": "b0f081b1f34cd5e48588d286b088fc1792beb5f5b31aa96b4b94715f2f723cdf",
+      "base_state": "inventory-defaults",
+      "self": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_AutoShotgun",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CurrentHandSlot": 0,
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Shotgun",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 8,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 15
+          }
+        ]
+      },
+      "inputs": {},
+      "outputs": {},
+      "state": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 8,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_AutoShotgun",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CarryContents": [],
+        "CurrentHandSlot": 0
+      },
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Inventory_Fixers@18276": "5fd466319bea38c4856b2edf0dd294fe0db980cfcd17150ea23a1240cb3020d6",
+        "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+        "CalculateReloadAmmo": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+        "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a",
+        "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+        "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+        "OnRep_Slot_Secondary": "b89ec46dbf340f79815c22d67791295dbb43fdb0a416f5e3aa0f3d0f2e9d5828",
+        "OnRep_CarryContents": "9c056099a742b35c34d4b965465d6663773b49ce8a6ea299aed71365cf61084e",
+        "ClearSlot": "231cbf4f779ec7d8b1efd9a9d3777fa89fd2d4cd608f1d42ee60ecfe6dc289c1",
+        "OnRep_StashContents": "ded29c125f50b9be900951471d9845d9da47504347827dd27f19f8761465589e",
+        "OnRep_GhostVaultContents": "4b1fa6fc177c3a9e4dca36b0b421b7ac5ada10ac8b762f61c473ec4b3f2b9964",
+        "OnRep_Slot_Backpack": "174acad228b85308108b838bf2927deb6eb0b5eaa3c3dad765631fe1edd45643",
+        "OnRep_Slot_Implant3": "252ca2847359f16c2e7963e15ca9c0cca6e67fd3b8f026b449b0c8faa762531f",
+        "OnRep_Slot_Implant2": "b67656dbe11d7ed958dc03ea21eebe5291c4704cb6c9b9caa154645cf0550afe",
+        "OnRep_Slot_Implant1": "2e6a014add4439d3b0237ad5e572802830e5a2d2ac7a4c06b1233062df347d2b",
+        "OnRep_Slot_Injector2": "714210f2e8c28fe968df6afee11700fd31292fac07f058dc00550330abfdc866",
+        "OnRep_Slot_Injector1": "13c6e3ca0c4f8965cc741f90b1e3217cebfdb86d612b1da0e6db033f6a6b04f4",
+        "OnRep_Slot_Utility_Sub3": "1252e95f80eeba673b644b2a5a7ecf84984a061d68192c7fa7a75cdb88fdb1cf",
+        "OnRep_Slot_Utility_Sub2": "bc58b76fa1f7c42174b1ea5edb619bc2312b1ea934eb474e41c124eda534245b",
+        "OnRep_Slot_Utility_Sub1": "60dd12a03a72a53a08a7812dcbfe1cd132903c63b8c2ef75df6e0403d9d9095e",
+        "OnRep_Slot_Utility_Main": "939ec49c3adeaae8d6d76c50a3d4d8ae95824e741e1dcd6ad363af29801394ed",
+        "OnRep_Slot_Shield": "35d169ecba73a60bf48595773d8c0b446fac79786b7d57c8b090b75cda927041",
+        "OnRep_Slot_Armor": "59a8c286bbb7922585b324c401fb52e4b7ace4434c3d0f2ffb5c2668264caf29",
+        "OnRep_Slot_Primary": "d19ee589bdf6d49a707a5338419b1ca8375f5457adb4be537aded3caeb662b2b"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Injectors": "ed9b8d8bb32c4f1388297fddb563b93331e25d82465fff58f439668db279d02f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "runtime": "inventory",
+      "case": "source-reload-wrong-ammo-source-bug-preserved",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "Server_ReloadWeapon",
+      "source_bytecode_sha256": "b0f081b1f34cd5e48588d286b088fc1792beb5f5b31aa96b4b94715f2f723cdf",
+      "base_state": "inventory-defaults",
+      "self": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 5,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Rifle",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CurrentHandSlot": 0,
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Light",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 50,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 15
+          }
+        ]
+      },
+      "inputs": {},
+      "outputs": {},
+      "state": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 5,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Rifle",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CarryContents": [],
+        "CurrentHandSlot": 0
+      },
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Inventory_Fixers@18276": "5fd466319bea38c4856b2edf0dd294fe0db980cfcd17150ea23a1240cb3020d6",
+        "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+        "CalculateReloadAmmo": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+        "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a",
+        "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+        "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+        "OnRep_Slot_Secondary": "b89ec46dbf340f79815c22d67791295dbb43fdb0a416f5e3aa0f3d0f2e9d5828",
+        "OnRep_CarryContents": "9c056099a742b35c34d4b965465d6663773b49ce8a6ea299aed71365cf61084e",
+        "ClearSlot": "231cbf4f779ec7d8b1efd9a9d3777fa89fd2d4cd608f1d42ee60ecfe6dc289c1",
+        "OnRep_StashContents": "ded29c125f50b9be900951471d9845d9da47504347827dd27f19f8761465589e",
+        "OnRep_GhostVaultContents": "4b1fa6fc177c3a9e4dca36b0b421b7ac5ada10ac8b762f61c473ec4b3f2b9964",
+        "OnRep_Slot_Backpack": "174acad228b85308108b838bf2927deb6eb0b5eaa3c3dad765631fe1edd45643",
+        "OnRep_Slot_Implant3": "252ca2847359f16c2e7963e15ca9c0cca6e67fd3b8f026b449b0c8faa762531f",
+        "OnRep_Slot_Implant2": "b67656dbe11d7ed958dc03ea21eebe5291c4704cb6c9b9caa154645cf0550afe",
+        "OnRep_Slot_Implant1": "2e6a014add4439d3b0237ad5e572802830e5a2d2ac7a4c06b1233062df347d2b",
+        "OnRep_Slot_Injector2": "714210f2e8c28fe968df6afee11700fd31292fac07f058dc00550330abfdc866",
+        "OnRep_Slot_Injector1": "13c6e3ca0c4f8965cc741f90b1e3217cebfdb86d612b1da0e6db033f6a6b04f4",
+        "OnRep_Slot_Utility_Sub3": "1252e95f80eeba673b644b2a5a7ecf84984a061d68192c7fa7a75cdb88fdb1cf",
+        "OnRep_Slot_Utility_Sub2": "bc58b76fa1f7c42174b1ea5edb619bc2312b1ea934eb474e41c124eda534245b",
+        "OnRep_Slot_Utility_Sub1": "60dd12a03a72a53a08a7812dcbfe1cd132903c63b8c2ef75df6e0403d9d9095e",
+        "OnRep_Slot_Utility_Main": "939ec49c3adeaae8d6d76c50a3d4d8ae95824e741e1dcd6ad363af29801394ed",
+        "OnRep_Slot_Shield": "35d169ecba73a60bf48595773d8c0b446fac79786b7d57c8b090b75cda927041",
+        "OnRep_Slot_Armor": "59a8c286bbb7922585b324c401fb52e4b7ace4434c3d0f2ffb5c2668264caf29",
+        "OnRep_Slot_Primary": "d19ee589bdf6d49a707a5338419b1ca8375f5457adb4be537aded3caeb662b2b"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Injectors": "ed9b8d8bb32c4f1388297fddb563b93331e25d82465fff58f439668db279d02f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "runtime": "inventory",
+      "case": "source-reload-no-ammo-source-bug-preserved",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "Server_ReloadWeapon",
+      "source_bytecode_sha256": "b0f081b1f34cd5e48588d286b088fc1792beb5f5b31aa96b4b94715f2f723cdf",
+      "base_state": "inventory-defaults",
+      "self": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 5,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Rifle",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CurrentHandSlot": 0,
+        "CarryContents": []
+      },
+      "inputs": {},
+      "outputs": {},
+      "state": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 5,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": -1,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Test_Wpn_Rifle",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CarryContents": [],
+        "CurrentHandSlot": 0
+      },
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Inventory_Fixers@18276": "5fd466319bea38c4856b2edf0dd294fe0db980cfcd17150ea23a1240cb3020d6",
+        "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+        "CalculateReloadAmmo": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+        "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a",
+        "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+        "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+        "OnRep_Slot_Secondary": "b89ec46dbf340f79815c22d67791295dbb43fdb0a416f5e3aa0f3d0f2e9d5828",
+        "OnRep_CarryContents": "9c056099a742b35c34d4b965465d6663773b49ce8a6ea299aed71365cf61084e",
+        "ClearSlot": "231cbf4f779ec7d8b1efd9a9d3777fa89fd2d4cd608f1d42ee60ecfe6dc289c1",
+        "OnRep_StashContents": "ded29c125f50b9be900951471d9845d9da47504347827dd27f19f8761465589e",
+        "OnRep_GhostVaultContents": "4b1fa6fc177c3a9e4dca36b0b421b7ac5ada10ac8b762f61c473ec4b3f2b9964",
+        "OnRep_Slot_Backpack": "174acad228b85308108b838bf2927deb6eb0b5eaa3c3dad765631fe1edd45643",
+        "OnRep_Slot_Implant3": "252ca2847359f16c2e7963e15ca9c0cca6e67fd3b8f026b449b0c8faa762531f",
+        "OnRep_Slot_Implant2": "b67656dbe11d7ed958dc03ea21eebe5291c4704cb6c9b9caa154645cf0550afe",
+        "OnRep_Slot_Implant1": "2e6a014add4439d3b0237ad5e572802830e5a2d2ac7a4c06b1233062df347d2b",
+        "OnRep_Slot_Injector2": "714210f2e8c28fe968df6afee11700fd31292fac07f058dc00550330abfdc866",
+        "OnRep_Slot_Injector1": "13c6e3ca0c4f8965cc741f90b1e3217cebfdb86d612b1da0e6db033f6a6b04f4",
+        "OnRep_Slot_Utility_Sub3": "1252e95f80eeba673b644b2a5a7ecf84984a061d68192c7fa7a75cdb88fdb1cf",
+        "OnRep_Slot_Utility_Sub2": "bc58b76fa1f7c42174b1ea5edb619bc2312b1ea934eb474e41c124eda534245b",
+        "OnRep_Slot_Utility_Sub1": "60dd12a03a72a53a08a7812dcbfe1cd132903c63b8c2ef75df6e0403d9d9095e",
+        "OnRep_Slot_Utility_Main": "939ec49c3adeaae8d6d76c50a3d4d8ae95824e741e1dcd6ad363af29801394ed",
+        "OnRep_Slot_Shield": "35d169ecba73a60bf48595773d8c0b446fac79786b7d57c8b090b75cda927041",
+        "OnRep_Slot_Armor": "59a8c286bbb7922585b324c401fb52e4b7ace4434c3d0f2ffb5c2668264caf29",
+        "OnRep_Slot_Primary": "d19ee589bdf6d49a707a5338419b1ca8375f5457adb4be537aded3caeb662b2b"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Injectors": "ed9b8d8bb32c4f1388297fddb563b93331e25d82465fff58f439668db279d02f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "runtime": "inventory",
+      "case": "source-reload-unknown-weapon",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "Server_ReloadWeapon",
+      "source_bytecode_sha256": "b0f081b1f34cd5e48588d286b088fc1792beb5f5b31aa96b4b94715f2f723cdf",
+      "base_state": "inventory-defaults",
+      "self": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 5,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Unknown_Source_Row",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CurrentHandSlot": 0,
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 50,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 15
+          }
+        ]
+      },
+      "inputs": {},
+      "outputs": {},
+      "state": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 5,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Unknown_Source_Row",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 50,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 15
+          }
+        ],
+        "CurrentHandSlot": 0
+      },
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Inventory_Fixers@18276": "5fd466319bea38c4856b2edf0dd294fe0db980cfcd17150ea23a1240cb3020d6",
+        "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+        "CalculateReloadAmmo": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+        "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a",
+        "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+        "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+        "OnRep_Slot_Secondary": "b89ec46dbf340f79815c22d67791295dbb43fdb0a416f5e3aa0f3d0f2e9d5828",
+        "OnRep_CarryContents": "9c056099a742b35c34d4b965465d6663773b49ce8a6ea299aed71365cf61084e",
+        "ClearSlot": "231cbf4f779ec7d8b1efd9a9d3777fa89fd2d4cd608f1d42ee60ecfe6dc289c1",
+        "OnRep_StashContents": "ded29c125f50b9be900951471d9845d9da47504347827dd27f19f8761465589e",
+        "OnRep_GhostVaultContents": "4b1fa6fc177c3a9e4dca36b0b421b7ac5ada10ac8b762f61c473ec4b3f2b9964",
+        "OnRep_Slot_Backpack": "174acad228b85308108b838bf2927deb6eb0b5eaa3c3dad765631fe1edd45643",
+        "OnRep_Slot_Implant3": "252ca2847359f16c2e7963e15ca9c0cca6e67fd3b8f026b449b0c8faa762531f",
+        "OnRep_Slot_Implant2": "b67656dbe11d7ed958dc03ea21eebe5291c4704cb6c9b9caa154645cf0550afe",
+        "OnRep_Slot_Implant1": "2e6a014add4439d3b0237ad5e572802830e5a2d2ac7a4c06b1233062df347d2b",
+        "OnRep_Slot_Injector2": "714210f2e8c28fe968df6afee11700fd31292fac07f058dc00550330abfdc866",
+        "OnRep_Slot_Injector1": "13c6e3ca0c4f8965cc741f90b1e3217cebfdb86d612b1da0e6db033f6a6b04f4",
+        "OnRep_Slot_Utility_Sub3": "1252e95f80eeba673b644b2a5a7ecf84984a061d68192c7fa7a75cdb88fdb1cf",
+        "OnRep_Slot_Utility_Sub2": "bc58b76fa1f7c42174b1ea5edb619bc2312b1ea934eb474e41c124eda534245b",
+        "OnRep_Slot_Utility_Sub1": "60dd12a03a72a53a08a7812dcbfe1cd132903c63b8c2ef75df6e0403d9d9095e",
+        "OnRep_Slot_Utility_Main": "939ec49c3adeaae8d6d76c50a3d4d8ae95824e741e1dcd6ad363af29801394ed",
+        "OnRep_Slot_Shield": "35d169ecba73a60bf48595773d8c0b446fac79786b7d57c8b090b75cda927041",
+        "OnRep_Slot_Armor": "59a8c286bbb7922585b324c401fb52e4b7ace4434c3d0f2ffb5c2668264caf29",
+        "OnRep_Slot_Primary": "d19ee589bdf6d49a707a5338419b1ca8375f5457adb4be537aded3caeb662b2b"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Injectors": "ed9b8d8bb32c4f1388297fddb563b93331e25d82465fff58f439668db279d02f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
+    },
+    {
+      "runtime": "inventory",
+      "case": "source-reload-empty-hand",
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+      "function": "Server_ReloadWeapon",
+      "source_bytecode_sha256": "b0f081b1f34cd5e48588d286b088fc1792beb5f5b31aa96b4b94715f2f723cdf",
+      "base_state": "inventory-defaults",
+      "self": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "None",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CurrentHandSlot": 0,
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 50,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 15
+          }
+        ]
+      },
+      "inputs": {},
+      "outputs": {},
+      "state": {
+        "Slot_Primary": {
+          "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+          "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+          "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+          "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "None",
+          "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+          "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+          "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+          "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+          "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+          "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 1,
+          "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+          "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 0
+        },
+        "CarryContents": [
+          {
+            "CurrentAmmo_33_18011F3448EC8254A1087BBC123FE0D9": 0,
+            "CurrentHP_55_70C5253844DACCC6C1093EAF69A07E07": 73,
+            "Durability_35_A1F9494D485300DA483620B0B8E5AC55": 88.5,
+            "ItemID_18_8A3813FA4C548CE5748734B6BA39F370": "Ammo_Medium",
+            "Mod_Grip_45_1383863C4054C131D28FD7AB6D91B920": "None",
+            "Mod_Magazine_47_3D39AB374DEFFAD6EFDE6481406CF9A0": "None",
+            "Mod_Muzzle_43_1F011D95494E93D42E2745AE96BB3A05": "None",
+            "Mod_Optic_41_236D601E46AA45C147EB3E999567A60D": "None",
+            "Mod_Stock_50_02A132E742FD84F9969A9C866862A14E": "None",
+            "Quantity_32_3BF7B11640B7CD8BF4F0E095C137CFE9": 50,
+            "SlotIndex_24_472DB4224BB561CF791C4985256B8E6F": 0,
+            "SlotType_21_822A052A4EAB7B7A1425FE89304BAE88": 15
+          }
+        ],
+        "CurrentHandSlot": 0
+      },
+      "dependencies": {
+        "ExecuteUbergraph_BPC_Inventory_Fixers@18276": "5fd466319bea38c4856b2edf0dd294fe0db980cfcd17150ea23a1240cb3020d6",
+        "GetSlotData": "1b8c2a8b4fb6db83c40b38ab1b54cd4efa522447885450851b05f813e41db161",
+        "CalculateReloadAmmo": "6531bae5bba254333b698626cc0ef3e90e7355edc603ab2461ce1d3b63d49c5c",
+        "GetWeaponData": "3c4f817c5596216aeec237e90e1e459b505dd7fcf7be94d82dedd9577cd43f7a",
+        "FindAmmoInCarry": "86eea68289eedb3f8685f1da788b715d590b82bd2c6c2057e6dbf9cb0a31f861",
+        "GetItemData": "f5d7f30a64db08bddd63c27be5010dcb9f7abae1dad61f21c77573f7563b0444",
+        "OnRep_Slot_Secondary": "b89ec46dbf340f79815c22d67791295dbb43fdb0a416f5e3aa0f3d0f2e9d5828",
+        "OnRep_CarryContents": "9c056099a742b35c34d4b965465d6663773b49ce8a6ea299aed71365cf61084e",
+        "ClearSlot": "231cbf4f779ec7d8b1efd9a9d3777fa89fd2d4cd608f1d42ee60ecfe6dc289c1",
+        "OnRep_StashContents": "ded29c125f50b9be900951471d9845d9da47504347827dd27f19f8761465589e",
+        "OnRep_GhostVaultContents": "4b1fa6fc177c3a9e4dca36b0b421b7ac5ada10ac8b762f61c473ec4b3f2b9964",
+        "OnRep_Slot_Backpack": "174acad228b85308108b838bf2927deb6eb0b5eaa3c3dad765631fe1edd45643",
+        "OnRep_Slot_Implant3": "252ca2847359f16c2e7963e15ca9c0cca6e67fd3b8f026b449b0c8faa762531f",
+        "OnRep_Slot_Implant2": "b67656dbe11d7ed958dc03ea21eebe5291c4704cb6c9b9caa154645cf0550afe",
+        "OnRep_Slot_Implant1": "2e6a014add4439d3b0237ad5e572802830e5a2d2ac7a4c06b1233062df347d2b",
+        "OnRep_Slot_Injector2": "714210f2e8c28fe968df6afee11700fd31292fac07f058dc00550330abfdc866",
+        "OnRep_Slot_Injector1": "13c6e3ca0c4f8965cc741f90b1e3217cebfdb86d612b1da0e6db033f6a6b04f4",
+        "OnRep_Slot_Utility_Sub3": "1252e95f80eeba673b644b2a5a7ecf84984a061d68192c7fa7a75cdb88fdb1cf",
+        "OnRep_Slot_Utility_Sub2": "bc58b76fa1f7c42174b1ea5edb619bc2312b1ea934eb474e41c124eda534245b",
+        "OnRep_Slot_Utility_Sub1": "60dd12a03a72a53a08a7812dcbfe1cd132903c63b8c2ef75df6e0403d9d9095e",
+        "OnRep_Slot_Utility_Main": "939ec49c3adeaae8d6d76c50a3d4d8ae95824e741e1dcd6ad363af29801394ed",
+        "OnRep_Slot_Shield": "35d169ecba73a60bf48595773d8c0b446fac79786b7d57c8b090b75cda927041",
+        "OnRep_Slot_Armor": "59a8c286bbb7922585b324c401fb52e4b7ace4434c3d0f2ffb5c2668264caf29",
+        "OnRep_Slot_Primary": "d19ee589bdf6d49a707a5338419b1ca8375f5457adb4be537aded3caeb662b2b"
+      },
+      "tables": {
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Armor": "a1b72a87e177e92092acc790f9ed75206cba8c5ce8dc51f0b276acfac66aa1e0",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Backpacks": "7e2ffabe690732da79c06a11b11ce24456ee60aab1773415fdfbac9f6907d4b9",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Implants": "fb7ae3be8566d0816d855d96bcc4a8ca3ade6f5ae85de09f91941604ab7f5bcd",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Injectors": "ed9b8d8bb32c4f1388297fddb563b93331e25d82465fff58f439668db279d02f",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Items": "21ba0eebfcf4de4d012f150c79e0247c77597f34b2fbcbf3b3d5b6bd0bdcd037",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_ShieldData": "7eb114eb8011272fa18def5dc3c9c2715d7924b5ef2f37a67bbe9c00773f9dc2",
+        "/Game/Fixers/Core/Blueprints/Components/Inventory/Data/DT_Weapons": "a26f29518c3b3f12d031f49af09bf1abeb27823e969affa15ab5cdf188c856f3"
+      }
     }
   ],
   "schema_version": 1,
@@ -43826,6 +46103,398 @@
         "CachedCurrentAmmo": 0,
         "CurrentEquippedSlot": 21,
         "InventoryComp": null
+      }
+    },
+    "combat-fire-defaults": {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+      "source_sha256": "0ed9db150534632a0cd02e7321eff11a57375a263c7b0094ce80d5a507834cd0",
+      "state": {
+        "ActiveReloadTime ": 0,
+        "CachedCurrentAmmo": 0,
+        "CachedInjectorData": {
+          "Anim_Use_21_4784B02E43956D3640C598A12E4C76CD": {
+            "asset": "/Game/Fixers/Core/Blueprints/Animation/Montages/Injector/Mover_Injector_Use_Montage.Mover_Injector_Use_Montage",
+            "declared_class": [
+              "/Script/Engine",
+              "AnimMontage"
+            ]
+          },
+          "Cooldown_12_09D241F64723F7C64E5AEEA2424A73CF": 0.0,
+          "EffectDuration_10_F0B9FE4B4DBD5C2D3A2579852A33C6BB": 0.0,
+          "EffectType_5_DE720B174061F931CFC4D28CA1FA7C72": 0,
+          "EffectValue_8_1A51997D49160B26E9615F84FCFD8CAD": 0.0,
+          "ItemID_2_00D501FF402587B7FBB7CC9E2CF325CE": "None",
+          "Sound_Inject_18_CCBA038A4014751D2C700FAF949D93A0": {
+            "asset": "/Game/Fixers/Core/Audio/Props/Injector/SC_Injector_Use.SC_Injector_Use",
+            "declared_class": [
+              "/Script/Engine",
+              "SoundBase"
+            ]
+          },
+          "UseTime_24_CB830B554A7ADBB13E7521AD72B77BFD": 0.0,
+          "UsesPerItem_15_14B70FD547AF245E1B73C38442567489": 0
+        },
+        "CachedMagazineSize": 0,
+        "CachedThrowableData": {},
+        "CachedWeaponData": {
+          "ADSMovementMult_99_16EEEFC34CE9FAA368CAD29CD7495F5A": 0.0,
+          "ADSTime_97_6B992B1144EE2F5BE325DD86F43F31A2": 0.0,
+          "ADSZoom_98_13C1F9C842FF9B28B01B8DB5DBF8B481": 0.0,
+          "AimSpreadMultiplier_256_254C68A54CCF41488586B5A16BEFDA7C": 0.3,
+          "AmmoType_81_C19C975448FBCB6C085D41B6D098637F": 0,
+          "Anim_Reload_117_E182DDD542282CA2702E2C9FD6CEC882": null,
+          "Anim_Reload_Empty_292_8C60CDCB4C0BA81185A6C596F59FE162": null,
+          "Anim_WeaponReload_321_8159F57649F87B1182B4859DFD7E9253": null,
+          "Anim_WeaponReload_Empty_322_5895634A4F2A32EFBA9D1681ABC96999": null,
+          "BaseDamage_74_EED27D5542A964C175C7DD9906082211": 0.0,
+          "BaseSpread_254_59D65E3B4D9E48DFA9385A9B6D1A50CF": 0.5,
+          "BurstCount_175_917E2B4345853B9F9A360294B5852944": 3,
+          "CameraShake_Fire_232_0C90518947C1D8E3C81ECCAEF6BB0856": null,
+          "CrouchSpreadMultiplier_264_DEEA037040E6925525F133A8BAD8E208": 0.7,
+          "EffectiveRange_77_B95A235A498075AB62D4459CBA7CC6D2": 0.0,
+          "FireSpreadAdd_266_20D181EB4A6017BFE5A911B4E2FA6BAE": 0.2,
+          "FiringMode_172_952FC4FD44A7ABC7C83962AFB87097F9": 0,
+          "HeadshotMultiplier_75_065A139A46EA66A4705B0D8BC83AF39A": 0.0,
+          "HipFireSpreadMultiplier_272_BDCF9CDE4CA8C54090BB9FB4813063A1": 1.5,
+          "HolsterRotationOffset_251_EB86144B4BE4AE5C25D52D8629A0D379": {
+            "Pitch": 0.0,
+            "Roll": 0.0,
+            "Yaw": 0.0
+          },
+          "ItemID_53_4307572A4C31602F6D1F628755B38392": "None",
+          "JumpSpreadAdd_262_8BEC459E46C9635957E1B9A4CB2B0A32": 4.0,
+          "LeftHand_Location_129_F5AEEBAD4EFE0208A4A7FF8DFB530CD1": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0
+          },
+          "LeftHand_Rotation_132_89E1AF494DFBF57F007BC0ABDF959555": {
+            "Pitch": 0.0,
+            "Roll": 0.0,
+            "Yaw": 0.0
+          },
+          "MagBoneName_317_C8DA56A24E90727F450FBF866D07F8CB": "None",
+          "MagDropMeshSAWNOFF_304_9FA48A2F410DB933D109D181CFE5C776": null,
+          "MagDropMesh_302_430B8A894B690B73C8A34F9EA7F40DE5": null,
+          "MagazineSize_84_FD2F632342262ABF35E587B560B2F9B6": 0,
+          "MaxRange_78_BB09E405474D117DC1CC2096ED17663C": 0.0,
+          "MaxSpreadRecoil_323_874934F147AF51E7DE0DA08A3BF33D3F": 8.0,
+          "MinDamagePercent_286_7AF477FD4867978BDA838D9D6FBF2CD7": 0.25,
+          "MoveSpreadAdd_258_96B835EA43C6ECA51B1958990FA8BEF4": 0.5,
+          "MuzzleTraceLength_162_373A9105425161CB966267919D2A83D7": 50.0,
+          "NS_BulletTracer_289_10A9E22A4FE375AFBE02A3B7C3AF5CFC": null,
+          "NS_CasingEject_239_372A420B4DE82381BA50B6932EF910C0": null,
+          "NS_Impact_326_696FE7704AB72BC5E4CDDF813AB6E6E5": null,
+          "NS_MuzzleFlash_235_7F3D029448102A4A3B176EA09CFF4D0C": null,
+          "ObstructionThreshold_164_1831BED7495014474396E99BC5200607": 30.0,
+          "PelletCount_SHOTGUN_280_FC5731EC4E3C2A33316532A1045D5C74": 0,
+          "PelletSpreadAngle_SHOTGUN_279_FC3A73184A673C1908224A8B5AA38AD2": 4.0,
+          "RPM_76_F8958CE8431038B13B5C68BCC143A304": 0.0,
+          "RecoilKickback_240_84DBABA6409C59D91D8983945A01BFCF": -3.0,
+          "RecoilMultiplier_214_9A96478740381064076516A8D1BC6A55": 1.0,
+          "RecoilPitchMax_218_8465C2614D2EE73D24B2B18DB04494BF": -6.0,
+          "RecoilPitchMin_216_91D628B64FB25619A8464C9E57B57614": -3.0,
+          "RecoilRecoverySpeed_243_BB3C47D540844C36A45C208F2C491D0F": 12.0,
+          "RecoilYawMax_222_37CDE47947471EB5A43F108B82CB7EED": 2.0,
+          "RecoilYawMin_220_90455D89413BB7C56F016E8DB186AC0F": -2.0,
+          "ReloadTime_87_42438381423C0A09445A92834B5153B1": 0.0,
+          "ReloadTime_Empty_299_44B709B84307CF6760058184B3D11DC0": 0.0,
+          "Sound_CasingDrop_229_3C482DBA483A983D7A86AA9ADDED29E6": null,
+          "Sound_Fire_227_ED32B643431BEC47A3FFA6B4DEAE6FDF": null,
+          "Sound_MagIn_312_6172D6734CDC4282227254A0C1D44CEE": null,
+          "Sound_MagOut_310_FF4B1F97459C7E79D081B1BC2A72B9AC": null,
+          "Sound_Rack_314_0738A3024810F9236AD1D0A160F5641F": null,
+          "SpreadRecoveryRate_268_4BE3170546F7E20D53F0BC9C0BB072CB": 5.0,
+          "SprintSpreadAdd_260_C7076EC444C09D6188EBB4B5D3849BCA": 2.0,
+          "Stat_Accuracy_70_CA34C7D04EBCAA8FB8A4678137D9AB00": 0.0,
+          "Stat_Control_73_33F2B0E84F8580CEE5B6CD942F854DAB": 0.0,
+          "Stat_Firepower_69_9CC52E404C8116DC05DA1489E9B063B7": 0.0,
+          "Stat_Handling_71_22701CED482ADF91B6AB8D84E96B5C52": 0.0,
+          "Stat_Range_72_E4903C094678A34850137AA2975817DE": 0.0,
+          "WeaponFireAnim_144_877BC71640992237E69D78B9EFC35C77": null,
+          "WeaponMesh_137_D402138144D70766736C39864A8452D0": null,
+          "bCanSwitchFiringMode_178_2D13E0DA4693A74A09E28A81F2DD497C": false,
+          "bEjectCasingOnFire_245_55CB2CF64983394045BC2EAEDBA3259F": false,
+          "bHasGripSlot_108_C189A7A7493ADACCAC065EB9B21EA695": false,
+          "bHasMagazineSlot_109_F86179714F392D098E1267BFAB25E446": false,
+          "bHasMuzzleSlot_107_4F8D69D54C52D4E1DA9972A9368AEC74": false,
+          "bHasOpticSlot_102_2418056A4E2D63173637CA833A9875A8": false,
+          "bHasStockSlot_110_0FF73C7F45DCF4DE3A5BFB852658C699": false,
+          "bIsBreakActionSAWNOFF_307_242F605740AA278C7E7B42B26662B191": false,
+          "bIsShotgun_283_2FA65DF74548BABA4E179B8D3DFABC71": false
+        },
+        "CurrentEquippedSlot": 21,
+        "CurrentGripType": 0,
+        "CurrentItemData": {
+          "Ammo_Type_130_430F1D3649EBB7F13CA718843214BC1D": 0,
+          "Category_76_FF84BA494D5E1E94FDC1D9BF6C3129AB": 13,
+          "CurrentStackSize_143_3AB90D2442783C5BEF9DB398E99892A3": 0,
+          "DisplayName_57_B93BE9FE485F60228D7D6E9CEC9AF76F": {
+            "flags": 0,
+            "history": "empty",
+            "text": ""
+          },
+          "Durability_133_BA8BCD2F46808456AFF3768C4F2E7CA8": 0.0,
+          "EquipLocationOffset_195_25CEC1754F2B1232C6C460AF209A328E": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0
+          },
+          "EquipRotationOffset_198_889CD8B4463639672EC5619EE4CF269A": {
+            "Pitch": 0.0,
+            "Roll": 0.0,
+            "Yaw": 0.0
+          },
+          "EquippedMods_140_5B2F6FFB4797C1B2C99C58A225E1F23A": [],
+          "FullDescription_63_AA2BB58541398466182F44A1FC5A2B9B": {
+            "flags": 0,
+            "history": "empty",
+            "text": ""
+          },
+          "GripType_152_14709E104AD37BCA5DBB92BB1A9B3E67": 0,
+          "Icon_HUD_67_C28B0A854CC429D61D4833B3CE6245D8": null,
+          "Icon_Inventory_65_FE68360A413E91B18BB5E8AD35B28B31": null,
+          "Icon_QuickSlot_149_B6251CE944E63ED77836E598AB2E088D": null,
+          "Icon_Weapon_Equipped_146_0B2D319A4AD2153F8AC04CABFA4D316E": null,
+          "ItemID_55_D1F4963A452DAFF02B751CB24D44BC2B": "None",
+          "LeftArmBlend_Aim_167_3B8749CB46C30AB349384196790D5B6E": 1.0,
+          "LeftArmBlend_HipFire_185_2BF00A9E413900E0298F36B51B95E8B6": 1.0,
+          "LeftArmBlend_Ready_165_72C86FF2411BE52EA493CD8E536D2FEB": 1.0,
+          "LeftArmBlend_Relax_163_BCFDAF1F4914F50E40FDFDAF218EC545": 0.2,
+          "LeftArmBlend_Sprint_169_E84FA56446DC44EADC204684D9C50B9A": 0.2,
+          "LeftHandIK_Aim_175_27D9F64043AF2B3D0DFFE1BA5A49891E": 1.0,
+          "LeftHandIK_HipFire_187_92E2747147D53B8D03ED85AD70B0A0B5": 1.0,
+          "LeftHandIK_Ready_173_DC2D5EE84AFF423D355A26BBAFEC1F1A": 1.0,
+          "LeftHandIK_Relax_171_15F181B8473DD4DC23FF6C993F156F80": 0.0,
+          "LeftHandIK_Sprint_177_E1B1F4674923634289320A920FF0088C": 0.0,
+          "MaxDurability_136_59DFCCDC4723E3746D83009B2BBC3C39": 0.0,
+          "MaxStackSize_97_6B07AB2C42727FE2E05B219923AD4F12": 0,
+          "Mesh_Equipped_74_5B15FAA04814D231E9F13F8F9475FC54": null,
+          "Mesh_World_72_303CA35F4E3C75E26EC455899F1CC345": null,
+          "Rarity_88_003F085543C8C0BB50C89A846D27EA81": 0,
+          "ShortDescription_62_6E119BD7469003C052B2CF81C7561C33": {
+            "flags": 0,
+            "history": "empty",
+            "text": ""
+          },
+          "Sound_Drop_124_E0A466924AA41BFB29AC8C87F183AA58": null,
+          "Sound_Equip_190_9B1C59FF44805EAE6AC78391810FC137": null,
+          "Sound_Pickup_122_CFBF0DD741EA162B958F4FBA77406FE9": {
+            "asset": "/Game/Fixers/Core/Audio/UI/MainMenu/SC_UI_Click.SC_UI_Click",
+            "declared_class": [
+              "/Script/Engine",
+              "SoundBase"
+            ]
+          },
+          "Sound_Unequip_192_3F55C6574CC75C9B86DD28B2D4E400FB": null,
+          "Sound_Use_126_8BFEB8F948BCF5E1BFE659A53577AFD7": null,
+          "SpineBlend_Aim_159_FD3F81E74E02164F41B58E9CB420E327": 1.0,
+          "SpineBlend_HipFire_183_966F063E47D36C504D7D4A9EDC8274B5": 0.8,
+          "SpineBlend_Ready_157_AFDD70FA482F4D990C7AC384309D0812": 0.8,
+          "SpineBlend_Relax_155_4EA0F7FF43C32D2C2D1B27A1E52AF64C": 0.5,
+          "SpineBlend_Sprint_161_0F532C514BB3F932D645B990E4EC839C": 0.4,
+          "ValueCleanStratts_104_2EA6031E421843C08AE0E1AB90184DB7": 0,
+          "ValueGhostStratts_109_20796AAB495D9AB112185E8A4AEE5C5C": 0,
+          "ValueLowStratts_103_8E04FBA447B62346937CC98C333BECAD": 0,
+          "Weight_102_DD4E1CE74B0EC7EA2F0E84BC1BC3AA27": 0.0,
+          "bCanDrop_111_19A6D5924AAD8FF156A76F8927A010EE": false,
+          "bCanGhostVault_117_F617BE1F4130EAB55F311FAA073083D6": false,
+          "bCanSell_113_D059A0D0487DCA1E76AB969FBC3B893B": false,
+          "bCanStash_116_DCDFFC0E4952360EF8EF60B281DDD393": false,
+          "bIsOneHanded_93_7E3A95A74C376BBC2D778090F9BA70A8": false,
+          "bIsQuestItem_119_6B33F0874F9AF8C88C6B15A18CD32EB8": false,
+          "bIsStackable_95_6093B4CD4B864DFA873BE98C68712996": false,
+          "bLeftHandIKEnabled_180_85C5F9DF44F11BED251CC1AA30B716A3": false
+        },
+        "CurrentRecoilPitch": 0,
+        "CurrentRecoilYaw": 0,
+        "CurrentReloadType": 0,
+        "CurrentSpread": 0,
+        "CurrentWeaponData": {
+          "ADSMovementMult_99_16EEEFC34CE9FAA368CAD29CD7495F5A": 0.0,
+          "ADSTime_97_6B992B1144EE2F5BE325DD86F43F31A2": 0.0,
+          "ADSZoom_98_13C1F9C842FF9B28B01B8DB5DBF8B481": 0.0,
+          "AimSpreadMultiplier_256_254C68A54CCF41488586B5A16BEFDA7C": 0.3,
+          "AmmoType_81_C19C975448FBCB6C085D41B6D098637F": 0,
+          "Anim_Reload_117_E182DDD542282CA2702E2C9FD6CEC882": null,
+          "Anim_Reload_Empty_292_8C60CDCB4C0BA81185A6C596F59FE162": null,
+          "Anim_WeaponReload_321_8159F57649F87B1182B4859DFD7E9253": null,
+          "Anim_WeaponReload_Empty_322_5895634A4F2A32EFBA9D1681ABC96999": null,
+          "BaseDamage_74_EED27D5542A964C175C7DD9906082211": 0.0,
+          "BaseSpread_254_59D65E3B4D9E48DFA9385A9B6D1A50CF": 0.5,
+          "BurstCount_175_917E2B4345853B9F9A360294B5852944": 3,
+          "CameraShake_Fire_232_0C90518947C1D8E3C81ECCAEF6BB0856": null,
+          "CrouchSpreadMultiplier_264_DEEA037040E6925525F133A8BAD8E208": 0.7,
+          "EffectiveRange_77_B95A235A498075AB62D4459CBA7CC6D2": 0.0,
+          "FireSpreadAdd_266_20D181EB4A6017BFE5A911B4E2FA6BAE": 0.2,
+          "FiringMode_172_952FC4FD44A7ABC7C83962AFB87097F9": 0,
+          "HeadshotMultiplier_75_065A139A46EA66A4705B0D8BC83AF39A": 0.0,
+          "HipFireSpreadMultiplier_272_BDCF9CDE4CA8C54090BB9FB4813063A1": 1.5,
+          "HolsterRotationOffset_251_EB86144B4BE4AE5C25D52D8629A0D379": {
+            "Pitch": 0.0,
+            "Roll": 0.0,
+            "Yaw": 0.0
+          },
+          "ItemID_53_4307572A4C31602F6D1F628755B38392": "None",
+          "JumpSpreadAdd_262_8BEC459E46C9635957E1B9A4CB2B0A32": 4.0,
+          "LeftHand_Location_129_F5AEEBAD4EFE0208A4A7FF8DFB530CD1": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0
+          },
+          "LeftHand_Rotation_132_89E1AF494DFBF57F007BC0ABDF959555": {
+            "Pitch": 0.0,
+            "Roll": 0.0,
+            "Yaw": 0.0
+          },
+          "MagBoneName_317_C8DA56A24E90727F450FBF866D07F8CB": "None",
+          "MagDropMeshSAWNOFF_304_9FA48A2F410DB933D109D181CFE5C776": null,
+          "MagDropMesh_302_430B8A894B690B73C8A34F9EA7F40DE5": null,
+          "MagazineSize_84_FD2F632342262ABF35E587B560B2F9B6": 0,
+          "MaxRange_78_BB09E405474D117DC1CC2096ED17663C": 0.0,
+          "MaxSpreadRecoil_323_874934F147AF51E7DE0DA08A3BF33D3F": 8.0,
+          "MinDamagePercent_286_7AF477FD4867978BDA838D9D6FBF2CD7": 0.25,
+          "MoveSpreadAdd_258_96B835EA43C6ECA51B1958990FA8BEF4": 0.5,
+          "MuzzleTraceLength_162_373A9105425161CB966267919D2A83D7": 50.0,
+          "NS_BulletTracer_289_10A9E22A4FE375AFBE02A3B7C3AF5CFC": null,
+          "NS_CasingEject_239_372A420B4DE82381BA50B6932EF910C0": null,
+          "NS_Impact_326_696FE7704AB72BC5E4CDDF813AB6E6E5": null,
+          "NS_MuzzleFlash_235_7F3D029448102A4A3B176EA09CFF4D0C": null,
+          "ObstructionThreshold_164_1831BED7495014474396E99BC5200607": 30.0,
+          "PelletCount_SHOTGUN_280_FC5731EC4E3C2A33316532A1045D5C74": 0,
+          "PelletSpreadAngle_SHOTGUN_279_FC3A73184A673C1908224A8B5AA38AD2": 4.0,
+          "RPM_76_F8958CE8431038B13B5C68BCC143A304": 0.0,
+          "RecoilKickback_240_84DBABA6409C59D91D8983945A01BFCF": -3.0,
+          "RecoilMultiplier_214_9A96478740381064076516A8D1BC6A55": 1.0,
+          "RecoilPitchMax_218_8465C2614D2EE73D24B2B18DB04494BF": -6.0,
+          "RecoilPitchMin_216_91D628B64FB25619A8464C9E57B57614": -3.0,
+          "RecoilRecoverySpeed_243_BB3C47D540844C36A45C208F2C491D0F": 12.0,
+          "RecoilYawMax_222_37CDE47947471EB5A43F108B82CB7EED": 2.0,
+          "RecoilYawMin_220_90455D89413BB7C56F016E8DB186AC0F": -2.0,
+          "ReloadTime_87_42438381423C0A09445A92834B5153B1": 0.0,
+          "ReloadTime_Empty_299_44B709B84307CF6760058184B3D11DC0": 0.0,
+          "Sound_CasingDrop_229_3C482DBA483A983D7A86AA9ADDED29E6": null,
+          "Sound_Fire_227_ED32B643431BEC47A3FFA6B4DEAE6FDF": null,
+          "Sound_MagIn_312_6172D6734CDC4282227254A0C1D44CEE": null,
+          "Sound_MagOut_310_FF4B1F97459C7E79D081B1BC2A72B9AC": null,
+          "Sound_Rack_314_0738A3024810F9236AD1D0A160F5641F": null,
+          "SpreadRecoveryRate_268_4BE3170546F7E20D53F0BC9C0BB072CB": 5.0,
+          "SprintSpreadAdd_260_C7076EC444C09D6188EBB4B5D3849BCA": 2.0,
+          "Stat_Accuracy_70_CA34C7D04EBCAA8FB8A4678137D9AB00": 0.0,
+          "Stat_Control_73_33F2B0E84F8580CEE5B6CD942F854DAB": 0.0,
+          "Stat_Firepower_69_9CC52E404C8116DC05DA1489E9B063B7": 0.0,
+          "Stat_Handling_71_22701CED482ADF91B6AB8D84E96B5C52": 0.0,
+          "Stat_Range_72_E4903C094678A34850137AA2975817DE": 0.0,
+          "WeaponFireAnim_144_877BC71640992237E69D78B9EFC35C77": null,
+          "WeaponMesh_137_D402138144D70766736C39864A8452D0": null,
+          "bCanSwitchFiringMode_178_2D13E0DA4693A74A09E28A81F2DD497C": false,
+          "bEjectCasingOnFire_245_55CB2CF64983394045BC2EAEDBA3259F": false,
+          "bHasGripSlot_108_C189A7A7493ADACCAC065EB9B21EA695": false,
+          "bHasMagazineSlot_109_F86179714F392D098E1267BFAB25E446": false,
+          "bHasMuzzleSlot_107_4F8D69D54C52D4E1DA9972A9368AEC74": false,
+          "bHasOpticSlot_102_2418056A4E2D63173637CA833A9875A8": false,
+          "bHasStockSlot_110_0FF73C7F45DCF4DE3A5BFB852658C699": false,
+          "bIsBreakActionSAWNOFF_307_242F605740AA278C7E7B42B26662B191": false,
+          "bIsShotgun_283_2FA65DF74548BABA4E179B8D3DFABC71": false
+        },
+        "CurrentWeaponState": 0,
+        "DamagePerPellet": 0,
+        "EquippedWeapon": null,
+        "FireCooldown": 0.1,
+        "HipFireDuration": 3.0,
+        "HipFireTimer": 0,
+        "HolsteredWeapon_Melee": null,
+        "HolsteredWeapon_Primary": null,
+        "HolsteredWeapon_Secondary": null,
+        "InjectorTimerHandle": {
+          "Handle": 0
+        },
+        "InventoryComp": null,
+        "LastFireTime": 0,
+        "LastSpreadRecoveryTime": 0,
+        "MoverComp": null,
+        "OwnerPawn": null,
+        "PendingEquipSlot": 0,
+        "PendingGripType": 0,
+        "PendingThrowDirection": {
+          "PendingThrowDirection": {
+            "X": "+0",
+            "Y": "+0",
+            "Z": "+0"
+          },
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "PingColor": {
+          "PingColor": {
+            "$type": "UAssetAPI.UnrealTypes.FLinearColor, UAssetAPI",
+            "A": "+0",
+            "B": "+0",
+            "G": "+0",
+            "R": "+0"
+          }
+        },
+        "PingDuration": 5.0,
+        "PingRange": 10000.0,
+        "ReadyDuration": 4.0,
+        "ReadyTimer": 3.0,
+        "RecoilPitchRemaining": 0,
+        "RecoilYawRemaining": 0,
+        "ReplicatedAimDirection": {
+          "ReplicatedAimDirection": {
+            "X": "+0",
+            "Y": "+0",
+            "Z": "+0"
+          },
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "ReplicatedAimStart": {
+          "ReplicatedAimStart": {
+            "X": "+0",
+            "Y": "+0",
+            "Z": "+0"
+          },
+          "X": 0,
+          "Y": 0,
+          "Z": 0
+        },
+        "SpreadRecoveryDelay": 0.3,
+        "TraceRange": 10000.0,
+        "UberGraphFrame": {},
+        "VitalityComp": null,
+        "bCanFire": true,
+        "bDroneDeployed": false,
+        "bEmptyClickPlayed": false,
+        "bHitCharacter": false,
+        "bIKReady": false,
+        "bIsAiming": false,
+        "bIsChargingThrow": false,
+        "bIsCrouching": false,
+        "bIsEquipping": false,
+        "bIsFiring": false,
+        "bIsHipFiring": false,
+        "bIsMuzzleObstructed": false,
+        "bIsReloading": false,
+        "bIsSprinting": false,
+        "bIsSyncingAmmoOnly": false,
+        "bIsThrowInProgress": false,
+        "bIsUnequipping": false,
+        "bIsUsingInjector": false,
+        "bWantsToAim": false
+      }
+    },
+    "traversal-fire-defaults": {
+      "package": "/Game/Blueprints/AC_TraversalLogic",
+      "source_sha256": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f",
+      "state": {
+        "CharacterProperties": {},
+        "DoingTraversalAction": false,
+        "IsMoverCharacter": false,
+        "TraversalResult": {},
+        "UberGraphFrame": {}
       }
     }
   }

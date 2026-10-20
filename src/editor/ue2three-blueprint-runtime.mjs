@@ -13,6 +13,7 @@ export class BlueprintActorRuntime {
         this.actorBindings = new SourceActorBindings(report);
         this.nativeRequests = [];
         this.nextBindingId = 1;
+        this.gameTimeSeconds = 0;
         for (const [name, data] of Object.entries(report.packages)) this.states[name] = structuredClone(data.default_state || {});
         this.last = null;
         this.guardCache = new Map();
@@ -23,7 +24,7 @@ export class BlueprintActorRuntime {
         if (!program || !Object.hasOwn(this.states, packageName)) throw new Error(`Untranslated source function: ${functionName}`);
         const result = executeBlueprint(program, this.states[packageName], inputs,
             {functions: {...data.functions, ...data.event_programs}, frames: this.frames[packageName] || {}, tables: this.report.tables || {},
-                bindings: this.bindings[packageName] || {}, signatures: data.delegate_signatures || {}, native:this.actorBindings.context(packageName),
+                bindings: this.bindings[packageName] || {}, signatures: data.delegate_signatures || {}, native:this.nativeContext(packageName),
                 queries:this.componentQueries()});
         this.states[packageName] = result.state;
         this.frames[packageName] = result.frames;
@@ -42,9 +43,19 @@ export class BlueprintActorRuntime {
         return Object.fromEntries([...this.actorBindings.components].map(([name,component])=>{
             const data=this.report.packages[name];
             return [name,{source_sha256:component.source.source_sha256,state:this.states[name],
-                functions:{...data.functions,...data.event_programs},signatures:data.delegate_signatures,
-                native:this.actorBindings.context(name)}];
+                functions:{...data.functions,...data.event_programs},signatures:data.delegate_signatures,field_schemas:data.field_schemas,
+                native:this.nativeContext(name)}];
         }));
+    }
+    nativeContext(packageName) {
+        const context = this.actorBindings.context(packageName);
+        return context ? {...context,game_time_seconds:this.gameTimeSeconds,
+            source_owner_index:this.report.packages[packageName]?.class_metadata?.export_index} : undefined;
+    }
+    advanceWorldTime(delta) {
+        if (typeof delta !== 'number' || !Number.isFinite(delta) || delta < 0 || !Number.isFinite(this.gameTimeSeconds+delta))
+            throw new Error('Invalid source world time step');
+        this.gameTimeSeconds += delta;
     }
     bindSourceActor(sourceClass, target) {
         const wasBound = !!this.actorBindings.root;
@@ -96,11 +107,14 @@ export class BlueprintActorRuntime {
             return {...metric, value, current_value: state[metric.current], maximum_value: state[metric.maximum]};
         });
     }
-    snapshot() { return structuredClone({states: this.states, frames: this.frames, bindings: this.bindings, notifications: this.notifications, dirty: this.dirty, nativeRequests:this.nativeRequests}); }
+    snapshot() { return structuredClone({states: this.states, frames: this.frames, bindings: this.bindings, notifications: this.notifications, dirty: this.dirty, nativeRequests:this.nativeRequests,gameTimeSeconds:this.gameTimeSeconds}); }
     restore(snapshot) {
+        const gameTimeSeconds = snapshot.gameTimeSeconds ?? 0;
+        if (typeof gameTimeSeconds !== 'number' || !Number.isFinite(gameTimeSeconds) || gameTimeSeconds < 0) throw new Error('Invalid source world time snapshot');
         this.states = structuredClone(snapshot.states); this.frames = structuredClone(snapshot.frames);
         this.bindings = structuredClone(snapshot.bindings || {}); this.notifications = structuredClone(snapshot.notifications || []); this.dirty = structuredClone(snapshot.dirty || {});
         this.nativeRequests = structuredClone(snapshot.nativeRequests || []);
+        this.gameTimeSeconds = gameTimeSeconds;
         this.guardCache.clear(); this.metricCache.clear(); this.last = null;
     }
 }

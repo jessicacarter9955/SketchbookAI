@@ -1,5 +1,22 @@
 # DDS migration checklist · 2026-10-13
 
+## Condizione di sparo e ricarica inventario originali · 2026-10-20
+
+| Passaggio | Stato | Evidenza | Beneficio nel gioco dopo integrazione |
+|---|---|---|---|
+| CanFire originale | 🟢 dati |17 casi indipendenti: munizioni, double cooldown, traversal e flag originali | Sparo autorizzato dalle regole DDS |
+| Server_ReloadWeapon dell'inventario | 🟢 dati |15 casi con caricatore/riserva, rimozione stack e anomalie sorgenti conservate | Munizioni trasferite come nell'originale |
+| Personaggio e armi completi | 🟡 |15–25% fatto,75–85% restante; stima invariata | Equipaggiamento, fuoco e ricarica originali nella scena |
+| Collegamento combattimento → inventario | 🟡 |Timer, callback, istanze e delegate ancora da completare | TastoR con ricarica completa, non sola clip |
+
+751 confronti source /506 inventario PASS;158 test Python /102 JavaScript e
+build editor24 PASS.206 funzioni tradotte /363 bloccate su19 pacchetti letti.
+Il denominatore è569, prima507: cinque letture mirate hanno aggiunto62 funzioni
+al perimetro. Nessuna nuova scansione, export, installazione o apertura di UE.
+Dettagli, failure e limiti in [character-weapons](ue2three-character-weapons.md).
+La scheda integrata resta in errore: nessun nuovo screenshot o verde visivo.
+Il report continua a distinguere questi confronti offline dai sistemi giocabili.
+
 ## Compilazione incrementale e dipendenze native · 2026-10-19
 
 Implementata cache IR separata da runtime/QA, con invalidazione delle prove a

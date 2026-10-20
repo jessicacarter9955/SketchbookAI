@@ -33,6 +33,23 @@ class SourceObjectTests(unittest.TestCase):
         component=root['components'][0];self.assertEqual(component['scs_node_export_index'],3)
         self.assertEqual(component['source_overrides'],{'Count':123});self.assertEqual(component['native_template_fields'],['bReplicates'])
         self.assertEqual(len(component['template_sha256']),64)
+        self.assertTrue(root['component_lookup_complete'])
+
+    def test_unresolved_class_and_unavailable_template_are_distinct_lookup_blockers(self):
+        packages=self.packages();packages.pop('/Game/Component')
+        root=actor_graph(packages,self.sources())['roots']['/Game/Pawn']
+        self.assertFalse(root['component_lookup_complete'])
+        self.assertEqual(root['unresolved_component_classes'],[['/Game/Component','Component_C']])
+        packages=self.packages();packages['/Game/Pawn'].exports[3]['Data']=data(Count=True)
+        root=actor_graph(packages,self.sources())['roots']['/Game/Pawn']
+        self.assertTrue(root['component_lookup_complete'])
+        self.assertEqual(root['component_blocked'][0]['package'],'/Game/Component')
+
+    def test_nontrivial_original_construction_prevents_claiming_a_complete_component_lookup(self):
+        packages=self.packages();packages['/Game/Pawn'].exports.append({'ObjectName':'UserConstructionScript','OuterIndex':1,
+            'ScriptBytecode':[node('EX_FinalFunction',StackNode=-1,Parameters=[])]})
+        root=actor_graph(packages,self.sources())['roots']['/Game/Pawn']
+        self.assertFalse(root['component_lookup_complete']);self.assertTrue(root['unresolved_construction_script'])
 
     def test_corrupt_ownership_cycles_and_mismatched_templates_reject_the_graph(self):
         for failure in ['node_owner','template_owner','template_class','property_class','property_type','cycle','all_nodes']:

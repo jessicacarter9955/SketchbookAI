@@ -73,6 +73,26 @@ export function sourceObjectValid(context, reference, schema) {
     return true;
 }
 
+export function sourceFindComponent(context, reference, actorSchema, packageName, classObject, classIndex) {
+    sourceObjectValid(context, reference, actorSchema);
+    const descriptor = actor(context, reference);
+    if (descriptor.component_lookup_complete !== true)
+        throw new Error('Original component lookup includes unresolved classes or lifecycle');
+    if (descriptor.unbound_component_classes?.some(identity => JSON.stringify(identity) === JSON.stringify([packageName,classObject])))
+        throw new Error('Original matching component has an unavailable template binding');
+    const candidates = Object.values(context.components || {}).filter(component =>
+        component.reference?.actor_id === reference.actor_id
+        && JSON.stringify(component.reference.declared_class) === JSON.stringify([packageName,classObject]));
+    // UE uses the first matching component. Multiple matches and dynamic
+    // construction are not admitted until their original order is represented.
+    if (candidates.length > 1) throw new Error('Original component lookup order is unavailable');
+    if (!candidates.length) return null;
+    const component = candidates[0];
+    sourceQueryReceiver(context, component.reference, packageName, classObject);
+    if (component.class_export_index !== classIndex) throw new Error('Original component lookup class differs');
+    return structuredClone(component.reference);
+}
+
 export class SourceActorBindings {
     constructor(report) {
         this.report = report;
@@ -112,6 +132,8 @@ export class SourceActorBindings {
             components.set(component.package, structuredClone(component));
         }
         this.root = {reference:{realm:this.realm,actor_id:'actor-1',declared_class:['/Script/Engine','Actor']},
+            component_lookup_complete:graph.component_lookup_complete === true,
+            unbound_component_classes:(graph.component_blocked || []).map(row=>[row.package,row.class_object]),
             source_class:sourceClass, class_object:graph.object, native_base:structuredClone(graph.native_base), force_net_update_override:false};
         this.graph = graph; this.target = target; this.components = components;
         return this.describe();
@@ -124,6 +146,7 @@ export class SourceActorBindings {
         if (!this.root) return undefined;
         const component = this.components.get(packageName);
         return {mode:'standalone',net_drivers:0,realm:this.realm,source_package:packageName,
+            world_context_bound:this.root.source_class === packageName || !!component,
             actors:{[this.root.reference.actor_id]:structuredClone(this.root)},
             components:Object.fromEntries([...this.components.values()].map(component => [component.variable,{
                 reference:this.componentReference(component.package), source_sha256:component.source.source_sha256,

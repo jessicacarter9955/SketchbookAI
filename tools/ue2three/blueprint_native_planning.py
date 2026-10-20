@@ -42,6 +42,8 @@ def adapter_present(identity):
     # Presence is not acceptance of every receiver, overload or parameter shape.
     return (identity[:2] == ('/Script/Engine', 'KismetMathLibrary') and identity[-1] in MATH_CALLS
             or identity == ('/Script/Engine', 'ActorComponent', 'GetOwner')
+            or identity == ('/Script/Engine', 'Actor', 'GetComponentByClass')
+            or identity == ('/Script/Engine', 'KismetSystemLibrary', 'GetGameTimeInSeconds')
             or identity == ('/Script/Engine', 'KismetSystemLibrary', 'IsValid')
             or identity == ('/Script/Engine', 'NetPushModelHelpers', 'MarkPropertyDirtyFromRepIndex')
             or identity[:2] == ('/Script/Engine', 'KismetArrayLibrary')

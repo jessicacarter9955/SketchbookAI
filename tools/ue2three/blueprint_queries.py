@@ -3,6 +3,53 @@ from blueprint_types import import_path, property_schema
 from blueprint_effects import variable
 
 
+def component_access(value, package, owner, reads, outputs, depth):
+    from blueprint_migration import kind, memory_size, field, BlueprintTranslationError as Error
+    call = value.get('ContextExpression', {})
+    path = import_path(package, call.get('StackNode'))
+    if path == ('/Script/Engine', 'Actor', 'GetComponentByClass') and kind(call) == 'EX_FinalFunction':
+        target, schema = variable(value.get('ObjectExpression', {}), package, owner, reads, outputs, depth)
+        args = call.get('Parameters', [])
+        if (schema.get('reference_kind') != 'runtime_actor' or len(args) != 1 or kind(args[0]) != 'EX_ObjectConst'
+                or value.get('Offset') != memory_size(call, package=package)):
+            raise Error('Unresolved original GetComponentByClass receiver, class or context layout')
+        identity = import_path(package, args[0].get('Value'))
+        source = getattr(package, 'source_packages', {}).get((identity or (None,))[0])
+        from blueprint_objects import class_metadata
+        meta = class_metadata(source) if source else None
+        if not meta or [meta['object']] != list(identity[1:]) or meta['native_base'] != ['/Script/Engine', 'ActorComponent']:
+            raise Error('GetComponentByClass requires an available original direct component class')
+        return {'op': 'native_find_component', 'target': target, 'actor_schema': schema,
+                'package': identity[0], 'class_object': identity[1], 'class_export_index': meta['export_index']}
+    if kind(call) != 'EX_InstanceVariable': return None
+    target, target_schema = variable(value.get('ObjectExpression', {}), package, owner, reads, outputs, depth)
+    if target_schema.get('reference_kind') != 'runtime_component': return None
+    identity = tuple(target_schema['class'])
+    pointer = call.get('Variable', {}).get('New', {})
+    source = getattr(package, 'source_packages', {}).get(identity[0])
+    from blueprint_objects import class_metadata
+    meta = class_metadata(source) if source else None
+    if (not meta or meta['object'] != identity[1] or import_path(package, pointer.get('ResolvedOwner')) != identity
+            or value.get('RValuePointer') != call.get('Variable')
+            or value.get('Offset') != memory_size(call, package=package)):
+        raise Error('Original component property owner or context layout differs')
+    name = field(call.get('Variable'))
+    props = [prop for prop in source.export(meta['export_index']).get('LoadedProperties', []) if prop.get('Name') == name]
+    schema = property_schema(source, props[0]) if len(props) == 1 else None
+    if not schema: raise Error('Original component property schema is unavailable')
+    return {'op': 'component_member', 'target': target, 'package': identity[0], 'class_object': identity[1],
+            'class_export_index': meta['export_index'], 'field': name, 'schema': schema}
+
+
+def game_time(value, package, owner):
+    from blueprint_migration import kind, BlueprintTranslationError as Error
+    if import_path(package, value.get('StackNode')) != ('/Script/Engine', 'KismetSystemLibrary', 'GetGameTimeInSeconds'): return None
+    args = value.get('Parameters')
+    if not isinstance(args, list) or len(args) != 1 or kind(args[0]) != 'EX_Self' or not package.export(owner):
+        raise Error('Original game clock requires the current source world context')
+    return {'op': 'native_game_time', 'source_owner_index': owner}
+
+
 def object_validity(value, package, owner, reads, outputs, depth):
     from blueprint_migration import BlueprintTranslationError as Error
     if import_path(package, value.get('StackNode')) != ('/Script/Engine', 'KismetSystemLibrary', 'IsValid'): return None

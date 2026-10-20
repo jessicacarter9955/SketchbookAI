@@ -5,6 +5,28 @@ import { BlueprintActorRuntime, bindBlueprintInputs } from '../src/editor/ue2thr
 import { verifyLiveBlueprintInputs } from '../src/editor/ue2three-live-verification.mjs';
 import { evaluateNativeMath } from '../src/editor/ue2three-native-math.mjs';
 
+test('typed persistent event arrays retain copies, resize defaults and transactional frames',()=>{
+    const element={type:'IntProperty',default:0},schema={type:'ArrayProperty',element,default:[]};
+    const target={op:'get',scope:'persistent',frame:2,field:'Items'},output={...target,field:'Out'};
+    const c=value=>({op:'constant',value}),ev=value=>({op:'evaluate',value});
+    const steps=[ev({op:'array_literal',target,element,elements:[c(1),c(2)]}),
+        ev({op:'array_mutate',operation:'Array_Append',target,element,value:target}),
+        ev({op:'array_get',array:target,index:c(1),target:output,element}),
+        ev({op:'array_mutate',operation:'Array_Remove',target,element,index:c(0)}),
+        ev({op:'array_mutate',operation:'Array_Set',target,element,index:c(4),value:c(9),resize:c(true)})];
+    const program={schema_version:1,status:'translated_straight_line',input_fields:[],output_fields:[],
+        persistent_types:{'2':{Items:'ArrayProperty',Out:'IntProperty'}},persistent_schemas:{'2':{Items:schema}},
+        steps:[...steps,{op:'return',value:c(null)}]};
+    const frames={'2':{Items:[88],Out:-1}},before=structuredClone(frames);
+    const result=executeBlueprint(program,{},{},{frames});
+    assert.deepEqual(result.frames['2'].Items,[2,1,2,0,9]);assert.equal(result.frames['2'].Out,2);
+    assert.deepEqual(frames,before);
+    const cleared=executeBlueprint({...program,steps:[...steps,ev({op:'array_mutate',operation:'Array_Clear',target,element}),{op:'return',value:c(null)}]});
+    assert.deepEqual(cleared.frames['2'].Items,[]);
+    assert.throws(()=>executeBlueprint({...program,persistent_schemas:{}},{},{},{frames}),/typed source array/);
+    assert.deepEqual(frames,before);
+});
+
 const constant = value => ({op:'constant',value});
 const get = (field,scope='self') => ({op:'get',field,scope});
 const schema = {type:'StructProperty',member_order:['Name','HP'],fields:{Name:{type:'NameProperty',default:'None'},HP:{type:'DoubleProperty',default:0}},default:{Name:'None',HP:-1}};

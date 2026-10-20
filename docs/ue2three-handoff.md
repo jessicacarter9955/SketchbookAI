@@ -1,5 +1,64 @@
 # ue2three saved handoff · 2026-10-18
 
+## Character/weapons continuation · 2026-10-20
+
+Latest user requests finishing character/weapons and pushing verified greens.
+Full area remains YELLOW15–25%, remaining75–85%; do not call it complete.
+New source-data checkpoints:17 original CanFire cases and15 original
+Server_ReloadWeapon cases PASS. Total751 source cases /506 inventory cases.
+158 Python /102 JavaScript regression tests and editor build24 PASS.
+editor.html marker ue-source-weapon-prerequisites-24. No new visual acceptance:
+read-only integrated-browser inventory still shows connection-error tabs;
+prior Browser Use protocol block remains. Do not retry/bypass that page via
+other tools, new tabs, external browsers or CDP until user reload/state changes.
+
+Source report 0c795d9ba4c41ed03517fdbb4d2c10cf55c422ba579e75ab68b07303f231a44b;
+compiler aa4362578f2b4346109128f2e9876b270fe8d5e35e51400305aab60c63a6d37c;
+progress 54b4880e714a5f2d12b3719fe1b1528979b4dbb213976fcccfb1ec8b697f36ef.
+206 translated /363 blocked,83 event helpers,62 declarations,6 no-op functions,
+64 empty callbacks. Denominator569 rather than507: five targeted reads added
+62 original functions. Parsed19 packages; uncached257. No new scan/export/UE.
+New parsed dependency classes: AC_TraversalLogic, AC_FoleyEvents,
+BPC_Appearance_Fixers, BPC_Camera_Fixers, AC_SmartObjectAnimation. Source Camera
+template has an unrepresented override type; lookup for its own class rejects.
+Known distinct class lookups still work. Unresolved class ancestry, nontrivial
+UserConstructionScript or ambiguous match ordering reject globally as needed.
+
+Added reusable typed direct-source-class GetComponentByClass, read-only source
+component properties, and explicit standalone double game time. Game clock uses
+simulation steps, accepts0 for pause, preserves world time on player change,
+and is in snapshots. Missing world context rejects. Native engine contracts were
+checked in installed UE5.7 ScriptCore.cpp, Actor.h and KismetSystemLibrary.cpp,
+without launching Unreal. Null struct component reads reject until ClearValue
+semantics are supported; primitive/object/array empty values remain typed.
+
+Persistent event structs and arrays now support admitted typed member writes,
+array reads/copies/mutations and output storage. Original inventory reload now
+executes with its original state changes; combat timer/lifecycle NOT connected.
+Found/fixed compiler TypeError unhashable dict: event compaction treated every
+target field as a jump address. Only jump/branch/push_flow targets remap now.
+Struct writes reacquire property storage after nested RHS calls, preserving VM
+addresses across JS object replacement. Regression cases cover these contracts.
+
+Two independent reload expectations initially failed: empty/wrong-ammo search.
+Checked ORIGINAL FindAmmoInCarry bytecode: instruction4 sets FoundIndex=-1,
+instruction7 immediately overwrites it with0. Failed search thus reports true,
+qty0,slot0; Server_ReloadWeapon can remove the first carry stack even if wrong.
+Preserved this source behavior and corrected expectations from those statements;
+do not silently fix DDS rules. Also preserve source HP=-1 slot reconstruction,
+first-stack-only consumption, negative inputs and double precision boundaries.
+
+NEXT: original InitializeCombatComponent/BeginPlay + cross-object delegate
+bindings (currently blocked first by actor casts/controller lookup), source
+weapon actor construction, native mesh/socket setup, TryFire/Server_Fire,
+combat reload timer/callback, then scene input integration and visual tests.
+Current live1/2/R/fire still mostly presentation. Source InitializeWeapon also
+applies DT_Items EquipLocationOffset/EquipRotationOffset to WeaponMesh, in
+addition to the hand socket; current scene does not execute that initialization.
+Seven original weapon actor functions remain blocked. Do not hand-author game
+rules or wire inventory reload directly toR while skipping combat source flow.
+Animations1:1 remains deferred; lighting last. See character-weapons.md.
+
 ## Compilazione incrementale e priorità native · 2026-10-19
 
 Latest user asks for drastic acceleration of the reusable converter.

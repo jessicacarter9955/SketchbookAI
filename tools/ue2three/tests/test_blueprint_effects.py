@@ -103,6 +103,18 @@ class SourceEffectsTests(unittest.TestCase):
         frame['LoadedProperties'][0]={'Name':'Stored','SerializedType':'StructProperty','Struct':-3}
         result=translate_package(p);self.assertFalse(result['functions']);self.assertIn('persistent source schema',result['blocked'][0]['reason'])
 
+    def test_source_array_get_can_copy_into_the_original_typed_event_frame(self):
+        p=self.package();function=p.exports[1];function['ObjectName']='ExecuteUbergraph_Original'
+        function['LoadedProperties']=[dict(p.exports[0]['LoadedProperties'][0]),{'Name':'Result','SerializedType':'IntProperty'}]
+        p._active_function=function;p.imports[0]['ObjectName']='Array_Get'
+        call=node('EX_FinalFunction',StackNode=-1,Parameters=[var('Items',2,True),node('EX_IntZero'),var('Result',2,True)])
+        context=node('EX_Context',ObjectExpression=node('EX_ObjectConst',Value=-4),ContextExpression=call,Offset=memory_size(call))
+        result=expression(context,set(),set(),package=p,owner=1)
+        self.assertEqual(result['array'],{'op':'get','scope':'persistent','frame':2,'field':'Items'})
+        self.assertEqual(result['target'],{'op':'get','scope':'persistent','frame':2,'field':'Result'})
+        call['Parameters'][2]['Variable']['New']['ResolvedOwner']=1
+        with self.assertRaisesRegex(BlueprintTranslationError,'another owner'): expression(context,set(),set(),package=p,owner=1)
+
     def test_array_adapter_rejects_wrong_owner_offset_arity_or_native_library(self):
         for change in ('owner', 'offset', 'arity', 'library'):
             p = self.package(); e = self.array_call(p)

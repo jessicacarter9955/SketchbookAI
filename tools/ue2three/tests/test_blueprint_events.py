@@ -5,6 +5,27 @@ from umg_migration import Package
 
 
 class BlueprintEventsTests(unittest.TestCase):
+    def test_persistent_struct_members_keep_typed_frame_storage_and_control_flow_targets(self):
+        wrapper={'ObjectName':'Write','OuterIndex':3,'ScriptBytecode':[
+            node('EX_LocalFinalFunction',StackNode=2,Parameters=[node('EX_IntConst',Value=10)]),
+            node('EX_Return',ReturnExpression=node('EX_Nothing')),node('EX_EndOfScript')]}
+        graph={'ObjectName':'ExecuteUbergraph_Test','OuterIndex':3,'ScriptBytecodeSize':45,'LoadedProperties':[
+            {'Name':'EntryPoint','SerializedType':'IntProperty','PropertyFlags':'CPF_Parm'},
+            {'Name':'Item','SerializedType':'StructProperty','Struct':-1}], 'ScriptBytecode':[
+            node('EX_ComputedJump',CodeOffsetExpression=node('EX_LocalVariable',Variable={'New':{'Path':['EntryPoint'],'ResolvedOwner':2}})),
+            node('EX_Let',Variable=node('EX_StructMemberContext',StructMemberExpression={'New':{'Path':['Count'],'ResolvedOwner':-1}},
+                StructExpression=node('EX_LocalVariable',Variable={'New':{'Path':['Item'],'ResolvedOwner':2}})),Expression=node('EX_IntConst',Value=5)),
+            node('EX_Return',ReturnExpression=node('EX_Nothing')),node('EX_EndOfScript')]}
+        package=Package({'Exports':[wrapper,graph,{'ObjectName':'Test_C','LoadedProperties':[]}],
+                         'Imports':[{'ObjectName':'Original','OuterIndex':-2},{'ObjectName':'/Game/Item','ClassName':'Package'}]})
+        schema={'type':'StructProperty','source':'/Game/Item','fields':{'Count':{'type':'IntProperty','default':-1}},'default':{'Count':-1}}
+        result=translate_package(package,{('/Game/Item','Original'):schema})
+        event=result['event_programs']['ExecuteUbergraph_Test@10']
+        self.assertEqual(event['steps'][0]['target'],1)
+        self.assertEqual(event['steps'][1]['target'],{'op':'get','scope':'persistent','frame':2,'field':'Item'})
+        self.assertEqual(event['persistent_schemas']['2']['Item'],schema)
+        self.assertIn('Write',result['functions'])
+
     def package(self):
         # 0 push(5), 5 computed(10), 15 let(19), 34 pop(1),
         # 35 unsupported-context(24), 59 return(2), 61 end(1).

@@ -1,7 +1,7 @@
 // Executes normalized source-derived instructions; never evaluates generated JS.
 import { evaluateNativeMath } from './ue2three-native-math.mjs';
 import { validActorReference, validComponentReference, sourceComponentOwner, sourceForceNetUpdate,
-    sourceQueryReceiver, sourceObjectValid } from './ue2three-objects.mjs';
+    sourceQueryReceiver, sourceObjectValid, sourceFindComponent } from './ue2three-objects.mjs';
 const owns = (object, key) => object != null && Object.hasOwn(object, key);
 const safeField = key => typeof key === 'string' && key.length > 0 && !['__proto__', 'constructor', 'prototype'].includes(key);
 const validPrimitive = (type, value) => type === 'BoolProperty' && typeof value === 'boolean'
@@ -102,8 +102,54 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
         const schema = scope === 'persistent' ? program.persistent_schemas?.[frame]?.[field] : program.schemas?.[scope]?.[field];
         if (schema) validateSchema(schema, value);
     };
+    const schemaFor = target => target?.scope === 'persistent' ? program.persistent_schemas?.[target.frame]?.[target.field]
+        : program.schemas?.[target?.scope]?.[target?.field];
     const evaluate = (expression, depth = 0) => {
         if (!expression || depth > 48) throw new Error('Invalid Blueprint expression');
+        if (expression.op === 'native_game_time') {
+            const context = notifications.native;
+            if (!context || context.mode !== 'standalone' || context.net_drivers !== 0
+                || context.world_context_bound !== true
+                || expression.source_owner_index !== program.source_owner_index
+                || context.source_owner_index !== program.source_owner_index
+                || typeof context.game_time_seconds !== 'number' || !Number.isFinite(context.game_time_seconds)
+                || context.game_time_seconds < 0)
+                throw new Error('Original world game time is unavailable');
+            return context.game_time_seconds;
+        }
+        if (expression.op === 'native_find_component') {
+            const reference = evaluate(expression.target,depth+1);
+            validateSchema(expression.actor_schema,reference);
+            if (reference === null) {
+                trace.push({source_index:sourceIndex,op:'warning',message:'Accessed None: GetComponentByClass context skipped'});
+                return null;
+            }
+            return sourceFindComponent(notifications.native,reference,expression.actor_schema,
+                expression.package,expression.class_object,expression.class_export_index);
+        }
+        if (expression.op === 'component_member') {
+            const reference = evaluate(expression.target,depth+1);
+            if (reference === null) {
+                if (expression.schema?.type === 'StructProperty')
+                    throw new Error('Unverified original struct ClearValue for a null component context');
+                validateSchema(expression.schema,expression.schema?.default);
+                trace.push({source_index:sourceIndex,op:'warning',message:'Accessed None: original component property default'});
+                return structuredClone(expression.schema.default);
+            }
+            const descriptor = sourceQueryReceiver(notifications.native,reference,expression.package,expression.class_object);
+            const query = owns(notifications.queries,expression.package) ? notifications.queries[expression.package] : null;
+            if (!safeField(expression.field) || !query || query.source_sha256 !== descriptor.source_sha256
+                || expression.class_export_index !== descriptor.class_export_index
+                || JSON.stringify(query.field_schemas?.[expression.field]) !== JSON.stringify(expression.schema))
+                throw new Error('Original component property schema or source differs');
+            const ownReceiver = expression.package === notifications.native?.source_package;
+            if (!ownReceiver && notifications.queryStack.includes(expression.package))
+                throw new Error('Reentrant component property access requires shared active storage');
+            const storage = ownReceiver ? instance : query.state;
+            if (!owns(storage,expression.field)) throw new Error('Original component property storage is unavailable');
+            validateSchema(expression.schema,storage[expression.field]);
+            return structuredClone(storage[expression.field]);
+        }
         if (expression.op === 'native_object_valid') {
             const reference=evaluate(expression.target,depth+1);
             validateSchema(expression.schema,reference);
@@ -132,8 +178,8 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                     const value=evaluate(binding.value,depth+1);validateSchema(binding.schema,value);
                     args[binding.parameter]=structuredClone(value);
                 } else if (binding.mode === 'output' && binding.target?.op === 'get' && safeField(binding.target.field)
-                    && ['local','self'].includes(binding.target.scope)) {
-                    const owner=ownerFor(binding.target.scope);
+                    && ['local','self','persistent'].includes(binding.target.scope)) {
+                    const owner=ownerFor(binding.target.scope,binding.target.frame);
                     if (owns(owner,binding.target.field)) args[binding.parameter]=structuredClone(owner[binding.target.field]);
                     targets.push(binding);
                 } else throw new Error('Unsupported original component query binding');
@@ -145,9 +191,9 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 throw new Error('Original component query attempted a state change or effect');
             for (const binding of targets) {
                 if (!owns(nested.outputs,binding.parameter)) throw new Error('Missing original component query output');
-                checkType(binding.target.scope,binding.target.field,nested.outputs[binding.parameter]);
+                checkType(binding.target.scope,binding.target.field,nested.outputs[binding.parameter],binding.target.frame);
             }
-            for (const binding of targets) ownerFor(binding.target.scope)[binding.target.field]=structuredClone(nested.outputs[binding.parameter]);
+            for (const binding of targets) ownerFor(binding.target.scope,binding.target.frame)[binding.target.field]=structuredClone(nested.outputs[binding.parameter]);
             trace.push({source_index:sourceIndex,op:'component_query',package:expression.package,function:expression.function,
                 outputs:structuredClone(nested.outputs),trace:nested.trace});
             return nested.value;
@@ -244,8 +290,9 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
         }
         if (expression.op === 'array_mutate') {
             const target = expression.target;
-            if (target?.op !== 'get' || !safeField(target.field) || !['local', 'self'].includes(target.scope)
-                || JSON.stringify(program.schemas?.[target.scope]?.[target.field]?.element) !== JSON.stringify(expression.element))
+            if (target?.op !== 'get' || !safeField(target.field) || !['local', 'self', 'persistent'].includes(target.scope)
+                || schemaFor(target)?.type !== 'ArrayProperty'
+                || JSON.stringify(schemaFor(target)?.element) !== JSON.stringify(expression.element))
                 throw new Error('Unresolved typed source array mutation');
             const array = evaluate(target, depth+1), operation = expression.operation;
             if (!Array.isArray(array)) throw new Error('Invalid source array mutation');
@@ -282,8 +329,8 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             return result;
         }
         if (expression.op === 'array_literal') {
-            const target = expression.target, schema = program.schemas?.[target?.scope]?.[target?.field];
-            if (target?.op !== 'get' || !safeField(target.field) || !['local', 'self'].includes(target.scope)
+            const target = expression.target, schema = schemaFor(target);
+            if (target?.op !== 'get' || !safeField(target.field) || !['local', 'self', 'persistent'].includes(target.scope)
                 || schema?.type !== 'ArrayProperty' || JSON.stringify(schema.element) !== JSON.stringify(expression.element)
                 || !Array.isArray(expression.elements) || expression.elements.length > 100000)
                 throw new Error('Unresolved typed source array literal');
@@ -483,10 +530,14 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
         if (step.op === 'set_member') {
             const target = step.target;
             if (target?.op !== 'get' || !safeField(step.field)) throw new Error('Invalid source struct assignment');
-            const structure = evaluate(target), schema = program.schemas?.[target.scope]?.[target.field];
+            const schema = schemaFor(target);
             if (!schema || schema.type !== 'StructProperty' || !owns(schema.fields, step.field)
                 || schema.fields[step.field].type !== step.member_type) throw new Error('Unresolved source struct assignment type');
             const value = evaluate(step.value); validateSchema(schema.fields[step.field], value);
+            // An original nested call can assign this same source property.
+            // Reacquire its storage after evaluating the RHS, as its VM address
+            // still denotes that property rather than an obsolete JS object.
+            const structure = evaluate(target); validateSchema(schema,structure);
             structure[step.field] = structuredClone(value);
             trace.push({source_index: sourceIndex, op: 'set_member', scope: target.scope, field: target.field, member: step.field, value: structuredClone(value)});
             continue;

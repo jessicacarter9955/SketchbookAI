@@ -16,7 +16,7 @@ def variable(value, package, owner, reads, outputs, depth):
     schema = property_schema(package, props[0]) if len(props) == 1 else None
     if not schema: raise Error('Source adapter property schema is unavailable')
     target = expression(value, reads, outputs, depth+1, package, owner)
-    if target['scope'] not in ('self', 'local'): raise Error('Persistent container adapters are not supported')
+    if target['scope'] not in ('self', 'local', 'persistent'): raise Error('Unresolved source property storage')
     return target, schema
 
 
@@ -41,7 +41,7 @@ def array_context(value, package, owner, reads, outputs, depth):
     if name == 'Array_IsValidIndex': return {'op': 'array_valid', 'array': target, 'index': expr(args[1])}
     if name == 'Array_Get':
         output, output_schema = variable(args[2], package, owner, reads, outputs, depth)
-        if output['scope'] != 'local' or output_schema != schema['element']:
+        if output['scope'] not in ('local', 'persistent') or output_schema != schema['element']:
             raise Error('Array_Get output type or source owner differs')
         return {'op': 'array_get', 'array': target, 'index': expr(args[1]), 'target': output, 'element': schema['element']}
     # Preserve the already published Set/Add IR for source instance arrays.

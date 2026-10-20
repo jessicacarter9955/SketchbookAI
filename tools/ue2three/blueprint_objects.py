@@ -54,6 +54,12 @@ def actor_graph(packages, sources):
                     or import_path(package, script.get('ClassIndex')) != ('/Script/Engine', 'SimpleConstructionScript')):
                 raise ValueError('Unresolved original construction script')
             script_data = package.props(script)
+            from blueprint_migration import kind
+            constructors = [e for e in package.exports if e.get('OuterIndex') == meta['export_index']
+                            and e.get('ObjectName') == 'UserConstructionScript' and e.get('ScriptBytecode')]
+            construction_effects = any(kind(step) not in ('EX_Tracepoint', 'EX_WireTracepoint', 'EX_Nothing', 'EX_EndOfScript')
+                                       and not (kind(step) == 'EX_Return' and kind(step.get('ReturnExpression', {})) == 'EX_Nothing')
+                                       for constructor in constructors for step in constructor['ScriptBytecode'])
             all_nodes, roots_list = script_data.get('AllNodes'), script_data.get('RootNodes')
             if (not isinstance(all_nodes, list) or not isinstance(roots_list, list) or len(all_nodes) > 10000
                     or any(type(i) is not int for i in all_nodes) or len(set(all_nodes)) != len(all_nodes)):
@@ -70,12 +76,16 @@ def actor_graph(packages, sources):
                 reachable.add(node_index); pending.extend(package.props(node).get('ChildNodes', []))
             if reachable != set(all_nodes): raise ValueError('Original construction-node lists differ')
             fields = {p['Name']: p for p in cls.get('LoadedProperties', [])}
-            components, component_blocked, used = [], [], set()
+            components, component_blocked, used, unresolved_classes = [], [], set(), []
             for index in sorted(reachable):
                 data = package.props(package.export(index)); identity = import_path(package, data.get('ComponentClass'))
-                if not identity or identity[0] not in packages: continue
+                if not identity: raise ValueError('Unresolved original construction component class')
+                if identity[0] not in packages:
+                    if not identity[0].startswith('/Script/'): unresolved_classes.append(list(identity))
+                    continue
                 source = packages[identity[0]]; source_meta = class_metadata(source)
-                if not source_meta or source_meta['native_base'] != ['/Script/Engine', 'ActorComponent']: continue
+                if not source_meta or source_meta['native_base'] != ['/Script/Engine', 'ActorComponent']:
+                    unresolved_classes.append(list(identity)); continue
                 variable_name = data.get('InternalVariableName'); template = package.export(data.get('ComponentTemplate'))
                 if (not isinstance(variable_name, str) or variable_name in ('__proto__', 'constructor', 'prototype')
                         or variable_name in used or fields.get(variable_name, {}).get('SerializedType') != 'ObjectProperty'
@@ -94,13 +104,17 @@ def actor_graph(packages, sources):
                         if not schema: raise ValueError('Unresolved original component override type')
                         overrides[value['Name']] = serialized_value(package, prop, schema, value)
                 except (ValueError, KeyError, TypeError) as error:
-                    component_blocked.append({'variable': variable_name, 'reason': str(error)}); continue
+                    component_blocked.append({'variable': variable_name, 'package': identity[0],
+                                              'class_object': identity[-1], 'reason': str(error)}); continue
                 components.append({'variable': variable_name, 'package': identity[0], 'class_object': identity[-1],
                     'class_export_index': source_meta['export_index'], 'scs_node_export_index': index,
                     'template_export_index': data['ComponentTemplate'], 'template_sha256': digest(template),
                     'source_overrides': overrides, 'native_template_fields': native_fields, 'source': sources[identity[0]]})
             roots[name] = {**meta, 'source': sources[name], 'scs_export_index': script_index,
-                           'scs_sha256': digest(script), 'components': components, 'component_blocked': component_blocked}
+                           'scs_sha256': digest(script), 'components': components, 'component_blocked': component_blocked,
+                           'component_lookup_complete': not unresolved_classes and not construction_effects,
+                           'unresolved_construction_script': construction_effects,
+                           'unresolved_component_classes': unresolved_classes}
         except (ValueError, TypeError, KeyError) as error: blocked.append({'package': name, 'reason': str(error)})
     return {'schema_version': 1, 'roots': roots, 'blocked': blocked,
             'scope': 'Original SCS component ownership only; native template behavior, construction scripts and BeginPlay are not executed'}

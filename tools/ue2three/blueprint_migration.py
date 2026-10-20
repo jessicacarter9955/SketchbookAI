@@ -161,6 +161,9 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         from blueprint_objects import native_actor_context
         adapted = native_actor_context(value, package, owner, reads, outputs, depth)
         if adapted is not None: return adapted
+        from blueprint_queries import component_access
+        adapted = component_access(value, package, owner, reads, outputs, depth)
+        if adapted is not None: return adapted
         from blueprint_queries import component_query
         adapted = component_query(value, package, owner, reads, outputs, depth)
         if adapted is not None: return adapted
@@ -187,6 +190,9 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         return multicast(value, package, owner, reads, outputs, depth)
     if token == 'EX_CallMath':
         if package:
+            from blueprint_queries import game_time
+            adapted = game_time(value, package, owner)
+            if adapted is not None: return adapted
             from blueprint_queries import object_validity
             adapted = object_validity(value, package, owner, reads, outputs, depth)
             if adapted is not None: return adapted
@@ -403,12 +409,14 @@ def translate_function(export, package=None, entry_offset=None):
                 name = field(pointer)
                 if not schema or name not in schema['fields']: raise BlueprintTranslationError('Unsupported assignment target: unresolved source struct')
                 target = expression(variable.get('StructExpression'), reads, outputs, package=package, owner=export.get('OuterIndex'))
-                if target.get('op') != 'get' or target.get('scope') not in ('local', 'self'):
-                    raise BlueprintTranslationError('Unsupported nested/persistent struct assignment target')
+                if target.get('op') != 'get' or target.get('scope') not in ('local', 'self', 'persistent'):
+                    raise BlueprintTranslationError('Unsupported nested struct assignment target')
                 root_pointer = variable.get('StructExpression', {}).get('Variable', {}).get('New', {})
                 root_owner = package.export(root_pointer.get('ResolvedOwner'))
                 root_prop = next((p for p in (root_owner or {}).get('LoadedProperties', []) if p.get('Name') == target['field']), {})
-                if root_owner is not (export if target['scope'] == 'local' else package.export(export.get('OuterIndex'))) or property_schema(package, root_prop) != schema:
+                expected_owner = export if target['scope'] in ('local', 'persistent') else package.export(export.get('OuterIndex'))
+                if (root_owner is not expected_owner or property_schema(package, root_prop) != schema
+                        or target['scope'] == 'persistent' and package.export(target.get('frame')) is not export):
                     raise BlueprintTranslationError('Struct assignment target type differs from source member owner')
                 if target['scope'] == 'self': writes.add(target['field'])
                 steps.append({'op': 'set_member', 'target': target, 'field': name, 'member_type': schema['fields'][name]['type'],
@@ -451,7 +459,7 @@ def translate_function(export, package=None, entry_offset=None):
     if reachable is not None:
         compact = {step['source_index']: index for index, step in enumerate(steps)}
         for step in steps:
-            if 'target' in step: step['target'] = compact[step['target']]
+            if step['op'] in ('jump', 'branch', 'push_flow'): step['target'] = compact[step['target']]
     return {'schema_version': 1, 'name': export['ObjectName'] + ('@' + str(entry_offset) if entry_offset is not None else ''), 'status': 'translated_control_flow' if branching else 'translated_straight_line',
             'internal_event_entry': entry_offset is not None, 'event_entry_offset': entry_offset,
             'memory_size_verified': offset if branching else None,
@@ -652,6 +660,8 @@ def translate_package(package, structs=None, tables=None):
     from blueprint_objects import class_metadata
     return {'functions': functions, 'event_programs': events, 'event_blocked': event_blocked, 'delegate_signatures': signatures, 'class_metadata': class_metadata(package),
             'blocked': blocked, 'declarations': declarations, 'default_state': default_state,
+            'field_schemas': {name: schema for name, prop in class_properties.items()
+                              if (schema := property_schema(package, prop)) is not None},
             'unavailable_default_fields': unavailable_defaults, 'counts': counts}
 
 
@@ -850,6 +860,7 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
                              'Typed source struct constants and array Get/Length/IsValidIndex/Set/Remove/Clear/Add/Append execute; other array operations and Unicode FName comparisons remain blocked.',
                              'Original property-dirty witnesses and typed multicast emissions execute locally. Explicitly registered translated handlers run transactionally; original world/UI bindings and network replication are not migrated.',
                              'Original SCS component ownership can bind to a scene actor. GetOwner and ForceNetUpdate require explicit standalone actor bindings with no game/demo net drivers; other object methods and full lifecycle remain blocked.',
+                             'Original direct-class SCS component lookup, typed component field reads and explicit standalone double world game time execute. Unknown construction scripts/class hierarchies, unavailable matching templates and ambiguous component order reject.',
                              'Constant source event entries, flow stacks and per-instance persistent primitive fields execute on fully translated reachable paths.',
                              'Event callbacks with no source effects are counted separately; animation dispatch, native effects and complete game events are not implied.',
                              'Read-only original queries between explicitly bound source SCS components execute transactionally. Cross-object mutation, reentrant component aliases, derived-class virtual overrides, arbitrary dynamic jumps, latent actions and replication remain blocked.',
