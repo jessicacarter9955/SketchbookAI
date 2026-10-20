@@ -87,11 +87,21 @@ export class BlueprintActorRuntime {
             return {...metric, value, current_value: state[metric.current], maximum_value: state[metric.maximum]};
         });
     }
-    snapshot() { return structuredClone({states: this.states, frames: this.frames, bindings: this.bindings, notifications: this.notifications, dirty: this.dirty, nativeRequests:this.nativeRequests}); }
+    snapshot() { return structuredClone({states: this.states, frames: this.frames, bindings: this.bindings, notifications: this.notifications, dirty: this.dirty, nativeRequests:this.nativeRequests, nextBindingId: this.nextBindingId}); }
     restore(snapshot) {
         this.states = structuredClone(snapshot.states); this.frames = structuredClone(snapshot.frames);
         this.bindings = structuredClone(snapshot.bindings || {}); this.notifications = structuredClone(snapshot.notifications || []); this.dirty = structuredClone(snapshot.dirty || {});
         this.nativeRequests = structuredClone(snapshot.nativeRequests || []);
+        // A snapshot may be loaded into a fresh runtime, whose counter starts at 1.
+        // Never reuse an ID held by a restored listener or one already issued here.
+        const restoredIds = Object.values(this.bindings).flatMap(delegates =>
+            Object.values(delegates || {}).flatMap(list =>
+                Array.isArray(list) ? list.map(binding => binding.id) : []));
+        const maxRestoredId = restoredIds.reduce((max, id) =>
+            Number.isSafeInteger(id) && id > max ? id : max, 0);
+        const savedNextId = Number.isSafeInteger(snapshot.nextBindingId) && snapshot.nextBindingId > 0
+            ? snapshot.nextBindingId : 1;
+        this.nextBindingId = Math.max(this.nextBindingId, savedNextId, maxRestoredId + 1);
         this.guardCache.clear(); this.metricCache.clear(); this.last = null;
     }
 }

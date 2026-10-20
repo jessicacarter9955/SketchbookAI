@@ -56,3 +56,41 @@ test('source metric getters use actor state and invalidate cached values', () =>
     const snapshot = runtime.snapshot(); runtime.states['/Game/Vitals'].Stamina = 0;
     runtime.restore(snapshot); assert.equal(runtime.readMetrics()[0].value, 0.25);
 });
+
+test('restored Blueprint delegate listeners keep unique subscription IDs in a fresh runtime', () => {
+    const {report, runtime} = fixture();
+    const data = report.packages['/Game/Vitals'];
+    data.delegate_signatures = {OnChanged: {parameters: []}};
+    data.functions.OnChanged = {parameters: []};
+    runtime.subscribe('/Game/Vitals', 'OnChanged', 'OnChanged');
+    const snapshot = runtime.snapshot();
+    assert.equal(snapshot.nextBindingId, 2);
+
+    const restored = new BlueprintActorRuntime(report, report.project);
+    restored.restore(snapshot);
+    const unsubscribe = restored.subscribe('/Game/Vitals', 'OnChanged', 'OnChanged');
+    const bindings = restored.bindings['/Game/Vitals'].OnChanged;
+    assert.deepEqual(bindings.map(binding => binding.id), [1, 2]);
+    unsubscribe();
+    assert.deepEqual(restored.bindings['/Game/Vitals'].OnChanged.map(binding => binding.id), [1]);
+});
+
+test('legacy Blueprint snapshots and rewinds never reuse an active delegate ID', () => {
+    const {report, runtime} = fixture();
+    const data = report.packages['/Game/Vitals'];
+    data.delegate_signatures = {OnChanged: {parameters: []}};
+    data.functions.OnChanged = {parameters: []};
+    runtime.subscribe('/Game/Vitals', 'OnChanged', 'OnChanged');
+    const legacy = runtime.snapshot();
+    delete legacy.nextBindingId;
+    const restored = new BlueprintActorRuntime(report, report.project);
+    restored.restore(legacy);
+    restored.subscribe('/Game/Vitals', 'OnChanged', 'OnChanged');
+    assert.deepEqual(restored.bindings['/Game/Vitals'].OnChanged.map(binding => binding.id), [1, 2]);
+
+    const oldSnapshot = restored.snapshot();
+    restored.subscribe('/Game/Vitals', 'OnChanged', 'OnChanged'); // ID 3
+    restored.restore(oldSnapshot);
+    restored.subscribe('/Game/Vitals', 'OnChanged', 'OnChanged'); // ID 4
+    assert.deepEqual(restored.bindings['/Game/Vitals'].OnChanged.map(binding => binding.id), [1, 2, 4]);
+});
