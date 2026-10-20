@@ -137,6 +137,12 @@ export async function loadBlueprintActorRuntime(mapPath, project, fetchImpl = fe
     if (response.status === 404) return null;
     if (!response.ok) throw new Error('Source Blueprint programs could not be loaded');
     const report = await response.json();
-    if (!Object.keys(report.character_guards || {}).length) return null;
+    // A source project can expose callable functions and HUD metrics without
+    // declaring movement guards. Keep those translated programs accessible.
+    const hasGuards = Object.keys(report.character_guards || {}).length > 0;
+    const hasMetrics = Array.isArray(report.character_metrics) && report.character_metrics.length > 0;
+    const hasFunctions = Object.values(report.packages || {}).some(data =>
+        Object.keys(data?.functions || {}).length > 0);
+    if (!hasGuards && !hasMetrics && !hasFunctions) return null;
     return new BlueprintActorRuntime(report, project);
 }

@@ -45,7 +45,9 @@ export class Ue2ThreeGameplay {
             status.className = 'ue2three-source-status';
             status.setAttribute('role', 'status');
             status.style.cssText = 'position:fixed;left:18px;bottom:62px;z-index:1000;background:#101923e8;color:#dce9ef;padding:8px 12px;border-radius:6px;font:12px system-ui;max-width:60vw';
-            status.textContent = 'Sprint e salto: vincoli sorgenti attivi. Movimento e consumo stamina ancora in migrazione.';
+            status.textContent = Object.keys(this.blueprints.report.character_guards || {}).length
+                ? 'Sprint e salto: vincoli sorgenti attivi. Movimento e consumo stamina ancora in migrazione.'
+                : 'Programmi Blueprint sorgenti disponibili; vincoli di movimento non ancora migrati.';
             document.body.append(status); this.sourceStatus = status;
             const metrics = document.createElement('div');
             metrics.className = 'ue2three-source-metrics';
@@ -121,7 +123,9 @@ export class Ue2ThreeGameplay {
     }
 
     refreshSourceStatus() {
-        if (this.sourceStatus) this.sourceStatus.textContent = `Vincoli originali di sprint e salto attivi. Stamina: ${this.sourceStamina()}. Movimento e consumo stamina ancora in migrazione.`;
+        if (this.sourceStatus) this.sourceStatus.textContent = Object.keys(this.blueprints?.report.character_guards || {}).length
+            ? `Vincoli originali di sprint e salto attivi. Stamina: ${this.sourceStamina()}. Movimento e consumo stamina ancora in migrazione.`
+            : 'Programmi Blueprint sorgenti disponibili; vincoli di movimento non ancora migrati.';
         this.refreshSourceMetrics();
     }
 

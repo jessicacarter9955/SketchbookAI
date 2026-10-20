@@ -94,3 +94,44 @@ test('legacy Blueprint snapshots and rewinds never reuse an active delegate ID',
     restored.subscribe('/Game/Vitals', 'OnChanged', 'OnChanged'); // ID 4
     assert.deepEqual(restored.bindings['/Game/Vitals'].OnChanged.map(binding => binding.id), [1, 2, 4]);
 });
+
+
+test('metric-only source reports initialize a runtime and expose their original values', async () => {
+    const {report} = fixture();
+    delete report.character_guards;
+    report.packages['/Game/Vitals'].default_state.MaxStamina = 100;
+    report.packages['/Game/Vitals'].functions.GetStamina = {
+        schema_version: 1, status: 'translated_straight_line', input_fields: [],
+        output_fields: ['Value'], self_reads: ['Stamina'], self_writes: [],
+        steps: [{op: 'set', field: 'Value', value: {op: 'get', scope: 'self', field: 'Stamina'}},
+            {op: 'return', value: {op: 'constant', value: null}}]
+    };
+    report.character_metrics = [{
+        package: '/Game/Vitals', function: 'GetStamina', output: 'Value',
+        current: 'Stamina', maximum: 'MaxStamina'
+    }];
+    const path = 'build/local-scenes/ue2three/projects/dds/maps/Island.glb';
+    const runtime = await loadBlueprintActorRuntime(path, report.project, async (url, options) => {
+        assert.equal(url, 'build/local-scenes/ue2three/projects/dds/blueprint-programs.json');
+        assert.equal(options.cache, 'no-store');
+        return {ok: true, status: 200, json: async () => report};
+    });
+    assert.ok(runtime instanceof BlueprintActorRuntime);
+    assert.equal(runtime.readMetrics()[0].value, 100);
+    runtime.states['/Game/Vitals'].Stamina = 27.5;
+    assert.equal(runtime.readMetrics()[0].value, 27.5);
+});
+
+test('callable source programs without movement guards remain available; empty reports do not', async () => {
+    const {report} = fixture();
+    delete report.character_guards;
+    const path = 'build/local-scenes/ue2three/projects/dds/maps/Island.glb';
+    const load = payload => loadBlueprintActorRuntime(path, report.project, async () => ({
+        ok: true, status: 200, json: async () => payload
+    }));
+    const runtime = await load(report);
+    assert.ok(runtime instanceof BlueprintActorRuntime);
+    assert.equal(runtime.call('/Game/Vitals', 'CanSprint').outputs.Allowed, true);
+    assert.equal(await load({...report, packages: {'/Game/Vitals': {default_state: {Stamina: 100}, functions: {}}}}), null);
+    assert.equal(await loadBlueprintActorRuntime(path, report.project, async () => ({ok: false, status: 404})), null);
+});
