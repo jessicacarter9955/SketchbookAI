@@ -123,7 +123,12 @@ export function bindBlueprintInputs(player, runtime, onResult = () => {}) {
     return {
         enforceHeld() {
             for (const action of Object.keys(runtime.report.character_guards || {}))
-                if (player.actions[action]?.isPressed) wrapped.call(player, action, true);
+                if (player.actions[action]?.isPressed) {
+                    let allowed = false;
+                    try { allowed = runtime.checkAction(action); onResult(runtime.last); }
+                    catch (error) { onResult({action, allowed: false, error: error.message}); }
+                    if (!allowed) original.call(player, action, false);
+                }
         },
         dispose() { if (player.triggerAction === wrapped) player.triggerAction = original; }
     };
