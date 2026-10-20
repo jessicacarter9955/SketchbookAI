@@ -8,10 +8,12 @@ export const SHOP_OFFERS=Object.freeze({
     medkit:{name:'Kit medico',quantity:1,price:45}
 });
 const bounded = (value, fallback, max) => Number.isFinite(value) ? Math.max(0,Math.min(max,Math.floor(value))) : fallback;
+// Damage and vitality can be fractional: rounding them on load adds unintended damage.
+const boundedHealth = (value, fallback, max) => Number.isFinite(value) ? Math.max(0,Math.min(max,value)) : fallback;
 export class DdsGameState {
     constructor(saved) {
         const data = saved?.version===1 ? saved : {};
-        this.health=bounded(data.health,100,100); this.medkits=bounded(data.medkits,2,10);
+        this.health=boundedHealth(data.health,100,100); this.medkits=bounded(data.medkits,2,10);
         this.ammo=Object.fromEntries(Object.entries(WEAPONS).map(([id,w])=>[id,{
             magazine:bounded(data.ammo?.[id]?.magazine,w.capacity,w.capacity),
             reserve:bounded(data.ammo?.[id]?.reserve,w.reserve,999)
@@ -19,10 +21,10 @@ export class DdsGameState {
         this.owned=Array.isArray(data.owned) ? [...new Set(data.owned.filter(id=>typeof id==='string' && Object.hasOwn(WEAPONS,id)))] : ['rifle','pistol'];
         this.equipped=this.owned.includes(data.equipped) ? data.equipped : (data.equipped===null ? null : this.owned[0]??null);
         this.caseCollected=data.caseCollected===true; this.suppliesCollected=data.suppliesCollected===true;
-        this.targets=Array.from({length:3},(_,i)=>bounded(data.targets?.[i],100,100));
+        this.targets=Array.from({length:3},(_,i)=>boundedHealth(data.targets?.[i],100,100));
         this.extracted=data.extracted===true; this.cooldown=0; this.reloadRemaining=0;
         this.credits=bounded(data.credits,250,999999);this.carryCapacity=12;this.maxWeight=18;
-        this.npcHealth=Object.fromEntries(['guide','merchant','dummy-1','dummy-2','walker-1','walker-2'].map(id=>[id,bounded(data.npcHealth?.[id],100,100)]));
+        this.npcHealth=Object.fromEntries(['guide','merchant','dummy-1','dummy-2','walker-1','walker-2'].map(id=>[id,boundedHealth(data.npcHealth?.[id],100,100)]));
     }
     snapshot() { return {version:1,health:this.health,medkits:this.medkits,ammo:structuredClone(this.ammo),owned:[...this.owned],equipped:this.equipped,caseCollected:this.caseCollected,suppliesCollected:this.suppliesCollected,targets:[...this.targets],extracted:this.extracted,credits:this.credits,npcHealth:{...this.npcHealth}}; }
     get usedSlots(){return Number(this.medkits>0)+Number(this.caseCollected)+Object.values(this.ammo).filter(a=>a.reserve>0).length;}

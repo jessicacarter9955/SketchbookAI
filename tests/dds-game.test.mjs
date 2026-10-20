@@ -220,3 +220,26 @@ test('fatal damage cancels a pending reload and dead players cannot resume it',(
     s.damage(50);
     assert.equal(s.health,0);
 });
+
+test('fractional damage and NPC vitality survive repeated JSON save/restore without rounding loss',()=>{
+    const s=new DdsGameState({version:1,npcHealth:{guide:74.625}});
+    s.damage(0.25);
+    assert.equal(s.hitTarget(1,0.375),true);
+    assert.equal(s.health,99.75);
+    assert.equal(s.targets[1],99.625);
+    assert.equal(s.npcHealth.guide,74.625);
+    const original=s.snapshot();
+    let copy=s;
+    for(let i=0;i<5;i++)copy=new DdsGameState(JSON.parse(JSON.stringify(copy.snapshot())));
+    assert.deepEqual(copy.snapshot(),original);
+    const corrupt=new DdsGameState({version:1,health:-2,targets:[Infinity,100.25,-3],npcHealth:{guide:NaN,merchant:101}});
+    assert.equal(corrupt.health,0);
+    assert.deepEqual(corrupt.targets,[100,100,0]);
+    assert.equal(corrupt.npcHealth.guide,100);
+    assert.equal(corrupt.npcHealth.merchant,100);
+    // Integer-only inventory stacks and credits remain integer-sanitized.
+    const integer=new DdsGameState({version:1,medkits:2.9,credits:7.9,ammo:{rifle:{magazine:8.9,reserve:9.9}}});
+    assert.equal(integer.medkits,2);
+    assert.equal(integer.credits,7);
+    assert.deepEqual(integer.ammo.rifle,{magazine:8,reserve:9});
+});
