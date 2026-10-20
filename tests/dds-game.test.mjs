@@ -190,3 +190,33 @@ test('defeated targets cannot be damaged again',()=>{
     assert.equal(s.hitTarget(0,10),false);
     assert.equal(s.targets[0],0);
 });
+
+
+test('completed raids are immune to subsequent damage, including after save reload',()=>{
+    const s=new DdsGameState();
+    assert.equal(s.collect('case'),true);
+    for(let i=0;i<3;i++)assert.equal(s.hitTarget(i,100),true);
+    assert.equal(s.extract(),true);
+    const before=s.snapshot();
+    s.damage(75);
+    s.damage(Infinity);
+    assert.deepEqual(s.snapshot(),before);
+    const restored=new DdsGameState(before);
+    restored.damage(100);
+    assert.deepEqual(restored.snapshot(),before);
+});
+
+test('fatal damage cancels a pending reload and dead players cannot resume it',()=>{
+    const s=new DdsGameState();
+    assert.ok(s.fire());
+    assert.equal(s.reload(),true);
+    assert.ok(s.reloadRemaining>0);
+    s.damage(100);
+    assert.equal(s.health,0);
+    assert.equal(s.reloadRemaining,0);
+    const ammo=structuredClone(s.ammo);
+    s.tick(10);
+    assert.deepEqual(s.ammo,ammo);
+    s.damage(50);
+    assert.equal(s.health,0);
+});

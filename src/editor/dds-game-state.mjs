@@ -67,7 +67,7 @@ export class DdsGameState {
         const amount=Math.min(capacity-ammo.magazine,ammo.reserve); ammo.magazine+=amount; ammo.reserve-=amount; return true;
     }
     heal() { if (!this.health || this.extracted || this.health===100 || !this.medkits) return false; this.medkits--; this.health=Math.min(100,this.health+50); return true; }
-    damage(amount) { if (!Number.isFinite(amount) || amount<=0) return; this.health=Math.max(0,this.health-amount); if (!this.health) this.reloadRemaining=0; }
+    damage(amount) { if (this.extracted || !this.health || !Number.isFinite(amount) || amount<=0) return; this.health=Math.max(0,this.health-amount); if (!this.health) this.reloadRemaining=0; }
     hitTarget(index,damage) { if (!this.health || this.extracted || !Number.isInteger(index) || index<0 || index>2 || !Number.isFinite(damage) || damage<=0 || !this.targets[index]) return false; this.targets[index]=Math.max(0,this.targets[index]-damage); return true; }
     // Preview pickup eligibility without changing the raid state.
     // Apply the same slot and weight constraints used by merchant purchases.
