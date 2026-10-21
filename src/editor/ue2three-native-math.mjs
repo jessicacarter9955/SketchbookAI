@@ -1,5 +1,15 @@
 // Mirrors the supported UE 5.7 KismetMathLibrary primitives. No game rules.
 export function evaluateNativeMath(name, args, warning = () => {}) {
+    if (name === 'Round') {
+        if (args.length !== 1 || typeof args[0] !== 'number' || !Number.isFinite(args[0]))
+            throw new Error('Invalid native Round parameters');
+        // UE 5.7 KismetMathLibrary::Round calls FMath::RoundToInt(double),
+        // which rounds half values toward +infinity before returning int32.
+        const result = Math.floor(args[0] + 0.5);
+        if (result < -2147483648 || result > 2147483647)
+            throw new Error('Native Round result is outside the verified int32 range');
+        return result;
+    }
     if (name === 'SelectFloat') {
         if (args.length !== 3 || args.slice(0, 2).some(value => typeof value !== 'number' || !Number.isFinite(value)) || typeof args[2] !== 'boolean')
             throw new Error('Invalid native double selection parameters');

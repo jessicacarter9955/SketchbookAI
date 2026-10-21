@@ -2,6 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { evaluateNativeMath } from '../src/editor/ue2three-native-math.mjs';
 
+test('UE 5.7 Round uses FMath half-toward-positive-infinity rounding within int32', () => {
+    for (const [input, expected] of [[1.49, 1], [1.5, 2], [-1.5, -1], [-1.51, -2], [-0.5, 0],
+        [-2147483648.5, -2147483648], [2147483647.49, 2147483647]])
+        assert.equal(evaluateNativeMath('Round', [input]), expected);
+
+    for (const args of [[], [1, 2], [true], ['1'], [NaN], [Infinity], [2147483647.5], [-2147483648.51]])
+        assert.throws(() => evaluateNativeMath('Round', args), /Invalid native Round|outside the verified int32 range/);
+    assert.throws(() => evaluateNativeMath('Floor', [1.5]), /Unsupported native math/);
+});
+
 test('source double arithmetic and divide-by-zero behavior match Kismet', () => {
     assert.equal(evaluateNativeMath('Add_DoubleDouble', [1.25, 2.5]), 3.75);
     assert.equal(evaluateNativeMath('Subtract_DoubleDouble', [10, 3]), 7);

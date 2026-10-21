@@ -36,9 +36,9 @@ def asset_reference(package, value, declared_class):
     from blueprint_types import import_path
     if value == 0 and type(value) is int: return None
     path = import_path(package, value)
-    if not path or len(path) != 2 or not path[0].startswith(('/Game/', '/Engine/', '/Script/')):
+    if not path or len(path) != 2 or not path[0].startswith(('/Game/', '/Engine/', '/Script/', '/ControlRig/')):
         raise ValueError('Unresolved source asset reference')
-    if not re.fullmatch(r'/(?:Game|Engine|Script)/[A-Za-z0-9_/.]+', '.'.join(path)):
+    if not re.fullmatch(r'/(?:Game|Engine|Script|ControlRig)/[A-Za-z0-9_/.]+', '.'.join(path)):
         raise ValueError('Unsupported source asset identity characters')
     return {'asset': '.'.join(path), 'declared_class': list(declared_class)}
 

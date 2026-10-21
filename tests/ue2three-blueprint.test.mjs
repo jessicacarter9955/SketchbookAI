@@ -253,6 +253,17 @@ test('original comparison and Boolean math do not coerce their arguments', () =>
     assert.equal(evaluate('Divide_DoubleDouble', [1, 0]), 0);
     assert.throws(() => evaluate('Divide_IntInt', [1, 0]), /Unsupported native math/);
 });
+test('Blueprint Round expressions execute with original tie behavior and reject overflow', () => {
+    const round = input => executeBlueprint({...program, output_fields: [], steps: [
+        {op: 'return', value: {op: 'math', name: 'Round', args: [{op: 'constant', value: input}]}}
+    ]}).value;
+    assert.equal(round(2.5), 3);
+    assert.equal(round(-2.5), -2);
+    assert.throws(() => round(2147483648), /outside the verified int32 range/);
+    assert.throws(() => executeBlueprint({...program, output_fields: [], steps: [
+        {op: 'return', value: {op: 'math', name: 'Round64', args: [{op: 'constant', value: 1}]}}
+    ]}), /Unsupported native math/);
+});
 test('conditional jumps take the original false branch and keep output defaults', () => {
     const conditional = {schema_version: 1, status: 'translated_control_flow', output_fields: ['Result'],
         input_fields: ['Condition'], field_types: {local: {Condition: 'BoolProperty', Result: 'NameProperty'}},

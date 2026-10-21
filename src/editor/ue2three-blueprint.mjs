@@ -31,7 +31,7 @@ function validateSchema(schema, value, depth = 0) {
             return;
         }
         if (value !== null && (!value || typeof value !== 'object' || typeof value.asset !== 'string'
-            || !/^\/(Game|Engine|Script)\/[A-Za-z0-9_\/.]+$/.test(value.asset)
+            || !/^\/(Game|Engine|Script|ControlRig)\/[A-Za-z0-9_\/.]+$/.test(value.asset)
             || JSON.stringify(value.declared_class) !== JSON.stringify(schema.class)
             || schema.type === 'ClassProperty' && JSON.stringify(value.meta_class) !== JSON.stringify(schema.meta_class))) throw new Error('Invalid source asset identity');
     } else if (schema.type === 'TextProperty') {

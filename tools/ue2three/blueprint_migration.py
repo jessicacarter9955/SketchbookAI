@@ -56,7 +56,8 @@ MATH_CALLS.update({'Divide_DoubleDouble': (2, 'DoubleDouble'),
                    'Conv_IntToDouble': (1, 'IntInt'), 'SelectInt': (3, 'int_select'), 'SelectFloat': (3, 'double_select'),
                    'EqualEqual_BoolBool': (2, 'bool'), 'NotEqual_BoolBool': (2, 'bool'),
                    'EqualEqual_NameName': (2, 'name'), 'NotEqual_NameName': (2, 'name'),
-                   'FClamp': (3, 'DoubleDouble'), 'Clamp': (3, 'IntInt')})
+                   'FClamp': (3, 'DoubleDouble'), 'Clamp': (3, 'IntInt'),
+                   'Round': (1, 'DoubleDouble')})
 
 
 def math_call(package, reference):
@@ -75,6 +76,29 @@ def math_call(package, reference):
     name = function.get('ObjectName')
     if name not in MATH_CALLS: raise BlueprintTranslationError(f'Unsupported native math call: {name}')
     return name
+
+
+def validate_round_input(value, package, owner):
+    token = kind(value)
+    if token == 'EX_DoubleConst': return
+    if token not in ('EX_InstanceVariable', 'EX_LocalVariable', 'EX_LocalOutVariable'):
+        raise BlueprintTranslationError('Round requires an original double input')
+    pointer = value.get('Variable', {})
+    name = field(pointer)
+    reference = pointer.get('New', {}).get('ResolvedOwner')
+    active = getattr(package, '_active_function', None)
+    if token == 'EX_InstanceVariable':
+        if type(owner) is not int or owner <= 0:
+            raise BlueprintTranslationError('Round instance input has no resolved source owner')
+        expected = package.export(owner)
+    else:
+        expected = active
+    if (type(reference) is not int or reference <= 0 or not expected
+            or package.export(reference) is not expected):
+        raise BlueprintTranslationError('Round input belongs to an unresolved source owner')
+    prop = next((item for item in expected.get('LoadedProperties', []) if item.get('Name') == name), None)
+    if not prop or prop.get('SerializedType') != 'DoubleProperty':
+        raise BlueprintTranslationError('Round requires an original DoubleProperty input')
 
 
 def local_call(value, package, owner, reads, outputs, depth):
@@ -203,6 +227,7 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         args = value.get('Parameters')
         if not isinstance(args, list) or len(args) != MATH_CALLS[name][0]:
             raise BlueprintTranslationError('Invalid native math parameter count')
+        if name == 'Round': validate_round_input(args[0], package, owner)
         if name in ('EqualEqual_NameName', 'NotEqual_NameName'):
             for arg in args:
                 if kind(arg) == 'EX_NameConst' and (not isinstance(arg.get('Value'), str)

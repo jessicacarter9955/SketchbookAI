@@ -79,6 +79,41 @@ class BlueprintMigrationTests(unittest.TestCase):
         result = translate_function(function, Package({'Imports': imports}))
         self.assertEqual(result['steps'][0]['value']['name'], 'Divide_DoubleDouble')
 
+    def test_round_requires_the_original_engine_math_import_and_one_argument(self):
+        imports = [{'ObjectName': 'Round', 'ClassName': 'Function', 'OuterIndex': -2},
+                   {'ObjectName': 'KismetMathLibrary', 'OuterIndex': -3}, {'ObjectName': '/Script/Engine'}]
+        function = self.function()
+        function['LoadedProperties'] = [{'Name': 'Value', 'SerializedType': 'DoubleProperty', 'PropertyFlags': 'CPF_Parm'}]
+        function['ScriptBytecode'][1]['Expression'] = node('EX_CallMath', StackNode=-1,
+            Parameters=[variable('EX_LocalVariable', 'Value')])
+        package = Package({'Imports': imports, 'Exports': [function]})
+        result = translate_function(function, package)
+        self.assertEqual(result['steps'][0]['value'], {
+            'op': 'math', 'name': 'Round', 'args': [{'op': 'get', 'scope': 'local', 'field': 'Value'}]})
+
+        bad_library = [dict(item) for item in imports]
+        bad_library[1]['ObjectName'] = 'FakeMathLibrary'
+        with self.assertRaisesRegex(BlueprintTranslationError, 'outside Engine.KismetMathLibrary'):
+            translate_function(function, Package({'Imports': bad_library, 'Exports': [function]}))
+
+        function['ScriptBytecode'][1]['Expression']['Parameters'].append(node('EX_DoubleConst', Value='0'))
+        with self.assertRaisesRegex(BlueprintTranslationError, 'parameter count'):
+            translate_function(function, Package({'Imports': imports, 'Exports': [function]}))
+
+        function['ScriptBytecode'][1]['Expression']['Parameters'] = [node('EX_True')]
+        with self.assertRaisesRegex(BlueprintTranslationError, 'original double input'):
+            translate_function(function, Package({'Imports': imports, 'Exports': [function]}))
+
+        function['ScriptBytecode'][1]['Expression']['Parameters'] = [variable('EX_LocalVariable', 'Value')]
+        function['LoadedProperties'][0]['SerializedType'] = 'FloatProperty'
+        with self.assertRaisesRegex(BlueprintTranslationError, 'DoubleProperty'):
+            translate_function(function, Package({'Imports': imports, 'Exports': [function]}))
+
+        function['LoadedProperties'][0]['SerializedType'] = 'DoubleProperty'
+        function['ScriptBytecode'][1]['Expression']['Parameters'][0]['Variable']['New']['ResolvedOwner'] = True
+        with self.assertRaisesRegex(BlueprintTranslationError, 'unresolved source owner'):
+            translate_function(function, Package({'Imports': imports, 'Exports': [function]}))
+
     def test_int_selection_and_conversion_require_original_native_and_arity(self):
         for name, arity in [('Min', 2), ('Max', 2), ('Conv_IntToDouble', 1), ('SelectInt', 3),
                             ('Lerp', 3), ('FMin', 2), ('FMax', 2), ('InRange_FloatFloat', 5)]:
