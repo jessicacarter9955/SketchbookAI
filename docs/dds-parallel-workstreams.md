@@ -29,6 +29,23 @@ are explicitly forbidden as replacements masquerading as original DDS.
 Status dashboard: `dds-parallel-status.html` links to the matrix job
 run and exposes separate runner/result and fidelity columns.
 
+## Source-adapter work on isolated branch (2026-10-21)
+
+Branch `chatgpt/dds-native-state-20261021` adds strict source-witnessed
+`KismetSystemLibrary.IsValid` translation for directly typed source Actor
+references (both `EX_CallMath` and `EX_FinalFunction`).
+`None` is false, registered standalone source actors are true, and unknown,
+foreign, destroyed/unwitnessed or network contexts remain unsupported.
+This is **not** a full UE UObject lifecycle conversion.
+
+The browser Blueprint runtime additionally supports versioned, project/source
+SHA/SCS-identified checkpoints, with pre-restore validation and explicit
+rejection of incompatible source revisions. This does **not** read/write
+Unreal SaveGame files, automatically store to disk, or implement replication.
+Tests were added for both adapters, but passing unit tests cannot turn
+the entire Blueprint or save area green. Manual Play and 1:1 source comparison
+remain acceptance gates.
+
 ## Traffic light meanings
 
 - Green (feature): original sources AND runtime behavior validated 1:1
