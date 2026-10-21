@@ -215,6 +215,9 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         return multicast(value, package, owner, reads, outputs, depth)
     if token == 'EX_CallMath':
         if package:
+            from blueprint_objects import native_object_call
+            adapted = native_object_call(value, package, owner, reads, outputs, depth)
+            if adapted is not None: return adapted
             from blueprint_queries import game_time
             adapted = game_time(value, package, owner)
             if adapted is not None: return adapted

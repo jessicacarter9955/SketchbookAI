@@ -55,6 +55,27 @@ function mutationFixture() {
     return f;
 }
 
+test('native Concat_StrStr preserves its exact identity, FString types and argument order',()=>{
+    const concat={op:'native_call',identity:['/Script/Engine','KismetStringLibrary','Concat_StrStr'],
+        parameter_types:['StrProperty','StrProperty'],return_type:'StrProperty',args:[
+            {op:'typed_literal',schema:{type:'StrProperty',default:''},value:'prima'},
+            {op:'typed_literal',schema:{type:'StrProperty',default:''},value:'—dopo'}]};
+    const program={schema_version:1,status:'translated_straight_line',source_owner_index:1,source_export_index:1,
+        input_fields:[],output_fields:['Joined'],self_reads:[],self_writes:[],field_types:{local:{Joined:'StrProperty'}},steps:[
+            {op:'set',scope:'local',field:'Joined',value:concat},end]};
+    assert.equal(executeBlueprint(program,{},{}).outputs.Joined,'prima—dopo');
+    const wrongIdentity=structuredClone(program);wrongIdentity.steps[0].value.identity[2]='Join_StrStr';
+    assert.throws(()=>executeBlueprint(wrongIdentity,{},{}),/Unsupported original native object call/);
+    const wrongSignature=structuredClone(program);wrongSignature.steps[0].value.parameter_types[0]='NameProperty';
+    assert.throws(()=>executeBlueprint(wrongSignature,{},{}),/Unsupported original native object call/);
+    const wrongSourceType=structuredClone(program);wrongSourceType.input_fields=['Name'];
+    wrongSourceType.field_types.local.Name='NameProperty';
+    wrongSourceType.steps[0].value.args[0]={op:'get',scope:'local',field:'Name'};
+    assert.throws(()=>executeBlueprint(wrongSourceType,{}, {Name:'typed as FName'}),/parameter type differs/);
+    const conflictingSchema=structuredClone(wrongSourceType);conflictingSchema.schemas={local:{Name:{type:'StrProperty',default:''}}};
+    assert.throws(()=>executeBlueprint(conflictingSchema,{}, {Name:'conflicting source type'}),/parameter schema differs/);
+});
+
 test('mutable component calls commit original state, persistent frames and effects under the receiver identity',()=>{
     const {runtime,child}=mutationFixture();
     const write=child.functions.Write;

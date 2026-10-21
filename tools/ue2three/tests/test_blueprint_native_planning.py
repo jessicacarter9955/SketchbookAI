@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from core import digest
-from blueprint_native_planning import native_surface, rank_native_families
+from blueprint_native_planning import native_surface, rank_native_families, adapter_present
 import test_blueprint_events as event_fixtures
 from test_blueprint_migration import node
 from umg_migration import Package
@@ -18,6 +18,8 @@ class NativePlanningTests(unittest.TestCase):
                 {'ObjectName': 'IsValid', 'ClassName': 'Function', 'OuterIndex': -2}]
 
     def test_exact_api_identity_arity_and_presence_are_diagnostic_only(self):
+        self.assertTrue(adapter_present(('/Script/Engine','KismetStringLibrary','Concat_StrStr')))
+        self.assertFalse(adapter_present(('/Script/Engine','KismetStringLibrary','Join_StrStr')))
         code = [node('EX_CallMath', StackNode=-1, Parameters=[node('EX_Self')]),
                 node('EX_FinalFunction', StackNode=-4, Parameters=[]),
                 node('EX_FinalFunction', StackNode=99, Parameters=[]),

@@ -6,6 +6,7 @@ of how many whole functions implementing an adapter will actually unlock.
 from blueprint_migration import kind, memory_size, MATH_CALLS, BlueprintTranslationError
 from blueprint_events import reachable_event
 from blueprint_types import import_path
+from blueprint_objects import NATIVE_OBJECT_CALLS
 
 
 FAMILIES = {
@@ -46,6 +47,7 @@ def adapter_present(identity):
             or identity == ('/Script/Engine', 'KismetSystemLibrary', 'GetGameTimeInSeconds')
             or identity == ('/Script/Engine', 'KismetSystemLibrary', 'IsValid')
             or identity == ('/Script/Engine', 'NetPushModelHelpers', 'MarkPropertyDirtyFromRepIndex')
+            or identity in NATIVE_OBJECT_CALLS
             or identity[:2] == ('/Script/Engine', 'KismetArrayLibrary')
             and identity[-1] in ('Array_Get', 'Array_Length', 'Array_IsValidIndex', 'Array_Set', 'Array_Remove', 'Array_Clear', 'Array_Add', 'Array_Append')
             or identity == ('/Script/Engine', 'DataTableFunctionLibrary', 'GetDataTableRowFromName'))

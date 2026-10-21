@@ -97,5 +97,33 @@ class SourceObjectTests(unittest.TestCase):
             if failure=='args':value['ContextExpression']['Parameters']=[node('EX_IntOne')]
             with self.subTest(failure=failure),self.assertRaises(BlueprintTranslationError):expression(value,set(),set(),package=p,owner=1)
 
+    def test_native_concat_preserves_exact_identity_order_and_fstring_types(self):
+        package=Package({'Imports':[{'ObjectName':'Concat_StrStr','ClassName':'Function','OuterIndex':-2},
+            {'ObjectName':'KismetStringLibrary','OuterIndex':-3}, {'ObjectName':'/Script/Engine','ClassName':'Package'}],
+            'Exports':[{'ObjectName':'Test_C','LoadedProperties':[
+                {'Name':'Left','SerializedType':'StrProperty'}, {'Name':'Right','SerializedType':'StrProperty'}]}]})
+        package._active_function={'ObjectName':'Join','OuterIndex':1,'LoadedProperties':[]}
+        left=node('EX_InstanceVariable',Variable={'New':{'Path':['Left'],'ResolvedOwner':1}})
+        right=node('EX_UnicodeStringConst',Value='—')
+        call=node('EX_CallMath',StackNode=-1,Parameters=[left,right])
+        result=expression(call,set(),set(),package=package,owner=1)
+        self.assertEqual(result,{'op':'native_call','identity':['/Script/Engine','KismetStringLibrary','Concat_StrStr'],
+            'parameter_types':['StrProperty','StrProperty'],'return_type':'StrProperty','args':[
+                {'op':'get','scope':'self','field':'Left'},
+                {'op':'typed_literal','schema':{'type':'StrProperty','default':''},'value':'—'}]})
+        package.exports[0]['LoadedProperties'][0]['SerializedType']='NameProperty'
+        with self.assertRaisesRegex(BlueprintTranslationError,'parameter type'):
+            expression(call,set(),set(),package=package,owner=1)
+        package.exports[0]['LoadedProperties'][0]['SerializedType']='StrProperty'
+        with self.assertRaisesRegex(BlueprintTranslationError,'arity'):
+            expression(node('EX_CallMath',StackNode=-1,Parameters=[left]),set(),set(),package=package,owner=1)
+        with self.assertRaisesRegex(BlueprintTranslationError,'outside Engine.KismetMathLibrary'):
+            package.imports[0]['ObjectName']='Join_StrStr'
+            expression(call,set(),set(),package=package,owner=1)
+        package.imports[0]['ObjectName']='Concat_StrStr'
+        narrow_unicode=node('EX_StringConst',Value='é')
+        with self.assertRaisesRegex(BlueprintTranslationError,'non-ASCII narrow string layout'):
+            expression(node('EX_CallMath',StackNode=-1,Parameters=[narrow_unicode,right]),set(),set(),package=package,owner=1)
+
 
 if __name__ == '__main__': unittest.main()

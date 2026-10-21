@@ -4,6 +4,50 @@ from blueprint_values import serialized_value
 from core import digest
 
 ACTOR_BASES = {('/Script/Engine', name) for name in ('Actor', 'Pawn', 'Character')}
+NATIVE_OBJECT_CALLS = {
+    ('/Script/Engine', 'KismetStringLibrary', 'Concat_StrStr'): {
+        'parameter_types': ('StrProperty', 'StrProperty'), 'return_type': 'StrProperty',
+        'argument_tokens': (('EX_StringConst', 'EX_UnicodeStringConst'),
+                            ('EX_StringConst', 'EX_UnicodeStringConst')),
+    },
+}
+
+
+def native_object_call(value, package, owner, reads, outputs, depth):
+    """Translate only exact typed, pure native calls witnessed for this family."""
+    identity = import_path(package, value.get('StackNode'))
+    signature = NATIVE_OBJECT_CALLS.get(identity)
+    if signature is None: return None
+    from blueprint_migration import kind, expression, memory_size, BlueprintTranslationError as Error
+    reference = value.get('StackNode')
+    if (type(reference) is not int or reference >= 0 or -reference > len(package.imports)
+            or package.imports[-reference-1].get('ClassName') != 'Function'
+            or import_path(package, package.imports[-reference-1].get('OuterIndex')) != identity[:-1]):
+        raise Error('Original native object call identity differs')
+    args = value.get('Parameters')
+    parameter_types = signature['parameter_types']
+    if not isinstance(args, list) or len(args) != len(parameter_types):
+        raise Error('Original native object call arity differs')
+    from blueprint_effects import variable
+    translated = []
+    for arg, expected, literal_tokens in zip(args, parameter_types, signature['argument_tokens']):
+        token = kind(arg)
+        if token in ('EX_InstanceVariable', 'EX_LocalVariable', 'EX_LocalOutVariable'):
+            result, schema = variable(arg, package, owner, reads, outputs, depth)
+            if schema.get('type') != expected:
+                raise Error('Original native object parameter type differs')
+        elif expected == 'StrProperty' and token in literal_tokens:
+            memory_size(arg, package=package)
+            result = expression(arg, reads, outputs, depth+1, package, owner)
+            if result.get('op') != 'constant' or not isinstance(result.get('value'), str):
+                raise Error('Original native object string literal differs')
+            result = {'op': 'typed_literal', 'schema': property_schema(package, {'SerializedType': expected}),
+                      'value': result['value']}
+        else:
+            raise Error('Original native object argument requires a typed source property or string literal')
+        translated.append(result)
+    return {'op': 'native_call', 'identity': list(identity), 'parameter_types': list(parameter_types),
+            'return_type': signature['return_type'], 'args': translated}
 
 
 def class_metadata(package):

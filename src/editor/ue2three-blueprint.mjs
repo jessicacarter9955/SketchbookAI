@@ -505,6 +505,32 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             if (typeof value === 'number' && !Number.isFinite(value)) throw new Error('Non-finite native math result is unsupported');
             return value;
         }
+        if (expression.op === 'native_call') {
+            const identity = ['/Script/Engine', 'KismetStringLibrary', 'Concat_StrStr'];
+            const parameterTypes = ['StrProperty', 'StrProperty'];
+            if (JSON.stringify(expression.identity) !== JSON.stringify(identity)
+                || JSON.stringify(expression.parameter_types) !== JSON.stringify(parameterTypes)
+                || expression.return_type !== 'StrProperty' || !Array.isArray(expression.args)
+                || expression.args.length !== parameterTypes.length)
+                throw new Error('Unsupported original native object call');
+            const values = expression.args.map((argument, index) => {
+                let sourceType = null;
+                if (argument?.op === 'typed_literal') sourceType = argument.schema?.type;
+                else if (argument?.op === 'get') {
+                    const schemaType = schemaFor(argument)?.type;
+                    const declaredType = argument.scope === 'persistent' ? program.persistent_types?.[argument.frame]?.[argument.field]
+                        : program.field_types?.[argument.scope]?.[argument.field];
+                    if (schemaType && declaredType && schemaType !== declaredType)
+                        throw new Error('Original native object parameter schema differs');
+                    sourceType = schemaType || declaredType || null;
+                }
+                if (sourceType !== parameterTypes[index]) throw new Error('Original native object parameter type differs');
+                const value = evaluate(argument, depth+1);
+                if (typeof value !== 'string') throw new Error('Invalid original native object string parameter');
+                return value;
+            });
+            return values[0] + values[1];
+        }
         if (expression.op === 'constant') {
             const value = expression.value;
             if (value !== null && !['string', 'boolean', 'number'].includes(typeof value)
