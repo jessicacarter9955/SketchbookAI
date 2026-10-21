@@ -7,7 +7,11 @@ from types import SimpleNamespace
 # Data identities only. Never treat actors, components or generated classes as
 # static assets merely because their serialized property is ObjectProperty.
 STATIC_ASSET_CLASSES = {'AnimMontage', 'AnimSequence', 'SkeletalMesh', 'StaticMesh',
-                        'Texture2D', 'SoundBase', 'DataTable'}
+                        'Texture2D', 'SoundBase', 'SoundCue', 'SoundWave', 'SoundAttenuation',
+                        'SoundConcurrency', 'DataTable',
+                        'Material', 'MaterialInstance', 'MaterialInstanceConstant', 'MaterialInterface'}
+STATIC_ASSET_MODULES = {'/Script/Engine': STATIC_ASSET_CLASSES,
+                        '/Script/Niagara': {'NiagaraSystem', 'NiagaraDataChannelAsset'}}
 
 
 def asset_constant(package, reference):
@@ -16,9 +20,10 @@ def asset_constant(package, reference):
         raise ValueError('Asset constant requires an original asset import')
     imported = package.imports[-reference-1]
     name = imported.get('ClassName')
-    if imported.get('ClassPackage') != '/Script/Engine' or name not in STATIC_ASSET_CLASSES:
+    module = imported.get('ClassPackage')
+    if name not in STATIC_ASSET_MODULES.get(module, set()):
         raise ValueError('Unsupported original asset constant class')
-    identity = ('/Script/Engine', name)
+    identity = (module, name)
     return {'op': 'typed_literal', 'schema': {'type': 'ObjectProperty', 'class': list(identity), 'default': None},
             'value': asset_reference(package, reference, identity)}
 
@@ -29,7 +34,12 @@ def native_schema(identity):
     if fields:
         return {'type': 'StructProperty', 'source': identity[0], 'native': identity[1],
                 'fields': {name: {'type': 'DoubleProperty'} for name in fields},
-                'default': {name: 0 for name in fields}}
+                'default': {name: 0 for name in fields}, 'member_order': list(fields)}
+    if identity == ('/Script/CoreUObject', 'LinearColor'):
+        fields = ('R', 'G', 'B', 'A')
+        return {'type': 'StructProperty', 'source': identity[0], 'native': identity[1],
+                'fields': {name: {'type': 'FloatProperty'} for name in fields},
+                'default': {name: 0 for name in fields}, 'member_order': list(fields)}
 
 
 def asset_reference(package, value, declared_class):
@@ -68,6 +78,9 @@ def serialized_value(package, prop, schema, value):
         if schema.get('reference_kind') in ('runtime_actor', 'runtime_component'):
             if type(reference) is int and reference == 0: return None
             raise ValueError('Non-null source actor defaults require world-object migration')
+        if schema.get('reference_kind') in ('runtime_native_component', 'runtime_native_object'):
+            if type(reference) is int and reference == 0: return None
+            raise ValueError('Non-null source native-object defaults require a native-object adapter')
         if type_name == 'ClassProperty' and reference != 0:
             if (type(reference) is not int or not -len(package.imports) <= reference < 0
                     or package.imports[-reference-1].get('ClassName') not in ('Class', 'BlueprintGeneratedClass')):

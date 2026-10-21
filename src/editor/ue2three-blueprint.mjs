@@ -22,6 +22,13 @@ function validateSchema(schema, value, depth = 0) {
             validateSchema(child, value[field], depth+1);
         }
     } else if (schema.type === 'ObjectProperty' || schema.type === 'ClassProperty') {
+        if (schema.reference_kind === 'source_self') {
+            if (value !== null && (value?.kind !== 'source_self' || value.source_owner_index !== schema.source_owner_index
+                || typeof value.source_package !== 'string' || !/^\/Game\/[A-Za-z0-9_/.]+$/.test(value.source_package)
+                || JSON.stringify(value.declared_class || null) !== JSON.stringify(schema.class || null)))
+                throw new Error('Invalid original Blueprint self reference');
+            return;
+        }
         if (schema.reference_kind === 'runtime_actor') {
             if (value !== null && !validActorReference(value)) throw new Error('Invalid source runtime actor reference');
             return;
@@ -29,6 +36,17 @@ function validateSchema(schema, value, depth = 0) {
         if (schema.reference_kind === 'runtime_component') {
             if (value !== null && (!validComponentReference(value)
                 || JSON.stringify(value.declared_class) !== JSON.stringify(schema.class))) throw new Error('Invalid original component reference');
+            return;
+        }
+        if (schema.reference_kind === 'runtime_native_component' || schema.reference_kind === 'runtime_native_object') {
+            const expectedKind = schema.reference_kind === 'runtime_native_component'
+                ? 'source_native_component' : 'source_native_object';
+            if (value !== null && (value?.kind !== expectedKind || typeof value.source_package !== 'string'
+                || !/^\/Game\/[A-Za-z0-9_/.]+$/.test(value.source_package)
+                || !Number.isSafeInteger(value.source_owner_index) || value.source_owner_index <= 0
+                || !safeField(value.source_field)
+                || JSON.stringify(value.declared_class) !== JSON.stringify(schema.class)))
+                throw new Error('Invalid original native object reference');
             return;
         }
         if (value !== null && (!value || typeof value !== 'object' || typeof value.asset !== 'string'
@@ -40,6 +58,113 @@ function validateSchema(schema, value, depth = 0) {
             || !(value.history === 'empty' && value.text === '' || value.history === 'base' && typeof value.namespace === 'string'
                 && typeof value.key === 'string')) throw new Error('Unsupported original FText');
     } else if (!validPrimitive(schema.type, value)) throw new Error('Invalid typed source member: ' + schema.type);
+}
+
+const nativeObject = identity => ({type:'ObjectProperty', ...(identity ? {class:identity} : {}), default:null});
+const nativeStruct = name => {
+    const fields = name === 'Vector' ? ['X','Y','Z'] : name === 'Rotator' ? ['Pitch','Yaw','Roll'] : ['R','G','B','A'];
+    const fieldType = name === 'LinearColor' ? 'FloatProperty' : 'DoubleProperty';
+    return {type:'StructProperty',source:'/Script/CoreUObject',native:name,
+        fields:Object.fromEntries(fields.map(field=>[field,{type:fieldType}])),
+        default:Object.fromEntries(fields.map(field=>[field,0])),member_order:fields};
+};
+const nativeEnum = identity => ({type:'ByteProperty',enum:identity,default:0});
+const nativeAudioVfxContracts = new Map();
+const addNativeAudioVfx = (module, owner, name, dispatch, parameters, receiver = null, result = null) =>
+    nativeAudioVfxContracts.set(JSON.stringify([module,owner,name]), {dispatch,parameters,receiver,result});
+const O = nativeObject, S = nativeStruct, E = nativeEnum;
+const B = {type:'BoolProperty'}, F = {type:'FloatProperty'}, D = {type:'DoubleProperty'},
+    I = {type:'IntProperty'}, N = {type:'NameProperty'}, T = {type:'StrProperty'};
+addNativeAudioVfx('/Script/Engine','GameplayStatics','PlaySound2D','EX_CallMath',[
+    O(),O(['/Script/Engine','SoundBase']),F,F,F,O(['/Script/Engine','SoundConcurrency']),O(['/Script/Engine','Actor']),B]);
+addNativeAudioVfx('/Script/Engine','GameplayStatics','PlaySoundAtLocation','EX_CallMath',[
+    O(),O(['/Script/Engine','SoundBase']),S('Vector'),S('Rotator'),F,F,F,O(['/Script/Engine','SoundAttenuation']),
+    O(['/Script/Engine','SoundConcurrency']),O(['/Script/Engine','Actor']),O(['/Script/Engine','InitialActiveSoundParams'])]);
+addNativeAudioVfx('/Script/Engine','GameplayStatics','SpawnSoundAtLocation','EX_CallMath',[
+    O(),O(['/Script/Engine','SoundBase']),S('Vector'),S('Rotator'),F,F,F,O(['/Script/Engine','SoundAttenuation']),
+    O(['/Script/Engine','SoundConcurrency']),B],null,O(['/Script/Engine','AudioComponent']));
+addNativeAudioVfx('/Script/Engine','GameplayStatics','SpawnSoundAttached','EX_CallMath',[
+    O(['/Script/Engine','SoundBase']),O(['/Script/Engine','SceneComponent']),N,S('Vector'),S('Rotator'),
+    E(['/Script/Engine','EAttachLocation']),B,F,F,F,O(['/Script/Engine','SoundAttenuation']),
+    O(['/Script/Engine','SoundConcurrency']),B],null,O(['/Script/Engine','AudioComponent']));
+addNativeAudioVfx('/Script/Niagara','NiagaraFunctionLibrary','SpawnSystemAtLocation','EX_CallMath',[
+    O(),O(['/Script/Niagara','NiagaraSystem']),S('Vector'),S('Rotator'),S('Vector'),B,B,
+    E(['/Script/Niagara','ENCPoolMethod']),B],null,O(['/Script/Niagara','NiagaraComponent']));
+addNativeAudioVfx('/Script/Niagara','NiagaraFunctionLibrary','SpawnSystemAttached','EX_CallMath',[
+    O(['/Script/Niagara','NiagaraSystem']),O(['/Script/Engine','SceneComponent']),N,S('Vector'),S('Rotator'),
+    E(['/Script/Engine','EAttachLocation']),B,B,E(['/Script/Niagara','ENCPoolMethod']),B],null,
+    O(['/Script/Niagara','NiagaraComponent']));
+addNativeAudioVfx('/Script/Niagara','NiagaraComponent','SetVariableLinearColor','EX_FinalFunction',
+    [N,S('LinearColor')],['/Script/Niagara','NiagaraComponent']);
+addNativeAudioVfx('/Script/Niagara','NiagaraComponent','SetVariableVec3','EX_FinalFunction',
+    [N,S('Vector')],['/Script/Niagara','NiagaraComponent']);
+addNativeAudioVfx('/Script/Niagara','NiagaraComponent','SetVariableFloat','EX_FinalFunction',
+    [N,F],['/Script/Niagara','NiagaraComponent']);
+addNativeAudioVfx('/Script/Niagara','NiagaraComponent','SetVariablePosition','EX_FinalFunction',
+    [N,S('Vector')],['/Script/Niagara','NiagaraComponent']);
+addNativeAudioVfx('/Script/Niagara','NiagaraComponent','SetVariableBool','EX_FinalFunction',
+    [N,B],['/Script/Niagara','NiagaraComponent']);
+addNativeAudioVfx('/Script/Niagara','NiagaraComponent','SetVariableMaterial','EX_FinalFunction',
+    [N,O(['/Script/Engine','MaterialInterface'])],['/Script/Niagara','NiagaraComponent']);
+addNativeAudioVfx('/Script/Niagara','NiagaraComponent','SetNiagaraVariablePosition','EX_FinalFunction',
+    [T,S('Vector')],['/Script/Niagara','NiagaraComponent']);
+addNativeAudioVfx('/Script/Engine','AudioComponent','SetSound','EX_FinalFunction',
+    [O(['/Script/Engine','SoundBase'])],['/Script/Engine','AudioComponent']);
+addNativeAudioVfx('/Script/Engine','AudioComponent','SetVolumeMultiplier','EX_FinalFunction',
+    [F],['/Script/Engine','AudioComponent']);
+for (const [name, value] of [['WriteFloat',D],['WriteInt',I],['WritePosition',S('Vector')],
+    ['WriteVector',S('Vector')],['WriteLinearColor',S('LinearColor')]])
+    addNativeAudioVfx('/Script/Niagara','NiagaraDataChannelWriter',name,'EX_FinalFunction',
+        [N,I,value],['/Script/Niagara','NiagaraDataChannelWriter']);
+
+const nativeAudioVfxBases = new Map([
+    ['/Script/Engine.Character',['/Script/Engine','Pawn']], ['/Script/Engine.Pawn',['/Script/Engine','Actor']],
+    ['/Script/Engine.Actor',['/Script/CoreUObject','Object']], ['/Script/Engine.SceneComponent',['/Script/Engine','ActorComponent']],
+    ['/Script/Engine.PrimitiveComponent',['/Script/Engine','SceneComponent']], ['/Script/Engine.MeshComponent',['/Script/Engine','PrimitiveComponent']],
+    ['/Script/Engine.SkeletalMeshComponent',['/Script/Engine','MeshComponent']], ['/Script/Engine.StaticMeshComponent',['/Script/Engine','MeshComponent']],
+    ['/Script/Engine.CapsuleComponent',['/Script/Engine','PrimitiveComponent']], ['/Script/Engine.AudioComponent',['/Script/Engine','ActorComponent']],
+    ['/Script/Engine.CameraComponent',['/Script/Engine','SceneComponent']], ['/Script/Engine.SpringArmComponent',['/Script/Engine','SceneComponent']],
+    ['/Script/Niagara.NiagaraComponent',['/Script/Engine','PrimitiveComponent']],
+    ['/Script/Engine.SoundWave',['/Script/Engine','SoundBase']], ['/Script/Engine.SoundCue',['/Script/Engine','SoundBase']],
+    ['/Script/Engine.Material',['/Script/Engine','MaterialInterface']], ['/Script/Engine.MaterialInstance',['/Script/Engine','MaterialInterface']],
+    ['/Script/Engine.MaterialInstanceConstant',['/Script/Engine','MaterialInstance']],
+]);
+function nativeAudioVfxIsA(actual, expected) {
+    let current=actual;const seen=new Set();
+    while(Array.isArray(current)&&current.length===2&&!seen.has(JSON.stringify(current))) {
+        if(JSON.stringify(current)===JSON.stringify(expected))return true;
+        seen.add(JSON.stringify(current));current=nativeAudioVfxBases.get(current.join('.'));
+    }
+    return false;
+}
+function validateNativeAudioVfxArgument(sourceSchema, contractSchema, value, program, notifications) {
+    validateSchema(sourceSchema,value);
+    if (!sourceSchema || sourceSchema.type !== contractSchema?.type) throw new Error('Original native audio/VFX parameter type differs');
+    if (contractSchema.type === 'ObjectProperty') {
+        if (value === null) return;
+        if (sourceSchema.reference_kind === 'source_self') {
+            if (value?.kind !== 'source_self' || value.source_owner_index !== program.source_owner_index
+                || value.source_package !== notifications.native?.source_package
+                || JSON.stringify(value.declared_class || null) !== JSON.stringify(sourceSchema.class || null))
+                throw new Error('Original native audio/VFX world context differs');
+        } else {
+            const actual=sourceSchema.class || value?.declared_class;
+            if (contractSchema.class && !nativeAudioVfxIsA(actual,contractSchema.class))
+                throw new Error('Original native audio/VFX object class differs');
+            if (!contractSchema.class && !(value?.asset || validActorReference(value) || validComponentReference(value)
+                || value?.kind === 'source_native_component' || value?.kind === 'source_native_object'))
+                throw new Error('Unresolved original native audio/VFX object argument');
+        }
+        if (contractSchema.class && !nativeAudioVfxIsA(sourceSchema.class,contractSchema.class))
+            throw new Error('Original native audio/VFX object class differs');
+        return;
+    }
+    if (contractSchema.type === 'StructProperty'
+        && (sourceSchema.source !== contractSchema.source || sourceSchema.native !== contractSchema.native))
+        throw new Error('Original native audio/VFX struct type differs');
+    if (contractSchema.enum && JSON.stringify(sourceSchema.enum) !== JSON.stringify(contractSchema.enum))
+        throw new Error('Original native audio/VFX enum type differs');
+    validateSchema(contractSchema,value);
 }
 
 export function executeBlueprint(program, self = {}, inputs = {}, { functions = {}, frames = {}, tables = {}, bindings = {}, signatures = {}, native, queries = {}, receivers } = {}) {
@@ -262,6 +387,52 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             }
             emit(sourceForceNetUpdate(notifications.native, reference));
             return null;
+        }
+        if (expression.op === 'native_self') {
+            const context=notifications.native;
+            if (expression.source_owner_index !== program.source_owner_index
+                || context?.source_owner_index !== program.source_owner_index
+                || typeof context.source_package !== 'string') throw new Error('Original Blueprint self reference is unavailable');
+            return {kind:'source_self',source_package:context.source_package,
+                source_owner_index:program.source_owner_index,declared_class:expression.class || null};
+        }
+        if (expression.op === 'native_audio_vfx') {
+            const contract=nativeAudioVfxContracts.get(JSON.stringify(expression.identity));
+            if (!contract || expression.dispatch !== contract.dispatch || !Array.isArray(expression.parameters)
+                || expression.parameters.length !== contract.parameters.length
+                || JSON.stringify(expression.parameter_schemas) !== JSON.stringify(contract.parameters)
+                || JSON.stringify(expression.return_schema) !== JSON.stringify(contract.result)
+                || (contract.receiver ? expression.receiver === null || !expression.receiver_schema
+                    || !nativeAudioVfxIsA(expression.receiver_schema.class,contract.receiver)
+                    : expression.receiver !== null || expression.receiver_schema !== null))
+                throw new Error('Unsupported original native audio/VFX call contract');
+            let receiver=null;
+            if (contract.receiver) {
+                receiver=evaluate(expression.receiver,depth+1);
+                if (receiver === null) {
+                    trace.push({source_index:sourceIndex,op:'warning',message:'Accessed None: native audio/VFX context skipped'});
+                    return null;
+                }
+                validateNativeAudioVfxArgument(expression.receiver_schema,nativeObject(contract.receiver),
+                    receiver,program,notifications);
+            }
+            const values=[], argumentSchemas=[];
+            for (const [index,parameter] of expression.parameters.entries()) {
+                const expected=contract.parameters[index];
+                if (JSON.stringify(parameter.contract) !== JSON.stringify(expected) || !parameter.schema || !parameter.value)
+                    throw new Error('Original native audio/VFX parameter contract differs');
+                const value=evaluate(parameter.value,depth+1);
+                validateNativeAudioVfxArgument(parameter.schema,expected,value,program,notifications);
+                values.push(structuredClone(value)); argumentSchemas.push(structuredClone(parameter.schema));
+            }
+            const request={op:'native_audio_vfx',identity:[...expression.identity],dispatch:expression.dispatch,
+                receiver:structuredClone(receiver),receiver_schema:structuredClone(expression.receiver_schema),
+                parameter_schemas:structuredClone(contract.parameters),argument_schemas:argumentSchemas,
+                arguments:values};
+            emit(request); trace.push({source_index:sourceIndex,...structuredClone(request)});
+            // Spawn functions return native object pointers. Without a bound
+            // native adapter, keep the ordered request but never invent a handle.
+            return contract.result ? undefined : null;
         }
         if (expression.op === 'typed_literal') {
             validateSchema(expression.schema, expression.value);
@@ -633,6 +804,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             trace.push({source_index: step.source_index, op: 'set', scope, field: step.field, value: structuredClone(value)});
         } else if (step.op === 'return') {
             const value = evaluate(step.value);
+            if (value === undefined) throw new Error('Unresolved native audio/VFX return value');
             const outputs = Object.create(null);
             for (const field of program.output_fields) {
                 if (!owns(locals, field)) throw new Error(`Missing output property: ${field}`);

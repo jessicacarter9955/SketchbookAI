@@ -19,6 +19,16 @@ def source_structs(documents, error):
     return construct_source_structs(documents)
 
 
+NATIVE_COMPONENT_REFERENCES = {
+    ('/Script/Engine', name) for name in ('ActorComponent', 'SceneComponent', 'PrimitiveComponent',
+        'MeshComponent', 'SkeletalMeshComponent', 'StaticMeshComponent', 'CapsuleComponent',
+        'CameraComponent', 'SpringArmComponent', 'AudioComponent')
+} | {
+    ('/Script/Niagara', 'NiagaraComponent'),
+}
+NATIVE_OBJECT_REFERENCES = {('/Script/Niagara', 'NiagaraDataChannelWriter')}
+
+
 def property_schema(package, prop):
     from blueprint_values import native_schema
     type_name = prop.get('SerializedType')
@@ -32,6 +42,10 @@ def property_schema(package, prop):
         identity = import_path(package, prop.get('PropertyClass'))
         if identity in {('/Script/Engine', name) for name in ('Actor', 'Pawn', 'Character')}:
             return {'type': type_name, 'class': list(identity), 'reference_kind': 'runtime_actor', 'default': None}
+        if identity in NATIVE_COMPONENT_REFERENCES:
+            return {'type': type_name, 'class': list(identity), 'reference_kind': 'runtime_native_component', 'default': None}
+        if identity in NATIVE_OBJECT_REFERENCES:
+            return {'type': type_name, 'class': list(identity), 'reference_kind': 'runtime_native_object', 'default': None}
         source = getattr(package, 'source_packages', {}).get((identity or (None,))[0])
         if source and identity:
             from blueprint_objects import class_metadata

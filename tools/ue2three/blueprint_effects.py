@@ -1,5 +1,279 @@
 """Strict source array adapters and synchronous local notification contracts."""
 from blueprint_types import import_path, property_schema
+from blueprint_values import native_schema
+
+
+ENGINE, CORE, NIAGARA = '/Script/Engine', '/Script/CoreUObject', '/Script/Niagara'
+
+
+def _object(identity=None):
+    result = {'type': 'ObjectProperty'}
+    if identity: result['class'] = list(identity)
+    result['default'] = None
+    return result
+
+
+def _enum(identity):
+    return {'type': 'ByteProperty', 'enum': list(identity), 'default': 0}
+
+
+def _struct(name):
+    return native_schema((CORE, name))
+
+
+def _call(dispatch, parameters, receiver=None, result=None):
+    return {'dispatch': dispatch, 'parameters': parameters, 'receiver': list(receiver) if receiver else None,
+            'return': result}
+
+
+# Only APIs in the blocked source-witness family are admitted here. Parameter
+# positions and reflected types follow the source UFunction contracts; calls
+# remain ordered effect records for a native/browser adapter to consume.
+NATIVE_AUDIO_VFX_CALLS = {
+    (ENGINE, 'GameplayStatics', 'PlaySound2D'): _call('EX_CallMath', [
+        _object(), _object((ENGINE, 'SoundBase')), {'type': 'FloatProperty'}, {'type': 'FloatProperty'},
+        {'type': 'FloatProperty'}, _object((ENGINE, 'SoundConcurrency')), _object((ENGINE, 'Actor')),
+        {'type': 'BoolProperty'}]),
+    (ENGINE, 'GameplayStatics', 'PlaySoundAtLocation'): _call('EX_CallMath', [
+        _object(), _object((ENGINE, 'SoundBase')), _struct('Vector'), _struct('Rotator'),
+        {'type': 'FloatProperty'}, {'type': 'FloatProperty'}, {'type': 'FloatProperty'},
+        _object((ENGINE, 'SoundAttenuation')), _object((ENGINE, 'SoundConcurrency')),
+        _object((ENGINE, 'Actor')), _object((ENGINE, 'InitialActiveSoundParams'))]),
+    (ENGINE, 'GameplayStatics', 'SpawnSoundAtLocation'): _call('EX_CallMath', [
+        _object(), _object((ENGINE, 'SoundBase')), _struct('Vector'), _struct('Rotator'),
+        {'type': 'FloatProperty'}, {'type': 'FloatProperty'}, {'type': 'FloatProperty'},
+        _object((ENGINE, 'SoundAttenuation')), _object((ENGINE, 'SoundConcurrency')),
+        {'type': 'BoolProperty'}], result=_object((ENGINE, 'AudioComponent'))),
+    (ENGINE, 'GameplayStatics', 'SpawnSoundAttached'): _call('EX_CallMath', [
+        _object((ENGINE, 'SoundBase')), _object((ENGINE, 'SceneComponent')), {'type': 'NameProperty'},
+        _struct('Vector'), _struct('Rotator'), _enum((ENGINE, 'EAttachLocation')),
+        {'type': 'BoolProperty'}, {'type': 'FloatProperty'}, {'type': 'FloatProperty'},
+        {'type': 'FloatProperty'}, _object((ENGINE, 'SoundAttenuation')),
+        _object((ENGINE, 'SoundConcurrency')), {'type': 'BoolProperty'}],
+        result=_object((ENGINE, 'AudioComponent'))),
+    (NIAGARA, 'NiagaraFunctionLibrary', 'SpawnSystemAtLocation'): _call('EX_CallMath', [
+        _object(), _object((NIAGARA, 'NiagaraSystem')), _struct('Vector'), _struct('Rotator'),
+        _struct('Vector'), {'type': 'BoolProperty'}, {'type': 'BoolProperty'},
+        _enum((NIAGARA, 'ENCPoolMethod')), {'type': 'BoolProperty'}],
+        result=_object((NIAGARA, 'NiagaraComponent'))),
+    (NIAGARA, 'NiagaraFunctionLibrary', 'SpawnSystemAttached'): _call('EX_CallMath', [
+        _object((NIAGARA, 'NiagaraSystem')), _object((ENGINE, 'SceneComponent')), {'type': 'NameProperty'},
+        _struct('Vector'), _struct('Rotator'), _enum((ENGINE, 'EAttachLocation')),
+        {'type': 'BoolProperty'}, {'type': 'BoolProperty'}, _enum((NIAGARA, 'ENCPoolMethod')),
+        {'type': 'BoolProperty'}], result=_object((NIAGARA, 'NiagaraComponent'))),
+    (NIAGARA, 'NiagaraComponent', 'SetVariableLinearColor'): _call('EX_FinalFunction', [
+        {'type': 'NameProperty'}, _struct('LinearColor')], receiver=(NIAGARA, 'NiagaraComponent')),
+    (NIAGARA, 'NiagaraComponent', 'SetVariableVec3'): _call('EX_FinalFunction', [
+        {'type': 'NameProperty'}, _struct('Vector')], receiver=(NIAGARA, 'NiagaraComponent')),
+    (NIAGARA, 'NiagaraComponent', 'SetVariableFloat'): _call('EX_FinalFunction', [
+        {'type': 'NameProperty'}, {'type': 'FloatProperty'}], receiver=(NIAGARA, 'NiagaraComponent')),
+    (NIAGARA, 'NiagaraComponent', 'SetVariablePosition'): _call('EX_FinalFunction', [
+        {'type': 'NameProperty'}, _struct('Vector')], receiver=(NIAGARA, 'NiagaraComponent')),
+    (NIAGARA, 'NiagaraComponent', 'SetVariableBool'): _call('EX_FinalFunction', [
+        {'type': 'NameProperty'}, {'type': 'BoolProperty'}], receiver=(NIAGARA, 'NiagaraComponent')),
+    (NIAGARA, 'NiagaraComponent', 'SetVariableMaterial'): _call('EX_FinalFunction', [
+        {'type': 'NameProperty'}, _object((ENGINE, 'MaterialInterface'))], receiver=(NIAGARA, 'NiagaraComponent')),
+    (NIAGARA, 'NiagaraComponent', 'SetNiagaraVariablePosition'): _call('EX_FinalFunction', [
+        {'type': 'StrProperty'}, _struct('Vector')], receiver=(NIAGARA, 'NiagaraComponent')),
+    (ENGINE, 'AudioComponent', 'SetSound'): _call('EX_FinalFunction', [
+        _object((ENGINE, 'SoundBase'))], receiver=(ENGINE, 'AudioComponent')),
+    (ENGINE, 'AudioComponent', 'SetVolumeMultiplier'): _call('EX_FinalFunction', [
+        {'type': 'FloatProperty'}], receiver=(ENGINE, 'AudioComponent')),
+    (NIAGARA, 'NiagaraDataChannelWriter', 'WriteFloat'): _call('EX_FinalFunction', [
+        {'type': 'NameProperty'}, {'type': 'IntProperty'}, {'type': 'DoubleProperty'}],
+        receiver=(NIAGARA, 'NiagaraDataChannelWriter')),
+    (NIAGARA, 'NiagaraDataChannelWriter', 'WriteInt'): _call('EX_FinalFunction', [
+        {'type': 'NameProperty'}, {'type': 'IntProperty'}, {'type': 'IntProperty'}],
+        receiver=(NIAGARA, 'NiagaraDataChannelWriter')),
+    (NIAGARA, 'NiagaraDataChannelWriter', 'WritePosition'): _call('EX_FinalFunction', [
+        {'type': 'NameProperty'}, {'type': 'IntProperty'}, _struct('Vector')],
+        receiver=(NIAGARA, 'NiagaraDataChannelWriter')),
+    (NIAGARA, 'NiagaraDataChannelWriter', 'WriteVector'): _call('EX_FinalFunction', [
+        {'type': 'NameProperty'}, {'type': 'IntProperty'}, _struct('Vector')],
+        receiver=(NIAGARA, 'NiagaraDataChannelWriter')),
+    (NIAGARA, 'NiagaraDataChannelWriter', 'WriteLinearColor'): _call('EX_FinalFunction', [
+        {'type': 'NameProperty'}, {'type': 'IntProperty'}, _struct('LinearColor')],
+        receiver=(NIAGARA, 'NiagaraDataChannelWriter')),
+}
+
+# These source calls depend on a custom Niagara context/property or an audio
+# parameter struct schema that is absent from the verified source packet.
+NATIVE_AUDIO_VFX_UNSUPPORTED = {
+    (NIAGARA, 'NiagaraDataChannelLibrary', 'MakeNDCAccessContextInstance'): ('EX_CallMath', 1,
+        'Niagara data-channel access-context struct schema is unresolved'),
+    (NIAGARA, 'NiagaraDataChannelLibrary', 'SetSinglePropertyInNDCAccessContextInstance'): ('EX_FinalFunction', 4,
+        'Niagara data-channel custom property value schema is unresolved'),
+    (NIAGARA, 'NiagaraDataChannelLibrary', 'WriteToNiagaraDataChannel_WithContext'): ('EX_CallMath', 8,
+        'Niagara data-channel access-context struct schema is unresolved'),
+    (ENGINE, 'AudioParameterConversionStatics', 'ObjectArrayToAudioParameter'): ('EX_CallMath', 2,
+        'AudioParameter struct and object-array element schemas are unresolved'),
+}
+
+
+NATIVE_AUDIO_VFX_BASES = {
+    (ENGINE, 'Character'): (ENGINE, 'Pawn'), (ENGINE, 'Pawn'): (ENGINE, 'Actor'),
+    (ENGINE, 'Actor'): ('/Script/CoreUObject', 'Object'),
+    (ENGINE, 'SceneComponent'): (ENGINE, 'ActorComponent'),
+    (ENGINE, 'PrimitiveComponent'): (ENGINE, 'SceneComponent'),
+    (ENGINE, 'MeshComponent'): (ENGINE, 'PrimitiveComponent'),
+    (ENGINE, 'SkeletalMeshComponent'): (ENGINE, 'MeshComponent'),
+    (ENGINE, 'StaticMeshComponent'): (ENGINE, 'MeshComponent'),
+    (ENGINE, 'CapsuleComponent'): (ENGINE, 'PrimitiveComponent'),
+    (ENGINE, 'CameraComponent'): (ENGINE, 'SceneComponent'),
+    (ENGINE, 'SpringArmComponent'): (ENGINE, 'SceneComponent'),
+    (ENGINE, 'AudioComponent'): (ENGINE, 'ActorComponent'),
+    (ENGINE, 'SoundWave'): (ENGINE, 'SoundBase'), (ENGINE, 'SoundCue'): (ENGINE, 'SoundBase'),
+    (ENGINE, 'Material'): (ENGINE, 'MaterialInterface'),
+    (ENGINE, 'MaterialInstance'): (ENGINE, 'MaterialInterface'),
+    (ENGINE, 'MaterialInstanceConstant'): (ENGINE, 'MaterialInstance'),
+    (NIAGARA, 'NiagaraComponent'): (ENGINE, 'PrimitiveComponent'),
+}
+
+
+def _is_a(package, actual, expected, seen=None):
+    if actual == expected: return True
+    if not actual or not expected: return False
+    seen = set() if seen is None else seen
+    if actual in seen: return False
+    seen.add(actual)
+    base = NATIVE_AUDIO_VFX_BASES.get(actual)
+    if base: return _is_a(package, base, expected, seen)
+    source = getattr(package, 'source_packages', {}).get(actual[0])
+    if source:
+        from blueprint_objects import class_metadata
+        meta = class_metadata(source)
+        if meta and meta['object'] == actual[-1]:
+            return _is_a(package, tuple(meta['native_base']), expected, seen)
+    return False
+
+
+def _compatible(package, actual, expected):
+    if actual.get('type') != expected.get('type'): return False
+    if expected['type'] == 'ObjectProperty':
+        expected_class, actual_class = expected.get('class'), actual.get('class')
+        if expected_class and actual_class:
+            return _is_a(package, tuple(actual_class), tuple(expected_class))
+        return not expected_class or expected.get('reference_kind') == 'source_self'
+    if expected['type'] == 'StructProperty':
+        return (actual.get('source'), actual.get('native')) == (expected.get('source'), expected.get('native'))
+    if expected.get('enum') and actual.get('enum') and actual['enum'] != expected['enum']:
+        return False
+    return True
+
+
+def _argument(value, expected, package, owner, reads, outputs, depth):
+    from blueprint_migration import kind, expression, BlueprintTranslationError as Error
+    token = kind(value)
+    if token in ('EX_InstanceVariable', 'EX_LocalVariable', 'EX_LocalOutVariable'):
+        result, schema = variable(value, package, owner, reads, outputs, depth)
+        pointer = value.get('Variable', {}).get('New', {})
+        container = package.export(owner) if token == 'EX_InstanceVariable' else getattr(package, '_active_function', None)
+        prop = next((p for p in (container or {}).get('LoadedProperties', []) if p.get('Name') == pointer.get('Path', [None])[0]), {})
+        if prop.get('Enum'):
+            enum = import_path(package, prop['Enum'])
+            if enum: schema['enum'] = list(enum)
+    elif token == 'EX_Self':
+        meta = None
+        if package:
+            from blueprint_objects import class_metadata
+            meta = class_metadata(package)
+        cls = tuple(meta['native_base']) if meta and meta.get('native_base') else None
+        schema = _object(cls)
+        schema.update(reference_kind='source_self', source_owner_index=owner)
+        result = {'op': 'native_self', 'source_owner_index': owner,
+                  'class': list(cls) if cls else None}
+    elif token == 'EX_NoObject':
+        if expected.get('type') != 'ObjectProperty': raise Error('Native audio/VFX null does not match its parameter type')
+        schema, result = expected, {'op': 'constant', 'value': None}
+    elif token in ('EX_ObjectConst', 'EX_VectorConst', 'EX_RotationConst', 'EX_StructConst'):
+        result = expression(value, reads, outputs, depth+1, package, owner)
+        schema = result.get('schema') if result.get('op') == 'typed_literal' else None
+        if token == 'EX_StructConst':
+            identity = import_path(package, value.get('Struct'))
+            schema = native_schema(identity) or getattr(package, 'source_structs', {}).get(identity)
+    else:
+        primitive = {'EX_True': 'BoolProperty', 'EX_False': 'BoolProperty',
+                     'EX_IntZero': 'IntProperty', 'EX_IntOne': 'IntProperty',
+                     'EX_IntConst': 'IntProperty', 'EX_IntConstByte': 'ByteProperty',
+                     'EX_ByteConst': 'ByteProperty', 'EX_FloatConst': 'FloatProperty',
+                     'EX_DoubleConst': 'DoubleProperty', 'EX_NameConst': 'NameProperty',
+                     'EX_StringConst': 'StrProperty', 'EX_UnicodeStringConst': 'StrProperty'}
+        if token not in primitive: raise Error('Unsupported native audio/VFX parameter expression: ' + token)
+        result = expression(value, reads, outputs, depth+1, package, owner)
+        schema = {'type': primitive[token]}
+        if primitive[token] in ('BoolProperty', 'ByteProperty', 'IntProperty', 'FloatProperty', 'DoubleProperty', 'NameProperty', 'StrProperty'):
+            schema['default'] = {'BoolProperty': False, 'ByteProperty': 0, 'IntProperty': 0, 'FloatProperty': 0,
+                                 'DoubleProperty': 0, 'NameProperty': 'None', 'StrProperty': ''}[primitive[token]]
+    if not schema or not _compatible(package, schema, expected):
+        raise Error('Original native audio/VFX parameter type differs')
+    if expected.get('enum'):
+        if token in ('EX_InstanceVariable', 'EX_LocalVariable', 'EX_LocalOutVariable'):
+            if schema.get('enum') != expected['enum']:
+                raise Error('Original native audio/VFX enum parameter type differs')
+        else:
+            schema['enum'] = expected['enum']
+    return {'schema': schema, 'contract': expected, 'value': result}
+
+
+def native_audio_vfx_call(value, package, owner, reads, outputs, depth, dispatch, receiver_value=None):
+    """Translate an exact witnessed audio/VFX call, retaining its typed ABI."""
+    from blueprint_migration import kind, expression, memory_size, BlueprintTranslationError as Error
+    identity = import_path(package, value.get('StackNode'))
+    contract = NATIVE_AUDIO_VFX_CALLS.get(identity)
+    unsupported = NATIVE_AUDIO_VFX_UNSUPPORTED.get(identity)
+    if contract is None and unsupported is None: return None
+    reference = value.get('StackNode')
+    if (type(reference) is not int or reference >= 0 or -reference > len(package.imports)
+            or package.imports[-reference-1].get('ClassName') != 'Function'
+            or not identity or len(identity) != 3
+            or import_path(package, package.imports[-reference-1].get('OuterIndex')) != identity[:-1]):
+        raise Error('Original native audio/VFX call identity differs')
+    if unsupported:
+        expected_dispatch, expected_arity, reason = unsupported
+        if dispatch != expected_dispatch: raise Error('Original native audio/VFX dispatch differs')
+        if not isinstance(value.get('Parameters'), list) or len(value['Parameters']) != expected_arity:
+            raise Error('Original native audio/VFX parameter count differs')
+        raise Error('Unsupported reachable native audio/VFX effect: ' + reason)
+    if dispatch != contract['dispatch']:
+        raise Error('Original native audio/VFX dispatch differs')
+    args = value.get('Parameters')
+    if not isinstance(args, list) or len(args) != len(contract['parameters']):
+        raise Error('Original native audio/VFX parameter count differs')
+    receiver, receiver_schema = None, None
+    if contract['receiver']:
+        if receiver_value is None:
+            raise Error('Native audio/VFX receiver is unresolved')
+        if kind(receiver_value) == 'EX_Self':
+            typed = _argument(receiver_value, _object(), package, owner, reads, outputs, depth)
+        else:
+            receiver, receiver_schema = variable(receiver_value, package, owner, reads, outputs, depth)
+            if receiver_schema.get('type') != 'ObjectProperty' or not _compatible(
+                    package, receiver_schema, _object(contract['receiver'])):
+                raise Error('Original native audio/VFX receiver class differs')
+            typed = {'schema': receiver_schema, 'contract': _object(contract['receiver']), 'value': receiver}
+        if not _compatible(package, typed['schema'], _object(contract['receiver'])):
+            raise Error('Original native audio/VFX receiver class differs')
+        receiver, receiver_schema = typed['value'], typed['schema']
+    elif receiver_value is not None:
+        raise Error('Static native audio/VFX call has an unexpected receiver')
+    parameters = [_argument(arg, expected, package, owner, reads, outputs, depth)
+                  for arg, expected in zip(args, contract['parameters'])]
+    return {'op': 'native_audio_vfx', 'identity': list(identity), 'dispatch': dispatch,
+            'receiver': receiver, 'receiver_schema': receiver_schema,
+            'parameter_schemas': contract['parameters'], 'parameters': parameters,
+            'return_schema': contract['return']}
+
+
+def native_audio_vfx_context(value, package, owner, reads, outputs, depth):
+    from blueprint_migration import kind, memory_size, BlueprintTranslationError as Error
+    call = value.get('ContextExpression', {})
+    if kind(call) != 'EX_FinalFunction': return None
+    identity = import_path(package, call.get('StackNode'))
+    if identity not in NATIVE_AUDIO_VFX_CALLS and identity not in NATIVE_AUDIO_VFX_UNSUPPORTED: return None
+    if value.get('Offset') != memory_size(call, package=package):
+        raise Error('Original native audio/VFX context offset differs')
+    return native_audio_vfx_call(call, package, owner, reads, outputs, depth,
+                                 'EX_FinalFunction', value.get('ObjectExpression'))
 
 
 def variable(value, package, owner, reads, outputs, depth):

@@ -1,10 +1,10 @@
 import unittest
 from copy import deepcopy
 from test_blueprint_migration import node
-from blueprint_migration import expression, translate_package, memory_size, BlueprintTranslationError
+from blueprint_migration import expression, translate_package, memory_size, property_type, BlueprintTranslationError
 from umg_migration import Package
 from blueprint_types import property_schema
-from blueprint_values import serialized_value
+from blueprint_values import serialized_value, native_schema
 
 
 def var(name, owner=1, local=False):
@@ -12,6 +12,122 @@ def var(name, owner=1, local=False):
 
 
 class SourceEffectsTests(unittest.TestCase):
+    def test_witnessed_spawn_sound_at_location_retains_identity_argument_order_and_types(self):
+        imports = [
+            {'ObjectName':'SpawnSoundAtLocation','ClassName':'Function','OuterIndex':-2},
+            {'ObjectName':'GameplayStatics','OuterIndex':-3}, {'ObjectName':'/Script/Engine','ClassName':'Package'},
+            {'ObjectName':'Pawn','ClassName':'Class','OuterIndex':-5}, {'ObjectName':'/Script/Engine','ClassName':'Package'},
+            {'ObjectName':'Vector','ClassName':'ScriptStruct','OuterIndex':-7}, {'ObjectName':'/Script/CoreUObject','ClassName':'Package'},
+            {'ObjectName':'SoundBase','ClassName':'Class','OuterIndex':-9}, {'ObjectName':'/Script/Engine','ClassName':'Package'},
+        ]
+        klass={'ObjectName':'BP_Test_C','SuperStruct':-4,'LoadedProperties':[]}
+        function={'ObjectName':'Run','OuterIndex':1,'LoadedProperties':[
+            {'Name':'Sound','SerializedType':'ObjectProperty','PropertyClass':-8},
+            {'Name':'Location','SerializedType':'StructProperty','Struct':-6}],}
+        package=Package({'ObjectVersionUE5':'IMPORT_TYPE_HIERARCHIES','Imports':imports,'Exports':[klass,function]})
+        package._active_function=function
+        sound=node('EX_LocalVariable',Variable={'New':{'Path':['Sound'],'ResolvedOwner':2}})
+        location=node('EX_LocalVariable',Variable={'New':{'Path':['Location'],'ResolvedOwner':2}})
+        call=node('EX_CallMath',StackNode=-1,Parameters=[node('EX_Self'),sound,location,
+            node('EX_RotationConst',Value={'Pitch':0,'Yaw':0,'Roll':0}),node('EX_FloatConst',Value=1.0),
+            node('EX_FloatConst',Value=1.0),node('EX_FloatConst',Value=0.0),node('EX_NoObject'),
+            node('EX_NoObject'),node('EX_True')])
+        result=expression(call,set(),set(),package=package,owner=1)
+        self.assertEqual(result['op'],'native_audio_vfx')
+        self.assertEqual(result['identity'],['/Script/Engine','GameplayStatics','SpawnSoundAtLocation'])
+        self.assertEqual(result['dispatch'],'EX_CallMath')
+        self.assertEqual([item['contract']['type'] for item in result['parameters']],
+            ['ObjectProperty','ObjectProperty','StructProperty','StructProperty','FloatProperty','FloatProperty',
+             'FloatProperty','ObjectProperty','ObjectProperty','BoolProperty'])
+        self.assertEqual(result['parameters'][0]['value']['op'],'native_self')
+        self.assertEqual(result['parameters'][2]['schema']['native'],'Vector')
+        self.assertEqual(result['return_schema']['class'],['/Script/Engine','AudioComponent'])
+
+        wrong_arity=dict(call,Parameters=call['Parameters'][:-1])
+        with self.assertRaisesRegex(BlueprintTranslationError,'parameter count'):
+            expression(wrong_arity,set(),set(),package=package,owner=1)
+        function['LoadedProperties'][0]['PropertyClass']=-6
+        with self.assertRaisesRegex(BlueprintTranslationError,'parameter type'):
+            expression(call,set(),set(),package=package,owner=1)
+
+    def test_witnessed_niagara_receiver_uses_exact_class_and_final_function_dispatch(self):
+        imports=[{'ObjectName':'SetVariableFloat','ClassName':'Function','OuterIndex':-2},
+            {'ObjectName':'NiagaraComponent','ClassName':'Class','OuterIndex':-3},
+            {'ObjectName':'/Script/Niagara','ClassName':'Package'},
+            {'ObjectName':'AudioComponent','ClassName':'Class','OuterIndex':-5},
+            {'ObjectName':'/Script/Engine','ClassName':'Package'}]
+        klass={'ObjectName':'BP_FX_C','LoadedProperties':[
+            {'Name':'FX','SerializedType':'ObjectProperty','PropertyClass':-2}]}
+        function={'ObjectName':'Run','OuterIndex':1,'LoadedProperties':[]}
+        package=Package({'Imports':imports,'Exports':[klass,function]});package._active_function=function
+        target=node('EX_InstanceVariable',Variable={'New':{'Path':['FX'],'ResolvedOwner':1}})
+        call=node('EX_FinalFunction',StackNode=-1,Parameters=[node('EX_NameConst',Value='Rate'),node('EX_FloatConst',Value=2.0)])
+        context=node('EX_Context',ObjectExpression=target,ContextExpression=call,Offset=memory_size(call,package=package))
+        translated=expression(context,set(),set(),package=package,owner=1)
+        self.assertEqual(translated['identity'],['/Script/Niagara','NiagaraComponent','SetVariableFloat'])
+        self.assertEqual(translated['receiver_schema']['class'],['/Script/Niagara','NiagaraComponent'])
+        self.assertEqual(translated['parameters'][0]['contract']['type'],'NameProperty')
+        self.assertEqual(translated['parameters'][1]['contract']['type'],'FloatProperty')
+        klass['LoadedProperties'][0]['PropertyClass']=-4
+        with self.assertRaisesRegex(BlueprintTranslationError,'receiver class'):
+            expression(context,set(),set(),package=package,owner=1)
+
+    def test_witnessed_niagara_data_channel_writer_preserves_reflected_value_types(self):
+        imports=[{'ObjectName':'WriteFloat','ClassName':'Function','OuterIndex':-2},
+            {'ObjectName':'NiagaraDataChannelWriter','ClassName':'Class','OuterIndex':-3},
+            {'ObjectName':'/Script/Niagara','ClassName':'Package'}]
+        klass={'ObjectName':'BP_NDC_C','LoadedProperties':[
+            {'Name':'Writer','SerializedType':'ObjectProperty','PropertyClass':-2}]}
+        function={'ObjectName':'Run','OuterIndex':1,'LoadedProperties':[]}
+        package=Package({'Imports':imports,'Exports':[klass,function]});package._active_function=function
+        target=node('EX_InstanceVariable',Variable={'New':{'Path':['Writer'],'ResolvedOwner':1}})
+        call=node('EX_FinalFunction',StackNode=-1,Parameters=[node('EX_NameConst',Value='Impact'),
+            node('EX_IntZero'),node('EX_DoubleConst',Value=1.25)])
+        context=node('EX_Context',ObjectExpression=target,ContextExpression=call,Offset=memory_size(call,package=package))
+        translated=expression(context,set(),set(),package=package,owner=1)
+        self.assertEqual(translated['identity'],['/Script/Niagara','NiagaraDataChannelWriter','WriteFloat'])
+        self.assertEqual([value['schema']['type'] for value in translated['parameters']],
+            ['NameProperty','IntProperty','DoubleProperty'])
+        self.assertEqual(translated['receiver_schema']['reference_kind'],'runtime_native_object')
+
+    def test_unresolved_niagara_access_context_and_audio_parameter_calls_block_explicitly(self):
+        def unsupported_call(identity, arity):
+            imports=[{'ObjectName':identity[2],'ClassName':'Function','OuterIndex':-2},
+                {'ObjectName':identity[1],'ClassName':'Class','OuterIndex':-3},
+                {'ObjectName':identity[0],'ClassName':'Package'}]
+            package=Package({'Imports':imports,'Exports':[{'ObjectName':'BP_Test_C'}]})
+            call=node('EX_CallMath',StackNode=-1,Parameters=[node('EX_IntZero') for _ in range(arity)])
+            with self.assertRaisesRegex(BlueprintTranslationError,'Unsupported reachable native audio/VFX effect'):
+                expression(call,set(),set(),package=package,owner=1)
+        unsupported_call(('/Script/Niagara','NiagaraDataChannelLibrary','MakeNDCAccessContextInstance'),1)
+        unsupported_call(('/Script/Engine','AudioParameterConversionStatics','ObjectArrayToAudioParameter'),2)
+
+    def test_linear_color_and_native_receiver_schemas_keep_source_class_identity(self):
+        color=native_schema(('/Script/CoreUObject','LinearColor'))
+        self.assertEqual(color['member_order'],['R','G','B','A'])
+        self.assertTrue(all(schema['type']=='FloatProperty' for schema in color['fields'].values()))
+        imports=[{'ObjectName':'AudioComponent','ClassName':'Class','OuterIndex':-2},
+            {'ObjectName':'/Script/Engine','ClassName':'Package'}]
+        package=Package({'Imports':imports})
+        schema=property_schema(package,{'SerializedType':'ObjectProperty','PropertyClass':-1})
+        self.assertEqual(schema['reference_kind'],'runtime_native_component')
+        self.assertIsNone(serialized_value(package,{'SerializedType':'ObjectProperty','PropertyClass':-1},schema,{'Value':0}))
+        with self.assertRaisesRegex(ValueError,'native-object adapter'):
+            serialized_value(package,{'SerializedType':'ObjectProperty','PropertyClass':-1},schema,{'Value':-1})
+
+    def test_niagara_asset_references_keep_their_module_and_property_type(self):
+        from blueprint_values import asset_constant
+        package=Package({'Imports':[{'ObjectName':'SmokeSystem','ClassName':'NiagaraSystem',
+            'ClassPackage':'/Script/Niagara','OuterIndex':-2},
+            {'ObjectName':'/Script/Niagara','ClassName':'Package'},
+            {'ObjectName':'NiagaraSystem','ClassName':'Class','OuterIndex':-4},
+            {'ObjectName':'/Script/Niagara','ClassName':'Package'}]})
+        prop={'SerializedType':'ObjectProperty','PropertyClass':-3}
+        self.assertEqual(property_type(prop,package),'ObjectProperty')
+        self.assertEqual(asset_constant(package,-1),{'op':'typed_literal',
+            'schema':{'type':'ObjectProperty','class':['/Script/Niagara','NiagaraSystem'],'default':None},
+            'value':{'asset':'/Script/Niagara.SmokeSystem','declared_class':['/Script/Niagara','NiagaraSystem']}})
+
     def test_set_array_retains_original_destination_schema_and_writes(self):
         p = self.package()
         literal = node('EX_SetArray', AssigningProperty=var('Items'), ArrayInnerProp=None, Elements=[node('EX_IntOne')])

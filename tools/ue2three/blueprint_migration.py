@@ -31,9 +31,11 @@ def property_type(prop, package=None):
     result = prop.get('SerializedType')
     if result == 'ObjectProperty' and package:
         schema = property_schema(package, prop)
-        from blueprint_values import STATIC_ASSET_CLASSES
-        if schema and (schema.get('class', [None, None])[0] == '/Script/Engine'
-                       and schema['class'][1] in STATIC_ASSET_CLASSES or schema.get('reference_kind') in ('runtime_actor', 'runtime_component')): return result
+        from blueprint_values import STATIC_ASSET_MODULES
+        identity = schema.get('class') if schema else None
+        if schema and (identity and identity[1] in STATIC_ASSET_MODULES.get(identity[0], set())
+                       or schema.get('reference_kind') in
+                       ('runtime_actor', 'runtime_component', 'runtime_native_component', 'runtime_native_object')): return result
     if result == 'EnumProperty':
         result = prop.get('UnderlyingProp', {}).get('SerializedType')
     if result not in ('BoolProperty', 'ByteProperty', 'IntProperty', 'Int64Property', 'FloatProperty',
@@ -183,6 +185,9 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         from blueprint_effects import array_context
         adapted = array_context(value, package, owner, reads, outputs, depth)
         if adapted is not None: return adapted
+        from blueprint_effects import native_audio_vfx_context
+        adapted = native_audio_vfx_context(value, package, owner, reads, outputs, depth)
+        if adapted is not None: return adapted
         from blueprint_objects import native_actor_context
         adapted = native_actor_context(value, package, owner, reads, outputs, depth)
         if adapted is not None: return adapted
@@ -198,12 +203,17 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
             from blueprint_objects import native_owner
             adapted = native_owner(value, package, owner)
             if adapted is not None: return adapted
+            from blueprint_effects import native_audio_vfx_call
+            adapted = native_audio_vfx_call(value, package, owner, reads, outputs, depth,
+                                            'EX_FinalFunction', {'$type': 'EX_Self'})
+            if adapted is not None: return adapted
         return local_call(value, package, owner, reads, outputs, depth)
     if token == 'EX_StructMemberContext':
         return {'op': 'member', 'field': field(value.get('StructMemberExpression')),
                 'value': expression(value.get('StructExpression'), reads, outputs, depth+1, package, owner)}
     if token == 'EX_StructConst':
-        schema = getattr(package, 'source_structs', {}).get(import_path(package, value.get('Struct'))) if package else None
+        identity = import_path(package, value.get('Struct')) if package else None
+        schema = (native_schema(identity) or getattr(package, 'source_structs', {}).get(identity)) if package else None
         members, values = (schema or {}).get('member_order'), value.get('Value')
         if (not schema or not members or not isinstance(values, list) or len(values) != len(members)
                 or type(value.get('StructSize')) is not int or value['StructSize'] <= 0):
@@ -215,6 +225,9 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         return multicast(value, package, owner, reads, outputs, depth)
     if token == 'EX_CallMath':
         if package:
+            from blueprint_effects import native_audio_vfx_call
+            adapted = native_audio_vfx_call(value, package, owner, reads, outputs, depth, 'EX_CallMath')
+            if adapted is not None: return adapted
             from blueprint_objects import native_object_call
             adapted = native_object_call(value, package, owner, reads, outputs, depth)
             if adapted is not None: return adapted

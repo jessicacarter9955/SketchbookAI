@@ -37,6 +37,87 @@ const base = {schema_version:1,status:'translated_straight_line',source_owner_in
 const mutation = (operation,extra={}) => ({op:'evaluate',value:{op:'array_mutate',operation,target:get('Items'),element:schema,...extra}});
 const run = (steps,self={Items:[{Name:'Original',HP:9}]}) => executeBlueprint({...base,steps:[...steps,end]},self);
 
+const audioStruct = (name, fields, memberType='DoubleProperty') => ({type:'StructProperty',source:'/Script/CoreUObject',native:name,
+    fields:Object.fromEntries(fields.map(field=>[field,{type:memberType}])),default:Object.fromEntries(fields.map(field=>[field,0])),member_order:fields});
+const audioObject = identity => ({type:'ObjectProperty',...(identity?{class:identity}:{}),default:null});
+const spawnSoundLocationSchemas = [audioObject(),audioObject(['/Script/Engine','SoundBase']),audioStruct('Vector',['X','Y','Z']),
+    audioStruct('Rotator',['Pitch','Yaw','Roll']),{type:'FloatProperty'},{type:'FloatProperty'},{type:'FloatProperty'},
+    audioObject(['/Script/Engine','SoundAttenuation']),audioObject(['/Script/Engine','SoundConcurrency']),{type:'BoolProperty'}];
+const typedAudioArgument = (contract, value, sourceSchema=contract) => ({contract,schema:sourceSchema,value:{op:'typed_literal',schema:sourceSchema,value}});
+const spawnSoundLocationCall = () => ({op:'native_audio_vfx',identity:['/Script/Engine','GameplayStatics','SpawnSoundAtLocation'],
+    dispatch:'EX_CallMath',receiver:null,receiver_schema:null,parameter_schemas:spawnSoundLocationSchemas,
+    parameters:spawnSoundLocationSchemas.map((contract,index)=>{
+        const values=[null,{asset:'/Game/Sounds/Test.Test',declared_class:['/Script/Engine','SoundBase']},
+            {X:10,Y:20,Z:30},{Pitch:0,Yaw:90,Roll:0},1,0.8,0,null,null,true];
+        if(values[index]===null)return {contract,schema:contract,value:constant(null)};
+        return typedAudioArgument(contract,values[index]);
+    }),return_schema:audioObject(['/Script/Engine','AudioComponent'])});
+
+test('native audio/VFX calls retain the exact API, typed argument order, and explicit requests',()=>{
+    const call=spawnSoundLocationCall(),later=structuredClone(call);
+    later.parameters[4].value.value=0.5;
+    const program={...base,source_owner_index:8,steps:[
+        {op:'evaluate',value:call},{op:'evaluate',value:later},{op:'return',value:constant(null)}]};
+    const result=executeBlueprint(program);
+    assert.equal(result.effects.length,2);
+    assert.equal(result.effects[0].op,'native_audio_vfx');
+    assert.deepEqual(result.effects[0].identity,['/Script/Engine','GameplayStatics','SpawnSoundAtLocation']);
+    assert.deepEqual(result.effects[0].arguments,[null,{asset:'/Game/Sounds/Test.Test',declared_class:['/Script/Engine','SoundBase']},
+        {X:10,Y:20,Z:30},{Pitch:0,Yaw:90,Roll:0},1,0.8,0,null,null,true]);
+    assert.deepEqual(result.effects[0].argument_schemas[2],audioStruct('Vector',['X','Y','Z']));
+    assert.equal(result.effects[1].arguments[4],0.5);
+    assert.throws(()=>executeBlueprint({...program,steps:[{op:'return',value:call}]}),/Unresolved native audio\/VFX return value/);
+    const wrong=structuredClone(call);wrong.identity[2]='PlaySoundAtLocation';
+    assert.throws(()=>executeBlueprint({...program,steps:[{op:'evaluate',value:wrong},end]}),/Unsupported original native audio\/VFX call contract/);
+    const wrongType=structuredClone(call);wrongType.parameters[4].schema={type:'DoubleProperty'};
+    wrongType.parameters[4].contract={type:'DoubleProperty'};wrongType.parameter_schemas[4]={type:'DoubleProperty'};
+    assert.throws(()=>executeBlueprint({...program,steps:[{op:'evaluate',value:wrongType},end]}),/Unsupported original native audio\/VFX call contract/);
+    const report={schema_version:1,project:'Source.uproject',packages:{'/Game/Source':{
+        default_state:{},functions:{Effect:program}}}};
+    const runtime=new BlueprintActorRuntime(report,report.project);
+    runtime.call('/Game/Source','Effect');
+    assert.equal(runtime.audioVfxRequests.length,2);
+    assert.deepEqual(runtime.snapshot().audioVfxRequests,runtime.audioVfxRequests);
+    const snapshot=runtime.snapshot();runtime.audioVfxRequests.length=0;runtime.restore(snapshot);
+    assert.equal(runtime.audioVfxRequests.length,2);
+});
+
+test('native component calls preserve Accessed None skipping and reject non-native receiver values',()=>{
+    const receiverSchema={type:'ObjectProperty',class:['/Script/Engine','AudioComponent'],
+        reference_kind:'runtime_native_component',default:null};
+    const call={op:'native_audio_vfx',identity:['/Script/Engine','AudioComponent','SetVolumeMultiplier'],
+        dispatch:'EX_FinalFunction',receiver:get('Audio'),receiver_schema:receiverSchema,
+        parameter_schemas:[{type:'FloatProperty'}],parameters:[{contract:{type:'FloatProperty'},schema:{type:'FloatProperty'},
+            value:constant(0.5)}],return_schema:null};
+    const program={...base,self_reads:['Audio'],field_types:{self:{Audio:'ObjectProperty'}},schemas:{self:{Audio:receiverSchema}},
+        steps:[{op:'evaluate',value:call},end]};
+    const skipped=executeBlueprint(program,{Audio:null});
+    assert.equal(skipped.effects.length,0);assert.match(skipped.trace[0].message,/Accessed None/);
+    assert.throws(()=>executeBlueprint(program,{Audio:{asset:'/Engine/AudioComponent.AudioComponent',
+        declared_class:['/Script/Engine','AudioComponent']}}),/native object reference/);
+});
+
+test('native sound calls bind EX_Self to the exact source world context',()=>{
+    const selfSchema={type:'ObjectProperty',class:['/Script/Engine','Pawn'],reference_kind:'source_self',
+        source_owner_index:8,default:null};
+    const parameters=[audioObject(),audioObject(['/Script/Engine','SoundBase']),{type:'FloatProperty'},
+        {type:'FloatProperty'},{type:'FloatProperty'},audioObject(['/Script/Engine','SoundConcurrency']),
+        audioObject(['/Script/Engine','Actor']),{type:'BoolProperty'}];
+    const values=[{schema:selfSchema,contract:parameters[0],value:{op:'native_self',source_owner_index:8,class:['/Script/Engine','Pawn']}},
+        typedAudioArgument(parameters[1],{asset:'/Game/Sounds/UI.UI',declared_class:['/Script/Engine','SoundBase']}),
+        ...[1,1,0].map((value,index)=>typedAudioArgument(parameters[index+2],value)),
+        {schema:parameters[5],contract:parameters[5],value:constant(null)},
+        {schema:parameters[6],contract:parameters[6],value:constant(null)},
+        typedAudioArgument(parameters[7],false)];
+    const call={op:'native_audio_vfx',identity:['/Script/Engine','GameplayStatics','PlaySound2D'],dispatch:'EX_CallMath',
+        receiver:null,receiver_schema:null,parameter_schemas:parameters,parameters:values,return_schema:null};
+    const program={...base,source_owner_index:8,steps:[{op:'evaluate',value:call},end]};
+    const result=executeBlueprint(program,{}, {},{native:{source_owner_index:8,source_package:'/Game/Source'}});
+    assert.deepEqual(result.effects[0].arguments[0],{kind:'source_self',source_package:'/Game/Source',
+        source_owner_index:8,declared_class:['/Script/Engine','Pawn']});
+    assert.throws(()=>executeBlueprint(program),/Blueprint self reference is unavailable/);
+});
+
 test('SetArray constructs typed slots before evaluating source expressions and copies structs',()=>{
     const integer={type:'IntProperty',default:0};
     const program={...base,field_types:{self:{Items:'ArrayProperty'}},schemas:{self:{Items:{type:'ArrayProperty',element:integer,default:[]}}},steps:[

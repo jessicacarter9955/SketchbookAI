@@ -12,6 +12,7 @@ export class BlueprintActorRuntime {
         this.dirty = Object.create(null);
         this.actorBindings = new SourceActorBindings(report);
         this.nativeRequests = [];
+        this.audioVfxRequests = [];
         this.nextBindingId = 1;
         this.gameTimeSeconds = 0;
         for (const [name, data] of Object.entries(report.packages)) this.states[name] = structuredClone(data.default_state || {});
@@ -37,9 +38,11 @@ export class BlueprintActorRuntime {
                 this.dirty[receiverName][effect.field] = effect.source_rep_index;
             } else if (effect.op === 'broadcast') this.notifications.push({package: receiverName, ...structuredClone(effect)});
             else if (effect.op === 'force_net_update') this.nativeRequests.push({package:receiverName,...structuredClone(effect)});
+            else if (effect.op === 'native_audio_vfx') this.audioVfxRequests.push({package:receiverName,...structuredClone(effect)});
         }
         if (this.notifications.length > 1000) this.notifications.splice(0, this.notifications.length-1000);
         if (this.nativeRequests.length > 1000) this.nativeRequests.splice(0, this.nativeRequests.length-1000);
+        if (this.audioVfxRequests.length > 1000) this.audioVfxRequests.splice(0, this.audioVfxRequests.length-1000);
         return result;
     }
     transactionReceivers(packageName,program) {
@@ -141,13 +144,14 @@ export class BlueprintActorRuntime {
             return {...metric, value, current_value: state[metric.current], maximum_value: state[metric.maximum]};
         });
     }
-    snapshot() { return structuredClone({states: this.states, frames: this.frames, bindings: this.bindings, notifications: this.notifications, dirty: this.dirty, nativeRequests:this.nativeRequests,gameTimeSeconds:this.gameTimeSeconds}); }
+    snapshot() { return structuredClone({states: this.states, frames: this.frames, bindings: this.bindings, notifications: this.notifications, dirty: this.dirty, nativeRequests:this.nativeRequests,audioVfxRequests:this.audioVfxRequests,gameTimeSeconds:this.gameTimeSeconds}); }
     restore(snapshot) {
         const gameTimeSeconds = snapshot.gameTimeSeconds ?? 0;
         if (typeof gameTimeSeconds !== 'number' || !Number.isFinite(gameTimeSeconds) || gameTimeSeconds < 0) throw new Error('Invalid source world time snapshot');
         this.states = structuredClone(snapshot.states); this.frames = structuredClone(snapshot.frames);
         this.bindings = structuredClone(snapshot.bindings || {}); this.notifications = structuredClone(snapshot.notifications || []); this.dirty = structuredClone(snapshot.dirty || {});
         this.nativeRequests = structuredClone(snapshot.nativeRequests || []);
+        this.audioVfxRequests = structuredClone(snapshot.audioVfxRequests || []);
         this.gameTimeSeconds = gameTimeSeconds;
         this.guardCache.clear(); this.metricCache.clear(); this.last = null;
     }
