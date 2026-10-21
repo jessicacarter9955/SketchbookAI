@@ -195,17 +195,32 @@ def source_scene(project, map_package, workspace):
                 values[info['Name']] = float(row.get('ParameterValue', 0))
         return values
 
-    landscapes, materials, actors = {}, {}, {}
-    for export in package.exports:
+    landscapes, materials, actors, actor_records, mesh_components = {}, {}, {}, [], []
+    for export_index, export in enumerate(package.exports, 1):
         kind, props = package.class_name(export), package.props(export)
         root = package.export(props.get('RootComponent', 0))
         if root:
             root_props = package.props(root)
             transform = _authored_transform(root_props)
+            label = props.get('ActorLabel', export['ObjectName'])
+            actor = {'actor_label': label, 'source_object': export['ObjectName'],
+                     'source_export_index': export_index, 'source_class': kind,
+                     'root_component': root['ObjectName'],
+                     'root_component_class': package.class_name(root),
+                     'transform': transform, 'attached': bool(root_props.get('AttachParent'))}
+            actor_records.append(actor)
             if transform:
-                label = props.get('ActorLabel', export['ObjectName'])
                 actors[label] = {'transform': transform, 'attached': bool(root_props.get('AttachParent')),
-                                 'source_object': export['ObjectName']}
+                                 'source_object': export['ObjectName'], 'source_export_index': export_index,
+                                 'source_class': kind}
+        if ('MeshComponent' in kind or kind in ('LandscapeComponent', 'GeometryCollectionComponent',
+                                                 'TextRenderComponent', 'WidgetComponent')):
+            mesh_property = next((name for name in ('StaticMesh', 'SkeletalMesh', 'Mesh', 'RestCollection')
+                                  if props.get(name)), None)
+            mesh_reference = _reference(package, props[mesh_property]) if mesh_property else None
+            mesh_components.append({'source_object': export['ObjectName'], 'source_export_index': export_index,
+                                    'source_class': kind, 'mesh_property': mesh_property,
+                                    'asset_reference': mesh_reference})
         if kind == 'LandscapeComponent':
             bounds = _unwrap(props.get('CachedLocalBox'))
             if isinstance(bounds, dict) and bounds.get('IsValid'):
@@ -225,7 +240,8 @@ def source_scene(project, map_package, workspace):
                           'parent': _reference(package, props.get('Parent'))}
     return {'schema_version': 1, 'project': str(project), 'map': map_package,
             'source_sha256': sha, 'source_hashes': source_hashes, 'landscapes': landscapes,
-            'grid_materials': materials, 'actor_transforms': actors, 'material_graphs': material_graphs}
+            'grid_materials': materials, 'actor_transforms': actors, 'material_graphs': material_graphs,
+            'actors': actor_records, 'mesh_components': mesh_components}
 
 
 def _read_glb(path):

@@ -10,7 +10,8 @@ from pathlib import Path
 from core import atomic_json, digest, file_hash, read_json
 from engine_runner import EngineError, prepare_project
 from pipeline import load_state
-from map_processing import export_implementation_hash, read_raw_export, store_raw_export, process_raw_export
+from map_processing import (classify_empty_export_source, export_implementation_hash, read_raw_export,
+                            store_raw_export, process_raw_export)
 
 
 class MapMigrationError(RuntimeError):
@@ -61,6 +62,66 @@ def _cached_map_matches(record, prior, target):
     return (prior.get("status") in {"exported", "reused"} and
             prior.get("fingerprint") == record["fingerprint"] and valid_glb(target) and
             prior.get("output_sha256") == file_hash(target))
+
+
+def _cached_source_only_matches(record, prior, manifest_path, project):
+    if (prior.get('status') != 'source_only' or prior.get('fingerprint') != record['fingerprint'] or
+            not Path(manifest_path).is_file()):
+        return False
+    try:
+        manifest = read_json(manifest_path)
+        if (not isinstance(manifest, dict) or manifest.get('status') != 'source_only' or
+                manifest.get('map_fingerprint') != record['fingerprint'] or
+                manifest.get('project') != str(project) or
+                prior.get('source_only_manifest_sha256') != file_hash(manifest_path)):
+            return False
+        source_root = Path(project).resolve().parent
+        for item in record.get('source_files', []):
+            source = (source_root / item['path']).resolve()
+            if source_root not in source.parents or not source.is_file() or file_hash(source) != item['sha256']:
+                return False
+        return True
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+
+def _write_empty_scene_manifest(record, target, project, workspace, snapshot_hash, geometry):
+    from map_fixup import source_scene
+
+    source_data, source_error = None, None
+    try:
+        source_data = source_scene(project, record['package'], workspace)
+        if (not isinstance(source_data, dict) or source_data.get('project') != str(project) or
+                source_data.get('map') != record['package']):
+            source_data, source_error = None, 'Source reader returned a different project or map identity.'
+    except (OSError, ValueError, KeyError, TypeError, RuntimeError, subprocess.SubprocessError) as error:
+        source_error = f'{type(error).__name__}: {error}'
+    classification = classify_empty_export_source(source_data)
+    status = 'source_only' if classification['classification'] == 'source_meshless' else 'failed'
+    actor_provenance = None
+    if source_data:
+        actor_provenance = {key: source_data.get(key) for key in
+                            ('source_sha256', 'source_hashes', 'actors', 'actor_transforms', 'mesh_components')}
+    detail = {'schema_version': 1, 'status': status, 'package': record['package'],
+              'project': str(project), 'source_snapshot_hash': snapshot_hash,
+              'map_fingerprint': record['fingerprint'],
+              'source_files': record.get('source_files', []),
+              'empty_export': geometry, 'source_classification': classification,
+              'source_scene_error': source_error, 'actor_provenance': actor_provenance,
+              'limitations': ['This sidecar preserves source actor identity and authored transforms; it contains no Three.js renderable geometry.',
+                              'Serialized-source classification cannot rule out geometry spawned by native code at runtime.']}
+    manifest_path = Path(target).with_suffix('.actors.json')
+    atomic_json(manifest_path, detail)
+    if status == 'source_only':
+        error = 'No renderable geometry was exported; source actor provenance is available, but this is not a rendered map conversion.'
+    elif classification['classification'] == 'source_geometry_present':
+        error = 'No renderable geometry was exported although source components reference geometry; possible geometry loss.'
+    else:
+        error = 'No renderable geometry was exported and source data cannot prove the level is meshless.'
+    return {'status': status, 'error': error, 'source_only_manifest': str(manifest_path),
+            'source_only_manifest_sha256': file_hash(manifest_path),
+            'source_classification': classification,
+            'warnings': [source_error] if source_error else []}
 
 
 def _merge_map_catalog(old, results):
@@ -251,6 +312,20 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
     map_dir.mkdir(parents=True, exist_ok=True)
 
     results, pending = [], []
+    actual_by_relative = None
+
+    def verify_record_sources(record):
+        nonlocal actual_by_relative
+        if actual_by_relative is None:
+            from scanner import source_files as walk_source_files
+            actual_paths, _ = walk_source_files(project)
+            actual_by_relative = {path.relative_to(project.parent).as_posix(): path for path in actual_paths}
+        for source_record in record['source_files']:
+            relative, expected_hash = source_record['path'], source_record['sha256']
+            source = actual_by_relative.get(relative)
+            if not source or file_hash(source) != expected_hash:
+                raise EngineError('SOURCE_CHANGED_DURING_MAP_EXPORT', f'Source changed during map export: {relative}')
+
     def checkpoint():
         atomic_json(manifest_path, {'schema_version': 2, 'project': str(project),
                     'engine_version': engine.get('version'), 'source_snapshot_hash': state['snapshot_hash'],
@@ -273,11 +348,29 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
                          ('in cache' if processed['reused'] else 'aggiornate offline'), task='map_export',
                          processing_seconds=processed['processing_seconds'])
             checkpoint()
+        elif not force and prior.get('status') == 'source_only':
+            actor_manifest = target.with_suffix('.actors.json')
+            if _cached_source_only_matches(record, prior, actor_manifest, project):
+                results.append({**prior, **record, 'status': 'source_only',
+                                'source_only_manifest': str(actor_manifest),
+                                'cache': {'source_only_manifest': 'reused', 'unreal_started': False}})
+            else:
+                verify_record_sources(record)
+                geometry = glb_summary(target)
+                fallback = _write_empty_scene_manifest(record, target, project, workspace,
+                                                       state['snapshot_hash'], geometry)
+                results.append({**record, **geometry, **fallback,
+                                'cache': {'source_only_manifest': 'rebuilt', 'unreal_started': False}})
+            checkpoint()
         elif not force and not prior.get('processing_fingerprint') and _cached_map_matches(record, prior, target):
             geometry = glb_summary(target)
             if geometry["mesh_count"] == 0:
-                results.append({**record, "status": "failed", "error": "Unreal exported no renderable mesh geometry for this level",
-                                **geometry})
+                verify_record_sources(record)
+                fallback = _write_empty_scene_manifest(record, target, project, workspace,
+                                                       state['snapshot_hash'], geometry)
+                results.append({**record, **geometry, **fallback,
+                                'cache': {'source_only_manifest': 'created', 'unreal_started': False}})
+                checkpoint()
                 continue
             results.append({**prior, **record, "status": "reused", "output": str(target), "bytes": target.stat().st_size,
                             "warnings": prior.get("warnings", []), "output_sha256": prior["output_sha256"], **geometry})
@@ -302,7 +395,6 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
         flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
         logger.event("map-export-start", f"Exporting {len(pending)} Unreal levels with glTF Exporter",
                      task="map_export", maps=len(pending))
-        actual_by_relative = None
         for map_index, record in enumerate(pending, 1):
             run_dir = workspace / "maps" / "runs" / (str(time.time_ns()) + "-" + _slug(record["package"].rsplit("/", 1)[-1]))
             stage = run_dir / "output"
@@ -393,18 +485,16 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
                 continue
             geometry = glb_summary(staged)
             if geometry["mesh_count"] == 0:
-                results.append({**record, "status": "failed", "error": "Unreal exported no renderable mesh geometry for this level",
-                                **geometry, "log": str(run_dir / "unreal.log")})
+                verify_record_sources(record)
+                fallback = _write_empty_scene_manifest(record, target=map_dir / record['filename'],
+                                                       project=project, workspace=workspace,
+                                                       snapshot_hash=state['snapshot_hash'], geometry=geometry)
+                results.append({**record, **geometry, **fallback,
+                                'log': str(run_dir / 'unreal.log'),
+                                'cache': {'source_only_manifest': 'created', 'unreal_started': True}})
+                checkpoint()
                 continue
-            if actual_by_relative is None:
-                from scanner import source_files as walk_source_files
-                actual_paths, _ = walk_source_files(project)
-                actual_by_relative = {path.relative_to(project.parent).as_posix(): path for path in actual_paths}
-            for source_record in record["source_files"]:
-                relative, expected_hash = source_record["path"], source_record["sha256"]
-                source = actual_by_relative.get(relative)
-                if not source or file_hash(source) != expected_hash:
-                    raise EngineError("SOURCE_CHANGED_DURING_MAP_EXPORT", f"Source changed during map export: {relative}")
+            verify_record_sources(record)
             target = map_dir / record["filename"]
             raw = store_raw_export(staged, workspace, record['fingerprint'], project, record['package'],
                                    warnings=result.get('warnings', []), source_hashes={
@@ -423,7 +513,8 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
                          f"{geometry['image_count']} immagini esportate", task="map_export", **geometry)
 
     results.sort(key=lambda item: item["package"])
-    counts = {name: sum(item["status"] == name for item in results) for name in ("exported", "reused", "failed")}
+    counts = {name: sum(item["status"] == name for item in results)
+              for name in ("exported", "reused", "source_only", "failed")}
     catalog = _merge_map_catalog(old, results)
     game_assets = registry.get("assets", [])
     widgets = sum(item.get("class") == "WidgetBlueprintGeneratedClass" for item in game_assets)
@@ -449,8 +540,9 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
     checkpoint()
     report_path = publish_dir / "migration-report.json"
     atomic_json(report_path, report)
-    if counts["exported"] + counts["reused"] == 0:
+    if counts["exported"] + counts["reused"] + counts['source_only'] == 0:
         raise MapMigrationError(f"Unreal could not export any level; see {manifest_path}")
-    logger.event("map-export-summary", f"Unreal maps exported/reused {counts['exported']}/{counts['reused']}; failed {counts['failed']}",
+    logger.event("map-export-summary", f"Unreal maps exported/reused {counts['exported']}/{counts['reused']}; "
+                 f"source-only {counts['source_only']}; failed {counts['failed']}",
                  task="map_export", report=str(report_path))
     return report

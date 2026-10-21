@@ -9,7 +9,8 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from core import SCHEMA, atomic_json, digest, file_hash, read_json
 from map_migration import migrate_maps, MapMigrationError, _merge_map_catalog, _map_record
-from map_processing import store_raw_export, read_raw_export, process_raw_export, export_implementation_hash
+from map_processing import (classify_empty_export_source, store_raw_export, read_raw_export,
+                           process_raw_export, export_implementation_hash)
 
 
 def model(path):
@@ -23,6 +24,15 @@ def model(path):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(struct.pack('<4sII', b'glTF', 2, 28 + len(data) + len(blob)) +
                      struct.pack('<II', len(data), 0x4e4f534a) + data + struct.pack('<II', len(blob), 0x004e4942) + blob)
+
+
+def empty_scene(path):
+    doc = {'asset': {'version': '2.0'}, 'scene': 0, 'scenes': [{'nodes': [0]}],
+           'nodes': [{'name': 'OnlyPointLight', 'translation': [1, 2, 3]}]}
+    data = json.dumps(doc).encode(); data += b' ' * (-len(data) % 4)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(struct.pack('<4sII', b'glTF', 2, 20 + len(data)) +
+                     struct.pack('<II', len(data), 0x4e4f534a) + data)
 
 
 class Logger:
@@ -48,6 +58,111 @@ class MapProcessingTests(unittest.TestCase):
     def raw(self):
         return store_raw_export(self.input, self.workspace, self.key, self.project, '/Game/Map',
                                 source_hashes=self.source['source_hashes'])
+
+    def test_empty_source_classifier_accepts_native_actor_only_level(self):
+        source = {'schema_version': 1, 'source_sha256': 'map-hash', 'source_hashes': {'map.umap': 'map-hash'},
+                  'actors': [{'actor_label': 'OnlyPointLight', 'source_object': 'PointLight_0',
+                              'source_export_index': 3, 'source_class': 'PointLight',
+                              'transform': {'translation': [1, 2, 3]}}], 'mesh_components': []}
+        result = classify_empty_export_source(source)
+        self.assertEqual(result['classification'], 'source_meshless')
+        self.assertEqual(result['actor_count'], 1)
+        self.assertTrue(result['limitations'])
+
+    def test_empty_source_classifier_rejects_mesh_and_blueprint_evidence(self):
+        source = {'schema_version': 1, 'source_sha256': 'map-hash', 'source_hashes': {'map.umap': 'map-hash'},
+                  'actors': [], 'mesh_components': [{'source_class': 'StaticMeshComponent',
+                                                     'asset_reference': '/Game/SM.SM'}]}
+        self.assertEqual(classify_empty_export_source(source)['classification'], 'source_geometry_present')
+        source['mesh_components'] = []
+        source['actors'] = [{'source_class': 'BP_Lamp_C'}]
+        self.assertEqual(classify_empty_export_source(source)['classification'], 'source_geometry_indeterminate')
+        source['actors'] = [{'source_class': 'Brush'}]
+        self.assertEqual(classify_empty_export_source(source)['classification'], 'source_geometry_indeterminate')
+        self.assertEqual(classify_empty_export_source({'schema_version': 1})['classification'], 'source_unavailable')
+
+    def _prepare_single_map_export(self, package='/Game/ActorOnly'):
+        map_file = self.project.parent / 'Content' / (package.rsplit('/', 1)[-1] + '.umap')
+        map_file.parent.mkdir(parents=True, exist_ok=True); map_file.write_bytes(b'source level')
+        files = [{'path': map_file.relative_to(self.project.parent).as_posix(), 'sha256': file_hash(map_file)}]
+        snapshot = {'project': str(self.project), 'files': files}
+        atomic_json(self.workspace / 'snapshot.json', snapshot)
+        atomic_json(self.workspace / 'state.json', {'schema_version': SCHEMA,
+                    'config': {'project': str(self.project)}, 'source_verification_status': 'verified',
+                    'snapshot_hash': digest(snapshot), 'tasks': {}})
+        artifacts = self.workspace / 'artifacts'; artifacts.mkdir(exist_ok=True)
+        atomic_json(artifacts / 'inventory.json', {'maps': [package], 'files': files,
+                    'assets': [{'package': package, **files[0], 'kind': 'map'}]})
+        atomic_json(artifacts / 'engine_metadata.json', {'complete': True, 'project': str(self.project),
+                    'source_snapshot_hash': digest(files), 'assets': [{'package': package}]})
+        atomic_json(artifacts / 'engine.json', {'status': 'detected', 'version': '5.7',
+                    'executable': 'must-not-run'})
+        source_scene = {'schema_version': 1, 'project': str(self.project), 'map': package,
+                        'source_sha256': file_hash(map_file),
+                        'source_hashes': {str(map_file): file_hash(map_file)},
+                        'actors': [{'actor_label': 'OnlyPointLight', 'source_object': 'PointLight_0',
+                                    'source_export_index': 3, 'source_class': 'PointLight',
+                                    'root_component': 'PointLightComponent0',
+                                    'transform': {'translation': [1, 2, 3]}}],
+                        'actor_transforms': {'OnlyPointLight': {'transform': {'translation': [1, 2, 3]}}},
+                        'mesh_components': []}
+        return package, snapshot, source_scene
+
+    def test_meshless_export_writes_actor_manifest_without_claiming_rendered_success(self):
+        package, snapshot, source_scene = self._prepare_single_map_export()
+        publish = self.root / 'meshless-published'; launches = []
+
+        def engine(command, **kwargs):
+            launches.append(command)
+            request = read_json(kwargs['env']['UE2THREE_MAP_JOB_FILE'])
+            empty_scene(Path(request['output']) / request['maps'][0]['filename'])
+            atomic_json(request['result'], {'source_project': str(self.project),
+                        'source_snapshot_hash': digest(snapshot),
+                        'results': [{'package': package, 'status': 'exported'}]})
+            return type('Process', (), {'pid': 1, 'returncode': 0, 'poll': lambda self: 0})()
+
+        with patch('map_migration.prepare_project', return_value=(self.project, [])), \
+                patch('map_fixup.source_scene', return_value=source_scene):
+            report = migrate_maps(self.project, self.workspace, publish, Logger(), popen=engine)
+            self.assertEqual(report['counts']['source_only'], 1)
+            self.assertEqual(report['counts']['exported'], 0)
+            self.assertEqual(report['counts']['failed'], 0)
+            row = next(item for item in report['maps'] if item['package'] == package)
+            self.assertEqual(row['status'], 'source_only')
+            self.assertNotIn('output', row)
+            manifest = read_json(row['source_only_manifest'])
+            self.assertEqual(manifest['actor_provenance']['actors'][0]['source_export_index'], 3)
+            self.assertEqual(manifest['actor_provenance']['actors'][0]['transform']['translation'], [1, 2, 3])
+            self.assertFalse((publish / 'maps' / 'ActorOnly.glb').exists())
+
+            reused = migrate_maps(self.project, self.workspace, publish, Logger(), map_package=package,
+                                  allow_engine=False, popen=engine)
+            self.assertEqual(reused['counts']['source_only'], 1)
+        self.assertEqual(len(launches), 1)
+
+    def test_zero_geometry_with_blueprint_source_is_still_failed(self):
+        package, snapshot, source_scene = self._prepare_single_map_export('/Game/BlueprintActor')
+        source_scene['actors'][0]['source_class'] = 'BP_Lamp_C'
+        publish = self.root / 'lost-geometry-published'
+
+        def engine(command, **kwargs):
+            request = read_json(kwargs['env']['UE2THREE_MAP_JOB_FILE'])
+            empty_scene(Path(request['output']) / request['maps'][0]['filename'])
+            atomic_json(request['result'], {'source_project': str(self.project),
+                        'source_snapshot_hash': digest(snapshot),
+                        'results': [{'package': package, 'status': 'exported'}]})
+            return type('Process', (), {'pid': 1, 'returncode': 0, 'poll': lambda self: 0})()
+
+        with patch('map_migration.prepare_project', return_value=(self.project, [])), \
+                patch('map_fixup.source_scene', return_value=source_scene), \
+                self.assertRaises(MapMigrationError):
+            migrate_maps(self.project, self.workspace, publish, Logger(), popen=engine)
+        row = read_json(publish / 'map-manifest.json')['maps'][0]
+        self.assertEqual(row['status'], 'failed')
+        self.assertEqual(row['source_classification']['classification'], 'source_geometry_indeterminate')
+        self.assertIn('not prove the level is meshless', row['error'])
+        self.assertEqual(read_json(row['source_only_manifest'])['actor_provenance']['actors'][0]['source_class'],
+                         'BP_Lamp_C')
 
     def test_processing_changes_replay_raw_bytes_and_second_run_reuses(self):
         raw = self.raw(); original_hash = raw['output_sha256']

@@ -145,7 +145,8 @@ def execute(args):
             report = migrate_maps(project, directory, args.publish_dir, logger,
                                   engine_override=args.engine, force=args.force, map_package=args.map_package,
                                   timeout=args.timeout, allow_engine=not args.offline)
-        print(f"Unreal maps exported: {report['counts']['exported']}; reused: {report['counts']['reused']}; failed: {report['counts']['failed']}")
+        print(f"Unreal maps exported: {report['counts']['exported']}; reused: {report['counts']['reused']}; "
+              f"source-only: {report['counts'].get('source_only', 0)}; failed: {report['counts']['failed']}")
         print(f"Map report: {Path(args.publish_dir) / 'migration-report.json'}")
         return 0 if report["counts"]["exported"] + report["counts"]["reused"] else 1
 

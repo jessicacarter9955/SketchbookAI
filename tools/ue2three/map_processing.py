@@ -9,6 +9,59 @@ from core import atomic_json, digest, file_hash, read_json
 
 
 EXPORT_CACHE_VERSION = 2
+NON_RENDERING_NATIVE_ACTORS = {
+    'Actor', 'Info', 'WorldSettings', 'LevelScriptActor', 'PointLight', 'SpotLight',
+    'DirectionalLight', 'SkyLight', 'RectLight', 'CameraActor', 'CineCameraActor',
+    'PlayerStart', 'TargetPoint', 'PostProcessVolume', 'ReflectionCapture',
+    'SphereReflectionCapture', 'BoxReflectionCapture', 'PlaneReflectionCapture',
+    'TriggerVolume', 'BlockingVolume', 'PhysicsVolume', 'NavMeshBoundsVolume',
+    'NavModifierVolume',
+}
+
+
+def classify_empty_export_source(source):
+    """Classify a zero-mesh export from read-only serialized map evidence.
+
+    A source-only result is deliberately narrower than "Unreal exported no
+    geometry": Blueprint instances and assigned mesh components mean geometry
+    may have been lost or created during construction, so they remain failures.
+    """
+    if (not isinstance(source, dict) or source.get('schema_version') != 1 or
+            not source.get('source_sha256') or not isinstance(source.get('source_hashes'), dict) or
+            not source.get('source_hashes') or not isinstance(source.get('actors'), list) or
+            not isinstance(source.get('mesh_components'), list)):
+        return {'classification': 'source_unavailable',
+                'reason': 'Complete actor and mesh-component source provenance was not available.'}
+
+    actors = source['actors']
+    components = source['mesh_components']
+    assigned = [item for item in components if isinstance(item, dict) and item.get('asset_reference')]
+    if assigned:
+        return {'classification': 'source_geometry_present',
+                'reason': 'Serialized source components reference mesh or geometry assets.',
+                'actor_count': len(actors), 'mesh_component_count': len(components),
+                'assigned_mesh_component_count': len(assigned)}
+
+    blueprint_actors = [item for item in actors if isinstance(item, dict) and
+                        (str(item.get('source_class', '')).endswith('_C') or
+                         'BlueprintGeneratedClass' in str(item.get('source_class', '')))]
+    unknown_actor_classes = [item for item in actors if not isinstance(item, dict) or
+                             item.get('source_class') not in NON_RENDERING_NATIVE_ACTORS]
+    dynamic_components = [item for item in components if isinstance(item, dict) and
+                          item.get('source_class') in {'LandscapeComponent', 'GeometryCollectionComponent',
+                                                       'ProceduralMeshComponent', 'TextRenderComponent',
+                                                       'WidgetComponent'}]
+    if blueprint_actors or unknown_actor_classes or dynamic_components:
+        return {'classification': 'source_geometry_indeterminate',
+                'reason': 'Blueprint construction, an unclassified actor, or a procedural/renderable component may supply geometry.',
+                'actor_count': len(actors), 'blueprint_actor_count': len(blueprint_actors),
+                'unclassified_actor_count': len(unknown_actor_classes),
+                'mesh_component_count': len(components),
+                'indeterminate_component_count': len(dynamic_components)}
+    return {'classification': 'source_meshless',
+            'reason': 'Serialized map data contains only recognized non-rendering native actors and no assigned or procedural geometry components.',
+            'actor_count': len(actors), 'mesh_component_count': len(components),
+            'limitations': ['Runtime-spawned or native code-generated geometry is not represented by serialized map references.']}
 
 
 def export_implementation_hash():
