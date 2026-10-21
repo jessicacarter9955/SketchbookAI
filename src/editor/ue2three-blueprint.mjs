@@ -7,6 +7,7 @@ const safeField = key => typeof key === 'string' && key.length > 0 && !['__proto
 const validPrimitive = (type, value) => type === 'BoolProperty' && typeof value === 'boolean'
     || type === 'ByteProperty' && Number.isInteger(value) && value >= 0 && value <= 255
     || type === 'IntProperty' && Number.isInteger(value) && value >= -2147483648 && value <= 2147483647
+    || type === 'Int64Property' && Number.isSafeInteger(value)
     || ['FloatProperty', 'DoubleProperty'].includes(type) && typeof value === 'number' && Number.isFinite(value)
     || ['StrProperty', 'NameProperty'].includes(type) && typeof value === 'string';
 function validateSchema(schema, value, depth = 0) {
@@ -72,7 +73,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
     // Unreal initializes primitive local/out property storage before executing
     // a UFunction. Struct constructors need their source type/defaults and are
     // deliberately not invented here.
-    const primitiveDefaults = {BoolProperty: false, ByteProperty: 0, IntProperty: 0,
+    const primitiveDefaults = {BoolProperty: false, ByteProperty: 0, IntProperty: 0, Int64Property: 0,
         FloatProperty: 0, DoubleProperty: 0, StrProperty: '', NameProperty: 'None'};
     for (const [field, type] of Object.entries(program.field_types?.local || {})) {
         if (!safeField(field)) throw new Error('Invalid local field');
@@ -109,6 +110,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             || type === 'BoolProperty' && typeof value === 'boolean'
             || type === 'ByteProperty' && Number.isInteger(value) && value >= 0 && value <= 255
             || type === 'IntProperty' && Number.isInteger(value) && value >= -2147483648 && value <= 2147483647
+            || type === 'Int64Property' && Number.isSafeInteger(value)
             || ['FloatProperty', 'DoubleProperty'].includes(type) && typeof value === 'number' && Number.isFinite(value)
             || ['StrProperty', 'NameProperty'].includes(type) && typeof value === 'string'
             || type === 'ArrayProperty' && Array.isArray(value)

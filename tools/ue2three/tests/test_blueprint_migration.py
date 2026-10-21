@@ -1,9 +1,11 @@
 import unittest
 import sys
+import json
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from blueprint_migration import BlueprintTranslationError, translate_function, translate_package, property_type, memory_size
 from umg_migration import Package
+from core import digest
 
 
 def node(token, **values): return {'$type': 'UAssetAPI.Kismet.Bytecode.Expressions.' + token + ', UAssetAPI', **values}
@@ -11,6 +13,38 @@ def variable(token, name): return node(token, Variable={'New': {'Path': [name], 
 
 
 class BlueprintMigrationTests(unittest.TestCase):
+    def test_cached_ue57_int64_source_witness_preserves_value_and_vm_offsets(self):
+        witness = json.loads((Path(__file__).parent / 'fixtures' / 'dds-int64-source-witness.json').read_text(encoding='utf-8'))
+        self.assertEqual(witness['engine_version'], '5.7.4')
+        self.assertEqual(witness['package'], '/Game/Fixers/Core/Game/GameInstance/BP_GI_Fixers')
+        self.assertEqual(witness['source_sha256'], 'b4683c7ec463524e4d0bf6d0ae381da5962c48a06d4170bb901a567dd5070235')
+        self.assertEqual(witness['object_version_ue5'], 'IMPORT_TYPE_HIERARCHIES')
+        self.assertEqual(witness['parsed_package_sha256'], '04fd99ba050a8f271757c921ffb3340bfd10cd024950d1ee0591e9d8bbecab4c')
+        function = witness['function']
+        self.assertEqual(function['ObjectName'], 'ResetRaidConfig')
+        self.assertEqual(function['OuterIndex'], 2)
+        self.assertEqual(property_type(witness['queue_pool_lobby_id_property']), 'Int64Property')
+        bytecode = function['ScriptBytecode']
+        self.assertEqual(digest(bytecode), witness['source_bytecode_sha256'])
+        package = Package({'ObjectVersionUE5': witness['object_version_ue5']})
+        self.assertEqual(sum(memory_size(instruction, package=package) for instruction in bytecode),
+                         function['ScriptBytecodeSize'])
+        result = translate_function(function, package)
+        self.assertEqual(result['source_bytecode_sha256'], witness['source_bytecode_sha256'])
+        queue_reset = next(step for step in result['steps'] if step.get('field') == 'QueuePoolLobbyID')
+        self.assertEqual(queue_reset['scope'], 'self')
+        self.assertEqual(queue_reset['value'], {'op': 'constant', 'value': 0})
+
+    def test_int64_constants_reject_values_that_java_script_cannot_represent_exactly(self):
+        from blueprint_migration import expression
+        for value in (-(2**53)+1, 2**53-1):
+            self.assertEqual(expression(node('EX_Int64Const', Value=value), set(), set()),
+                             {'op': 'constant', 'value': value})
+        for value in (-(2**53), 2**53, 2**63, -(2**63)-1, True, '0'):
+            with self.assertRaisesRegex(BlueprintTranslationError, 'exact JavaScript integer range'):
+                expression(node('EX_Int64Const', Value=value), set(), set())
+        self.assertEqual(memory_size(node('EX_Int64Const', Value=0)), 9)
+
     def test_asset_constant_retains_original_import_and_rejects_runtime_objects(self):
         from blueprint_migration import expression
         imports = [{'ObjectName': 'OriginalEquip', 'OuterIndex': -2, 'ClassName': 'AnimMontage', 'ClassPackage': '/Script/Engine'},

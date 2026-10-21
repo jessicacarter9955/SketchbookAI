@@ -110,6 +110,9 @@ def serialized_value(package, prop, schema, value):
     elif type_name in ('IntProperty', 'ByteProperty'):
         if type(raw) is not int or not (-2**31 <= raw < 2**31 if type_name == 'IntProperty' else 0 <= raw <= 255):
             raise ValueError('Invalid original integer')
+    elif type_name == 'Int64Property':
+        if type(raw) is not int or not -(2**53) < raw < 2**53:
+            raise ValueError('Original Int64 value is outside the exact JavaScript integer range')
     elif not isinstance(raw, str): raise ValueError('Invalid original string')
     return raw
 

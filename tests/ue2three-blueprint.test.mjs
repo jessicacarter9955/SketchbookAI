@@ -3,6 +3,21 @@ import assert from 'node:assert/strict';
 import { executeBlueprint } from '../src/editor/ue2three-blueprint.mjs';
 import { blueprintFixtureState, blueprintFixtureMembers } from '../src/editor/ue2three-fixtures.mjs';
 
+test('source Int64 fields preserve only exact JavaScript integer values', () => {
+    const schema={type:'Int64Property',default:0};
+    const program={schema_version:1,status:'translated_straight_line',input_fields:[],output_fields:[],
+        field_types:{local:{QueuePoolLobbyID:'Int64Property'}},schemas:{local:{QueuePoolLobbyID:schema}},steps:[
+            {op:'set',scope:'local',field:'QueuePoolLobbyID',value:{op:'constant',value:9007199254740991}},
+            {op:'return',value:{op:'get',scope:'local',field:'QueuePoolLobbyID'}}]};
+    assert.equal(executeBlueprint(program).value,9007199254740991);
+    assert.throws(()=>executeBlueprint({...program,steps:[
+        {op:'set',scope:'local',field:'QueuePoolLobbyID',value:{op:'constant',value:9007199254740992}},
+        program.steps[1]]}),/invalid Int64Property/);
+    assert.throws(()=>executeBlueprint({...program,steps:[{op:'return',value:{op:'typed_literal',schema,value:9007199254740992}}]}),/typed source member/);
+    const defaultProgram={...program,steps:[{op:'return',value:{op:'get',scope:'local',field:'QueuePoolLobbyID'}}]};
+    assert.equal(executeBlueprint(defaultProgram).value,0);
+});
+
 test('shared source fixtures reject changed packages and types and remain isolated', () => {
     const fixture={shared_states:{base:{package:'/Game/A',source_sha256:'source',types:{'/Game/Type':'type'},state:{Items:[{Count:1}],Flag:false}}}};
     const report={packages:{'/Game/A':{source:{source_sha256:'source'}}},type_sources:{'/Game/Type':{source_sha256:'type'}}};

@@ -1,11 +1,24 @@
 import unittest
 from blueprint_types import source_structs, property_schema
-from blueprint_migration import BlueprintTranslationError, translate_package, memory_size
+from blueprint_migration import BlueprintTranslationError, translate_package, memory_size, property_type
+from blueprint_values import serialized_value
 from umg_migration import Package
 from test_blueprint_migration import node
 
 
 class SourceTypesTests(unittest.TestCase):
+    def test_int64_values_are_limited_to_exact_javascript_safe_integers(self):
+        package = Package({})
+        prop = {'Name': 'Counter', 'SerializedType': 'Int64Property'}
+        schema = property_schema(package, prop)
+        self.assertEqual(schema, {'type': 'Int64Property', 'default': 0})
+        self.assertEqual(property_type(prop), 'Int64Property')
+        for value in (0, -(2**53)+1, 2**53-1):
+            self.assertEqual(serialized_value(package, prop, schema, {'Value': value}), value)
+        for value in (-(2**53), 2**53, 2**63, -(2**63)-1, True, 1.0, '1'):
+            with self.assertRaisesRegex(ValueError, 'exact JavaScript integer range'):
+                serialized_value(package, prop, schema, {'Value': value})
+
     def documents(self):
         return {'/Game/Slot': {'Imports': [{'ObjectName': 'Kind', 'OuterIndex': -2},
                                           {'ObjectName': '/Game/Kind', 'ClassName': 'Package'}],

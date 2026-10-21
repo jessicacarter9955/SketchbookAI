@@ -36,7 +36,7 @@ def property_type(prop, package=None):
                        and schema['class'][1] in STATIC_ASSET_CLASSES or schema.get('reference_kind') in ('runtime_actor', 'runtime_component')): return result
     if result == 'EnumProperty':
         result = prop.get('UnderlyingProp', {}).get('SerializedType')
-    if result not in ('BoolProperty', 'ByteProperty', 'IntProperty', 'FloatProperty',
+    if result not in ('BoolProperty', 'ByteProperty', 'IntProperty', 'Int64Property', 'FloatProperty',
                       'DoubleProperty', 'StrProperty', 'NameProperty', 'StructProperty', 'ArrayProperty'):
         raise BlueprintTranslationError(f'Unsupported source property type: {result}')
     return result
@@ -286,6 +286,13 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
             else: valid = valid and -2**31 <= result < 2**31
         if not valid: raise BlueprintTranslationError(f'Invalid constant: {token}')
         return {'op': 'constant', 'value': result}
+    if token == 'EX_Int64Const':
+        result = value.get('Value')
+        # The runtime IR is JSON/JavaScript. Preserve only the subset of signed
+        # 64-bit values that JavaScript Number represents without rounding.
+        if type(result) is not int or not -(2**53) < result < 2**53:
+            raise BlueprintTranslationError('Int64 constant is outside the exact JavaScript integer range')
+        return {'op': 'constant', 'value': result}
     raise BlueprintTranslationError(f'Unsupported opcode: {token}')
 
 
@@ -342,6 +349,7 @@ def memory_size(value, depth=0, package=None):
         return 2 + (8 if literal == 'StringTableEntry' else 0) + sum(size(text.get(key)) for key in fields)
     if token in ('EX_ByteConst', 'EX_IntConstByte'): return 2
     if token in ('EX_IntConst', 'EX_FloatConst'): return 5
+    if token == 'EX_Int64Const': return 9
     if token == 'EX_DoubleConst': return 9
     if token == 'EX_NameConst': return 13
     if token in ('EX_StringConst', 'EX_UnicodeStringConst'):
@@ -683,7 +691,7 @@ def translate_package(package, structs=None, tables=None):
             default_state[name] = {**schema['default'], **defaults.get(name, {})}
         elif name in defaults: default_state[name] = defaults[name]
         elif schema and schema['type'] == 'ArrayProperty': default_state[name] = []
-        elif type_name in ('BoolProperty', 'ByteProperty', 'IntProperty', 'FloatProperty', 'DoubleProperty', 'StrProperty', 'NameProperty'):
+        elif type_name in ('BoolProperty', 'ByteProperty', 'IntProperty', 'Int64Property', 'FloatProperty', 'DoubleProperty', 'StrProperty', 'NameProperty'):
             default_state[name] = {'BoolProperty': False, 'StrProperty': '', 'NameProperty': 'None'}.get(type_name, 0)
     no_ops = sum(not program.get('internal_event_entry') and not program['self_reads'] and not program['output_fields'] and not program['self_writes']
                  and all(step['op'] == 'return' and step['value'] == {'op': 'constant', 'value': None}

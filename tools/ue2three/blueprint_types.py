@@ -1,6 +1,6 @@
 """Original source type identities, constructors and value schemas."""
 
-PRIMITIVES = {'BoolProperty': False, 'ByteProperty': 0, 'IntProperty': 0,
+PRIMITIVES = {'BoolProperty': False, 'ByteProperty': 0, 'IntProperty': 0, 'Int64Property': 0,
               'FloatProperty': 0, 'DoubleProperty': 0, 'StrProperty': '', 'NameProperty': 'None'}
 
 
