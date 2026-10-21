@@ -64,6 +64,33 @@ class SourceObjectTests(unittest.TestCase):
         package.exports[0]['SuperStruct']=-4
         with self.assertRaisesRegex(BlueprintTranslationError,'ActorComponent'):expression(call,set(),set(),package=package,owner=1)
 
+    def test_is_valid_requires_native_source_identity_single_actor_property_and_owner(self):
+        package = self.packages()['/Game/Component']
+        package.imports.extend([
+            {'ObjectName': 'KismetSystemLibrary', 'OuterIndex': -2},
+            {'ObjectName': 'IsValid', 'ClassName': 'Function', 'OuterIndex': -5}])
+        method = {'ObjectName': 'Probe', 'OuterIndex': 1,
+                  'LoadedProperties': [{'Name': 'TargetActor', 'SerializedType': 'ObjectProperty',
+                                        'PropertyClass': -4}]}
+        package.exports.append(method)
+        package._active_function = method
+        target = node('EX_LocalVariable', Variable={'New': {'Path': ['TargetActor'], 'ResolvedOwner': 2}})
+        for opcode in ('EX_CallMath', 'EX_FinalFunction'):
+            call = node(opcode, StackNode=-6, Parameters=[target])
+            self.assertEqual(expression(call, set(), set(), package=package, owner=1),
+                             {'op': 'native_is_valid', 'target': {'op': 'get', 'scope': 'local', 'field': 'TargetActor'}})
+            with self.subTest(opcode=opcode):
+                malformed = deepcopy(call); malformed['Parameters'].append(target)
+                with self.assertRaisesRegex(BlueprintTranslationError, 'exactly one'):
+                    expression(malformed, set(), set(), package=package, owner=1)
+        call = node('EX_CallMath', StackNode=-6, Parameters=[target])
+        wrong = deepcopy(call); wrong['Parameters'][0]['Variable']['New']['ResolvedOwner'] = 1
+        with self.assertRaises(BlueprintTranslationError):
+            expression(wrong, set(), set(), package=package, owner=1)
+        wrong = deepcopy(call); package.exports[1]['LoadedProperties'][0]['PropertyClass'] = -1
+        with self.assertRaisesRegex(BlueprintTranslationError, 'object class'):
+            expression(wrong, set(), set(), package=package, owner=1)
+
     def test_actor_context_requires_original_typed_receiver_and_exact_offset(self):
         package=self.packages()['/Game/Component'];function={'ObjectName':'Write','OuterIndex':1,'LoadedProperties':[
             {'Name':'OwningActor','SerializedType':'ObjectProperty','PropertyClass':-4}]}
