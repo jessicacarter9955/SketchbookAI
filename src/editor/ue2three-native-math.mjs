@@ -1,5 +1,11 @@
 // Mirrors the supported UE 5.7 KismetMathLibrary primitives. No game rules.
 export function evaluateNativeMath(name, args, warning = () => {}) {
+    if (name === 'MakeVector') {
+        if (!Array.isArray(args) || args.length !== 3 || args.some(value => typeof value !== 'number' || !Number.isFinite(value)))
+            throw new Error('Invalid native MakeVector parameters');
+        // UE 5.7 KismetMathLibrary.h declares double X/Y/Z; its .inl returns FVector(X, Y, Z).
+        return {X: args[0], Y: args[1], Z: args[2]};
+    }
     if (name === 'Round') {
         if (args.length !== 1 || typeof args[0] !== 'number' || !Number.isFinite(args[0]))
             throw new Error('Invalid native Round parameters');

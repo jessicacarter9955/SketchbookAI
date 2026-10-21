@@ -114,6 +114,37 @@ class BlueprintMigrationTests(unittest.TestCase):
         with self.assertRaisesRegex(BlueprintTranslationError, 'unresolved source owner'):
             translate_function(function, Package({'Imports': imports, 'Exports': [function]}))
 
+    def test_make_vector_requires_the_witnessed_engine_import_and_three_arguments(self):
+        imports = [{'ObjectName': 'MakeVector', 'ClassName': 'Function', 'OuterIndex': -2},
+                   {'ObjectName': 'KismetMathLibrary', 'OuterIndex': -3}, {'ObjectName': '/Script/Engine'}]
+        function = self.function()
+        call = node('EX_CallMath', StackNode=-1, Parameters=[
+            node('EX_DoubleConst', Value='1.25'), node('EX_DoubleConst', Value='-2'), node('EX_DoubleConst', Value='3')])
+        function['ScriptBytecode'][1]['Expression'] = call
+        result = translate_function(function, Package({'Imports': imports}))
+        self.assertEqual(result['steps'][0]['value'], {
+            'op': 'math', 'name': 'MakeVector', 'args': [
+                {'op': 'constant', 'value': 1.25}, {'op': 'constant', 'value': -2.0}, {'op': 'constant', 'value': 3.0}]})
+
+        for invalid in ([call['Parameters'][0], call['Parameters'][1]], call['Parameters'] + [node('EX_DoubleConst', Value='4')]):
+            call['Parameters'] = invalid
+            with self.assertRaisesRegex(BlueprintTranslationError, 'parameter count'):
+                translate_function(function, Package({'Imports': imports}))
+        call['Parameters'] = [node('EX_DoubleConst', Value='1'), node('EX_DoubleConst', Value='2'), node('EX_DoubleConst', Value='3')]
+
+        wrong_library = [dict(item) for item in imports]
+        wrong_library[1]['ObjectName'] = 'FakeMathLibrary'
+        with self.assertRaisesRegex(BlueprintTranslationError, 'outside Engine.KismetMathLibrary'):
+            translate_function(function, Package({'Imports': wrong_library}))
+        wrong_module = [dict(item) for item in imports]
+        wrong_module[2]['ObjectName'] = '/Game/Fake'
+        with self.assertRaisesRegex(BlueprintTranslationError, 'outside Engine.KismetMathLibrary'):
+            translate_function(function, Package({'Imports': wrong_module}))
+        wrong_function = [dict(item) for item in imports]
+        wrong_function[0]['ObjectName'] = 'MakeVector2D'
+        with self.assertRaisesRegex(BlueprintTranslationError, 'Unsupported native math call'):
+            translate_function(function, Package({'Imports': wrong_function}))
+
     def test_int_selection_and_conversion_require_original_native_and_arity(self):
         for name, arity in [('Min', 2), ('Max', 2), ('Conv_IntToDouble', 1), ('SelectInt', 3),
                             ('Lerp', 3), ('FMin', 2), ('FMax', 2), ('InRange_FloatFloat', 5)]:

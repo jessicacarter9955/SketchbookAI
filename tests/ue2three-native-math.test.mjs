@@ -2,6 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { evaluateNativeMath } from '../src/editor/ue2three-native-math.mjs';
 
+test('source MakeVector constructs an FVector from exactly three finite numeric XYZ inputs', () => {
+    const vector = evaluateNativeMath('MakeVector', [1.25, -2, 3]);
+    assert.deepEqual(vector, {X: 1.25, Y: -2, Z: 3});
+    assert.ok(Object.is(evaluateNativeMath('MakeVector', [-0, 0, 1]).X, -0));
+    for (const args of [[], [1, 2], [1, 2, 3, 4], [true, 2, 3], [1, '2', 3], [1, null, 3],
+        [NaN, 2, 3], [1, Infinity, 3]])
+        assert.throws(() => evaluateNativeMath('MakeVector', args), /Invalid native MakeVector parameters/);
+    assert.throws(() => evaluateNativeMath('MakeVector'), /Invalid native MakeVector parameters/);
+    assert.throws(() => evaluateNativeMath('MakeVector2D', [1, 2]), /Unsupported native math/);
+});
+
 test('UE 5.7 Round uses FMath half-toward-positive-infinity rounding within int32', () => {
     for (const [input, expected] of [[1.49, 1], [1.5, 2], [-1.5, -1], [-1.51, -2], [-0.5, 0],
         [-2147483648.5, -2147483648], [2147483647.49, 2147483647]])

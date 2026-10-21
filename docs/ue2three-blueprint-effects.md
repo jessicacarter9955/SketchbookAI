@@ -40,6 +40,9 @@ No Unreal process is needed for these reads:
   FProperty.RepIndex does not provide that mapping; it must not be substituted.
 * `Engine/Source/Runtime/Engine/Classes/Kismet/KismetMathLibrary.inl`:
   SelectFloat accepts doubles and chooses A exactly when the Boolean is true.
+* `Engine/Source/Runtime/Engine/Classes/Kismet/KismetMathLibrary.h` declares
+  `FVector MakeVector(double X, double Y, double Z)`; the matching `.inl`
+  definition returns `FVector(X, Y, Z)`.
 
 ## Source behavior preserved, including surprising payloads
 

@@ -52,6 +52,7 @@ for _type in ('IntInt', 'DoubleDouble'):
 MATH_CALLS.update({'Divide_DoubleDouble': (2, 'DoubleDouble'),
                    'Lerp': (3, 'DoubleDouble'), 'FMin': (2, 'DoubleDouble'), 'FMax': (2, 'DoubleDouble'),
                    'InRange_FloatFloat': (5, 'double_range'),
+                   'MakeVector': (3, 'vector'),
                    'Min': (2, 'IntInt'), 'Max': (2, 'IntInt'),
                    'Conv_IntToDouble': (1, 'IntInt'), 'SelectInt': (3, 'int_select'), 'SelectFloat': (3, 'double_select'),
                    'EqualEqual_BoolBool': (2, 'bool'), 'NotEqual_BoolBool': (2, 'bool'),
