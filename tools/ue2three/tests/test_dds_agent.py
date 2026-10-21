@@ -100,6 +100,12 @@ class DdsAgentTests(unittest.TestCase):
         self.assertEqual(result['source_witnesses'], 1)
         self.assertFalse(self.state_root.exists())
 
+    def test_continuous_mode_has_no_session_or_codex_wall_clock_expiry(self):
+        self.assertEqual(dds_agent.MAX_RUN_SECONDS, 0)
+        self.assertEqual(dds_agent.MAX_CODEX_SECONDS, 0)
+        self.assertIsNone(dds_agent._bounded_timeout(0))
+        self.assertEqual(dds_agent._bounded_timeout(20), 20)
+
     def test_tampered_plan_packet_or_cache_fails_closed(self):
         plan_path = self.published / 'blueprint-plan.json'
         original = plan_path.read_text(encoding='utf-8')

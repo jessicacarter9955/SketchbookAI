@@ -37,8 +37,10 @@ MAX_PACKET_BYTES = 4 * 1024 * 1024
 MAX_CACHE_BYTES = 64 * 1024 * 1024
 MAX_JOURNAL_RECORDS = 512
 MAX_ATTEMPTS = 3
-MAX_RUN_SECONDS = 1200
-MAX_CODEX_SECONDS = 900
+# Zero disables wall-clock expiry. Network retries and deterministic validation
+# retain their own bounds; the development job can remain active for days.
+MAX_RUN_SECONDS = 0
+MAX_CODEX_SECONDS = 0
 PYTHON_VERIFY_SECONDS = 120
 JAVASCRIPT_VERIFY_SECONDS = 120
 GIT_TIMEOUT_SECONDS = 5
@@ -91,14 +93,14 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec='seconds')
 
 
-def _bounded_timeout(requested: int) -> int:
+def _bounded_timeout(requested: int) -> int | None:
     deadline = RUN_DEADLINE.get()
     if deadline is None:
-        return requested
+        return requested if requested > 0 else None
     remaining = deadline - time.monotonic()
     if remaining <= 0:
         raise RunnerError(f'The {MAX_RUN_SECONDS} second run time limit was reached.', 'runtime_limit')
-    return max(1, min(requested, int(remaining)))
+    return max(1, min(requested, int(remaining))) if requested > 0 else max(1, int(remaining))
 
 
 def _normal_path(value: str | Path) -> str:
@@ -420,6 +422,14 @@ def _load_candidate(repo_root: Path, checkpoint: dict) -> FamilyCandidate | None
         record = family_states.get(candidate.family_id, {})
         if not isinstance(record, dict):
             continue
+        if (record.get('plan_fingerprint') != candidate.plan_fingerprint
+                and record.get('status') in {'integrated', 'needs_review', 'exhausted'}):
+            # A new verified plan is new work. Preserve lifetime accounting,
+            # but do not exhaust an entire adapter family after three batches.
+            record['lifetime_attempts'] = record.get('lifetime_attempts', 0) + record.get('attempts', 0)
+            record['attempts'] = 0
+            record['retry_after'] = 0
+            record['status'] = 'pending_new_revision'
         if (record.get('status') == 'patch_ready_for_review' or record.get('attempts', 0) >= MAX_ATTEMPTS
                 or record.get('status') in {'needs_review', 'integrated'}
                 and record.get('plan_fingerprint') == candidate.plan_fingerprint):
@@ -654,7 +664,7 @@ def _kill_process_tree(process: subprocess.Popen) -> None:
 
 
 def run_codex(executable: str, worker: Path, prompt: str) -> int:
-    """Persist progress independently of the chat, with a process-tree bound."""
+    """Persist progress independently of the chat; zero means no job expiry."""
     flags = 0
     kwargs = {}
     if os.name == 'nt':
@@ -677,6 +687,8 @@ def run_codex(executable: str, worker: Path, prompt: str) -> int:
         stdout.close()
         stderr.close()
         raise RunnerError('Installed Codex executable could not be started.', 'codex_unavailable') from None
+    _atomic_json(logs / 'activity.json', {'pid': process.pid, 'status': 'running', 'started_at': utc_now(),
+                                         'timeout_seconds': MAX_CODEX_SECONDS})
     try:
         process.communicate(input=prompt.encode('utf-8'), timeout=timeout)
     except subprocess.TimeoutExpired:
@@ -693,6 +705,8 @@ def run_codex(executable: str, worker: Path, prompt: str) -> int:
     finally:
         stdout.close()
         stderr.close()
+        _atomic_json(logs / 'activity.json', {'pid': process.pid, 'status': 'finished',
+                                             'finished_at': utc_now(), 'returncode': process.returncode})
     return int(process.returncode or 0)
 
 
@@ -763,7 +777,7 @@ def run_once(repo_root: Path = REPO_ROOT, state_root: Path | None = None,
     if _paths_overlap(state_root, repo_root / '.git'):
         raise RunnerError('Runner state must stay outside Git metadata.', 'state_path')
     state_root.mkdir(parents=True, exist_ok=True)
-    deadline_token = RUN_DEADLINE.set(time.monotonic() + MAX_RUN_SECONDS)
+    deadline_token = RUN_DEADLINE.set(time.monotonic() + MAX_RUN_SECONDS if MAX_RUN_SECONDS > 0 else None)
     try:
         with workspace_lock(state_root):
             checkpoint = _read_checkpoint(state_root)

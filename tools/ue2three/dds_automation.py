@@ -221,7 +221,8 @@ class Supervisor:
             try:
                 self.recover_promotion()
                 self.pending_push()
-                if time.time() - self.state['started_epoch'] >= self.config.get('session_seconds', 7200):
+                session_seconds = self.config.get('session_seconds', 0)
+                if session_seconds > 0 and time.time() - self.state['started_epoch'] >= session_seconds:
                     self.save('session_budget_reached', active_job=None)
                     return self.state
                 agent._require_clean_repo(self.root)

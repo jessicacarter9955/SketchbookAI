@@ -55,9 +55,17 @@ class AutomationTests(unittest.TestCase):
         self.assertIn('dirty', (Path(self.config['publish_dir']) / 'automation.html').read_text())
 
     def test_session_budget_stops_new_agent_calls(self):
+        self.supervisor.config['session_seconds'] = 7200
         self.supervisor.state['started_epoch'] = 0
         with patch.object(automation.agent, 'run_once', side_effect=AssertionError('budget must block')):
             self.assertEqual(self.supervisor.tick()['phase'], 'session_budget_reached')
+
+    def test_zero_session_budget_does_not_expire_even_after_days(self):
+        self.supervisor.config['session_seconds'] = 0
+        self.supervisor.state['started_epoch'] = 0
+        with patch.object(automation.agent, '_require_clean_repo', side_effect=RuntimeError('reached actual work')):
+            with self.assertRaisesRegex(RuntimeError, 'reached actual work'):
+                self.supervisor.tick()
 
     def test_replay_requires_same_sources_and_preserves_translated_functions(self):
         before = {'project': 'DDS', 'counts': {'translated': 1, 'blocked': 2},

@@ -10,17 +10,19 @@ hardlinks; outputs and compiled caches must be separate.
 
 Create `.local/ue2three/automation/config.json` with `project` (existing
 `.uproject`), `workspace` (verified cache inside this checkout), `publish_dir`
-(inside this checkout), `session_seconds` (default 7200), `push` (boolean), and
+(inside this checkout), `session_seconds` (default 0: no session expiry), `push` (boolean), and
 `branch` (explicit existing destination). Optionally supply `codex_executable`.
 Do not put credentials in this file. `push` never uses force.
 
 Run a tick with `python tools/ue2three/dds_automation.py --config PATH --once`;
 inspect with `--status`. `install_dds_automation.ps1 -ConfigPath PATH -StartNow`
 registers a Windows task every five minutes. Overlapping instances are ignored.
-It runs as the logged-in user; the PC must remain powered on. The two-hour
-session budget stops new agent attempts; the task remains registered for status.
-To stop work, disable the Windows task. To begin another session after reviewing
-its checkpoint, update `started_epoch` in its local supervisor state.
+It runs as the logged-in user; the PC must remain powered on and awake.
+By default there is no session, agent-job or Windows-task wall-clock expiry.
+An explicit positive `session_seconds` opts into a session budget.
+Disable the Windows task to prevent new attempts; this does not cancel an
+already-running Codex process. Network and deterministic validation operations
+retain bounded retries/timeouts so a failed operation can be retried later.
 
 ## What a tick actually does
 
@@ -28,7 +30,7 @@ its checkpoint, update `started_epoch` in its local supervisor state.
 2. Detect changes across all ue2three Python modules, runtime modules and package
    manifests; compile from the verified package cache only when needed.
 3. Check the real CLI authentication, then choose a source-witnessed native
-   blocker family. Run Codex in a detached worktree, with a 15-minute bound.
+   blocker family. Run Codex in a detached worktree, without a wall-clock expiry by default.
 4. Keep JSON events, stderr and the final message under that worker's ignored
    `.local/dds-agent`. Chat disconnection does not own this process.
 5. Require focused Python/JavaScript tests. Replay the same cached source with
@@ -65,3 +67,14 @@ browser acceptance remain visibly incomplete until corresponding evidence exists
 
 The runner protects local work from a disconnected response; it cannot repair
 the ChatGPT service or prove a client connection issue is fixed.
+
+## Private relay recovery
+
+`bridge_recovery.py --bridge-dir PATH` wraps the existing installed
+`bridge_pro.py`. It preserves author/path/program allowlists and existing
+credentials, handles truncated HTTP reads, saves replies in a durable outbox,
+reconciles ambiguous POST delivery, and polls incrementally using GitHub
+comment update timestamps. A singleton lock prevents duplicate relay instances.
+Its connection health is recorded in `~/.chat-local-bridge/connection-health.json`.
+This repairs local relay failure modes; it does not control the ChatGPT UI
+message-delivery timeout.
