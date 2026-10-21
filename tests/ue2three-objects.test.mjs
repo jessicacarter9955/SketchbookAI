@@ -77,6 +77,31 @@ test('original IsValid checks bound actor identity, None, and rejects guessed UO
     assert.throws(()=>executeBlueprint(valid,{Count:0},{},{native}),/Unbound or foreign/);
 });
 
+test('browser-only Blueprint checkpoints restore exact source state and reject foreign or malformed revisions', () => {
+    const {runtime,player}=fixture();
+    runtime.bindSourceActor('/Game/Pawn',player);
+    const identity=runtime.checkpointIdentity();
+    assert.equal(identity.actor.source_class,'/Game/Pawn');
+    const saved=runtime.exportCheckpoint();
+    runtime.call('/Game/Component','Write');
+    assert.equal(runtime.states['/Game/Component'].Count,7);
+    assert.equal(runtime.restoreCheckpoint(saved),true);
+    assert.equal(runtime.states['/Game/Component'].Count,123);
+    assert.deepEqual(runtime.exportCheckpoint(),saved);
+    const foreign=structuredClone(saved);foreign.identity.packages['/Game/Component']='wrong';
+    assert.throws(()=>runtime.restoreCheckpoint(foreign),/different Unreal source/);
+    const malformed=structuredClone(saved);delete malformed.snapshot.states['/Game/Component'];
+    assert.throws(()=>runtime.restoreCheckpoint(malformed),/Malformed or incomplete/);
+    const badListener=structuredClone(saved);badListener.snapshot.bindings['/Game/Component']={Example:[{id:'bad'}]};
+    assert.throws(()=>runtime.restoreCheckpoint(badListener),/Malformed or incomplete/);
+    assert.deepEqual(runtime.exportCheckpoint(),saved);
+    const detached=new BlueprintActorRuntime(runtime.report,runtime.report.project);
+    assert.throws(()=>detached.restoreCheckpoint(saved),/different Unreal source/);
+    detached.bindSourceActor('/Game/Pawn',{actualPlayer:true});
+    assert.equal(detached.restoreCheckpoint(saved),true);
+    assert.deepEqual(detached.states,runtime.states);
+});
+
 test('source native requests and state commit together; failed execution leaves no receipts or changes',()=>{
     const {runtime,player,program}=fixture();runtime.bindSourceActor('/Game/Pawn',player);
     const saved=runtime.snapshot(),result=runtime.call('/Game/Component','Write');
