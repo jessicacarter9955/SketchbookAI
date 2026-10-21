@@ -27,6 +27,21 @@ def native_owner(value, package, owner):
     return {'op': 'native_get_owner', 'source_owner_index': owner}
 
 
+def native_is_valid(value, package, owner, reads, outputs, depth):
+    """Translate only the original KismetSystemLibrary.IsValid(Actor) call."""
+    from blueprint_migration import BlueprintTranslationError as Error
+    from blueprint_effects import variable
+    if import_path(package, value.get('StackNode')) != ('/Script/Engine', 'KismetSystemLibrary', 'IsValid'):
+        return None
+    args = value.get('Parameters')
+    if not isinstance(args, list) or len(args) != 1:
+        raise Error('Original IsValid requires exactly one UObject input')
+    target, schema = variable(args[0], package, owner, reads, outputs, depth)
+    if schema.get('type') != 'ObjectProperty' or schema.get('reference_kind') != 'runtime_actor' or schema.get('class') != ['/Script/Engine', 'Actor']:
+        raise Error('Unresolved original IsValid object class or source ownership')
+    return {'op': 'native_is_valid', 'target': target}
+
+
 def native_actor_context(value, package, owner, reads, outputs, depth):
     from blueprint_migration import kind, expression, memory_size, BlueprintTranslationError as Error
     from blueprint_effects import variable

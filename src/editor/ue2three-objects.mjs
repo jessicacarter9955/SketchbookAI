@@ -27,6 +27,16 @@ export function sourceComponentOwner(context, ownerIndex) {
     if (context.owner !== null) actor(context, context.owner);
     return structuredClone(context.owner);
 }
+export function sourceActorIsValid(context, reference) {
+    // Original Kismet IsValid returns false for None. A non-null reference is
+    // accepted only for the live actor bound to this source-derived SCS graph.
+    // PendingKill/destruction cannot be inferred without the original actor
+    // lifecycle; unknown/foreign objects therefore fail closed.
+    if (reference === null) return false;
+    standalone(context);
+    actor(context, reference);
+    return true;
+}
 export function sourceForceNetUpdate(context, reference) {
     standalone(context);
     const descriptor = actor(context, reference);

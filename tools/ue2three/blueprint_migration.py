@@ -158,8 +158,10 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         raise BlueprintTranslationError('Unsupported opcode: EX_Context')
     if token in ('EX_LocalVirtualFunction', 'EX_LocalFinalFunction', 'EX_FinalFunction'):
         if token == 'EX_FinalFunction' and package:
-            from blueprint_objects import native_owner
+            from blueprint_objects import native_owner, native_is_valid
             adapted = native_owner(value, package, owner)
+            if adapted is not None: return adapted
+            adapted = native_is_valid(value, package, owner, reads, outputs, depth)
             if adapted is not None: return adapted
         return local_call(value, package, owner, reads, outputs, depth)
     if token == 'EX_StructMemberContext':
@@ -178,6 +180,9 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         return multicast(value, package, owner, reads, outputs, depth)
     if token == 'EX_CallMath':
         if package:
+            from blueprint_objects import native_is_valid
+            adapted = native_is_valid(value, package, owner, reads, outputs, depth)
+            if adapted is not None: return adapted
             from blueprint_effects import dirty_call
             adapted = dirty_call(value, package, owner)
             if adapted is not None: return adapted

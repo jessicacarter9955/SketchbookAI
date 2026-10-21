@@ -1,6 +1,6 @@
 // Executes normalized source-derived instructions; never evaluates generated JS.
 import { evaluateNativeMath } from './ue2three-native-math.mjs';
-import { validActorReference, sourceComponentOwner, sourceForceNetUpdate } from './ue2three-objects.mjs';
+import { validActorReference, sourceComponentOwner, sourceForceNetUpdate, sourceActorIsValid } from './ue2three-objects.mjs';
 const owns = (object, key) => object != null && Object.hasOwn(object, key);
 const safeField = key => typeof key === 'string' && key.length > 0 && !['__proto__', 'constructor', 'prototype'].includes(key);
 const validPrimitive = (type, value) => type === 'BoolProperty' && typeof value === 'boolean'
@@ -100,6 +100,9 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
         if (expression.op === 'native_get_owner') {
             if (expression.source_owner_index !== program.source_owner_index) throw new Error('Original component class differs');
             return sourceComponentOwner(notifications.native, expression.source_owner_index);
+        }
+        if (expression.op === 'native_is_valid') {
+            return sourceActorIsValid(notifications.native, evaluate(expression.target, depth+1));
         }
         if (expression.op === 'native_force_net_update') {
             const reference = evaluate(expression.target, depth+1);
