@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SourceActorBindings, sourceComponentOwner, sourceForceNetUpdate} from '../src/editor/ue2three-objects.mjs';
+import {SourceActorBindings, sourceComponentOwner, sourceForceNetUpdate, sourceActorIsValid} from '../src/editor/ue2three-objects.mjs';
 import {BlueprintActorRuntime} from '../src/editor/ue2three-blueprint-runtime.mjs';
 import {executeBlueprint} from '../src/editor/ue2three-blueprint.mjs';
 
@@ -59,6 +59,22 @@ test('native owner calls require the witnessed component, realm and an explicit 
     assert.throws(()=>sourceForceNetUpdate(context,{...context.owner,realm:'foreign'}),/foreign/);
     assert.throws(()=>sourceForceNetUpdate(context,{asset:'/Game/Pawn',declared_class:['/Script/Engine','Actor']}),/foreign/);
     assert.equal(sourceComponentOwner({...context,owner:null},2),null);
+});
+
+test('original IsValid checks bound actor identity, None, and rejects guessed UObject lifetimes', () => {
+    const {runtime,player,program}=fixture();
+    runtime.bindSourceActor('/Game/Pawn',player);
+    const native=runtime.actorBindings.context('/Game/Component');
+    const valid={...program,steps:[{op:'return',value:{op:'native_is_valid',target:owner}}]};
+    assert.equal(executeBlueprint(valid,{Count:0},{},{native}).value,true);
+    valid.steps[0].value.target=c(null);
+    assert.equal(executeBlueprint(valid,{Count:0},{},{native:undefined}).value,false);
+    assert.equal(sourceActorIsValid(native,null),false);
+    assert.throws(()=>sourceActorIsValid(undefined,native.owner),/standalone/);
+    assert.throws(()=>sourceActorIsValid(native,{...native.owner,actor_id:'missing'}),/Unbound or foreign/);
+    assert.throws(()=>sourceActorIsValid(native,{...native.owner,realm:'foreign'}),/Unbound or foreign/);
+    valid.steps[0].value.target={op:'typed_literal',schema:{type:'ObjectProperty',class:['/Script/Engine','Actor'],reference_kind:'runtime_actor'},value:{...native.owner,actor_id:'missing'}};
+    assert.throws(()=>executeBlueprint(valid,{Count:0},{},{native}),/Unbound or foreign/);
 });
 
 test('source native requests and state commit together; failed execution leaves no receipts or changes',()=>{
