@@ -336,3 +336,56 @@ test('nested source struct reads require existing members and preserve caller da
     read.steps[0].value.field = '__proto__';
     assert.throws(() => executeBlueprint(read, {}, input), /Unsupported/);
 });
+
+test('native math break calls write ordered FloatProperty outputs with source type checks', () => {
+    const vector={type:'StructProperty',source:'/Script/CoreUObject',native:'Vector',fields:{
+        X:{type:'DoubleProperty'},Y:{type:'DoubleProperty'},Z:{type:'DoubleProperty'}},
+        default:{X:0,Y:0,Z:0},member_order:['X','Y','Z']};
+    const call={op:'math_outputs',name:'BreakVector',components:['X','Y','Z'],
+        args:[{op:'get',scope:'local',field:'Input'}],targets:['X','Y','Z'].map(field=>({
+            op:'get',scope:'local',field,type:'FloatProperty'}))};
+    const program={schema_version:1,status:'translated_straight_line',input_fields:['Input'],output_fields:[],
+        field_types:{local:{Input:'StructProperty',X:'FloatProperty',Y:'FloatProperty',Z:'FloatProperty'}},
+        schemas:{local:{Input:vector}},steps:[{op:'evaluate',source_index:22,value:call},
+            {op:'return',value:{op:'get',scope:'local',field:'X'}}]};
+    const result=executeBlueprint(program,{}, {Input:{X:1/3,Y:-2,Z:3}});
+    assert.equal(result.value,Math.fround(1/3));
+    assert.deepEqual(result.trace[0],{source_index:22,op:'math_outputs',name:'BreakVector',targets:[
+        {scope:'local',field:'X',value:Math.fround(1/3)},
+        {scope:'local',field:'Y',value:-2},{scope:'local',field:'Z',value:3}]});
+    assert.throws(()=>executeBlueprint({...program,field_types:{local:{Input:'StructProperty',X:'DoubleProperty',Y:'FloatProperty',Z:'FloatProperty'}}},
+        {},{Input:{X:1,Y:2,Z:3}}),/output type differs/);
+    assert.throws(()=>executeBlueprint({...program,schemas:{local:{Input:{...vector,native:'Rotator'}}},
+        steps:[{op:'evaluate',value:call},{op:'return',value:{op:'constant',value:null}}]},
+        {},{Input:{X:1,Y:2,Z:3}}),/not Vector/);
+});
+
+test('native MakeTransform result matches the source FTransform and FQuat schemas', () => {
+    const vector={type:'StructProperty',source:'/Script/CoreUObject',native:'Vector',fields:{
+        X:{type:'DoubleProperty'},Y:{type:'DoubleProperty'},Z:{type:'DoubleProperty'}},
+        default:{X:0,Y:0,Z:0},member_order:['X','Y','Z']};
+    const rotator={type:'StructProperty',source:'/Script/CoreUObject',native:'Rotator',fields:{
+        Pitch:{type:'DoubleProperty'},Yaw:{type:'DoubleProperty'},Roll:{type:'DoubleProperty'}},
+        default:{Pitch:0,Yaw:0,Roll:0},member_order:['Pitch','Yaw','Roll']};
+    const quat={type:'StructProperty',source:'/Script/CoreUObject',native:'Quat',fields:{
+        X:{type:'DoubleProperty'},Y:{type:'DoubleProperty'},Z:{type:'DoubleProperty'},W:{type:'DoubleProperty'}},
+        default:{X:0,Y:0,Z:0,W:1},member_order:['X','Y','Z','W']};
+    const transform={type:'StructProperty',source:'/Script/CoreUObject',native:'Transform',fields:{
+        Rotation:quat,Translation:vector,Scale3D:vector},
+        default:{Rotation:quat.default,Translation:vector.default,Scale3D:{X:1,Y:1,Z:1}},
+        member_order:['Rotation','Translation','Scale3D']};
+    const program={schema_version:1,status:'translated_straight_line',input_fields:[],output_fields:[],
+        field_types:{local:{Value:'StructProperty'}},schemas:{local:{Value:transform}},
+        steps:[{op:'set',scope:'local',field:'Value',value:{op:'math',name:'MakeTransform',args:[
+            {op:'typed_literal',schema:vector,value:{X:1,Y:2,Z:3}},
+            {op:'typed_literal',schema:rotator,value:{Pitch:0,Yaw:90,Roll:0}},
+            {op:'typed_literal',schema:vector,value:{X:2,Y:3,Z:4}}]}},
+            {op:'return',value:{op:'get',scope:'local',field:'Value'}}]};
+    const result=executeBlueprint(program);
+    assert.deepEqual(result.value.Translation,{X:1,Y:2,Z:3});
+    assert.deepEqual(result.value.Scale3D,{X:2,Y:3,Z:4});
+    assert.ok(Math.abs(result.value.Rotation.Z-Math.SQRT1_2)<1e-15);
+    assert.throws(()=>executeBlueprint({...program,steps:[{...program.steps[0],value:{...program.steps[0].value,
+        args:[program.steps[0].value.args[0],program.steps[0].value.args[0],program.steps[0].value.args[2]]}},program.steps[1]]}),
+        /not Rotator/);
+});

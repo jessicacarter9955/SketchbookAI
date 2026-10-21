@@ -62,6 +62,16 @@ function validateSchema(schema, value, depth = 0) {
 
 const nativeObject = identity => ({type:'ObjectProperty', ...(identity ? {class:identity} : {}), default:null});
 const nativeStruct = name => {
+    if (name === 'Quat') return {type:'StructProperty',source:'/Script/CoreUObject',native:name,
+        fields:Object.fromEntries(['X','Y','Z','W'].map(field=>[field,{type:'DoubleProperty'}])),
+        default:{X:0,Y:0,Z:0,W:1},member_order:['X','Y','Z','W']};
+    if (name === 'Transform') {
+        const rotation=nativeStruct('Quat'), vector=nativeStruct('Vector');
+        return {type:'StructProperty',source:'/Script/CoreUObject',native:name,
+            fields:{Rotation:rotation,Translation:vector,Scale3D:vector},
+            default:{Rotation:rotation.default,Translation:vector.default,Scale3D:{X:1,Y:1,Z:1}},
+            member_order:['Rotation','Translation','Scale3D']};
+    }
     const fields = name === 'Vector' ? ['X','Y','Z'] : name === 'Rotator' ? ['Pitch','Yaw','Roll'] : ['R','G','B','A'];
     const fieldType = name === 'LinearColor' ? 'FloatProperty' : 'DoubleProperty';
     return {type:'StructProperty',source:'/Script/CoreUObject',native:name,
@@ -247,6 +257,21 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
     };
     const schemaFor = target => target?.scope === 'persistent' ? program.persistent_schemas?.[target.frame]?.[target.field]
         : program.schemas?.[target?.scope]?.[target?.field];
+    const nativeMathStructType = value => {
+        if (value?.op === 'typed_literal' || value?.op === 'get') {
+            const schema=value.op === 'typed_literal' ? value.schema : schemaFor(value);
+            if (!['Vector','Rotator','Quat','Transform'].includes(schema?.native)
+                || JSON.stringify(schema) !== JSON.stringify(nativeStruct(schema.native))) return null;
+            return schema.native;
+        }
+        if (value?.op === 'math') return ({MakeVector:'Vector',Conv_DoubleToVector:'Vector',
+            Add_VectorVector:'Vector',Subtract_VectorVector:'Vector',Multiply_VectorVector:'Vector',
+            MakeRotator:'Rotator',MakeTransform:'Transform'})[value.name] || null;
+        return null;
+    };
+    const requireNativeMathStruct = (value, expected) => {
+        if (nativeMathStructType(value) !== expected) throw new Error(`Original native math parameter is not ${expected}`);
+    };
     const evaluate = (expression, depth = 0) => {
         if (!expression || depth > 48) throw new Error('Invalid Blueprint expression');
         if (expression.op === 'native_game_time') {
@@ -670,7 +695,45 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             trace.push({source_index: sourceIndex, op: 'call', function: expression.function, outputs: nested.outputs, trace: nested.trace});
             return nested.value;
         }
+        if (expression.op === 'math_outputs') {
+            const outputNames=expression.name === 'BreakVector' ? ['X','Y','Z']
+                : expression.name === 'BreakRotator' ? ['Roll','Pitch','Yaw'] : null;
+            if (!outputNames || JSON.stringify(expression.components) !== JSON.stringify(outputNames)
+                || !Array.isArray(expression.args) || expression.args.length !== 1
+                || !Array.isArray(expression.targets) || expression.targets.length !== outputNames.length)
+                throw new Error('Unsupported original native math output call');
+            requireNativeMathStruct(expression.args[0],expression.name === 'BreakVector' ? 'Vector' : 'Rotator');
+            const values=expression.args.map(argument=>evaluate(argument,depth+1));
+            const components=evaluateNativeMath(expression.name,values);
+            const writes=expression.targets.map((target,index)=>{
+                if (target?.op !== 'get' || !safeField(target.field) || target.type !== 'FloatProperty'
+                    || !['local','self','persistent'].includes(target.scope)
+                    || target.scope === 'persistent' && !Number.isSafeInteger(target.frame))
+                    throw new Error('Invalid original native math output target');
+                const declaredType=target.scope === 'persistent'
+                    ? program.persistent_types?.[target.frame]?.[target.field]
+                    : program.field_types?.[target.scope]?.[target.field];
+                if (declaredType !== 'FloatProperty') throw new Error('Original native math output type differs');
+                const value=components[outputNames[index]];
+                checkType(target.scope,target.field,value,target.frame);
+                return {target,value};
+            });
+            for (const {target,value} of writes) ownerFor(target.scope,target.frame)[target.field]=value;
+            trace.push({source_index:sourceIndex,op:'math_outputs',name:expression.name,
+                targets:writes.map(({target,value})=>({scope:target.scope,
+                    ...(target.frame !== undefined ? {frame:target.frame} : {}),field:target.field,value}))});
+            return null;
+        }
         if (expression.op === 'math' && Array.isArray(expression.args)) {
+            const structContracts={
+                Add_VectorVector:['Vector','Vector'],Subtract_VectorVector:['Vector','Vector'],
+                Multiply_VectorVector:['Vector','Vector'],BreakVector:['Vector'],
+                BreakRotator:['Rotator'],MakeTransform:['Vector','Rotator','Vector']};
+            const expected=structContracts[expression.name];
+            if (expected) {
+                if (expected.length !== expression.args.length) throw new Error('Invalid original native math parameter count');
+                expression.args.forEach((argument,index)=>requireNativeMathStruct(argument,expected[index]));
+            }
             const args = expression.args.map(arg => evaluate(arg, depth+1));
             const value = evaluateNativeMath(expression.name, args, message => trace.push({source_index: sourceIndex, op: 'warning', message}));
             if (typeof value === 'number' && !Number.isFinite(value)) throw new Error('Non-finite native math result is unsupported');

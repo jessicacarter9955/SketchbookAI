@@ -55,12 +55,88 @@ MATH_CALLS.update({'Divide_DoubleDouble': (2, 'DoubleDouble'),
                    'Lerp': (3, 'DoubleDouble'), 'FMin': (2, 'DoubleDouble'), 'FMax': (2, 'DoubleDouble'),
                    'InRange_FloatFloat': (5, 'double_range'),
                    'MakeVector': (3, 'vector'),
+                   'Add_VectorVector': (2, 'VectorVector'),
+                   'Subtract_VectorVector': (2, 'VectorVector'),
+                   'Multiply_VectorVector': (2, 'VectorVector'),
+                   'Conv_DoubleToVector': (1, 'DoubleVector'),
+                   'MakeRotator': (3, 'rotator'),
+                   'MakeTransform': (3, 'transform'),
+                   'BreakVector': (4, 'break_vector'),
+                   'BreakRotator': (4, 'break_rotator'),
                    'Min': (2, 'IntInt'), 'Max': (2, 'IntInt'),
                    'Conv_IntToDouble': (1, 'IntInt'), 'SelectInt': (3, 'int_select'), 'SelectFloat': (3, 'double_select'),
                    'EqualEqual_BoolBool': (2, 'bool'), 'NotEqual_BoolBool': (2, 'bool'),
                    'EqualEqual_NameName': (2, 'name'), 'NotEqual_NameName': (2, 'name'),
                    'FClamp': (3, 'DoubleDouble'), 'Clamp': (3, 'IntInt'),
                    'Round': (1, 'DoubleDouble')})
+
+NATIVE_MATH_INPUT_TYPES = {
+    'MakeVector': ('DoubleProperty', 'DoubleProperty', 'DoubleProperty'),
+    'Add_VectorVector': ('Vector', 'Vector'),
+    'Subtract_VectorVector': ('Vector', 'Vector'),
+    'Multiply_VectorVector': ('Vector', 'Vector'),
+    'Conv_DoubleToVector': ('DoubleProperty',),
+    'MakeRotator': ('FloatProperty', 'FloatProperty', 'FloatProperty'),
+    'MakeTransform': ('Vector', 'Rotator', 'Vector'),
+    'BreakVector': ('Vector',),
+    'BreakRotator': ('Rotator',),
+}
+
+
+def native_math_result_type(name):
+    if name in ('MakeVector', 'Add_VectorVector', 'Subtract_VectorVector', 'Multiply_VectorVector',
+                'Conv_DoubleToVector'): return 'Vector'
+    if name == 'MakeRotator': return 'Rotator'
+    if name == 'MakeTransform': return 'Transform'
+    if name.startswith(('Boolean', 'Not_PreBool', 'EqualEqual_BoolBool', 'NotEqual_BoolBool')):
+        return 'BoolProperty'
+    suffix = name.rsplit('_', 1)[-1]
+    if suffix in ('ByteByte', 'IntInt', 'DoubleDouble'):
+        operation = name.split('_', 1)[0]
+        if operation in ('EqualEqual', 'NotEqual', 'Greater', 'GreaterEqual', 'Less', 'LessEqual'):
+            return 'BoolProperty'
+        return {'ByteByte':'ByteProperty','IntInt':'IntProperty','DoubleDouble':'DoubleProperty'}[suffix]
+    if name in ('Min', 'Max', 'Clamp', 'SelectInt'): return 'IntProperty'
+    if name in ('Conv_IntToDouble', 'Lerp', 'FMin', 'FMax', 'FClamp', 'SelectFloat'):
+        return 'DoubleProperty'
+    if name == 'InRange_FloatFloat': return 'BoolProperty'
+    if name == 'Round': return 'IntProperty'
+    return None
+
+
+def native_math_source_type(value, package, owner):
+    token = kind(value)
+    constants = {'EX_True':'BoolProperty','EX_False':'BoolProperty',
+                 'EX_IntZero':'IntProperty','EX_IntOne':'IntProperty',
+                 'EX_IntConst':'IntProperty','EX_IntConstByte':'ByteProperty','EX_ByteConst':'ByteProperty',
+                 'EX_FloatConst':'FloatProperty','EX_DoubleConst':'DoubleProperty'}
+    if token in constants: return constants[token]
+    if token == 'EX_VectorConst': return 'Vector'
+    if token == 'EX_RotationConst': return 'Rotator'
+    if token == 'EX_Context': return native_math_source_type(value.get('ContextExpression'), package, owner)
+    if token == 'EX_CallMath':
+        return native_math_result_type(math_call(package, value.get('StackNode')))
+    if token in ('EX_InstanceVariable','EX_LocalVariable','EX_LocalOutVariable') and package:
+        pointer = value.get('Variable', {})
+        name = field(pointer)
+        reference = pointer.get('New', {}).get('ResolvedOwner')
+        target_owner = package.export(reference) if type(reference) is int and reference > 0 else None
+        if token == 'EX_InstanceVariable':
+            if not target_owner or target_owner is not package.export(owner):
+                raise BlueprintTranslationError('Native math instance input belongs to another source class')
+        elif not target_owner or (target_owner is not getattr(package, '_active_function', None)
+              and not (str(target_owner.get('ObjectName', '')).startswith('ExecuteUbergraph_')
+                       and target_owner.get('OuterIndex') == owner)):
+            raise BlueprintTranslationError('Native math local input belongs to another source function')
+        properties = [prop for prop in target_owner.get('LoadedProperties', []) if prop.get('Name') == name]
+        if len(properties) != 1: raise BlueprintTranslationError('Unresolved native math source parameter type')
+        schema = property_schema(package, properties[0])
+        return schema.get('native') if schema and schema.get('type') == 'StructProperty' else property_type(properties[0], package)
+    if token == 'EX_StructConst' and package:
+        identity = import_path(package, value.get('StructType'))
+        schema = native_schema(identity) or getattr(package, 'source_structs', {}).get(identity)
+        return schema.get('native') if schema else None
+    return None
 
 
 def math_call(package, reference):
@@ -102,6 +178,43 @@ def validate_round_input(value, package, owner):
     prop = next((item for item in expected.get('LoadedProperties', []) if item.get('Name') == name), None)
     if not prop or prop.get('SerializedType') != 'DoubleProperty':
         raise BlueprintTranslationError('Round requires an original DoubleProperty input')
+
+
+def native_math_output_target(value, package, owner, expected_type):
+    """Resolve a Kismet out parameter to its original writable source field."""
+    token = kind(value)
+    if token not in ('EX_InstanceVariable', 'EX_LocalVariable', 'EX_LocalOutVariable'):
+        raise BlueprintTranslationError('Native math output requires a direct source variable')
+    pointer = value.get('Variable', {})
+    name = field(pointer)
+    reference = pointer.get('New', {}).get('ResolvedOwner')
+    if type(reference) is not int or reference <= 0:
+        raise BlueprintTranslationError('Native math output has no resolved source owner')
+    target_owner = package.export(reference) if package else None
+    active = getattr(package, '_active_function', None)
+    frame = None
+    if token == 'EX_InstanceVariable':
+        class_owner = package.export(owner) if package and type(owner) is int else None
+        if not target_owner or target_owner is not class_owner:
+            raise BlueprintTranslationError('Native math instance output belongs to another source class')
+        scope = 'self'
+    elif target_owner and str(target_owner.get('ObjectName', '')).startswith('ExecuteUbergraph_'):
+        if target_owner.get('OuterIndex') != owner:
+            raise BlueprintTranslationError('Native math persistent output belongs to another source class')
+        scope, frame = 'persistent', reference
+    elif target_owner is active:
+        scope = 'local'
+    else:
+        raise BlueprintTranslationError('Native math local output belongs to another source function')
+    properties = [prop for prop in (target_owner or {}).get('LoadedProperties', []) if prop.get('Name') == name]
+    if len(properties) != 1 or property_type(properties[0], package) != expected_type:
+        raise BlueprintTranslationError('Native math output property type differs from its original parameter')
+    prop = properties[0]
+    if 'CPF_ConstParm' in str(prop.get('PropertyFlags')):
+        raise BlueprintTranslationError('Native math output writes an original const input')
+    target = {'op': 'get', 'scope': scope, 'field': name}
+    if frame is not None: target['frame'] = frame
+    return target, prop
 
 
 def local_call(value, package, owner, reads, outputs, depth):
@@ -244,6 +357,21 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         args = value.get('Parameters')
         if not isinstance(args, list) or len(args) != MATH_CALLS[name][0]:
             raise BlueprintTranslationError('Invalid native math parameter count')
+        for index, expected_type in enumerate(NATIVE_MATH_INPUT_TYPES.get(name, ())):
+            if native_math_source_type(args[index], package, owner) != expected_type:
+                raise BlueprintTranslationError('Original native math parameter type differs')
+        if name in ('BreakVector', 'BreakRotator'):
+            component_names = ('X', 'Y', 'Z') if name == 'BreakVector' else ('Roll', 'Pitch', 'Yaw')
+            targets = []
+            for argument in args[1:]:
+                target, prop = native_math_output_target(argument, package, owner, 'FloatProperty')
+                if target['scope'] == 'self': writes.add(target['field'])
+                if target['scope'] == 'local' and 'CPF_OutParm' in str(prop.get('PropertyFlags')):
+                    outputs.add(target['field'])
+                targets.append({**target, 'type': 'FloatProperty'})
+            return {'op': 'math_outputs', 'name': name,
+                    'args': [expression(args[0], reads, outputs, depth+1, package, owner)],
+                    'components': list(component_names), 'targets': targets}
         if name == 'Round': validate_round_input(args[0], package, owner)
         if name in ('EqualEqual_NameName', 'NotEqual_NameName'):
             for arg in args:
@@ -585,6 +713,9 @@ def translate_package(package, structs=None, tables=None):
                         if (value.get('op') in ('array_get', 'array_mutate', 'array_set', 'array_add', 'array_literal', 'table_get', 'set_member') and target.get('scope') == 'local'
                                 and target.get('field') in const_inputs):
                             raise BlueprintTranslationError('Write through original const input')
+                        if value.get('op') == 'math_outputs' and any(target.get('scope') == 'local'
+                                and target.get('field') in const_inputs for target in value.get('targets', [])):
+                            raise BlueprintTranslationError('Native math output writes original const input')
                         if value.get('op') == 'array_mutate' and target.get('scope') == 'self':
                             program['self_writes'] = sorted(set(program['self_writes']) | {target['field']})
                         if value.get('op') in ('call', 'component_query') and any(binding.get('mode') == 'output'

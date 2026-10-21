@@ -1,10 +1,62 @@
 // Mirrors the supported UE 5.7 KismetMathLibrary primitives. No game rules.
+const isVector = value => value && typeof value === 'object' && !Array.isArray(value)
+    && ['X','Y','Z'].every(field => typeof value[field] === 'number' && Number.isFinite(value[field]));
+const isRotator = value => value && typeof value === 'object' && !Array.isArray(value)
+    && ['Pitch','Yaw','Roll'].every(field => typeof value[field] === 'number' && Number.isFinite(value[field]));
+const makeQuaternion = rotation => {
+    const pitch=rotation.Pitch*Math.PI/360, yaw=rotation.Yaw*Math.PI/360, roll=rotation.Roll*Math.PI/360;
+    const sp=Math.sin(pitch), cp=Math.cos(pitch), sy=Math.sin(yaw), cy=Math.cos(yaw),
+        sr=Math.sin(roll), cr=Math.cos(roll);
+    const value={X:cr*sp*sy-sr*cp*cy, Y:-cr*sp*cy-sr*cp*sy,
+        Z:cr*cp*sy-sr*sp*cy, W:cr*cp*cy+sr*sp*sy};
+    if (!Object.values(value).every(Number.isFinite)) throw new Error('Invalid native MakeTransform parameters');
+    return value;
+};
+
 export function evaluateNativeMath(name, args, warning = () => {}) {
     if (name === 'MakeVector') {
         if (!Array.isArray(args) || args.length !== 3 || args.some(value => typeof value !== 'number' || !Number.isFinite(value)))
             throw new Error('Invalid native MakeVector parameters');
         // UE 5.7 KismetMathLibrary.h declares double X/Y/Z; its .inl returns FVector(X, Y, Z).
         return {X: args[0], Y: args[1], Z: args[2]};
+    }
+    if (name === 'Conv_DoubleToVector') {
+        if (!Array.isArray(args) || args.length !== 1 || typeof args[0] !== 'number' || !Number.isFinite(args[0]))
+            throw new Error('Invalid native Conv_DoubleToVector parameters');
+        return {X:args[0],Y:args[0],Z:args[0]};
+    }
+    if (['Add_VectorVector','Subtract_VectorVector','Multiply_VectorVector'].includes(name)) {
+        if (!Array.isArray(args) || args.length !== 2 || !args.every(isVector))
+            throw new Error(`Invalid native ${name} parameters`);
+        const op=name === 'Add_VectorVector' ? (a,b)=>a+b
+            : name === 'Subtract_VectorVector' ? (a,b)=>a-b : (a,b)=>a*b;
+        const result={X:op(args[0].X,args[1].X),Y:op(args[0].Y,args[1].Y),Z:op(args[0].Z,args[1].Z)};
+        if (!isVector(result)) throw new Error(`Invalid native ${name} result`);
+        return result;
+    }
+    if (name === 'MakeRotator') {
+        if (!Array.isArray(args) || args.length !== 3 || args.some(value => typeof value !== 'number' || !Number.isFinite(value)))
+            throw new Error('Invalid native MakeRotator parameters');
+        // The native API argument order is Roll, Pitch, Yaw; FRotator stores Pitch, Yaw, Roll.
+        const [roll,pitch,yaw]=args.map(Math.fround);
+        if (![roll,pitch,yaw].every(Number.isFinite)) throw new Error('Invalid native MakeRotator parameters');
+        return {Pitch:pitch,Yaw:yaw,Roll:roll};
+    }
+    if (name === 'BreakVector') {
+        if (!Array.isArray(args) || args.length !== 1 || !isVector(args[0]))
+            throw new Error('Invalid native BreakVector parameters');
+        return {X:Math.fround(args[0].X),Y:Math.fround(args[0].Y),Z:Math.fround(args[0].Z)};
+    }
+    if (name === 'BreakRotator') {
+        if (!Array.isArray(args) || args.length !== 1 || !isRotator(args[0]))
+            throw new Error('Invalid native BreakRotator parameters');
+        return {Roll:Math.fround(args[0].Roll),Pitch:Math.fround(args[0].Pitch),Yaw:Math.fround(args[0].Yaw)};
+    }
+    if (name === 'MakeTransform') {
+        if (!Array.isArray(args) || args.length !== 3 || !isVector(args[0]) || !isRotator(args[1]) || !isVector(args[2]))
+            throw new Error('Invalid native MakeTransform parameters');
+        return {Rotation:makeQuaternion(args[1]),Translation:{X:args[0].X,Y:args[0].Y,Z:args[0].Z},
+            Scale3D:{X:args[2].X,Y:args[2].Y,Z:args[2].Z}};
     }
     if (name === 'Round') {
         if (args.length !== 1 || typeof args[0] !== 'number' || !Number.isFinite(args[0]))

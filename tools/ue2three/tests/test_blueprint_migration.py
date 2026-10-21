@@ -179,6 +179,107 @@ class BlueprintMigrationTests(unittest.TestCase):
         with self.assertRaisesRegex(BlueprintTranslationError, 'Unsupported native math call'):
             translate_function(function, Package({'Imports': wrong_function}))
 
+    def test_witnessed_vector_rotator_transform_calls_preserve_identity_and_arity(self):
+        for name, parameters in (
+            ('Add_VectorVector', [variable('EX_LocalVariable', 'A'), variable('EX_LocalVariable', 'B')]),
+            ('Subtract_VectorVector', [variable('EX_LocalVariable', 'A'), variable('EX_LocalVariable', 'B')]),
+            ('Multiply_VectorVector', [variable('EX_LocalVariable', 'A'), variable('EX_LocalVariable', 'B')]),
+            ('Conv_DoubleToVector', [node('EX_DoubleConst', Value='2.5')]),
+            ('MakeRotator', [node('EX_FloatConst', Value='10'), node('EX_FloatConst', Value='20'),
+                             node('EX_FloatConst', Value='30')]),
+            ('MakeTransform', [variable('EX_LocalVariable', 'Location'),
+                               variable('EX_LocalVariable', 'Rotation'),
+                               variable('EX_LocalVariable', 'Scale')])):
+            with self.subTest(name=name):
+                imports = [{'ObjectName': name, 'ClassName': 'Function', 'OuterIndex': -2},
+                           {'ObjectName': 'KismetMathLibrary', 'OuterIndex': -3},
+                           {'ObjectName': '/Script/Engine', 'ClassName': 'Package'},
+                           {'ObjectName': 'Vector', 'ClassName': 'ScriptStruct', 'OuterIndex': -6},
+                           {'ObjectName': 'Rotator', 'ClassName': 'ScriptStruct', 'OuterIndex': -6},
+                           {'ObjectName': '/Script/CoreUObject', 'ClassName': 'Package'}]
+                function = self.function()
+                if name in ('Add_VectorVector','Subtract_VectorVector','Multiply_VectorVector'):
+                    function['LoadedProperties'] = [{'Name':field,'SerializedType':'StructProperty',
+                        'Struct':-4,'PropertyFlags':'CPF_None'} for field in ('A','B')]
+                elif name == 'MakeTransform':
+                    function['LoadedProperties'] = [
+                        {'Name':'Location','SerializedType':'StructProperty','Struct':-4,'PropertyFlags':'CPF_None'},
+                        {'Name':'Rotation','SerializedType':'StructProperty','Struct':-5,'PropertyFlags':'CPF_None'},
+                        {'Name':'Scale','SerializedType':'StructProperty','Struct':-4,'PropertyFlags':'CPF_None'}]
+                function['ScriptBytecode'][1]['Expression'] = node('EX_CallMath', StackNode=-1, Parameters=parameters)
+                value = translate_function(function, Package({'Imports': imports,'Exports':[function]}))['steps'][0]['value']
+                self.assertEqual((value['op'], value['name']), ('math', name))
+                self.assertEqual(len(value['args']), len(parameters))
+                bad = [dict(item) for item in imports]
+                bad[0]['ObjectName'] = name + '_Unsupported'
+                with self.assertRaisesRegex(BlueprintTranslationError, 'Unsupported native math call'):
+                    translate_function(function, Package({'Imports': bad}))
+
+    def test_witnessed_break_calls_write_only_original_float_output_fields_in_order(self):
+        imports = [{'ObjectName': 'BreakVector', 'ClassName': 'Function', 'OuterIndex': -2},
+                   {'ObjectName': 'KismetMathLibrary', 'OuterIndex': -3},
+                   {'ObjectName': '/Script/Engine', 'ClassName': 'Package'},
+                   {'ObjectName':'Vector','ClassName':'ScriptStruct','OuterIndex':-5},
+                   {'ObjectName':'/Script/CoreUObject','ClassName':'Package'}]
+        function = self.function()
+        function['LoadedProperties'] = [{'Name': name, 'SerializedType': 'FloatProperty', 'PropertyFlags': 'CPF_None'}
+                                        for name in ('X', 'Y', 'Z')]
+        function['LoadedProperties'].append({'Name': 'Input', 'SerializedType': 'StructProperty', 'Struct':-4,'PropertyFlags': 'CPF_None'})
+        call = node('EX_CallMath', StackNode=-1, Parameters=[variable('EX_LocalVariable', 'Input'),
+            variable('EX_LocalVariable', 'X'), variable('EX_LocalVariable', 'Y'), variable('EX_LocalVariable', 'Z')])
+        function['ScriptBytecode'][1]['Expression'] = call
+        package = Package({'Imports': imports, 'Exports': [function]})
+        value = translate_function(function, package)['steps'][0]['value']
+        self.assertEqual(value, {'op': 'math_outputs', 'name': 'BreakVector',
+            'args': [{'op': 'get', 'scope': 'local', 'field': 'Input'}], 'components': ['X', 'Y', 'Z'],
+            'targets': [{'op': 'get', 'scope': 'local', 'field': name, 'type': 'FloatProperty'} for name in ('X','Y','Z')]})
+        function['LoadedProperties'][1]['SerializedType'] = 'DoubleProperty'
+        with self.assertRaisesRegex(BlueprintTranslationError, 'output property type'):
+            translate_function(function, package)
+        function['LoadedProperties'][1]['SerializedType'] = 'FloatProperty'
+        function['ScriptBytecode'][1]['Expression']['Parameters'].pop()
+        with self.assertRaisesRegex(BlueprintTranslationError, 'parameter count'):
+            translate_function(function, package)
+
+    def test_witnessed_break_rotator_uses_roll_pitch_yaw_source_output_order(self):
+        imports = [{'ObjectName': 'BreakRotator', 'ClassName': 'Function', 'OuterIndex': -2},
+                   {'ObjectName': 'KismetMathLibrary', 'OuterIndex': -3},
+                   {'ObjectName': '/Script/Engine', 'ClassName': 'Package'},
+                   {'ObjectName':'Rotator','ClassName':'ScriptStruct','OuterIndex':-5},
+                   {'ObjectName':'/Script/CoreUObject','ClassName':'Package'}]
+        function = self.function()
+        function['LoadedProperties'] = [{'Name': name, 'SerializedType': 'FloatProperty', 'PropertyFlags': 'CPF_None'}
+                                        for name in ('Roll','Pitch','Yaw')]
+        function['LoadedProperties'].append({'Name':'Input','SerializedType':'StructProperty','Struct':-4,'PropertyFlags':'CPF_None'})
+        function['ScriptBytecode'][1]['Expression'] = node('EX_CallMath', StackNode=-1, Parameters=[
+            variable('EX_LocalVariable','Input'), variable('EX_LocalVariable','Roll'),
+            variable('EX_LocalVariable','Pitch'), variable('EX_LocalVariable','Yaw')])
+        value = translate_function(function, Package({'Imports':imports,'Exports':[function]}))['steps'][0]['value']
+        self.assertEqual(value['components'], ['Roll','Pitch','Yaw'])
+        self.assertEqual([target['field'] for target in value['targets']], ['Roll','Pitch','Yaw'])
+
+    def test_witnessed_break_outputs_keep_the_original_event_frame_identity(self):
+        imports = [{'ObjectName':'BreakVector','ClassName':'Function','OuterIndex':-2},
+                   {'ObjectName':'KismetMathLibrary','OuterIndex':-3},
+                   {'ObjectName':'/Script/Engine','ClassName':'Package'},
+                   {'ObjectName':'Vector','ClassName':'ScriptStruct','OuterIndex':-5},
+                   {'ObjectName':'/Script/CoreUObject','ClassName':'Package'}]
+        event = {'ObjectName':'ExecuteUbergraph_Test','OuterIndex':2,'LoadedProperties':[
+            *[{'Name':name,'SerializedType':'FloatProperty','PropertyFlags':'CPF_None'} for name in ('X','Y','Z')],
+            {'Name':'Input','SerializedType':'StructProperty','Struct':-4,'PropertyFlags':'CPF_None'}],
+            'ScriptBytecode':[node('EX_Tracepoint'),node('EX_CallMath',StackNode=-1,Parameters=[
+                variable('EX_LocalVariable','Input'),variable('EX_LocalVariable','X'),
+                variable('EX_LocalVariable','Y'),variable('EX_LocalVariable','Z')]),
+                node('EX_Return',ReturnExpression=node('EX_Nothing')),node('EX_EndOfScript')]}
+        owner = {'ObjectName':'Test_C','LoadedProperties':[]}
+        package=Package({'Imports':imports,'Exports':[event,owner]})
+        report=translate_package(package)
+        program=report['functions']['ExecuteUbergraph_Test']
+        self.assertEqual(program['persistent_types'],{'1':{'Input':'StructProperty','X':'FloatProperty',
+            'Y':'FloatProperty','Z':'FloatProperty'}})
+        call=program['steps'][0]['value']
+        self.assertEqual([target['frame'] for target in call['targets']],[1,1,1])
+
     def test_int_selection_and_conversion_require_original_native_and_arity(self):
         for name, arity in [('Min', 2), ('Max', 2), ('Conv_IntToDouble', 1), ('SelectInt', 3),
                             ('Lerp', 3), ('FMin', 2), ('FMax', 2), ('InRange_FloatFloat', 5)]:

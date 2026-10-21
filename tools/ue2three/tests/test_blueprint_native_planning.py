@@ -20,6 +20,10 @@ class NativePlanningTests(unittest.TestCase):
     def test_exact_api_identity_arity_and_presence_are_diagnostic_only(self):
         self.assertTrue(adapter_present(('/Script/Engine','KismetStringLibrary','Concat_StrStr')))
         self.assertFalse(adapter_present(('/Script/Engine','KismetStringLibrary','Join_StrStr')))
+        for name in ('Add_VectorVector','Multiply_VectorVector','MakeRotator','BreakVector','BreakRotator',
+                     'Conv_DoubleToVector','MakeTransform','Subtract_VectorVector'):
+            self.assertTrue(adapter_present(('/Script/Engine','KismetMathLibrary',name)), name)
+        self.assertFalse(adapter_present(('/Script/Engine','KismetMathLibrary','MakeVector2D')))
         code = [node('EX_CallMath', StackNode=-1, Parameters=[node('EX_Self')]),
                 node('EX_FinalFunction', StackNode=-4, Parameters=[]),
                 node('EX_FinalFunction', StackNode=99, Parameters=[]),

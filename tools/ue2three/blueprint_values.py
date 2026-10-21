@@ -40,6 +40,17 @@ def native_schema(identity):
         return {'type': 'StructProperty', 'source': identity[0], 'native': identity[1],
                 'fields': {name: {'type': 'FloatProperty'} for name in fields},
                 'default': {name: 0 for name in fields}, 'member_order': list(fields)}
+    if identity == ('/Script/CoreUObject', 'Quat'):
+        fields = ('X', 'Y', 'Z', 'W')
+        return {'type': 'StructProperty', 'source': identity[0], 'native': identity[1],
+                'fields': {name: {'type': 'DoubleProperty'} for name in fields},
+                'default': {'X': 0, 'Y': 0, 'Z': 0, 'W': 1}, 'member_order': list(fields)}
+    if identity == ('/Script/CoreUObject', 'Transform'):
+        rotation, vector = native_schema(('/Script/CoreUObject', 'Quat')), native_schema(('/Script/CoreUObject', 'Vector'))
+        fields = {'Rotation': rotation, 'Translation': vector, 'Scale3D': vector}
+        return {'type': 'StructProperty', 'source': identity[0], 'native': identity[1], 'fields': fields,
+                'default': {'Rotation': rotation['default'], 'Translation': vector['default'],
+                            'Scale3D': {'X': 1, 'Y': 1, 'Z': 1}}, 'member_order': list(fields)}
 
 
 def asset_reference(package, value, declared_class):

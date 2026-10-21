@@ -85,3 +85,39 @@ test('source FName comparisons preserve case-insensitivity and instance suffixes
     assert.throws(() => evaluateNativeMath('EqualEqual_NameName', ['café', 'CAFÉ']), /Unsupported/);
     assert.throws(() => evaluateNativeMath('EqualEqual_NameName', [0, 'None']), /invalid/);
 });
+
+test('witnessed FVector operators and scalar conversion preserve all three source components', () => {
+    const a={X:1.5,Y:-2,Z:0},b={X:2,Y:3,Z:-4};
+    assert.deepEqual(evaluateNativeMath('Add_VectorVector',[a,b]),{X:3.5,Y:1,Z:-4});
+    assert.deepEqual(evaluateNativeMath('Subtract_VectorVector',[a,b]),{X:-0.5,Y:-5,Z:4});
+    assert.deepEqual(evaluateNativeMath('Multiply_VectorVector',[a,b]),{X:3,Y:-6,Z:-0});
+    assert.deepEqual(evaluateNativeMath('Conv_DoubleToVector',[-3]),{X:-3,Y:-3,Z:-3});
+    assert.ok(Object.is(evaluateNativeMath('Conv_DoubleToVector',[-0]).X,-0));
+    for (const [name,args] of [['Add_VectorVector',[a,{X:1,Y:2}]],
+        ['Subtract_VectorVector',[a,{Pitch:1,Yaw:2,Roll:3}]],
+        ['Multiply_VectorVector',[a,b,b]],['Conv_DoubleToVector',[true]]])
+        assert.throws(()=>evaluateNativeMath(name,args),/Invalid native/);
+});
+
+test('witnessed rotator construction and breaks retain native argument and output order', () => {
+    const rotation=evaluateNativeMath('MakeRotator',[10,20,30]);
+    assert.deepEqual(rotation,{Pitch:20,Yaw:30,Roll:10});
+    assert.deepEqual(evaluateNativeMath('BreakVector',[{X:1/3,Y:-2,Z:3}]),
+        {X:Math.fround(1/3),Y:-2,Z:3});
+    assert.deepEqual(evaluateNativeMath('BreakRotator',[rotation]),{Roll:10,Pitch:20,Yaw:30});
+    for (const [name,args] of [['MakeRotator',[1,2]],['BreakVector',[{X:1,Y:2,Z:NaN}]],
+        ['BreakRotator',[{X:1,Y:2,Z:3}]]])
+        assert.throws(()=>evaluateNativeMath(name,args),/Invalid native/);
+});
+
+test('witnessed MakeTransform constructs source FTransform quaternion, translation and scale fields', () => {
+    const location={X:1,Y:2,Z:3},rotation={Pitch:0,Yaw:90,Roll:0},scale={X:2,Y:3,Z:4};
+    const transform=evaluateNativeMath('MakeTransform',[location,rotation,scale]);
+    assert.deepEqual(transform.Translation,location);
+    assert.deepEqual(transform.Scale3D,scale);
+    assert.ok(Math.abs(transform.Rotation.Z-Math.SQRT1_2)<1e-15);
+    assert.ok(Math.abs(transform.Rotation.W-Math.SQRT1_2)<1e-15);
+    assert.deepEqual(evaluateNativeMath('MakeTransform',[{X:0,Y:0,Z:0},{Pitch:0,Yaw:0,Roll:0},{X:1,Y:1,Z:1}]),
+        {Rotation:{X:0,Y:-0,Z:0,W:1},Translation:{X:0,Y:0,Z:0},Scale3D:{X:1,Y:1,Z:1}});
+    assert.throws(()=>evaluateNativeMath('MakeTransform',[location,{X:0,Y:0,Z:0},scale]),/Invalid native/);
+});

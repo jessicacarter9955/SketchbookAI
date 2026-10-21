@@ -1,12 +1,26 @@
 import unittest
 from blueprint_types import source_structs, property_schema
 from blueprint_migration import BlueprintTranslationError, translate_package, memory_size, property_type
-from blueprint_values import serialized_value
+from blueprint_values import serialized_value, native_schema
 from umg_migration import Package
 from test_blueprint_migration import node
 
 
 class SourceTypesTests(unittest.TestCase):
+    def test_native_transform_schema_preserves_quaternion_translation_and_scale_types(self):
+        quaternion = native_schema(('/Script/CoreUObject', 'Quat'))
+        transform = native_schema(('/Script/CoreUObject', 'Transform'))
+        self.assertEqual(quaternion['fields'], {name: {'type': 'DoubleProperty'} for name in ('X','Y','Z','W')})
+        self.assertEqual(quaternion['default'], {'X': 0, 'Y': 0, 'Z': 0, 'W': 1})
+        self.assertEqual(transform['member_order'], ['Rotation','Translation','Scale3D'])
+        self.assertEqual(transform['fields']['Rotation'], quaternion)
+        self.assertEqual(transform['fields']['Translation']['native'], 'Vector')
+        self.assertEqual(transform['fields']['Scale3D']['native'], 'Vector')
+        self.assertEqual(transform['default']['Scale3D'], {'X': 1, 'Y': 1, 'Z': 1})
+        package = Package({'Imports': [{'ObjectName':'Transform','ClassName':'ScriptStruct','OuterIndex':-2},
+                                        {'ObjectName':'/Script/CoreUObject','ClassName':'Package'}]})
+        self.assertEqual(property_schema(package, {'SerializedType':'StructProperty','Struct':-1}), transform)
+
     def test_int64_values_are_limited_to_exact_javascript_safe_integers(self):
         package = Package({})
         prop = {'Name': 'Counter', 'SerializedType': 'Int64Property'}
