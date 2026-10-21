@@ -573,6 +573,10 @@ def translate_package(package, structs=None, tables=None):
                                      for prop in export.get('LoadedProperties', []) if 'CPF_Parm' in str(prop.get('PropertyFlags'))
                                      and 'CPF_ReturnParm' not in str(prop.get('PropertyFlags'))
                                      and ('CPF_OutParm' not in str(prop.get('PropertyFlags')) or prop['Name'] in const_inputs)]
+            program['value_parameters_only'] = all(
+                'CPF_OutParm' not in str(prop.get('PropertyFlags')) and 'CPF_ReferenceParm' not in str(prop.get('PropertyFlags'))
+                for prop in export.get('LoadedProperties', [])
+                if 'CPF_Parm' in str(prop.get('PropertyFlags')) and 'CPF_ReturnParm' not in str(prop.get('PropertyFlags')))
             program['source_defaults'] = {name: defaults[name] for name in program['self_reads'] if name in defaults}
             program['source_export_index'] = index
             if program['name'] in functions: raise BlueprintTranslationError('Duplicate function name')

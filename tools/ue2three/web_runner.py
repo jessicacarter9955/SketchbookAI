@@ -51,6 +51,17 @@ def auto_recipe(registry, bundled_recipe, destination):
 def reusable_workspace(root, preferred, project):
     """Reuse a prior verified scan for this exact project when the default job is elsewhere."""
     project_key = str(project.resolve()).casefold()
+    # The canonical verified job is always the top-ranked candidate.
+    # Return without walking historic workspaces (which can contain huge caches).
+    preferred_state = preferred / "state.json"
+    if preferred_state.is_file():
+        try:
+            state = json.loads(preferred_state.read_text(encoding="utf-8"))
+            source = str(Path(state["config"]["project"]).resolve()).casefold()
+            if source == project_key and state.get("source_verification_status") == "verified":
+                return preferred
+        except (OSError, ValueError, KeyError, TypeError):
+            pass
     candidates = [preferred]
     if root.is_dir():
         candidates.extend(root.rglob("state.json"))

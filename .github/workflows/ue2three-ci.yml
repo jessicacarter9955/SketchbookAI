@@ -14,26 +14,57 @@ on:
 permissions:
   contents: read
 
+# Independent source-free checks run concurrently. Unreal assets remain local.
+# Keep the original "migration" check name as an all-green final gate.
 jobs:
-  migration:
+  python-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Offline migration unit tests
+      - name: Offline migration and workspace regression tests
         run: python -m unittest discover -s tools/ue2three/tests -q
-      - name: Set up Node
-        uses: actions/setup-node@v4
+
+  js-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: npm
-      - name: Install dependencies
-        run: npm ci
-      - name: Three.js / editor regression tests
+      - run: npm ci
+      - name: Three.js source/runtime regression tests
         run: npm test
+
+  editor-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
       - name: Build editor and player
         run: npm run build
+
+  migration:
+    runs-on: ubuntu-latest
+    needs: [python-tests, js-tests, editor-build]
+    if: always()
+    steps:
+      - name: Require every independent migration check to pass
+        env:
+          PYTHON_RESULT: ${{ needs.python-tests.result }}
+          JS_RESULT: ${{ needs.js-tests.result }}
+          BUILD_RESULT: ${{ needs.editor-build.result }}
+        run: |
+          test "$PYTHON_RESULT" = "success"
+          test "$JS_RESULT" = "success"
+          test "$BUILD_RESULT" = "success"

@@ -41,10 +41,22 @@ function validateSchema(schema, value, depth = 0) {
     } else if (!validPrimitive(schema.type, value)) throw new Error('Invalid typed source member: ' + schema.type);
 }
 
-export function executeBlueprint(program, self = {}, inputs = {}, { functions = {}, frames = {}, tables = {}, bindings = {}, signatures = {}, native, queries = {} } = {}) {
-    return runBlueprint(program, self, inputs, functions, { remaining: 10000 }, 0, structuredClone(frames), tables,
-        {bindings: structuredClone(bindings), signatures, native: structuredClone(native), queries,
-            queryStack:native?.source_package ? [native.source_package] : [], effects: []});
+export function executeBlueprint(program, self = {}, inputs = {}, { functions = {}, frames = {}, tables = {}, bindings = {}, signatures = {}, native, queries = {}, receivers } = {}) {
+    // All participating components are staged once. Callbacks observe their
+    // active storage; callers commit the entire transaction only after success.
+    const world = receivers && Object.fromEntries(Object.entries(receivers).map(([name, receiver]) => [name, {
+        ...receiver, state:structuredClone(receiver.state), frames:structuredClone(receiver.frames || {}),
+        bindings:structuredClone(receiver.bindings || {}), native:structuredClone(receiver.native)}]));
+    const root = world?.[native?.source_package];
+    if (world && (!root || JSON.stringify(root.state) !== JSON.stringify(self)
+        || root.native?.source_owner_index !== program.source_owner_index)) throw new Error('Source transaction root differs');
+    const result = runBlueprint(program, root?.state || self, inputs, functions, { remaining: 10000 }, 0,
+        root?.frames || structuredClone(frames), tables,
+        {bindings:root?.bindings || structuredClone(bindings), signatures, native:root?.native || structuredClone(native), queries, world, readWorld:world,
+            rootPackage:native?.source_package,queryStack:native?.source_package ? [native.source_package] : [], effects: []});
+    if (world) result.receivers = Object.fromEntries(Object.entries(world).map(([name, receiver]) => [name,
+        {state:receiver.state, frames:receiver.frames, bindings:receiver.bindings}]));
+    return result;
 }
 
 function runBlueprint(program, self, inputs, functions, budget, depth, frames, tables, notifications) {
@@ -82,10 +94,14 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             }
         }
     }
-    const instance = structuredClone(self);
+    const receiver = notifications.world?.[notifications.native?.source_package];
+    const instance = receiver ? receiver.state : structuredClone(self);
+    if (receiver && receiver.state !== self) throw new Error('Source transaction lost active instance storage');
     if (Object.keys(instance).some(field => !safeField(field))) throw new Error('Invalid instance property');
     const trace = [];
     let sourceIndex;
+    const emit = effect => notifications.effects.push(notifications.world && notifications.native.source_package !== notifications.rootPackage
+        ? {...effect, package:notifications.native.source_package} : effect);
     const checkType = (scope, field, value, frame) => {
         const type = scope === 'persistent' ? program.persistent_types?.[frame]?.[field] : program.field_types?.[scope]?.[field];
         if (scope === 'persistent' && !type) throw new Error('Unresolved persistent property type');
@@ -143,9 +159,9 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 || JSON.stringify(query.field_schemas?.[expression.field]) !== JSON.stringify(expression.schema))
                 throw new Error('Original component property schema or source differs');
             const ownReceiver = expression.package === notifications.native?.source_package;
-            if (!ownReceiver && notifications.queryStack.includes(expression.package))
+            if (!notifications.readWorld && !ownReceiver && notifications.queryStack.includes(expression.package))
                 throw new Error('Reentrant component property access requires shared active storage');
-            const storage = ownReceiver ? instance : query.state;
+            const storage = ownReceiver ? instance : (notifications.readWorld?.[expression.package]?.state || query.state);
             if (!owns(storage,expression.field)) throw new Error('Original component property storage is unavailable');
             validateSchema(expression.schema,storage[expression.field]);
             return structuredClone(storage[expression.field]);
@@ -154,6 +170,39 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             const reference=evaluate(expression.target,depth+1);
             validateSchema(expression.schema,reference);
             return sourceObjectValid(notifications.native,reference,expression.schema);
+        }
+        if (expression.op === 'component_call') {
+            const reference = evaluate(expression.target,depth+1);
+            if (reference === null) {
+                trace.push({source_index:sourceIndex,op:'warning',message:'Accessed None: original component call skipped'});
+                return null;
+            }
+            const descriptor = sourceQueryReceiver(notifications.native,reference,expression.package,expression.class_object);
+            const target = notifications.world?.[expression.package], callee = target?.functions?.[expression.function];
+            if (!target || target.source_sha256 !== descriptor.source_sha256 || !callee
+                || target.native?.source_package !== expression.package || target.native.world_context_bound !== true
+                || target.native.source_owner_index !== descriptor.class_export_index
+                || callee.source_owner_index !== descriptor.class_export_index || callee.source_export_index !== expression.export_index
+                || expression.value_parameters_only !== true || callee.value_parameters_only !== true
+                || !Array.isArray(expression.bindings) || !Array.isArray(callee.parameters)
+                || expression.bindings.length !== callee.parameters.length)
+                throw new Error('Original component mutation requires a bound transactional receiver and by-value signature');
+            sourceQueryReceiver(target.native,reference,expression.package,expression.class_object);
+            const args = Object.create(null);
+            for (const [index,binding] of expression.bindings.entries()) {
+                const parameter = callee.parameters[index];
+                if (binding.mode !== 'input' || !safeField(binding.parameter) || owns(args,binding.parameter)
+                    || parameter.name !== binding.parameter || JSON.stringify(parameter.schema) !== JSON.stringify(binding.schema))
+                    throw new Error('Original component mutation parameter schema differs');
+                const value = evaluate(binding.value,depth+1); validateSchema(binding.schema,value);
+                args[binding.parameter] = structuredClone(value);
+            }
+            const nested = runBlueprint(callee,target.state,args,target.functions,budget,callDepth+1,target.frames,tables,
+                {...notifications,bindings:target.bindings,signatures:target.signatures || {},native:target.native,
+                    queryStack:[...notifications.queryStack,expression.package]});
+            trace.push({source_index:sourceIndex,op:'component_call',package:expression.package,function:expression.function,
+                outputs:structuredClone(nested.outputs),trace:nested.trace});
+            return nested.value;
         }
         if (expression.op === 'component_query') {
             const reference=evaluate(expression.target,depth+1);
@@ -184,10 +233,11 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                     targets.push(binding);
                 } else throw new Error('Unsupported original component query binding');
             }
-            const nested=runBlueprint(callee,query.state,args,query.functions,budget,callDepth+1,{},tables,
-                {bindings:{},signatures:query.signatures || {},native:structuredClone(query.native),queries:notifications.queries,
+            const queryState = notifications.readWorld?.[expression.package]?.state || query.state;
+            const nested=runBlueprint(callee,queryState,args,query.functions,budget,callDepth+1,{},tables,
+                {bindings:{},signatures:query.signatures || {},native:structuredClone(query.native),queries:notifications.queries,readWorld:notifications.readWorld,
                     queryStack:[...notifications.queryStack,expression.package],effects:[]});
-            if (nested.effects.length || Object.keys(nested.frames).length || JSON.stringify(nested.state) !== JSON.stringify(query.state))
+            if (nested.effects.length || Object.keys(nested.frames).length || JSON.stringify(nested.state) !== JSON.stringify(queryState))
                 throw new Error('Original component query attempted a state change or effect');
             for (const binding of targets) {
                 if (!owns(nested.outputs,binding.parameter)) throw new Error('Missing original component query output');
@@ -208,7 +258,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 trace.push({source_index:sourceIndex,op:'warning',message:'Accessed None: Actor.ForceNetUpdate context skipped'});
                 return null;
             }
-            notifications.effects.push(sourceForceNetUpdate(notifications.native, reference));
+            emit(sourceForceNetUpdate(notifications.native, reference));
             return null;
         }
         if (expression.op === 'typed_literal') {
@@ -231,7 +281,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             if (!safeField(expression.field)
                 || !validPrimitive('IntProperty', expression.source_rep_index) || expression.source_rep_index < 0)
                 throw new Error('Invalid original dirty-property witness');
-            notifications.effects.push({op: 'mark_dirty', field: expression.field, source_rep_index: expression.source_rep_index});
+            emit({op: 'mark_dirty', field: expression.field, source_rep_index: expression.source_rep_index});
             return null;
         }
         if (expression.op === 'broadcast') {
@@ -246,7 +296,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             });
             const listeners = notifications.bindings[expression.delegate] || [];
             if (!Array.isArray(listeners)) throw new Error('Invalid original delegate listener list');
-            notifications.effects.push({op: 'broadcast', delegate: expression.delegate,
+            emit({op: 'broadcast', delegate: expression.delegate,
                 parameters: Object.fromEntries(signature.parameters.map((param, index) => [param.name, values[index]])), listeners: listeners.length});
             // UE copies the multicast invocation list and visits it in insertion order.
             for (const listener of [...listeners]) {
@@ -561,7 +611,10 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 outputs[field] = structuredClone(locals[field]);
             }
             trace.push({source_index: step.source_index, op: 'return', value: structuredClone(value)});
-            return {value: structuredClone(value), outputs, state: instance, frames, trace, effects: structuredClone(notifications.effects)};
+            // Nested calls share a staged effect journal. Copying its entire
+            // growing prefix at every return is quadratic for source loops.
+            return {value: structuredClone(value), outputs, state: instance, frames, trace,
+                effects:callDepth === 0 ? structuredClone(notifications.effects) : notifications.effects};
         } else throw new Error(`Unsupported Blueprint instruction: ${step.op}`);
     }
     throw new Error('Blueprint returned no result');

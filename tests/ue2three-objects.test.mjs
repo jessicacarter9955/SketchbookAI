@@ -45,6 +45,129 @@ function queryFixture() {
     return {report,player,runtime,program,call,child,schema};
 }
 
+function mutationFixture() {
+    const f=queryFixture(),{report,child,runtime,program,call}=f;
+    const write=structuredClone(child.functions.Write);
+    write.value_parameters_only=true;write.parameters=[];write.name='Write';
+    child.functions.Write=write;
+    Object.assign(call,{op:'component_call',function:'Write',export_index:3,bindings:[],value_parameters_only:true});
+    program.steps.push(end);
+    return f;
+}
+
+test('mutable component calls commit original state, persistent frames and effects under the receiver identity',()=>{
+    const {runtime,child}=mutationFixture();
+    const write=child.functions.Write;
+    write.persistent_types={'7':{Visits:'IntProperty'}};
+    write.steps.splice(1,0,{op:'set',scope:'persistent',frame:7,field:'Visits',value:c(1)},
+        {op:'evaluate',value:{op:'mark_dirty',field:'Count',source_rep_index:4}});
+    const result=runtime.call('/Game/Combat','Query');
+    assert.equal(runtime.states['/Game/Component'].Count,7);
+    assert.equal(runtime.frames['/Game/Component']['7'].Visits,1);
+    assert.equal(runtime.dirty['/Game/Component'].Count,4);
+    assert.equal(runtime.dirty['/Game/Combat'],undefined);
+    assert.equal(runtime.nativeRequests[0].package,'/Game/Component');
+    assert.ok(result.trace.some(row=>row.op==='component_call' && row.function==='Write'));
+});
+
+test('any failure after a nested component mutation rolls back both components, frames, bindings and effects',()=>{
+    for (const corrupt of [
+        f=>f.program.steps.splice(1,0,{op:'evaluate',value:{op:'unknown_operation'}}),
+        f=>f.child.functions.Write.steps.splice(2,0,{op:'evaluate',value:{op:'unknown_operation'}}),
+        f=>f.call.export_index=999,
+        f=>f.call.value_parameters_only=false,
+        f=>f.child.functions.Write.value_parameters_only=false,
+        f=>f.runtime.states['/Game/Combat'].Inventory.realm='other',
+        f=>f.runtime.states['/Game/Combat'].Inventory.actor_id='other',
+        f=>f.report.packages['/Game/Component'].source.source_sha256='changed',
+    ]) {
+        const f=mutationFixture();corrupt(f);const saved=f.runtime.snapshot();
+        assert.throws(()=>f.runtime.call('/Game/Combat','Query'));assert.deepEqual(f.runtime.snapshot(),saved);
+    }
+    const f=mutationFixture();f.runtime.states['/Game/Combat'].Inventory=null;
+    const saved=f.runtime.states['/Game/Component'].Count;
+    assert.ok(f.runtime.call('/Game/Combat','Query').trace.some(t=>t.message?.includes('Accessed None')));
+    assert.equal(f.runtime.states['/Game/Component'].Count,saved);
+});
+
+test('cross-component callbacks see active caller writes and their changes survive returning through local calls',()=>{
+    const {runtime,report,program,child}=mutationFixture();
+    const combat=report.packages['/Game/Combat'];
+    const countSchema={type:'IntProperty',default:0};
+    combat.default_state.Count=0;combat.field_schemas={Count:countSchema};runtime.states['/Game/Combat'].Count=0;
+    const combatReference=runtime.actorBindings.componentReference('/Game/Combat');
+    child.field_schemas={Count:countSchema};
+    runtime.states['/Game/Component'].Combat=combatReference;
+    const get=(scope,field)=>({op:'get',scope,field});
+    const member={op:'component_member',target:get('self','Combat'),package:'/Game/Combat',class_object:'Combat_C',class_export_index:2,field:'Count',schema:countSchema};
+    const callback=structuredClone(child.functions.Write);
+    callback.source_export_index=8;callback.source_owner_index=2;callback.steps=[{op:'set',scope:'self',field:'Count',value:c(88)},end];
+    combat.functions.Callback=callback;
+    child.functions.Write.steps=[{op:'set',scope:'self',field:'Count',value:member},
+        {op:'evaluate',value:{op:'component_call',target:get('self','Combat'),package:'/Game/Combat',class_object:'Combat_C',function:'Callback',export_index:8,bindings:[],value_parameters_only:true}},end];
+    child.functions.Impl={...child.functions.Write,source_export_index:9};
+    child.functions.Write.steps=[{op:'evaluate',value:{op:'call',function:'Impl',export_index:9,bindings:[]}},end];
+    program.field_types.self.Count='IntProperty';
+    program.steps.unshift({op:'set',scope:'self',field:'Count',value:c(21)});
+    const result=runtime.call('/Game/Combat','Query');
+    assert.equal(runtime.states['/Game/Component'].Count,21);
+    assert.equal(runtime.states['/Game/Combat'].Count,88);
+    assert.equal(result.state.Count,88);
+});
+
+test('mutable calls share the original instruction budget and depth limit across receiver boundaries',()=>{
+    const f=mutationFixture();
+    f.runtime.states['/Game/Component'].Inventory=f.runtime.actorBindings.componentReference('/Game/Component');
+    f.child.functions.Write.steps=[{op:'evaluate',value:f.call},end];
+    const saved=f.runtime.snapshot();
+    assert.throws(()=>f.runtime.call('/Game/Combat','Query'),/depth exceeded/);assert.deepEqual(f.runtime.snapshot(),saved);
+    const loop=mutationFixture();loop.program.status='translated_control_flow';
+    loop.program.steps=[{op:'evaluate',value:loop.call},{op:'jump',target:0}];
+    const before=loop.runtime.snapshot();
+    assert.throws(()=>loop.runtime.call('/Game/Combat','Query'),/budget/);assert.deepEqual(loop.runtime.snapshot(),before);
+});
+
+test('read-only queries after mutations read staged peer state and preserve original out-parameter copying',()=>{
+    const f=mutationFixture();
+    f.program.steps.splice(1,0,{op:'evaluate',value:{...f.call,op:'component_query',function:'Read',export_index:4,
+        bindings:[{mode:'output',parameter:'Value',target:{op:'get',scope:'local',field:'Result'}}]}});
+    assert.equal(f.runtime.call('/Game/Combat','Query').outputs.Result,7);
+});
+
+test('mutating component input signatures reject type, order and reference mismatches atomically',()=>{
+    for (const corrupt of [f=>{},f=>f.call.bindings[0].parameter='Other',f=>f.call.bindings[0].schema={type:'BoolProperty',default:false},
+        f=>f.call.bindings[0].value=c('bad'),f=>f.call.bindings[0].mode='output']) {
+        const f=mutationFixture(),schema={type:'IntProperty',default:0};
+        f.child.functions.Write.parameters=[{name:'Value',schema}];
+        f.child.functions.Write.input_fields=['Value'];f.child.functions.Write.field_types.local={Value:'IntProperty'};
+        f.child.functions.Write.steps[0].value={op:'get',scope:'local',field:'Value'};
+        f.call.bindings=[{mode:'input',parameter:'Value',schema,value:c(32)}];
+        corrupt(f);const before=f.runtime.snapshot();
+        if (f.call.bindings[0].parameter==='Value' && f.call.bindings[0].schema.type==='IntProperty'
+            && f.call.bindings[0].value.value===32 && f.call.bindings[0].mode==='input') {
+            f.runtime.call('/Game/Combat','Query');assert.equal(f.runtime.states['/Game/Component'].Count,32);
+        } else { assert.throws(()=>f.runtime.call('/Game/Combat','Query'));assert.deepEqual(f.runtime.snapshot(),before); }
+    }
+});
+
+test('cross-component broadcasts invoke same-instance source handlers and keep notifications on that component',()=>{
+    const f=mutationFixture();
+    const handler={...f.child.functions.Write,source_export_index:10,parameters:[],steps:[{op:'set',scope:'self',field:'Count',value:c(66)},end]};
+    f.child.functions.Handler=handler;
+    f.child.delegate_signatures={Changed:{export_index:12,parameters:[]}};
+    f.runtime.subscribe('/Game/Component','Changed','Handler');
+    f.child.functions.Write.steps.push({op:'evaluate',value:{op:'broadcast',delegate:'Changed',export_index:12,parameters:[],args:[]}});
+    // Broadcast must execute before Return, preserving source order.
+    f.child.functions.Write.steps.splice(-2,1);f.child.functions.Write.steps.push(end);
+    f.runtime.call('/Game/Combat','Query');assert.equal(f.runtime.states['/Game/Component'].Count,66);
+    assert.equal(f.runtime.notifications[0].package,'/Game/Component');assert.equal(f.runtime.notifications[0].listeners,1);
+});
+
+test('pure component guards do not stage/copy the whole actor transaction',()=>{
+    const f=queryFixture();
+    assert.equal(f.runtime.call('/Game/Combat','Query').receivers,undefined);
+});
+
 test('original component lookup rejects incomplete class sets, unavailable matching templates and foreign owners',()=>{
     const {report,runtime,player}=fixture();
     report.actor_graph.roots['/Game/Pawn'].component_lookup_complete=true;

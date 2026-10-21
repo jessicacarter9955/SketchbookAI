@@ -1,4 +1,4 @@
-"""Read-only original component calls. Mutating/lifecycle calls stay blocked."""
+"""Typed original component calls with explicit transactional mutation admission."""
 from blueprint_types import import_path, property_schema
 from blueprint_effects import variable
 
@@ -94,7 +94,11 @@ def component_query(value, package, owner, reads, outputs, depth):
             bindings.append({'mode': 'input', 'parameter': prop['Name'],
                              'value': expression(arg, reads, outputs, depth+1, package, owner), 'schema': parameter_schema})
     return {'op': 'component_query', 'target': target, 'package': identity[0], 'class_object': identity[1],
-            'function': function['ObjectName'], 'export_index': index, 'bindings': bindings}
+            'function': function['ObjectName'], 'export_index': index, 'bindings': bindings,
+            # Mutable calls currently admit by-value inputs only. An out/ref
+            # alias must remain live through callbacks, not be copied back late.
+            'value_parameters_only': all('CPF_OutParm' not in str(prop.get('PropertyFlags'))
+                                         and 'CPF_ReferenceParm' not in str(prop.get('PropertyFlags')) for prop in props)}
 
 
 def expressions(value):
@@ -112,7 +116,7 @@ def query_safe(program, library, visited=None, packages=None, package_name=None,
     if program.get('self_writes') or program.get('persistent_types'): return False
     visited = visited | {name}
     for node in expressions(program.get('steps', [])):
-        if node['op'] in ('broadcast', 'mark_dirty', 'native_force_net_update'): return False
+        if node['op'] in ('broadcast', 'mark_dirty', 'native_force_net_update', 'component_call'): return False
         if node['op'] == 'call':
             child = library.get(node.get('function'))
             if not child or child['source_export_index'] != node['export_index'] or not query_safe(
@@ -138,14 +142,18 @@ def prune_queries(packages):
                 for node in expressions(program['steps']):
                     if node['op'] == 'call' and node.get('function') not in library:
                         reason = 'Untranslated function dependency: ' + node['function']; break
-                    if node['op'] != 'component_query': continue
+                    if node['op'] not in ('component_query', 'component_call'): continue
                     target = packages.get(node['package'], {})
                     callee = target.get('functions', {}).get(node['function'])
                     target_library = {**target.get('functions', {}), **target.get('event_programs', {})}
-                    if (node['package'] == package_name or not callee or callee['source_export_index'] != node['export_index']
-                            or not query_safe(callee, target_library, packages=packages, package_name=node['package'],
-                                              receiver_chain={package_name, node['package']})):
-                        reason = 'Untranslated or effectful component query: ' + node['package'] + ':' + node['function']; break
+                    if node['package'] == package_name or not callee or callee['source_export_index'] != node['export_index']:
+                        reason = 'Untranslated component receiver: ' + node['package'] + ':' + node['function']; break
+                    if not query_safe(callee, target_library, packages=packages, package_name=node['package'],
+                                      receiver_chain={package_name, node['package']}):
+                        if node.get('value_parameters_only') is True and all(b['mode'] == 'input' for b in node['bindings']):
+                            node['op'] = 'component_call'
+                        else:
+                            reason = 'Effectful component call requires live out/reference storage: ' + node['package'] + ':' + node['function']; break
                 if reason:
                     group = 'event_programs' if program.get('internal_event_entry') else 'functions'
                     del data[group][name]

@@ -1,5 +1,6 @@
 """Persistence, hashes and process locking, independent of Unreal adapters."""
 import hashlib
+import errno
 import json
 import os
 import time
@@ -40,7 +41,11 @@ def read_json(path):
             with Path(path).open("r", encoding="utf-8-sig") as stream:
                 return json.load(stream)
         except PermissionError as error:
-            if getattr(error, 'winerror', None) not in (5, 32) or attempt == 7:
+            # CPython's CRT-backed open can drop winerror on Windows and
+            # expose a transient sharing violation as plain EACCES instead.
+            retryable = getattr(error, 'winerror', None) in (5, 32) or (
+                os.name == 'nt' and getattr(error, 'winerror', None) is None and error.errno == errno.EACCES)
+            if not retryable or attempt == 7:
                 raise
             time.sleep(min(0.01 * 2 ** attempt, 0.1))
 

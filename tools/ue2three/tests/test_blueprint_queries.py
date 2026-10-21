@@ -76,6 +76,20 @@ class ComponentQueryTests(unittest.TestCase):
         self.assertEqual(program['schemas']['self']['Inventory']['reference_kind'], 'runtime_component')
         self.assertIsNone(result['/Game/Combat']['default_state']['Inventory'])
 
+    def test_original_mutating_by_value_component_call_is_retained_transactionally(self):
+        pool=self.packages()
+        source=pool['/Game/Inventory'].exports[1]
+        source['LoadedProperties']=[]
+        source['ScriptBytecode'][0]=node('EX_Let',Variable=var('EX_InstanceVariable','Count',1),Expression=node('EX_IntConst',Value=7))
+        call=pool['/Game/Combat'].exports[1]['ScriptBytecode'][0]
+        call['ContextExpression']['Parameters']=[];call['Offset']=14
+        result={name:translate_package(package) for name,package in pool.items()};prune_queries(result)
+        adapted=result['/Game/Combat']['functions']['ReadInventory']['steps'][0]['value']
+        self.assertEqual(adapted['op'],'component_call')
+        self.assertTrue(result['/Game/Inventory']['functions']['ReadCount']['value_parameters_only'])
+        del result['/Game/Inventory']['functions']['ReadCount'];prune_queries(result)
+        self.assertNotIn('ReadInventory',result['/Game/Combat']['functions'])
+
     def test_wrong_output_type_context_offset_or_class_reject_whole_function(self):
         for change in ('type', 'offset', 'class'):
             pool = self.packages(); caller = pool['/Game/Combat']; call = caller.exports[1]['ScriptBytecode'][0]

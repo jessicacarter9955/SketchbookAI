@@ -115,6 +115,20 @@ class MapFixupTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 read_json(path)
 
+    def test_json_read_retries_windows_crt_eacces_without_winerror_but_remains_bounded(self):
+        from types import SimpleNamespace
+        import io
+        error = PermissionError(13, 'Permission denied', 'state.json')
+        self.assertIsNone(getattr(error, 'winerror', None))
+        with patch('core.os', SimpleNamespace(name='nt')), patch('core.time.sleep'), \
+                patch('core.Path.open', side_effect=[error, io.StringIO('{"ready": true}')]) as opener:
+            self.assertEqual(read_json('state.json'), {'ready': True}); self.assertEqual(opener.call_count, 2)
+        for platform, attempts in [('nt', 8), ('posix', 1)]:
+            with patch('core.os', SimpleNamespace(name=platform)), patch('core.time.sleep'), \
+                    patch('core.Path.open', side_effect=error) as opener:
+                with self.assertRaises(PermissionError): read_json('state.json')
+                self.assertEqual(opener.call_count, attempts)
+
     def test_atomic_json_does_not_hide_persistent_failure(self):
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / 'state.json'; atomic_json(path, {'old': True})

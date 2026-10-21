@@ -25,19 +25,53 @@ export class BlueprintActorRuntime {
         const result = executeBlueprint(program, this.states[packageName], inputs,
             {functions: {...data.functions, ...data.event_programs}, frames: this.frames[packageName] || {}, tables: this.report.tables || {},
                 bindings: this.bindings[packageName] || {}, signatures: data.delegate_signatures || {}, native:this.nativeContext(packageName),
-                queries:this.componentQueries()});
-        this.states[packageName] = result.state;
-        this.frames[packageName] = result.frames;
+                queries:this.componentQueries(),receivers:this.transactionReceivers(packageName,program)});
+        if (result.receivers) for (const [name,receiver] of Object.entries(result.receivers)) {
+            this.states[name] = receiver.state; this.frames[name] = receiver.frames; this.bindings[name] = receiver.bindings;
+        }
+        else { this.states[packageName] = result.state; this.frames[packageName] = result.frames; }
         for (const effect of result.effects) {
+            const receiverName = effect.package || packageName;
             if (effect.op === 'mark_dirty') {
-                this.dirty[packageName] ||= Object.create(null);
-                this.dirty[packageName][effect.field] = effect.source_rep_index;
-            } else if (effect.op === 'broadcast') this.notifications.push({package: packageName, ...structuredClone(effect)});
-            else if (effect.op === 'force_net_update') this.nativeRequests.push({package:packageName,...structuredClone(effect)});
+                this.dirty[receiverName] ||= Object.create(null);
+                this.dirty[receiverName][effect.field] = effect.source_rep_index;
+            } else if (effect.op === 'broadcast') this.notifications.push({package: receiverName, ...structuredClone(effect)});
+            else if (effect.op === 'force_net_update') this.nativeRequests.push({package:receiverName,...structuredClone(effect)});
         }
         if (this.notifications.length > 1000) this.notifications.splice(0, this.notifications.length-1000);
         if (this.nativeRequests.length > 1000) this.nativeRequests.splice(0, this.nativeRequests.length-1000);
         return result;
+    }
+    transactionReceivers(packageName,program) {
+        if (!this.nativeContext(packageName)?.world_context_bound) return undefined;
+        const data=this.report.packages[packageName],library={...data.functions,...data.event_programs},visited=new Set();
+        const requiresTransaction = value => {
+            if (!value || typeof value !== 'object') return false;
+            if (value.op === 'component_call') return true;
+            if (value.op === 'call' && !visited.has(value.function)) {
+                visited.add(value.function);
+                if (requiresTransaction(library[value.function]?.steps)) return true;
+            }
+            if (value.op === 'broadcast') for (const listener of this.bindings[packageName]?.[value.delegate] || []) {
+                if (!visited.has(listener.function)) {
+                    visited.add(listener.function);
+                    if (requiresTransaction(library[listener.function]?.steps)) return true;
+                }
+            }
+            return Object.values(value).some(requiresTransaction);
+        };
+        // Pure guards/metrics retain their existing small single-component
+        // execution path instead of copying an entire inventory every frame.
+        if (!requiresTransaction(program.steps)) return undefined;
+        // SCS binding already rejects duplicate component classes. This scope
+        // is one source actor, not a class-keyed substitute for spawned weapons.
+        const names = [this.actorBindings.root.source_class,...this.actorBindings.components.keys()];
+        return Object.fromEntries(names.map(name => {
+            const data = this.report.packages[name];
+            return [name,{state:this.states[name],frames:this.frames[name] || {},bindings:this.bindings[name] || {},
+                source_sha256:data.source.source_sha256,functions:{...data.functions,...data.event_programs},
+                signatures:data.delegate_signatures || {},native:this.nativeContext(name)}];
+        }));
     }
     componentQueries() {
         return Object.fromEntries([...this.actorBindings.components].map(([name,component])=>{
