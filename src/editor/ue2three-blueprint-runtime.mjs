@@ -89,6 +89,42 @@ export class BlueprintActorRuntime {
         });
     }
     snapshot() { return structuredClone({states: this.states, frames: this.frames, bindings: this.bindings, notifications: this.notifications, dirty: this.dirty, nativeRequests:this.nativeRequests, nextBindingId: this.nextBindingId}); }
+    checkpointIdentity() {
+        // Browser-owned checkpoint identity; this is NOT Unreal's SaveGame format.
+        const packages = Object.fromEntries(Object.keys(this.report.packages).sort().map(name =>
+            [name, this.report.packages[name].source?.source_sha256 ?? null]));
+        const root = this.actorBindings.root;
+        return {
+            project: this.report.project,
+            packages,
+            actor: root ? {source_class:root.source_class, scs_sha256:this.actorBindings.graph.scs_sha256} : null
+        };
+    }
+    exportCheckpoint() {
+        return structuredClone({format:'ue2three-browser-checkpoint',version:1,
+            identity:this.checkpointIdentity(), snapshot:this.snapshot()});
+    }
+    restoreCheckpoint(checkpoint) {
+        if (!checkpoint || checkpoint.format !== 'ue2three-browser-checkpoint' || checkpoint.version !== 1
+            || JSON.stringify(checkpoint.identity) !== JSON.stringify(this.checkpointIdentity()))
+            throw new Error('Checkpoint belongs to a different Unreal source, actor binding, or format');
+        const state = checkpoint.snapshot, packages = Object.keys(this.report.packages).sort();
+        const object = v => v !== null && typeof v === 'object' && !Array.isArray(v);
+        if (!object(state) || !object(state.states) || !object(state.frames) || !object(state.bindings)
+            || !object(state.dirty) || !Array.isArray(state.notifications) || !Array.isArray(state.nativeRequests)
+            || state.notifications.length > 1000 || state.nativeRequests.length > 1000
+            || !Number.isSafeInteger(state.nextBindingId) || state.nextBindingId < 1
+            || JSON.stringify(Object.keys(state.states).sort()) !== JSON.stringify(packages)
+            || Object.entries(state.states).some(([name, data]) => !object(data)
+                || Object.keys(this.report.packages[name].default_state || {}).some(field => !Object.hasOwn(data,field)))
+            || Object.values(state.bindings).some(value => !object(value) ||
+                Object.values(value).some(list => !Array.isArray(list) || list.length > 1000 ||
+                    list.some(entry => !object(entry) || !Number.isSafeInteger(entry.id) || entry.id < 1))))
+            throw new Error('Malformed or incomplete translated Blueprint checkpoint');
+        // Validate before mutating runtime; restore clears derived guard/metric caches.
+        this.restore(structuredClone(state));
+        return true;
+    }
     restore(snapshot) {
         this.states = structuredClone(snapshot.states); this.frames = structuredClone(snapshot.frames);
         this.bindings = structuredClone(snapshot.bindings || {}); this.notifications = structuredClone(snapshot.notifications || []); this.dirty = structuredClone(snapshot.dirty || {});
