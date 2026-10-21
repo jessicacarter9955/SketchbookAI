@@ -345,7 +345,7 @@ def translate_function(export, package=None, entry_offset=None):
     if not isinstance(bytecode, list) or not bytecode or len(bytecode) > 100000:
         raise BlueprintTranslationError('Parsed source bytecode is required')
     reads, outputs, writes, steps = set(), set(), set(), []
-    branching = entry_offset is not None or any(kind(instruction) in ('EX_Jump', 'EX_JumpIfNot', 'EX_PushExecutionFlow', 'EX_PopExecutionFlow', 'EX_PopExecutionFlowIfNot') for instruction in bytecode)
+    branching = entry_offset is not None or any(kind(instruction) in ('EX_Jump', 'EX_JumpIfNot', 'EX_ComputedJump', 'EX_PushExecutionFlow', 'EX_PopExecutionFlow', 'EX_PopExecutionFlowIfNot') for instruction in bytecode)
     offsets, boundaries, offset = {}, {}, 0
     reachable, prologue = None, None
     if entry_offset is not None:
@@ -370,8 +370,25 @@ def translate_function(export, package=None, entry_offset=None):
             if branching: steps.append({'op': 'end', 'source_index': index})
             continue
         if returned and not branching: raise BlueprintTranslationError('Instructions after return require control-flow translation')
-        if token == 'EX_ComputedJump' and index == prologue:
-            steps.append({'op': 'jump', 'target': boundaries[entry_offset], 'target_offset': entry_offset, 'source_index': index})
+        if token == 'EX_ComputedJump':
+            if entry_offset is not None:
+                if index != prologue:
+                    raise BlueprintTranslationError('Unsupported computed jump inside event path')
+                steps.append({'op': 'jump', 'target': boundaries[entry_offset],
+                              'target_offset': entry_offset, 'source_index': index})
+            else:
+                # Preserve only bytecode-authored, immutable absolute offsets.
+                # EntryPoint and other data-dependent jumps need source control
+                # flow / lifecycle analysis; never guess their destinations.
+                operand = instruction.get('CodeOffsetExpression')
+                if not isinstance(operand, dict) or kind(operand) not in ('EX_IntConst', 'EX_IntZero', 'EX_IntOne'):
+                    raise BlueprintTranslationError('Dynamic computed jump has no verified original constant target')
+                literal = expression(operand, reads, outputs, package=package, owner=export.get('OuterIndex'))
+                target_offset = literal['value']
+                if type(target_offset) is not int or target_offset not in boundaries:
+                    raise BlueprintTranslationError('Computed jump target is not a Kismet instruction boundary')
+                steps.append({'op': 'jump', 'target': boundaries[target_offset],
+                              'target_offset': target_offset, 'source_index': index})
             continue
         if token in ('EX_PushExecutionFlow', 'EX_PopExecutionFlow', 'EX_PopExecutionFlowIfNot'):
             step = {'op': 'push_flow' if token == 'EX_PushExecutionFlow' else 'pop_flow', 'source_index': index}
