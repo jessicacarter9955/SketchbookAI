@@ -106,6 +106,32 @@ class DdsAgentTests(unittest.TestCase):
         self.assertIsNone(dds_agent._bounded_timeout(0))
         self.assertEqual(dds_agent._bounded_timeout(20), 20)
 
+    def test_usage_limit_is_distinguished_from_adapter_failure(self):
+        logs = self.repo / '.local/dds-agent'
+        logs.mkdir(parents=True)
+        (logs / 'codex-events.jsonl').write_text(json.dumps({
+            'type': 'turn.failed', 'error': {'message': 'You have hit your usage limit'}}) + '\n')
+        self.assertEqual(dds_agent.codex_failure_kind(self.repo), 'usage_limit')
+
+    def test_account_limit_does_not_exhaust_an_adapter_attempt(self):
+        with patch.object(dds_agent, 'run_codex', return_value=1), \
+                patch.object(dds_agent, 'codex_failure_kind', return_value='usage_limit'):
+            result = dds_agent.run_once(self.repo, self.state_root, 'codex-test-double')
+        self.assertEqual(result['error'], 'usage_limit')
+        self.assertEqual(self._load_state()['families']['native-timers']['attempts'], 0)
+        self.assertEqual(self._load_state()['families']['native-timers']['status'], 'retry_wait')
+
+    def test_prompt_compaction_preserves_complete_structured_records(self):
+        operations = [{'api': f'API_{i}', 'observed_in_blocked_functions':
+                       [{'package': 'p', 'function': str(n)} for n in range(100)]} for i in range(100)]
+        example = {'bytecode': [{'opcode': 'EX_StringConst', 'value': 'source'}]}
+        text = '```json\n' + json.dumps(operations) + '\n```\n```json\n' + json.dumps([example]) + '\n```'
+        compact = dds_agent.compact_packet(text, 12000)
+        self.assertLessEqual(len(compact), 12000)
+        value = json.loads(compact)
+        self.assertEqual(value['complete_function_examples'], [example])
+        self.assertLessEqual(len(value['operations']), 24)
+
     def test_tampered_plan_packet_or_cache_fails_closed(self):
         plan_path = self.published / 'blueprint-plan.json'
         original = plan_path.read_text(encoding='utf-8')

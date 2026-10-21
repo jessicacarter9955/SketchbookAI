@@ -67,6 +67,18 @@ class AutomationTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'reached actual work'):
                 self.supervisor.tick()
 
+    def test_usage_limit_pauses_the_whole_agent_queue(self):
+        self.supervisor.state['compiled_fingerprint'] = automation.fingerprint(self.root)
+        self.supervisor.config['codex_executable'] = 'codex-test-double'
+        with patch.object(automation.agent, '_require_clean_repo', return_value='a' * 40), \
+                patch.object(automation.agent, '_disk_guard'), \
+                patch.object(self.supervisor, 'command'), \
+                patch.object(automation.agent, 'run_once', return_value={'status': 'retry_wait', 'error': 'usage_limit'}):
+            result = self.supervisor.tick()
+        self.assertEqual(result['phase'], 'waiting_account')
+        self.assertEqual(result['waiting_reason'], 'usage_limit')
+        self.assertGreater(result['retry_after'], 0)
+
     def test_replay_requires_same_sources_and_preserves_translated_functions(self):
         before = {'project': 'DDS', 'counts': {'translated': 1, 'blocked': 2},
                   'packages': {'A': {'source': {'sha': 'same'}, 'functions': {'existing': {}}}}}

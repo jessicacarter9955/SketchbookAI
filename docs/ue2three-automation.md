@@ -78,3 +78,37 @@ comment update timestamps. A singleton lock prevents duplicate relay instances.
 Its connection health is recorded in `~/.chat-local-bridge/connection-health.json`.
 This repairs local relay failure modes; it does not control the ChatGPT UI
 message-delivery timeout.
+
+## Live web dashboard and controls
+
+`automation_web.py --config PATH --port 8401` serves the existing local preview
+and the live dashboard at the project's `automation.html`. It binds only to
+127.0.0.1. `/__ue2three/status` reads bounded local checkpoints and log tails;
+private dot-directories are not served. The same-origin `start` control returns
+HTTP 202 immediately and starts the Windows task; it does not hold the request
+open for the agent's lifetime. `pause` prevents new batches and preserves an
+already-running batch. No chat message is required to monitor or resume work.
+
+The eight area percentages count explicitly listed acceptance criteria with
+uniform weights. They are not estimates of overall game fidelity or elapsed
+work. Blueprint function coverage has its own translated/(translated+blocked)
+denominator. An area is green only when all its listed criteria have evidence.
+The animation 1:1 acceptance remains deferred. Additional export/deploy stages
+remain visibly unconfigured until actually connected and verified.
+
+## Account and connection recovery
+
+Model usage limits, authentication errors and interrupted model connections are
+classified separately from adapter failures. They do not consume the family's
+source-implementation attempts. Usage limits pause the entire queue for 30
+minutes, then retry automatically; connection/authentication failures wait ten
+minutes. No purchase, new model or account change is performed automatically.
+Family attempt budgets apply per verified source plan. Logs and failed patches
+remain on disk. A reset of temporary account limits does not require a new user
+message.
+
+Large source packets are reduced to complete structured records under 48,000
+characters. The primary parsed source witness is copied and checksum-verified
+inside the worker for targeted read-only queries. Original source/cache files
+remain untouched. New workers use sparse checkouts to avoid copying unrelated
+assets. Conversion/replay tests still use the complete verified package cache.

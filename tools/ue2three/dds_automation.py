@@ -165,6 +165,7 @@ class Supervisor:
         self.save('promoting', candidate_commit=commit, candidate_family=family)
         agent._git(self.root, 'merge', '--ff-only', commit)
         record.update(status='integrated', commit=commit, verified_counts=after['counts'])
+        checkpoint['last_status'] = 'integrated'
         agent._checkpoint_event(self.root / agent.STATE_RELATIVE, checkpoint, 'integrated', family=family, commit=commit)
         self.save('integrated', counts=after['counts'], pending_push=self.config.get('push', False))
         self.state['compiled_fingerprint'] = None
@@ -216,6 +217,9 @@ class Supervisor:
 
     def tick(self):
         with workspace_lock(self.directory):
+            if self.config.get('paused', False):
+                self.save('paused', active_job=None)
+                return self.state
             if time.time() < self.state.get('retry_after', 0):
                 return {'phase': 'retry_wait', 'retry_after': self.state['retry_after']}
             try:
@@ -244,6 +248,11 @@ class Supervisor:
                     self.save('agent_running', active_job='source-adapter-agent')
                     result = agent.run_once(self.root, codex_executable=executable)
                     self.save('agent_checkpoint', agent_result=result, active_job=None)
+                    if result.get('error') in {'usage_limit', 'authentication_required', 'connection_interrupted'}:
+                        delay = 1800 if result['error'] == 'usage_limit' else 600
+                        self.save('waiting_account' if result['error'] == 'usage_limit' else 'waiting_connection',
+                                  retry_after=time.time() + delay, waiting_reason=result['error'], active_job=None)
+                        return self.state
                     if result['status'] == 'patch_ready_for_review':
                         self.promote(result['family'], agent._read_checkpoint(self.root / agent.STATE_RELATIVE))
                 self.pending_push()

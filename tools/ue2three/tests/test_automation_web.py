@@ -1,0 +1,69 @@
+import http.client
+from http.server import ThreadingHTTPServer
+import json
+from pathlib import Path
+import sys
+import tempfile
+import threading
+import unittest
+from unittest.mock import patch
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import automation_web as web
+
+
+class WebTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.config = self.root / '.local/config.json'
+        self.config.parent.mkdir()
+        self.config.write_text(json.dumps({'project': 'DDS.uproject', 'session_seconds': 0,
+            'publish_dir': str(self.root / 'build/project'), 'paused': True}))
+        self.server = ThreadingHTTPServer(('127.0.0.1', 0), web.handler(self.root, self.config, 0))
+        self.port = self.server.server_port
+        self.server.RequestHandlerClass = web.handler(self.root, self.config, self.port)
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+        self.addCleanup(self.cleanup_server)
+
+    def cleanup_server(self):
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(2)
+
+    def request(self, method, path, body=None, origin=None):
+        connection = http.client.HTTPConnection('127.0.0.1', self.port, timeout=2)
+        headers = {'Content-Type': 'application/json'}
+        if origin: headers['Origin'] = origin
+        connection.request(method, path, json.dumps(body) if body else None, headers)
+        response = connection.getresponse()
+        result = response.status, response.read()
+        connection.close()
+        return result
+
+    def test_status_has_explicit_criteria_and_no_invented_completeness(self):
+        code, raw = self.request('GET', '/__ue2three/status')
+        data = json.loads(raw)
+        self.assertEqual(code, 200)
+        self.assertEqual(len(data['areas']), 8)
+        self.assertTrue(data['continuous'])
+        self.assertEqual(next(a for a in data['areas'] if a['id'] == 'character')['percent'], 0)
+
+    def test_start_is_accepted_without_waiting_for_a_job(self):
+        with patch.object(web.subprocess, 'Popen') as start:
+            code, raw = self.request('POST', '/__ue2three/control', {'action': 'start'}, f'http://127.0.0.1:{self.port}')
+            self.assertEqual(code, 202)
+            start.assert_called_once()
+        self.assertFalse(json.loads(self.config.read_text())['paused'])
+
+    def test_cross_origin_control_and_private_files_are_blocked(self):
+        code, _ = self.request('POST', '/__ue2three/control', {'action': 'start'}, 'https://unrelated.example')
+        self.assertEqual(code, 403)
+        code, _ = self.request('GET', '/.local/config.json')
+        self.assertEqual(code, 403)
+
+
+if __name__ == '__main__':
+    unittest.main()
