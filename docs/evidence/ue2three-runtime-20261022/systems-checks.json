@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "scope": "technical_fixture_not_dds_gameplay",
+  "checks": [
+    {
+      "name": "Contatto fisico",
+      "ok": true,
+      "scope": "Sfera su triangoli statici; non è il Mover/PhysicsAsset DDS."
+    },
+    {
+      "name": "Ombre fuori origine",
+      "ok": true,
+      "scope": "Frustum e pixel delle ombre verificati (84 pixel differenti). Lumen/postprocessing esclusi."
+    },
+    {
+      "name": "Ordine degli effetti",
+      "ok": true,
+      "scope": "Prova tecnica della coda; non riproduce suoni DDS."
+    },
+    {
+      "name": "Effetti non supportati",
+      "ok": true,
+      "scope": "Adapter mancante segnalato; nessun Niagara sostitutivo inventato."
+    }
+  ],
+  "source_calls": [
+    {
+      "identity": [
+        "/Script/Engine",
+        "GameplayStatics",
+        "SpawnSoundAttached"
+      ],
+      "call_sites": 3,
+      "sources": [
+        {
+          "package": "/Game/Fixers/Core/Blueprints/Companions/Drone/BPA_Drone_Flashlight",
+          "function": "ExecuteUbergraph_BPA_Drone_Flashlight@4576",
+          "source_bytecode_sha256": "78b3a1013ad7c0b544940d17ca523227742b630c49fc6838a4af97527c550aeb"
+        },
+        {
+          "package": "/Game/Fixers/Core/Blueprints/Companions/Drone/BPA_Drone_Flashlight",
+          "function": "ExecuteUbergraph_BPA_Drone_Flashlight@4719",
+          "source_bytecode_sha256": "78b3a1013ad7c0b544940d17ca523227742b630c49fc6838a4af97527c550aeb"
+        },
+        {
+          "package": "/Game/Fixers/Core/Blueprints/Companions/Drone/BPA_Drone_Flashlight",
+          "function": "ExecuteUbergraph_BPA_Drone_Flashlight@4894",
+          "source_bytecode_sha256": "78b3a1013ad7c0b544940d17ca523227742b630c49fc6838a4af97527c550aeb"
+        }
+      ]
+    },
+    {
+      "identity": [
+        "/Script/Engine",
+        "GameplayStatics",
+        "PlaySoundAtLocation"
+      ],
+      "call_sites": 2,
+      "sources": [
+        {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "function": "ExecuteUbergraph_BPC_Inventory_Fixers@27569",
+          "source_bytecode_sha256": "5fd466319bea38c4856b2edf0dd294fe0db980cfcd17150ea23a1240cb3020d6"
+        },
+        {
+          "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers",
+          "function": "ExecuteUbergraph_BPC_Inventory_Fixers@27651",
+          "source_bytecode_sha256": "5fd466319bea38c4856b2edf0dd294fe0db980cfcd17150ea23a1240cb3020d6"
+        }
+      ]
+    },
+    {
+      "identity": [
+        "/Script/Niagara",
+        "NiagaraComponent",
+        "SetVariableLinearColor"
+      ],
+      "call_sites": 3,
+      "sources": [
+        {
+          "package": "/Game/Fixers/VFX/NiagaraExamples/Blueprints/GE_Status_Parent",
+          "function": "InitializeStatusVFX",
+          "source_bytecode_sha256": "34cb9841e8d9b34286bc4d23a77cf3ff4cd314179f3902e1e19c59fe1dcee120"
+        },
+        {
+          "package": "/Game/Fixers/VFX/NiagaraExamples/Gallery/Blueprints/Tools/BP_FireworkTarget",
+          "function": "UserConstructionScript",
+          "source_bytecode_sha256": "83033c86fd14651c182982e0736ebf99e3bdb8177abae7995c02690ea1afe096"
+        }
+      ]
+    }
+  ],
+  "physics": {
+    "meshes": 3,
+    "triangles": 36,
+    "degenerate_triangles": 0,
+    "chunks": 1,
+    "body_height": 20.649999433078037,
+    "contacts": 3
+  },
+  "shadow_pixels_changed": 84,
+  "receipts": [
+    {
+      "id": 1,
+      "identity": [
+        "/Script/Engine",
+        "AudioComponent",
+        "SetVolumeMultiplier"
+      ],
+      "status": "executed"
+    },
+    {
+      "id": 2,
+      "identity": [
+        "/Script/Engine",
+        "AudioComponent",
+        "SetVolumeMultiplier"
+      ],
+      "status": "executed"
+    },
+    {
+      "id": 3,
+      "identity": [
+        "/Script/Engine",
+        "AudioComponent",
+        "SetVolumeMultiplier"
+      ],
+      "status": "executed"
+    },
+    {
+      "id": 4,
+      "identity": [
+        "/Script/Niagara",
+        "NiagaraFunctionLibrary",
+        "SpawnSystemAtLocation"
+      ],
+      "status": "blocked",
+      "code": "adapter_missing",
+      "message": "Original native runtime adapter is unavailable"
+    }
+  ],
+  "source_counts": {
+    "blocked": 1529,
+    "declarations": 185,
+    "empty_event_functions": 97,
+    "event_entries": 121,
+    "no_op_functions": 66,
+    "translated": 428
+  },
+  "audio_manifest_present": false,
+  "multiplayer_verified": false,
+  "dds_gameplay_verified": false
+}

@@ -36,7 +36,7 @@ export async function mapAssetURL(value, {revision, fetchManifest = globalThis.f
   let hash = /^[a-f0-9]{64}$/i.test(revision || '') ? revision : null;
   if (!hash) {
     try {
-      const response = await fetchManifest('/' + path.split('/maps/')[0] + '/map-manifest.json', {cache: 'no-store'});
+      const response = await fetchManifest('/' + path.slice(0,path.lastIndexOf('/maps/')) + '/map-manifest.json', {cache: 'no-store'});
       if (response.ok) {
         const manifest = await response.json();
         const candidate = manifest.maps?.find(row => row.filename === path.split('/').pop())?.output_sha256;
@@ -56,7 +56,6 @@ export function configureMapLights(renderer, root) {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   root.updateMatrixWorld(true);
   const bounds = new THREE.Box3().setFromObject(root);
-  const radius = Math.max(10, bounds.getSize(new THREE.Vector3()).length() * 0.5);
   let sourceDirectional = 0, shadowLights = 0;
   root.traverse(node => {
     if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; }
@@ -70,16 +69,33 @@ export function configureMapLights(renderer, root) {
     node.castShadow = true;
     shadowLights++;
     node.shadow.mapSize.set(2048, 2048);
-    Object.assign(node.shadow.camera, {left: -radius, right: radius, top: radius,
-      bottom: -radius, near: 0.1, far: radius * 6});
-    node.shadow.camera.updateProjectionMatrix();
+    fitDirectionalShadow(node, bounds);
     node.shadow.bias = -0.00005;
     node.shadow.normalBias = 0.08;
   });
   return {sourceDirectional, shadowLights};
 }
 
+export function fitDirectionalShadow(light, worldBounds) {
+  if (!light.isDirectionalLight || worldBounds.isEmpty()) return false;
+  light.updateWorldMatrix(true, false);
+  light.target.updateWorldMatrix(true, false);
+  light.shadow.updateMatrices(light);
+  const camera = light.shadow.camera;
+  const bounds = worldBounds.clone().applyMatrix4(camera.matrixWorldInverse);
+  const margin = Math.max(0.1, bounds.getSize(new THREE.Vector3()).length() * 0.01);
+  // Camera is already aligned with the ORIGINAL light/target. Fit its frustum
+  // in light space; a symmetric box around world zero clips translated maps.
+  Object.assign(camera, {left:bounds.min.x-margin, right:bounds.max.x+margin,
+    bottom:bounds.min.y-margin, top:bounds.max.y+margin,
+    near:Math.max(0.01, -bounds.max.z-margin), far:Math.max(0.02, -bounds.min.z+margin)});
+  if (camera.far <= camera.near) camera.far = camera.near + 1;
+  camera.updateProjectionMatrix();
+  return true;
+}
+
 export function applyMapPresentation(renderer, scene, root) {
+  const previous = {environment:scene.environment, background:scene.background};
   const settings = configureMapLights(renderer, root);
   const ambient = new THREE.HemisphereLight(0xffffff, 0x8090a0, 1.5);
   scene.add(ambient);
@@ -95,13 +111,23 @@ export function applyMapPresentation(renderer, scene, root) {
   if (!settings.sourceDirectional) {
     key = new THREE.DirectionalLight(0xffedcf, 2.2);
     key.position.set(8, 15, 9);
-    scene.add(key);
+    const bounds = new THREE.Box3().setFromObject(root);
+    const center = bounds.getCenter(new THREE.Vector3());
+    const size = Math.max(10, bounds.getSize(new THREE.Vector3()).length());
+    key.position.copy(center).addScaledVector(new THREE.Vector3(8,15,9).normalize(),size);
+    key.target.position.copy(center);
+    scene.add(key, key.target);
+    key.castShadow = true;
+    key.shadow.mapSize.set(2048,2048);
+    fitDirectionalShadow(key,bounds);
   }
   scene.background = new THREE.Color(0x182430);
-  return {...settings, environment: 'neutral_approximation', dispose() {
+  const background = scene.background;
+  return {...settings, fallbackShadowLights:key ? 1 : 0, environment: 'neutral_approximation', source_equivalence:false, dispose() {
     scene.remove(ambient);
-    if (key) scene.remove(key);
-    if (scene.environment === reflectionTarget.texture) scene.environment = null;
+    if (key) { scene.remove(key, key.target); key.shadow.dispose(); }
+    if (scene.environment === reflectionTarget.texture) scene.environment = previous.environment;
+    if (scene.background === background) scene.background = previous.background;
     reflectionTarget.dispose();
   }};
 }

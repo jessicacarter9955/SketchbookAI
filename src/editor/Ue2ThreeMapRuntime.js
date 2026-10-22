@@ -70,7 +70,7 @@ export class Ue2ThreeMapRuntime {
             body.collisionFilterGroup = 1;
             this.world.physicsWorld.addBody(body);
             this.collisionBodies.push(body);
-        });
+        }, {onStats: stats => { this.collisionStats = {...stats, scope:'exported_render_surfaces', source_physics_equivalence:false}; }});
         if (!this.collisionBodies.length) throw new Error('Il livello Unreal esportato non contiene superfici utilizzabili come collisioni.');
     }
 

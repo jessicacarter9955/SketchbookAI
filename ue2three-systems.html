@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ue2three · Verifica dei sistemi</title>
+<style>
+:root{color-scheme:dark;font:15px system-ui;background:#101923;color:#e2eef5}body{max-width:1150px;margin:auto;padding:18px}h1{font-size:24px}h2{font-size:18px}p{color:#b6cad7;line-height:1.5}progress{width:100%;accent-color:#52d6a7}#log{min-height:48px;white-space:pre-wrap;background:#192936;padding:12px;border-radius:8px;font-size:13px}table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;border-bottom:1px solid #365064;padding:10px;overflow-wrap:anywhere}canvas{width:100%;height:330px;display:block;border-radius:10px}button{padding:9px;background:#235564;color:white;border:1px solid #65a8ba;border-radius:6px;cursor:pointer}pre{white-space:pre-wrap;overflow-wrap:anywhere}section{margin-top:22px}.scroll{overflow-x:auto}.ok{color:#75e4ac}.pending{color:#ffd172}
+</style><script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","cannon-es":"/node_modules/cannon-es/dist/cannon-es.js"}}</script></head>
+<body><h1>ue2three · Verifica dei sistemi</h1>
+<p>Controlli automatici di collisioni, ombre e consegna degli effetti. La scena qui sotto è una <strong>prova tecnica</strong>: non è la mappa DDS e non certifica il gameplay originale.</p>
+<progress id="progress" max="4" value="0"></progress><div id="log" role="log">Avvio dei controlli…</div>
+<section><canvas id="view"></canvas><p>Sfera: simulazione fisica Cannon. Piano e blocchi: superfici di prova spostate lontano dall’origine, con ombre Three.js.</p></section>
+<section><h2>Risultati dei controlli</h2><div class="scroll"><table><thead><tr><th>Controllo</th><th>Esito</th><th>Perimetro</th></tr></thead><tbody id="checks"></tbody></table></div></section>
+<section><h2>Chiamate presenti nei Blueprint DDS attuali</h2><p id="source-status">Lettura del report salvato…</p><div class="scroll"><table><thead><tr><th>API originale</th><th>Punti di chiamata</th><th>Da collegare</th></tr></thead><tbody id="coverage"></tbody></table></div></section>
+<section><h2>Audio e multiplayer</h2><p>L’audio richiede i WAV originali e le impostazioni esportate; SoundCue, MetaSound, attenuazione e concorrenza richiedono adattatori dedicati. Niagara richiede il grafo originale tradotto e i suoi componenti. La replica DDS e il trasporto multiplayer non sono implementati da questa prova.</p><p id="audio-state"></p></section>
+<details><summary>Report della verifica</summary><pre id="result">In corso…</pre></details>
+<script>window.addEventListener('error',function(event){var message=event.message||'Modulo non caricato: controllare MIME e cache del server locale.';document.getElementById('log').textContent+='\nErrore browser: '+message;},true);</script>
+<script type="module" src="/tools/ue2three/ue2three-systems-viewer.js"></script></body></html>

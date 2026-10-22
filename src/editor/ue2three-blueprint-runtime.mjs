@@ -19,6 +19,9 @@ export class BlueprintActorRuntime {
         this.last = null;
         this.guardCache = new Map();
         this.metricCache = new Map();
+        this.effectSubscribers = new Set();
+        this.effectDeliveryErrors = [];
+        this.effectAuditDepth = 0;
     }
     call(packageName, functionName, inputs = {}) {
         const data = this.report.packages[packageName], program = data?.functions[functionName];
@@ -43,7 +46,31 @@ export class BlueprintActorRuntime {
         if (this.notifications.length > 1000) this.notifications.splice(0, this.notifications.length-1000);
         if (this.nativeRequests.length > 1000) this.nativeRequests.splice(0, this.nativeRequests.length-1000);
         if (this.audioVfxRequests.length > 1000) this.audioVfxRequests.splice(0, this.audioVfxRequests.length-1000);
+        // State and diagnostics have committed. External effects cannot roll
+        // back, so deliver them here rather than inside executeBlueprint.
+        const committed = result.effects.filter(effect => effect.op === 'native_audio_vfx')
+            .map(effect => ({package:effect.package || packageName,...structuredClone(effect)}));
+        if (committed.length && !this.effectAuditDepth) for (const subscriber of [...this.effectSubscribers]) {
+            try {
+                const task = subscriber(structuredClone(committed));
+                if (task?.catch) task.catch(error => this.recordEffectDeliveryError(error));
+            } catch (error) { this.recordEffectDeliveryError(error); }
+        }
         return result;
+    }
+    recordEffectDeliveryError(error) {
+        this.effectDeliveryErrors.push(String(error.message || error));
+        if (this.effectDeliveryErrors.length > 32) this.effectDeliveryErrors.shift();
+    }
+    onCommittedEffects(subscriber) {
+        if (typeof subscriber !== 'function') throw Error('Invalid native effect subscriber');
+        this.effectSubscribers.add(subscriber);
+        return () => this.effectSubscribers.delete(subscriber);
+    }
+    suppressExternalEffects() {
+        this.effectAuditDepth++;
+        let released = false;
+        return () => { if (!released) { released = true; this.effectAuditDepth--; } };
     }
     transactionReceivers(packageName,program) {
         if (!this.nativeContext(packageName)?.world_context_bound) return undefined;
@@ -185,7 +212,7 @@ export function bindBlueprintInputs(player, runtime, onResult = () => {}) {
 
 export async function loadBlueprintActorRuntime(mapPath, project, fetchImpl = fetch) {
     if (!mapPath) return null;
-    const match = /^build\/local-scenes\/ue2three\/projects\/([A-Za-z0-9_-]+)\/maps\/[A-Za-z0-9_.-]+\.glb$/.exec(mapPath);
+    const match = /^build\/local-scenes\/ue2three\/projects\/([A-Za-z0-9_-]+)\/(?:[A-Za-z0-9_-]+\/)*maps\/[A-Za-z0-9_-][A-Za-z0-9_.-]*\.glb$/.exec(mapPath);
     if (!match) throw new Error('Invalid migrated map path for Blueprint runtime');
     const url = `build/local-scenes/ue2three/projects/${match[1]}/blueprint-programs.json`;
     const response = await fetchImpl(url, {cache: 'no-store'});

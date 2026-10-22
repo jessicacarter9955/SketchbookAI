@@ -30,6 +30,17 @@ test('runtime rejects another source project and invalid map paths', async () =>
     assert.throws(() => new BlueprintActorRuntime(report, 'Other.uproject'), /does not match/);
     await assert.rejects(loadBlueprintActorRuntime('../outside.glb', report.project), /Invalid migrated/);
 });
+
+test('parallel asset export map paths resolve the project Blueprint report rather than a nested asset directory',async()=>{
+    const {report}=fixture();let requested;
+    const runtime=await loadBlueprintActorRuntime('build/local-scenes/ue2three/projects/Example/dds-assets/maps/maps/Level.glb',report.project,
+        async(url)=>{requested=url;return {ok:true,json:async()=>report};});
+    assert.equal(requested,'build/local-scenes/ue2three/projects/Example/blueprint-programs.json');
+    assert.ok(runtime instanceof BlueprintActorRuntime);
+    for(const path of ['build/local-scenes/ue2three/projects/Example/../maps/Level.glb',
+        'build/local-scenes/ue2three/projects/Example/dds-assets/maps/Level.glb?x=1'])
+        await assert.rejects(loadBlueprintActorRuntime(path,report.project),/Invalid migrated/);
+});
 test('failed source predicate denies the input; state snapshots restore exactly', () => {
     const {runtime, player} = fixture();
     const snapshot = runtime.snapshot(); bindBlueprintInputs(player, runtime);

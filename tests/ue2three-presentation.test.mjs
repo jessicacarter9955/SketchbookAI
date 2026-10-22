@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import {safeMapPath, mapAssetURL, configureMapLights, mapValidationSummary} from '../tools/ue2three/map-presentation.mjs';
+import {safeMapPath, mapAssetURL, configureMapLights, mapValidationSummary, fitDirectionalShadow} from '../tools/ue2three/map-presentation.mjs';
 import {installMapOutputPass} from '../src/editor/ue2three-output.mjs';
 
 const path = 'build/local-scenes/ue2three/projects/example/maps/Level.glb';
@@ -18,6 +18,21 @@ test('visible source checks distinguish actor coverage from material and lightin
   assert.match(mapValidationSummary({transforms: {matched: NaN, mismatched: -1, skipped: 0}})[0], /non disponibile/);
   assert.ok(mapValidationSummary({material_graphs: {Grid: {
     root_connections: 'direct_connections_recovered', connection_count: 66}}}).some(row => /66 collegamenti diretti.*da tradurre/.test(row)));
+});
+
+test('directional shadow frustum contains a map far from world origin without moving source light',()=>{
+  const root=new THREE.Group(),mesh=new THREE.Mesh(new THREE.BoxGeometry(20,4,30));
+  mesh.position.set(2000,100,-3000);root.add(mesh);
+  const sun=new THREE.DirectionalLight(0xffeedd,3);sun.position.set(2100,250,-2900);
+  sun.target.position.copy(mesh.position);root.add(sun,sun.target);root.updateMatrixWorld(true);
+  const bounds=new THREE.Box3().setFromObject(mesh),before=sun.position.clone();
+  assert.equal(fitDirectionalShadow(sun,bounds),true);
+  sun.shadow.camera.updateMatrixWorld(true);
+  for(const x of [bounds.min.x,bounds.max.x])for(const y of [bounds.min.y,bounds.max.y])for(const z of [bounds.min.z,bounds.max.z]) {
+    const projected=new THREE.Vector3(x,y,z).project(sun.shadow.camera);
+    assert.ok(Math.abs(projected.x)<=1 && Math.abs(projected.y)<=1 && Math.abs(projected.z)<=1,JSON.stringify(projected));
+  }
+  assert.deepEqual(sun.position,before);
 });
 
 test('composer encodes final pixels once after FXAA without changing its existing passes', () => {
@@ -48,6 +63,14 @@ test('map cache uses the exported checksum, not a page bundle label', async () =
 test('an explicit asset checksum avoids a manifest request', async () => {
   assert.equal(await mapAssetURL(path, {revision: hash, fetchManifest: () => {throw Error('unexpected fetch');}}),
     '/' + path + '?revision=' + hash);
+});
+
+test('nested asset export maps reuse the manifest located alongside their maps folder',async()=>{
+  const nested='build/local-scenes/ue2three/projects/example/dds-assets/maps/maps/Level.glb';
+  await mapAssetURL(nested,{fetchManifest:async url=>{
+    assert.equal(url,'/build/local-scenes/ue2three/projects/example/dds-assets/maps/map-manifest.json');
+    return {ok:true,json:async()=>({maps:[{filename:'Level.glb',output_sha256:hash}]})};
+  }});
 });
 
 test('old exports remain loadable without a manifest and never reuse an unversioned URL', async () => {
