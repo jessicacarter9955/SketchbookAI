@@ -13,7 +13,7 @@ import sys
 import time
 from pathlib import Path
 
-from core import atomic_json, read_json
+from core import atomic_json, read_json, workspace_lock
 from map_migration import glb_summary, valid_glb
 
 
@@ -179,15 +179,22 @@ def main(argv=None):
     parser.add_argument("--run-dir", type=Path, required=True,
                         help="previous full-map attempt with actor-census.json")
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--workspace", type=Path, required=True,
+                        help="existing ue2three map scan workspace; serialized with other Unreal exports")
     parser.add_argument("--max-attempts", type=int, default=12)
     parser.add_argument("--timeout", type=int, default=360)
     args = parser.parse_args(argv)
     if args.max_attempts < 1 or args.timeout < 1:
         parser.error("max-attempts and timeout must be positive")
     try:
-        state = diagnose(args.run_dir, args.output, max_attempts=args.max_attempts,
-                         timeout=args.timeout)
-    except (DiagnosisError, OSError, KeyError, TypeError, ValueError) as error:
+        root = args.run_dir.resolve()
+        expected = args.workspace.resolve()
+        if root.parent.name != "runs" or root.parent.parent.name != "maps" or root.parents[2] != expected:
+            raise DiagnosisError("Source attempt does not belong to the specified locked map workspace")
+        with workspace_lock(expected):
+            state = diagnose(root, args.output, max_attempts=args.max_attempts,
+                             timeout=args.timeout)
+    except (DiagnosisError, OSError, KeyError, TypeError, ValueError, RuntimeError) as error:
         print(f"UE2THREE_ACTOR_DIAG_ERROR {error}", file=sys.stderr)
         return 2
     print(json.dumps({"complete": state["complete"], "groups": len(state["verified_groups"]),
