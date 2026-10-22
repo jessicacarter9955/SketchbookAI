@@ -17,7 +17,15 @@ class EngineError(RuntimeError):
 # Only built-in Unreal engine plugins are permitted in the isolated map exporter.
 # Never load original project-native modules or network/assistant integrations.
 _MAP_DEFAULT_ENGINE_PLUGINS = frozenset(("EnhancedInput", "Niagara"))
-_MAP_EXCLUDED_ENGINE_PLUGINS = frozenset(("AIAssistant", "OnlineSubsystemSteam", "SteamSockets"))
+_MAP_EXCLUDED_ENGINE_PLUGINS = {
+    "AIAssistant": "AI assistant native code is excluded from offline export",
+    "OnlineSubsystemSteam": "network subsystem excluded from offline export",
+    "SteamSockets": "network subsystem excluded from offline export",
+    "MetaHumanCharacter": ("isolated UE 5.7 commandlet crashes loading the engine plugin's own "
+                           "AS_MetaHuman_ARKit_Mapping animation (AnimSequenceBase without data model)"),
+    "ModelingToolsEditorMode": "editor modeling interface not needed to deserialize world geometry",
+    "MovieRenderPipeline": "editor movie-render interface not needed for static map conversion",
+}
 
 
 def source_engine_plugins(project, executable):
@@ -47,7 +55,7 @@ def source_engine_plugins(project, executable):
     for name in sorted(requested):
         path = available.get(name)
         if name in _MAP_EXCLUDED_ENGINE_PLUGINS:
-            omitted[name] = "nonessential network or assistant plugin excluded from offline export"
+            omitted[name] = _MAP_EXCLUDED_ENGINE_PLUGINS[name]
         elif not path:
             omitted[name] = "not installed as an Unreal engine plugin"
         elif "Marketplace" in path.relative_to(plugin_root).parts:
