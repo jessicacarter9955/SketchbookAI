@@ -200,7 +200,8 @@ def _run_map_export_attempt(record, *, bake_mode, map_index, map_total, workspac
                                             ("request.json", "result.json", "progress.json"))
     request = {"schema_version": 1, "source_project": str(project), "scratch_project": str(scratch),
                "source_snapshot_hash": snapshot_hash, "output": str(stage), "material_bake_mode": bake_mode,
-               "result": str(result_path), "progress": str(progress_path), "maps": [record]}
+               "result": str(result_path), "progress": str(progress_path),
+               "actor_census_file": str(run_dir / "actor-census.json"), "maps": [record]}
     atomic_json(job_path, request)
     environment = os.environ.copy()
     environment["UE2THREE_MAP_JOB_FILE"] = str(job_path)
