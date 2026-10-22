@@ -274,7 +274,8 @@ def areas(root, config, state, checkpoint, asset_pipeline=None):
             ('Autenticazione reale verificata', bool(state.get('agent_result'))),
             ('Ciclo agente, test e integrazione concluso', integrated),
             ('Checkpoint e push confermati', bool(state.get('pushed_commit'))),
-            ('Sessione senza scadenza automatica', config.get('session_seconds') == 0)],
+            ('Sessione senza scadenza automatica', config.get('session_seconds') == 0),
+            ('Supervisore senza errore bloccante corrente', state.get('phase') != 'failed')],
             'Il PC può proseguire i batch senza un messaggio “continua”.',
             'Il verde riguarda questo ciclo di conversione; export e deploy restano separati.'),
         area('character', 'Personaggio e armi', [
