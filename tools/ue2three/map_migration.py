@@ -497,7 +497,8 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
         scratch, _plugin_mounts = prepare_project(workspace, engine_snapshot,
                                                   scratch_name="map-export-" + exclusion_key,
                                                   mirror_assets=True, excluded_packages=map_exclusions,
-                                                  limit_shader_workers=True, included_packages=included_packages)
+                                                  limit_shader_workers=True, included_packages=included_packages,
+                                                  restore_source_engine_plugins=True)
         script = Path(__file__).with_name("unreal_world_export.py").resolve()
         flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
         logger.event("map-export-start", f"Exporting {len(pending)} Unreal levels with glTF Exporter",
