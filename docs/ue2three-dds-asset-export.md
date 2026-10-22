@@ -130,3 +130,17 @@ with their names and exact reasons retained in the provenance report. This
 preserves the source and avoids treating an unrelated editor-plugin crash as
 proof that the DDS level cannot be migrated. MetaHuman-specific content, if
 referenced by a DDS scene, still requires its own compatible export path.
+
+If Unreal crashes inside `InterchangeEngine`/`GLTFExporter` while exporting a
+loaded world, each attempt now writes an isolated `actor-census.json` **before**
+the native export. Its actor names, classes, source snapshot hash and world
+identity support a targeted crash-bisection diagnostic. The same exporter
+supports an explicit `selected_actor_names` list in an internal map request:
+it rejects missing or duplicate identities and passes the exact actors to
+Unreal's documented selected-actor glTF API. An empty requested list is an
+error (Unreal would otherwise interpret it as the complete world).
+
+This diagnostic preserves the original `use_mesh_data` baking mode; an exported
+actor fragment is **not a converted level**. Actor subsets are only for
+identifying native exporter failures, followed by complete source coverage,
+geometry/material reconstruction and Play verification before any green state.
