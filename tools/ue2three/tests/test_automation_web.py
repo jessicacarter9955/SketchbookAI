@@ -152,6 +152,21 @@ class WebTests(unittest.TestCase):
         # The independent export run cannot certify Play or 1:1 maps.
         self.assertNotEqual(next(a for a in data['areas'] if a['id'] == 'maps')['status'], 'green')
 
+    def test_map_failures_and_shader_quality_are_visible_but_never_green(self):
+        stamp = web.datetime.now(web.timezone.utc).isoformat()
+        self.asset_checkpoint(jobs=[{'id': 'maps', 'status': 'partial', 'running': False,
+            'completed': 2, 'total': 10, 'percent': 20, 'heartbeat_at': stamp,
+            'material_degraded': 1, 'issues': [
+                {'package': '/Game/Fixers/Maps/Crash', 'status': 'failed',
+                 'detail': 'MaterialBaking crash'},
+                {'package': '/Game/Fixers/Maps/Approx', 'status': 'material_degraded',
+                 'detail': 'Used simple material baking'}]}])
+        response = web.snapshot(self.root, self.config)
+        maps = response['asset_pipeline']['jobs'][0]
+        self.assertEqual(maps['material_degraded'], 1)
+        self.assertEqual([i['status'] for i in maps['issues']], ['failed', 'material_degraded'])
+        self.assertNotEqual(next(a for a in response['areas'] if a['id'] == 'maps')['status'], 'green')
+
     def test_asset_missing_inventory_has_no_percent_or_false_completion(self):
         self.asset_checkpoint(progress={'percent': None, 'basis': 'unknown',
                                         'description': 'Inventory incomplete'},

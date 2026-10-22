@@ -55,7 +55,8 @@ def _job(job_id: str):
     return {"id": job_id, "status": "not_started", "running": False,
             "completed": 0, "total": 0, "percent": None, "started_at": None,
             "heartbeat_at": None, "log": None, "manifest": None, "error": None,
-            "converted": 0, "failed": 0, "skipped": 0, "outputs": [], "attempts": 0}
+            "converted": 0, "failed": 0, "skipped": 0, "outputs": [], "issues": [],
+            "material_degraded": 0, "attempts": 0}
 
 
 def new_progress(project: Path, publish_dir: Path):
@@ -102,8 +103,32 @@ def _verified_map_rows(manifest: dict | None, project: Path, packages: list[str]
             continue
         verified.append({"kind": "map", "source_package": row["package"],
                          "path": str(output), "bytes": output.stat().st_size,
-                         "sha256": file_hash(output), "mesh_count": glb_summary(output)["mesh_count"]})
+                         "sha256": file_hash(output), "mesh_count": glb_summary(output)["mesh_count"],
+                         "material_fidelity": row.get("material_fidelity")
+                         if isinstance(row.get("material_fidelity"), dict) else None})
     return verified, failures, source_only
+
+
+def _map_issues(manifest: dict | None, project: Path, packages: list[str], source_hash: str | None):
+    """Surface individual blockers and material downgrades without inventing a green map."""
+    if (not isinstance(manifest, dict) or manifest.get("project") != str(project)
+            or manifest.get("source_snapshot_hash") != source_hash):
+        return [], 0
+    selected = set(packages)
+    issues, degraded = [], 0
+    for row in manifest.get("maps", []):
+        if not isinstance(row, dict) or row.get("package") not in selected or not row.get("verified_in_run"):
+            continue
+        package = row["package"]
+        fidelity = row.get("material_fidelity")
+        if isinstance(fidelity, dict) and fidelity.get("degraded") is True:
+            degraded += 1
+            issues.append({"package": package, "status": "material_degraded",
+                           "detail": str(fidelity.get("warning") or fidelity.get("bake_mode") or "Materiali non equivalenti a Unreal")[:400]})
+        if row.get("status") in ("failed", "source_only"):
+            issues.append({"package": package, "status": row["status"],
+                           "detail": str(row.get("error") or "Nessun GLB giocabile esportato")[:400]})
+    return issues[:30], degraded
 
 
 def _verified_character_files(output_dir: Path, project: Path, fingerprint: str,
@@ -383,8 +408,11 @@ class ExportSupervisor:
         manifest = _read(path)
         verified, failed, skipped = _verified_map_rows(manifest, self.project,
                                                        self._map_packages, self._source_snapshot_hash)
+        issues, degraded = _map_issues(manifest, self.project,
+                                      self._map_packages, self._source_snapshot_hash)
         self._update_job("maps", completed=len(verified), converted=len(verified),
-                         failed=failed, skipped=skipped, outputs=verified)
+                         failed=failed, skipped=skipped, outputs=verified,
+                         issues=issues, material_degraded=degraded)
 
     def _convert_maps(self):
         try:

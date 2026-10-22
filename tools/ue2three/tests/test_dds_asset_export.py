@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from core import atomic_json, digest, file_hash, read_json
 from dds_asset_export import (ExportSupervisor, _verified_character_files,
-                              _verified_map_rows, main, new_progress, outside_source)
+                              _verified_map_rows, _map_issues, main, new_progress, outside_source)
 
 
 def fixture_glb(path: Path, mesh=True, animation=False):
@@ -106,6 +106,25 @@ class AssetSupervisorTests(unittest.TestCase):
         fixture_glb(output)
         row["status"] = "source_only"
         self.assertEqual(_verified_map_rows(manifest, self.project, ["/Game/Worlds/Start"], "valid")[2], 1)
+
+    def test_material_fidelity_and_individual_failures_surface_as_issues(self):
+        output = self.root / "map.glb"
+        fixture_glb(output)
+        rows = [{"package": "/Game/Worlds/Start", "verified_in_run": True,
+                 "status": "exported", "output": str(output), "output_sha256": file_hash(output),
+                 "material_fidelity": {"bake_mode": "simple", "degraded": True,
+                                       "warning": "Simplified shaders: check in Play"}},
+                {"package": "/Game/Worlds/Broken", "verified_in_run": True,
+                 "status": "failed", "error": "Material baking crashed"}]
+        manifest = {"project": str(self.project), "source_snapshot_hash": "valid", "maps": rows}
+        selected = ["/Game/Worlds/Start", "/Game/Worlds/Broken"]
+        good, failed, skipped = _verified_map_rows(manifest, self.project, selected, "valid")
+        self.assertEqual((len(good), failed, skipped), (1, 1, 0))
+        self.assertTrue(good[0]["material_fidelity"]["degraded"])
+        issues, downgraded = _map_issues(manifest, self.project, selected, "valid")
+        self.assertEqual(downgraded, 1)
+        self.assertEqual({i["status"] for i in issues}, {"material_degraded", "failed"})
+        self.assertEqual(_map_issues(manifest, self.project, selected, "stale"), ([], 0))
 
     def test_character_files_require_visual_meshes_but_clips_may_be_track_only(self):
         folder = self.root / "character"

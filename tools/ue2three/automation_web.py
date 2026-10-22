@@ -148,6 +148,13 @@ def asset_snapshot(root):
         reported = raw.get('percent')
         job_percent = (measured_percent(raw.get('completed'), raw.get('total'))
                        if type(reported) in (int, float) and 0 <= reported <= 100 else None)
+        issues = raw.get('issues') if isinstance(raw.get('issues'), list) else []
+        issues = [{'package': entry['package'][:250], 'status': entry['status'],
+                   'detail': entry['detail'][:400]}
+                  for entry in issues[:30] if isinstance(entry, dict)
+                  and isinstance(entry.get('package'), str)
+                  and isinstance(entry.get('detail'), str)
+                  and entry.get('status') in ('failed', 'source_only', 'material_degraded')]
         jobs.append({'id': raw['id'], 'status': current_phase, 'live': job_live,
                      'stale': job_working and not job_live,
                      'heartbeat_at': job_stamp,
@@ -156,7 +163,10 @@ def asset_snapshot(root):
                      'percent': job_percent,
                      'manifest': raw.get('manifest') if isinstance(raw.get('manifest'), str) else None,
                      'log': raw.get('log') if isinstance(raw.get('log'), str) else None,
-                     'error': raw.get('error') if isinstance(raw.get('error'), str) else None})
+                     'error': raw.get('error') if isinstance(raw.get('error'), str) else None,
+                     'issues': issues,
+                     'material_degraded': raw.get('material_degraded')
+                     if type(raw.get('material_degraded')) is int and raw['material_degraded'] >= 0 else 0})
     outputs = payload.get('outputs') if isinstance(payload.get('outputs'), dict) else {}
     notes = payload.get('notes') if isinstance(payload.get('notes'), list) else []
     return {'available': available, 'phase': phase, 'status': status, 'live': live,
