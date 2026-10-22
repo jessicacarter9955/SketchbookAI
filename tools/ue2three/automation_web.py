@@ -256,7 +256,20 @@ def areas(root, config, state, checkpoint, asset_pipeline=None):
                      and map_job.get('total', 0) >= 10 and not map_job.get('error')
                      and bool(map_job.get('manifest'))
                      and Path(map_job['manifest']).is_file())
+    demo = optional(root / '.local/ue2three/demo-acceptance.json')
+    legacy = root / 'build/local-scenes/dds'
+    legacy_manifest = optional(legacy / 'manifest.json')
+    legacy_assets = (glb(legacy / legacy_manifest.get('mesh', 'missing.glb'))
+                     and all(glb(legacy / legacy_manifest.get('weapons', {}).get(name, 'missing.glb'))
+                             for name in ('pistol', 'rifle')))
     return [
+        area('demo', 'Demo DDS giocabile (non certificazione 1:1)', [
+            ('Mannequin e due armi della demo originali disponibili', legacy_assets),
+            ('Canvas 3D e HUD osservati in una sessione Play', demo.get('legacy_play_visible') is True),
+            ('Sparo, ricarica e munizioni provati nel browser', demo.get('legacy_combat_passed') is True),
+            ('Mannequin ue2three integrato e avviato in Play', demo.get('ue2three_play_visible') is True)],
+            'Giocare alla demo DDS con armi e statistiche.',
+            'Verde solo per la demo testata. NON certifica fedeltà Unreal 1:1.', True),
         area('automation', 'Automazione delle conversioni', [
             ('Autenticazione reale verificata', bool(state.get('agent_result'))),
             ('Ciclo agente, test e integrazione concluso', integrated),
@@ -313,6 +326,24 @@ def areas(root, config, state, checkpoint, asset_pipeline=None):
             'Avvicinare l’aspetto delle scene al riferimento Unreal.', 'Ultima priorità.')]
 
 
+def execution_label(identity, phase, jobs, pipeline, demo):
+    if identity in ('automation', 'blueprints'):
+        if phase == 'failed':
+            return 'Bloccato · ripristino agente richiesto'
+        if phase == 'waiting_account':
+            return 'In attesa quota Codex'
+        if any(job.get('live') for job in jobs):
+            return 'In esecuzione · heartbeat confermato'
+        return 'Pronto o in attesa · nessun worker attivo'
+    if identity == 'maps':
+        if pipeline.get('live'):
+            return 'Export Unreal attivo · heartbeat recente'
+        return 'Nessun export attivo verificato'
+    if identity == 'demo':
+        return 'Test Play verificato' if demo.get('legacy_play_visible') else 'Test Play da certificare'
+    return 'Integrazione/accettazione da completare'
+
+
 def snapshot(root, config_path):
     config = optional(config_path)
     state_dir = Path(config.get('state_dir', root / '.local/ue2three/automation'))
@@ -360,6 +391,10 @@ def snapshot(root, config_path):
     phase = state.get('phase', 'not_started')
     events = [{'time': row.get('time'), 'phase': row.get('phase'), 'label': LABELS.get(row.get('phase'), row.get('phase'))}
               for row in reversed(state.get('events', []))]
+    area_rows = areas(root, config, state, checkpoint, asset_pipeline)
+    demo = optional(root / '.local/ue2three/demo-acceptance.json')
+    for row in area_rows:
+        row['execution'] = execution_label(row['id'], phase, jobs, asset_pipeline, demo)
     return {'time': datetime.now(timezone.utc).isoformat(), 'phase': phase,
             'phase_label': LABELS.get(phase, phase), 'paused': config.get('paused', False),
             'continuous': config.get('session_seconds') == 0, 'counts': counts,
@@ -370,7 +405,7 @@ def snapshot(root, config_path):
             'bridge': {'connected': connected, 'status': bridge.get('status', 'unknown'),
                        'last_seen': bridge.get('time'), 'pending_results': bridge.get('pending_results', 0),
                        'incremental': bridge.get('incremental', False)},
-            'events': events, 'areas': areas(root, config, state, checkpoint, asset_pipeline),
+            'events': events, 'areas': area_rows,
             'last_commit': state.get('pushed_commit'), 'error': state.get('error') if phase == 'failed' else None,
             'retry_after': state.get('retry_after'), 'waiting_reason': state.get('waiting_reason'),
             'additional_stages': state.get('additional_stages', {}),
