@@ -43,6 +43,20 @@ class WebTests(unittest.TestCase):
         connection.close()
         return result
 
+    def test_separate_state_root_preserves_live_agent_telemetry(self):
+        state_root = self.root / 'other-checkout'
+        state_path = state_root / '.local/ue2three/asset-export/progress.json'
+        state_path.parent.mkdir(parents=True)
+        state_path.write_text(json.dumps({'schema_version': 1, 'status': 'completed',
+            'phase': 'completed', 'running': False, 'heartbeat_at': None,
+            'assets': {'discovered': 3, 'eligible': 3, 'converted': 3,
+                       'verified': 3, 'failed': 0, 'skipped': 0},
+            'jobs': [], 'progress': {'percent': 100}}))
+        self.server.RequestHandlerClass = web.handler(self.root, self.config, self.port, state_root)
+        status, body = self.request('GET', '/__ue2three/status')
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(body)['asset_pipeline']['assets']['verified'], 3)
+
     def asset_checkpoint(self, **overrides):
         path = self.root / '.local/ue2three/asset-export/progress.json'
         path.parent.mkdir(parents=True, exist_ok=True)

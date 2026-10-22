@@ -356,7 +356,8 @@ def snapshot(root, config_path):
             'ui_delivery': 'Il timeout della UI ChatGPT è esterno al tool. I job locali proseguono indipendentemente.'}
 
 
-def handler(root, config_path, port):
+def handler(root, config_path, port, state_root=None):
+    state_root = state_root or root
     class Handler(SimpleHTTPRequestHandler):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, directory=str(root), **kwargs)
@@ -379,7 +380,7 @@ def handler(root, config_path, port):
             path = unquote(urlsplit(self.path).path)
             if path == '/__ue2three/status':
                 try:
-                    return self.reply(200, snapshot(root, config_path))
+                    return self.reply(200, snapshot(state_root, config_path))
                 except Exception as error:
                     return self.reply(503, {'error': type(error).__name__, 'time': datetime.now(timezone.utc).isoformat()})
             if path.endswith('/automation.html') or path == '/':
@@ -430,8 +431,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config', type=Path, required=True)
     parser.add_argument('--port', type=int, default=8401)
+    parser.add_argument('--state-root', type=Path,
+                        help='Separate checkout containing live DDS state; dashboard code remains isolated')
     args = parser.parse_args()
-    server = ThreadingHTTPServer(('127.0.0.1', args.port), handler(ROOT, args.config.resolve(), args.port))
+    state_root = args.state_root.resolve() if args.state_root else ROOT
+    server = ThreadingHTTPServer(('127.0.0.1', args.port),
+                                 handler(ROOT, args.config.resolve(), args.port, state_root))
     server.serve_forever()
 
 
