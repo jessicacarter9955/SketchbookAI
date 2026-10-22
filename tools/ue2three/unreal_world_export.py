@@ -2,9 +2,17 @@
 import json
 import os
 import re
+import sys
 from pathlib import Path
 
 import unreal
+
+# Unreal's -run=pythonscript -script=<absolute path> does not reliably add the
+# script directory to sys.path. Resolve the sibling source-witness validator
+# explicitly; otherwise Unreal exits before loading the map or writing census.
+_ue2three_script_dir = str(Path(__file__).resolve().parent)
+if _ue2three_script_dir not in sys.path:
+    sys.path.insert(0, _ue2three_script_dir)
 from map_actor_selection import resolve_actor_selection
 
 
