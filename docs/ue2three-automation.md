@@ -51,6 +51,12 @@ retain bounded retries/timeouts so a failed operation can be retried later.
 7. Persist failure diagnostics and retry backoff; continue eligible families on
    later ticks. No unbounded retries, source rescans or Unreal launch.
 
+When the integration HEAD advances, families previously marked `needs_review`
+for `no_proven_conversion_gain` may receive **one fresh attempt** on that new
+revision. Their historical attempts and patches remain available, and retries
+on the same HEAD are not repeated indefinitely. Conflicts and integrated
+families remain excluded until separately resolved or new source evidence arrives.
+
 Progress is visible in `automation.html` / `automation-state.json` in the
 configured publish directory. The live loopback dashboard at `127.0.0.1:8401`
 shows four lanes, each with its own source family, heartbeat timestamp and

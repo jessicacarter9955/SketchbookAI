@@ -247,6 +247,26 @@ class DdsAgentTests(unittest.TestCase):
         with patch.object(dds_agent, 'run_codex', side_effect=AssertionError('no duplicate run')):
             self.assertEqual(dds_agent.run_many(self.repo, self.state_root, 'codex-test-double')['status'], 'cooldown')
 
+    def test_new_head_reopens_only_no_gain_reviews_once_and_retains_attempt_history(self):
+        current_head = self._git('rev-parse', 'HEAD')
+        old_head = 'a' * 40
+        checkpoint = dds_agent._default_checkpoint()
+        checkpoint['families'] = {
+            'native-timers': {'status': 'needs_review', 'result': 'no_proven_conversion_gain',
+                              'attempts': 3, 'base_head': old_head},
+            'native-physics': {'status': 'needs_review', 'result': 'reconciliation_conflict',
+                               'attempts': 1, 'base_head': old_head},
+            'native-math': {'status': 'integrated', 'result': 'no_proven_conversion_gain',
+                            'attempts': 1, 'base_head': old_head}}
+        self.assertEqual(dds_agent._reopen_reviews_for_new_head(checkpoint, current_head), ['native-timers'])
+        item = checkpoint['families']['native-timers']
+        self.assertEqual((item['status'], item['attempts'], item['lifetime_attempts']),
+                         ('pending_new_revision', 0, 3))
+        item['status'] = 'needs_review'
+        self.assertEqual(dds_agent._reopen_reviews_for_new_head(checkpoint, current_head), [])
+        self.assertEqual(checkpoint['families']['native-physics']['status'], 'needs_review')
+        self.assertEqual(checkpoint['families']['native-math']['status'], 'integrated')
+
     def test_retry_count_is_bounded_and_failed_worktree_is_reused(self):
         workers = []
 

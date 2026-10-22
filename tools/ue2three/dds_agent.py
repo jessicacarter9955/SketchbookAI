@@ -837,6 +837,28 @@ def _retry_delay(attempt: int) -> int:
     return min(RETRY_BASE_SECONDS * (2 ** max(0, attempt - 1)), RETRY_MAX_SECONDS)
 
 
+def _reopen_reviews_for_new_head(checkpoint: dict, head: str) -> list[str]:
+    """Allow one fresh attempt after a newer integration revision, retaining history.
+
+    A previously rejected patch is never reused as if accepted. Conflicts and
+    all integrated families remain untouched. An unsuccessful new attempt on
+    this same HEAD is not retried endlessly on subsequent scheduler ticks.
+    """
+    reopened = []
+    for family, record in checkpoint.get('families', {}).items():
+        if (family not in FAMILY_IDS or not isinstance(record, dict)
+                or record.get('status') != 'needs_review'
+                or record.get('result') != 'no_proven_conversion_gain'
+                or not record.get('base_head') or record['base_head'] == head
+                or record.get('last_reopen_head') == head):
+            continue
+        record['lifetime_attempts'] = record.get('lifetime_attempts', 0) + record.get('attempts', 0)
+        record.update(status='pending_new_revision', attempts=0, retry_after=0,
+                      last_reopen_head=head, previous_review_commit=record.get('commit'))
+        reopened.append(family)
+    return reopened
+
+
 def dry_run(repo_root: Path = REPO_ROOT, state_root: Path | None = None) -> dict:
     repo_root = Path(repo_root).resolve()
     state_root = Path(state_root).resolve() if state_root is not None else repo_root / STATE_RELATIVE
@@ -1032,6 +1054,9 @@ def run_many(repo_root: Path = REPO_ROOT, state_root: Path | None = None,
             executable = codex_executable or shutil.which('codex')
             if not executable:
                 raise RunnerError('Installed Codex executable was not found on PATH.', 'codex_unavailable')
+            for family in _reopen_reviews_for_new_head(checkpoint, head):
+                _checkpoint_event(state_root, checkpoint, 'review_reopened_on_new_head',
+                                  family=family, head=head)
             tasks = []
             for lane in range(1, max_workers + 1):
                 candidate = _load_candidate(repo_root, checkpoint)
