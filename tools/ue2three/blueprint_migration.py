@@ -864,12 +864,41 @@ def translate_package(package, structs=None, tables=None):
                 default_state[name] = None
             else: default_state[name] = asset_reference(package, defaults.get(name, 0), schema['class'])
         elif schema and schema['type'] == 'StructProperty' and (name not in defaults or isinstance(defaults[name], dict)):
+            # A source struct may deserialize with known field types but no
+            # witnessed constructor (for example, a native plugin struct).
+            # Do not invent an empty constructor, and never abort the entire
+            # multi-package replay with KeyError: 'default'.
+            if not isinstance(schema.get('default'), dict):
+                unavailable_defaults[name] = 'Original struct constructor defaults are unavailable'
+                continue
             default_state[name] = {**schema['default'], **defaults.get(name, {})}
         elif name in defaults: default_state[name] = defaults[name]
         elif schema and schema['type'] == 'ArrayProperty': default_state[name] = []
         elif type_name in ('BoolProperty', 'ByteProperty', 'IntProperty', 'Int64Property', 'FloatProperty', 'DoubleProperty', 'StrProperty', 'NameProperty'):
             default_state[name] = {'BoolProperty': False, 'StrProperty': '', 'NameProperty': 'None'}.get(type_name, 0)
-    no_ops = sum(not program.get('internal_event_entry') and not program['self_reads'] and not program['output_fields'] and not program['self_writes']
+    # These programs cannot be instantiated faithfully; also remove their
+    # transitive callers. A missing original default is never a translated
+    # gameplay path just because the bytecode itself parsed successfully.
+    while True:
+        to_remove = []
+        for name, program in functions.items():
+            unresolved = (set(program['self_reads']) | set(program['self_writes'])) & set(unavailable_defaults)
+            missing_callee = next((call['function'] for call in calls(program['steps'])
+                                   if call['function'] not in functions), None)
+            if unresolved or missing_callee:
+                reason = ('Unresolved original source default: ' + ', '.join(sorted(unresolved))
+                          if unresolved else 'Untranslated function dependency: ' + missing_callee)
+                (event_blocked if program.get('internal_event_entry') else blocked).append({
+                    'function': name, 'source_export_index': program['source_export_index'], 'reason': reason})
+                to_remove.append(name)
+        if not to_remove:
+            break
+        for name in to_remove:
+            del functions[name]
+    # Recalculate the counts after fail-closed pruning rather than treating
+    # rejected functions as translated.
+    no_ops = sum(not program.get('internal_event_entry') and not program['self_reads']
+                 and not program['output_fields'] and not program['self_writes']
                  and all(step['op'] == 'return' and step['value'] == {'op': 'constant', 'value': None}
                          for step in program['steps']) for program in functions.values())
     events = {name: program for name, program in functions.items() if program.get('internal_event_entry')}
