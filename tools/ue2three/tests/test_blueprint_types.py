@@ -7,6 +7,22 @@ from test_blueprint_migration import node
 
 
 class SourceTypesTests(unittest.TestCase):
+    def test_struct_without_source_constructor_is_blocked_without_crashing_replay(self):
+        package = Package({'Exports': [
+            {'ObjectName': 'ReadMissing', 'OuterIndex': 2, 'ScriptBytecode': [
+                node('EX_Return', ReturnExpression=node('EX_InstanceVariable',
+                     Variable={'New': {'Path': ['State'], 'ResolvedOwner': 2}})),
+                node('EX_EndOfScript')]},
+            {'ObjectName': 'Test_C', 'LoadedProperties': [
+                {'Name': 'State', 'SerializedType': 'StructProperty', 'Struct': -1}]}],
+            'Imports': [{'ObjectName': 'Unknown', 'OuterIndex': -2},
+                        {'ObjectName': '/Game/Original', 'ClassName': 'Package'}]})
+        schema = {'type': 'StructProperty', 'fields': {'Value': {'type': 'IntProperty'}}}
+        result = translate_package(package, {('/Game/Original', 'Unknown'): schema})
+        self.assertNotIn('State', result['default_state'])
+        self.assertIn('State', result['unavailable_default_fields'])
+        self.assertNotIn('ReadMissing', result['functions'])
+
     def test_native_transform_schema_preserves_quaternion_translation_and_scale_types(self):
         quaternion = native_schema(('/Script/CoreUObject', 'Quat'))
         transform = native_schema(('/Script/CoreUObject', 'Transform'))
