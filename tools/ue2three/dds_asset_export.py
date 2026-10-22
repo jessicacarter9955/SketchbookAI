@@ -231,6 +231,8 @@ class ExportSupervisor:
             statuses = {job["status"] for job in jobs}
             if active:
                 self.progress["status"] = self.progress["phase"] = "converting" if "converting" in statuses else "inventory"
+            elif "validating" in statuses:
+                self.progress["status"] = self.progress["phase"] = "validating"
             elif statuses == {"completed"} and known:
                 self.progress["status"] = self.progress["phase"] = "completed"
             elif "failed" in statuses and not totals["completed"]:
@@ -253,9 +255,9 @@ class ExportSupervisor:
                 job["heartbeat_at"] = _iso()
             self._write()
 
-    def _launch(self, job_id, args, *, manifest=None, read_progress=None):
+    def _launch(self, job_id, args, *, manifest=None, read_progress=None, initial_status="converting"):
         log = self.state_dir / (job_id + ".log")
-        self._update_job(job_id, status="converting", running=True, log=str(log), error=None,
+        self._update_job(job_id, status=initial_status, running=True, log=str(log), error=None,
                          started_at=_iso())
         flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
         with log.open("ab") as stream:
@@ -312,7 +314,8 @@ class ExportSupervisor:
                 if self.engine:
                     args.extend(("--engine", self.engine))
                 self._write("map-scan", "Autonomous verified source scan; no uploads or source writes")
-                if self._launch("maps", args, manifest=self.map_workspace / "snapshot.json"):
+                if self._launch("maps", args, manifest=self.map_workspace / "snapshot.json",
+                                initial_status="inventory"):
                     raise ExportPrerequisiteError("Project scan could not verify Unreal sources; inspect maps.log")
                 self._read_map_inventory()
             self._update_job("maps", status="inventory", running=False)
@@ -340,7 +343,9 @@ class ExportSupervisor:
                 "--publish-dir", str(self.character_output)]
         if self.engine:
             args.extend(("--engine", self.engine))
-        code = self._launch("character", args, manifest=self.character_output / "manifest.json")
+        code = self._launch("character", args, manifest=self.character_output / "manifest.json",
+                            read_progress=self._character_checkpoint)
+        self._update_job("character", status="validating")
         try:
             if code:
                 raise RuntimeError(f"Character exporter exited {code}; inspect character.log")
@@ -356,6 +361,20 @@ class ExportSupervisor:
         except (OSError, ValueError, RuntimeError) as exc:
             self._update_job("character", status="failed", outputs=[], completed=0,
                              converted=0, failed=1, error=str(exc))
+
+    def _character_checkpoint(self):
+        # During Unreal export this is merely "file structurally present", not
+        # source-verified. Full checks run only after the command exits.
+        recipe = load_character_recipe(self.recipe_path)
+        staging = self.character_workspace / "staging" / ("character-" + recipe["id"])
+        run_recipe = _read(staging / "recipe.json")
+        if not isinstance(run_recipe, dict) or run_recipe.get("fingerprint") != self._fingerprint:
+            return
+        expected = ["character.glb"]
+        expected.extend("clip-" + key + ".glb" for key in recipe["clips"])
+        expected.extend("attachment-" + key + ".glb" for key in recipe["attachment_assets"])
+        converted = sum(valid_glb(staging / filename) for filename in expected)
+        self._update_job("character", converted=converted)
 
     def _map_checkpoint(self):
         path = self.map_output / "map-manifest.json"
@@ -384,6 +403,7 @@ class ExportSupervisor:
             args.extend(("--engine", self.engine))
         code = self._launch("maps", args, manifest=self.map_output / "map-manifest.json",
                             read_progress=self._map_checkpoint)
+        self._update_job("maps", status="validating")
         self._map_checkpoint()
         job = next(item for item in self.progress["jobs"] if item["id"] == "maps")
         count = job["completed"]
