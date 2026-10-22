@@ -48,6 +48,11 @@ retain bounded retries/timeouts so a failed operation can be retried later.
    retaining the original patch; no force push or discarded edits.
    Checkpoint the commit,
    refresh its compiled output, and optionally push to the configured branch.
+   If a previous push appears blocked but the remote now provably contains the
+   *exact local commit* (including its ancestry), the next tick fast-forwards
+   the clean checkout, clears the stale blocker and replays cached sources
+   before additional work. A conflicting remote commit or merely similar
+   file contents never count as publication; those stay under manual review.
 7. Persist failure diagnostics and retry backoff; continue eligible families on
    later ticks. No unbounded retries, source rescans or Unreal launch.
 
