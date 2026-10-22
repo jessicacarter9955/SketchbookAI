@@ -99,3 +99,24 @@ already processes map packages individually with source-aware, resumable
 checkpoints. The additional four Codex workers handle Blueprint functions.
 The all-green condition still requires integration into Three.js, runtime
 collision and animation checks, scene Play and user acceptance after conversion.
+
+## Source plugin fidelity in isolated map exports
+
+Unreal world exports run in a temporary Content-only mirror. Unlike the registry
+inspector, that map mirror now loads **installed stock engine plugins explicitly
+enabled by the source `.uproject`**, plus the built-in `EnhancedInput` and
+`Niagara` serializers unless explicitly disabled by the original project.
+This matters for Blueprint input structs and Niagara scene objects: omitting
+these plugins can deserialize valid original assets as unknown types, resulting
+in lost data and compiler errors. The source project and packages are never
+edited. The exporter continues to disable other default plugins and refuses
+project-native, Marketplace, network, and assistant integrations.
+
+`engine/<map-export-scratch>/.ue2three-engine-plugin-provenance.json` lists
+the exact stock modules enabled and any omitted or invalid source plugin
+descriptors (for example an unavailable plugin). An omission is **not** proof
+that the corresponding logic has been translated. Adding serializers also does
+not by itself establish a valid `GalleryLevel` GLB or 1:1 runtime behavior;
+the next targeted Unreal export, geometry/material checks, and Play remain
+required. Existing exports are invalidated by the changed exporter fingerprint
+when reprocessed.
