@@ -179,8 +179,59 @@ class AutomationTests(unittest.TestCase):
         self.assertEqual(self.git('rev-parse', 'HEAD'), local_head)
         self.assertEqual(self.git('rev-parse', 'refs/heads/' + branch, cwd=remote), remote_head)
         self.assertEqual(self.git('status', '--porcelain'), '')
-        with patch.object(self.supervisor, 'command', side_effect=AssertionError('blocked must not run')):
-            self.assertEqual(self.supervisor.tick()['phase'], 'push_needs_review')
+        # A blocked tick may now fetch read-only to detect a separately
+        # published resolution, but it must still preserve divergent work.
+        self.assertEqual(self.supervisor.tick()['phase'], 'push_needs_review')
+        self.assertEqual(self.git('rev-parse', 'HEAD'), local_head)
+
+    def test_stale_push_blocker_recovers_when_exact_local_commit_was_published(self):
+        remote, _, branch = self.git_fixture()
+        self.commit_file(self.root, 'docs/local.txt', 'locally verified change\n')
+        published = self.git('rev-parse', 'HEAD')
+        # A previous push could have reached GitHub despite a lost response.
+        self.git('push', 'origin', branch)
+        self.supervisor.save('push_needs_review', pending_push=True,
+                             push_blocker='Previous transport outcome was ambiguous',
+                             compiled_fingerprint='old')
+        self.supervisor.pending_push()
+        self.assertFalse(self.supervisor.state['pending_push'])
+        self.assertIsNone(self.supervisor.state['push_blocker'])
+        self.assertIsNone(self.supervisor.state['compiled_fingerprint'])
+        self.assertEqual(self.git('rev-parse', 'HEAD'), published)
+        self.assertEqual(self.supervisor.state['pushed_commit'], published)
+
+    def test_stale_push_blocker_fast_forwards_only_if_remote_contains_local(self):
+        remote, concurrent, branch = self.git_fixture()
+        self.commit_file(self.root, 'docs/local.txt', 'locally verified change\n')
+        local = self.git('rev-parse', 'HEAD')
+        self.git('push', 'origin', branch)
+        self.git('pull', '--ff-only', 'origin', branch, cwd=concurrent)
+        self.commit_file(concurrent, 'docs/remote.txt', 'later remote change\n')
+        self.git('push', 'origin', branch, cwd=concurrent)
+        published = self.git('rev-parse', 'HEAD', cwd=concurrent)
+        self.supervisor.save('push_needs_review', pending_push=True,
+                             push_blocker='Old conflict already resolved elsewhere')
+        self.supervisor.pending_push()
+        self.assertNotEqual(local, published)
+        self.assertEqual(self.git('rev-parse', 'HEAD'), published)
+        self.assertFalse(self.supervisor.state['pending_push'])
+        self.assertIsNone(self.supervisor.state['push_blocker'])
+        self.assertIsNone(self.supervisor.state['compiled_fingerprint'])
+        self.assertEqual(self.git('status', '--porcelain'), '')
+
+    def test_remote_already_contains_local_without_blocker_does_not_merge_again(self):
+        remote, concurrent, branch = self.git_fixture()
+        self.commit_file(self.root, 'docs/local.txt', 'locally verified change\n')
+        self.git('push', 'origin', branch)
+        self.git('pull', '--ff-only', 'origin', branch, cwd=concurrent)
+        self.commit_file(concurrent, 'docs/remote.txt', 'new remote change\n')
+        self.git('push', 'origin', branch, cwd=concurrent)
+        expected = self.git('rev-parse', 'HEAD', cwd=concurrent)
+        self.supervisor.save('integrated', pending_push=True)
+        self.supervisor.pending_push()
+        self.assertEqual(self.git('rev-parse', 'HEAD'), expected)
+        self.assertEqual(len(self.git('rev-list', '--parents', '-n', '1', 'HEAD').split()), 2)
+        self.assertFalse(self.supervisor.state['pending_push'])
 
     def test_dirty_checkout_never_fetches_or_pushes(self):
         _, _, _ = self.git_fixture()
