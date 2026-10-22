@@ -120,3 +120,13 @@ not by itself establish a valid `GalleryLevel` GLB or 1:1 runtime behavior;
 the next targeted Unreal export, geometry/material checks, and Play remain
 required. Existing exports are invalidated by the changed exporter fingerprint
 when reprocessed.
+
+The first PC trial found an independent Unreal 5.7 startup failure inside the
+stock `MetaHumanCharacter` plugin: its own
+`/MetaHumanCharacter/Face/ARKit/AS_MetaHuman_ARKit_Mapping` sequence has no
+usable animation data model. That plugin and the unrelated movie-render and
+modeling-editor interfaces are omitted from the **map export mirror only**,
+with their names and exact reasons retained in the provenance report. This
+preserves the source and avoids treating an unrelated editor-plugin crash as
+proof that the DDS level cannot be migrated. MetaHuman-specific content, if
+referenced by a DDS scene, still requires its own compatible export path.
