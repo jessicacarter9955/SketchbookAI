@@ -2,6 +2,13 @@
 const owns = (object, key) => object != null && Object.hasOwn(object, key);
 const bases = new Set(['Actor', 'Pawn', 'Character']);
 const safeName = name => typeof name === 'string' && name && !['__proto__', 'constructor', 'prototype'].includes(name);
+const nativeComponentClasses = new Set([
+    ...['ActorComponent','SceneComponent','PrimitiveComponent','MeshComponent','SkeletalMeshComponent',
+        'StaticMeshComponent','CapsuleComponent','CameraComponent','SpringArmComponent','AudioComponent']
+        .map(name => JSON.stringify(['/Script/Engine',name])),
+    JSON.stringify(['/Script/Niagara','NiagaraComponent']),
+    JSON.stringify(['/Script/HairStrandsCore','GroomComponent']),
+]);
 export const validActorReference = value => value !== null && typeof value === 'object' && !Array.isArray(value)
     && typeof value.realm === 'string' && value.realm.length > 0
     && typeof value.actor_id === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(value.actor_id)
@@ -11,6 +18,13 @@ export const validComponentReference = value => value !== null && typeof value =
     && /^[A-Za-z0-9_-]{1,128}$/.test(value.actor_id) && safeName(value.component_variable)
     && Array.isArray(value.declared_class) && value.declared_class.length === 2
     && /^\/Game\/[A-Za-z0-9_/.]+$/.test(value.declared_class[0]) && safeName(value.declared_class[1]);
+export const validNativeComponentReference = value => value !== null && typeof value === 'object' && !Array.isArray(value)
+    && value.kind === 'source_native_component' && typeof value.realm === 'string' && value.realm.length > 0
+    && typeof value.actor_id === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(value.actor_id)
+    && typeof value.source_package === 'string' && /^\/Game\/[A-Za-z0-9_/.]+$/.test(value.source_package)
+    && Number.isSafeInteger(value.source_owner_index) && value.source_owner_index > 0 && safeName(value.source_field)
+    && Array.isArray(value.declared_class) && value.declared_class.length === 2
+    && nativeComponentClasses.has(JSON.stringify(value.declared_class));
 const actorBase = identity => Array.isArray(identity) && identity.length === 2 && identity[0] === '/Script/Engine' && bases.has(identity[1]);
 
 function standalone(context) {
@@ -23,6 +37,22 @@ function actor(context, reference) {
     const descriptor = context.actors[reference.actor_id];
     if (JSON.stringify(descriptor.reference) !== JSON.stringify(reference) || !actorBase(descriptor.native_base)
         || descriptor.force_net_update_override !== false) throw new Error('Unsupported source actor class or native override');
+    return descriptor;
+}
+function sourceNativeComponent(context, reference, schema) {
+    standalone(context);
+    if (!validNativeComponentReference(reference) || reference.realm !== context.realm
+        || JSON.stringify(reference.declared_class) !== JSON.stringify(schema?.class))
+        throw new Error('Unbound or incompatible source native component reference');
+    const owner = context.actors?.[reference.actor_id];
+    if (context.world_context_bound !== true || !owner || owner.source_class !== reference.source_package
+        || owner.source_owner_index !== reference.source_owner_index
+        || owner.native_component_bindings_complete !== true)
+        throw new Error('Source native component owner binding is unavailable');
+    actor(context, owner.reference);
+    const descriptor = context.native_components?.[reference.source_field];
+    if (!descriptor || JSON.stringify(descriptor.reference) !== JSON.stringify(reference))
+        throw new Error('Unbound or foreign source native component reference');
     return descriptor;
 }
 export function sourceComponentOwner(context, ownerIndex) {
@@ -58,6 +88,10 @@ export function sourceObjectValid(context, reference, schema) {
     if (reference === null) return false;
     if (schema?.reference_kind === 'runtime_component') {
         sourceQueryReceiver(context, reference, schema.class[0], schema.class[1]);
+        return true;
+    }
+    if (schema?.reference_kind === 'runtime_native_component') {
+        sourceNativeComponent(context, reference, schema);
         return true;
     }
     standalone(context);
@@ -100,6 +134,7 @@ export class SourceActorBindings {
         this.root = null;
         this.target = null;
         this.components = new Map();
+        this.nativeComponents = new Map();
     }
     bind(sourceClass, target) {
         if (this.root) {
@@ -131,15 +166,32 @@ export class SourceActorBindings {
                 throw new Error('Original component ownership, multiplicity or template differs');
             components.set(component.package, structuredClone(component));
         }
+        const nativeComponents = new Map();
+        const componentVariables = new Set([...components.values()].map(component => component.variable));
+        for (const component of graph.native_components || []) {
+            const identity=[component.package,component.class_object], schema=data.field_schemas?.[component.variable];
+            if (!safeName(component.variable) || componentVariables.has(component.variable) || nativeComponents.has(component.variable)
+                || !nativeComponentClasses.has(JSON.stringify(identity)) || schema?.type !== 'ObjectProperty'
+                || schema.reference_kind !== 'runtime_native_component' || JSON.stringify(schema.class) !== JSON.stringify(identity)
+                || !owns(data.default_state,component.variable)
+                || !Number.isSafeInteger(component.scs_node_export_index) || component.scs_node_export_index < 1
+                || !Number.isSafeInteger(component.template_export_index) || component.template_export_index < 1
+                || !/^[a-f0-9]{64}$/.test(component.template_sha256 || ''))
+                throw new Error('Original native component field, class or template differs');
+            nativeComponents.set(component.variable,structuredClone(component));
+        }
         this.root = {reference:{realm:this.realm,actor_id:'actor-1',declared_class:['/Script/Engine','Actor']},
             component_lookup_complete:graph.component_lookup_complete === true,
             unbound_component_classes:(graph.component_blocked || []).map(row=>[row.package,row.class_object]),
-            source_class:sourceClass, class_object:graph.object, native_base:structuredClone(graph.native_base), force_net_update_override:false};
-        this.graph = graph; this.target = target; this.components = components;
+            source_class:sourceClass, source_owner_index:graph.export_index,
+            native_component_bindings_complete:graph.native_component_bindings_complete === true,
+            class_object:graph.object, native_base:structuredClone(graph.native_base), force_net_update_override:false};
+        this.graph = graph; this.target = target; this.components = components; this.nativeComponents=nativeComponents;
         return this.describe();
     }
     describe() {
         return this.root ? {source_class:this.root.source_class, components:this.components.size,
+            native_components:this.nativeComponents.size,
             source_sha256:this.graph.source.source_sha256, scs_sha256:this.graph.scs_sha256} : null;
     }
     context(packageName) {
@@ -151,12 +203,22 @@ export class SourceActorBindings {
             components:Object.fromEntries([...this.components.values()].map(component => [component.variable,{
                 reference:this.componentReference(component.package), source_sha256:component.source.source_sha256,
                 class_export_index:component.class_export_index, template_sha256:component.template_sha256}])),
+            native_components:Object.fromEntries([...this.nativeComponents.values()].map(component => [component.variable,{
+                reference:this.nativeComponentReference(component.variable), scs_node_export_index:component.scs_node_export_index,
+                template_export_index:component.template_export_index, template_sha256:component.template_sha256}])),
             ...(component ? {owner:structuredClone(this.root.reference),component_class_export_index:component.class_export_index} : {})};
     }
     componentReference(packageName) {
         const component=this.components.get(packageName);
         if (!this.root || !component) throw new Error('Original component is not bound to the source actor');
         return {realm:this.realm,actor_id:this.root.reference.actor_id,component_variable:component.variable,
+            declared_class:[component.package,component.class_object]};
+    }
+    nativeComponentReference(variable) {
+        const component=this.nativeComponents.get(variable);
+        if (!this.root || !component) throw new Error('Original native component is not bound to the source actor');
+        return {kind:'source_native_component',realm:this.realm,actor_id:this.root.reference.actor_id,
+            source_package:this.root.source_class,source_owner_index:this.root.source_owner_index,source_field:variable,
             declared_class:[component.package,component.class_object]};
     }
     ownerTarget(packageName) { return this.components.has(packageName) ? this.target : undefined; }

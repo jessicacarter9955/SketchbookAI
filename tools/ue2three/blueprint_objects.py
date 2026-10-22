@@ -1,5 +1,5 @@
 """Source-witnessed component ownership; no construction script or network execution."""
-from blueprint_types import import_path, property_schema
+from blueprint_types import import_path, property_schema, NATIVE_COMPONENT_REFERENCES
 from blueprint_values import serialized_value
 from core import digest
 
@@ -120,12 +120,30 @@ def actor_graph(packages, sources):
                 reachable.add(node_index); pending.extend(package.props(node).get('ChildNodes', []))
             if reachable != set(all_nodes): raise ValueError('Original construction-node lists differ')
             fields = {p['Name']: p for p in cls.get('LoadedProperties', [])}
-            components, component_blocked, used, unresolved_classes = [], [], set(), []
+            components, native_components, component_blocked, used, unresolved_classes = [], [], [], set(), []
+            unresolved_native_components = False
             for index in sorted(reachable):
                 data = package.props(package.export(index)); identity = import_path(package, data.get('ComponentClass'))
                 if not identity: raise ValueError('Unresolved original construction component class')
+                if identity[0].startswith('/Script/'):
+                    if tuple(identity) not in NATIVE_COMPONENT_REFERENCES:
+                        unresolved_classes.append(list(identity)); unresolved_native_components = True; continue
+                    variable_name = data.get('InternalVariableName'); template = package.export(data.get('ComponentTemplate'))
+                    prop = fields.get(variable_name, {})
+                    schema = property_schema(package, prop)
+                    if (not isinstance(variable_name, str) or variable_name in ('__proto__', 'constructor', 'prototype')
+                            or variable_name in used or not schema or schema.get('reference_kind') != 'runtime_native_component'
+                            or schema.get('class') != list(identity) or not template
+                            or template.get('OuterIndex') != meta['export_index']
+                            or template.get('ClassIndex') != data['ComponentClass']):
+                        raise ValueError('Original native component field, template or class differs')
+                    used.add(variable_name)
+                    native_components.append({'variable': variable_name, 'package': identity[0], 'class_object': identity[1],
+                        'scs_node_export_index': index, 'template_export_index': data['ComponentTemplate'],
+                        'template_sha256': digest(template)})
+                    continue
                 if identity[0] not in packages:
-                    if not identity[0].startswith('/Script/'): unresolved_classes.append(list(identity))
+                    unresolved_classes.append(list(identity))
                     continue
                 source = packages[identity[0]]; source_meta = class_metadata(source)
                 if not source_meta or source_meta['native_base'] != ['/Script/Engine', 'ActorComponent']:
@@ -155,7 +173,9 @@ def actor_graph(packages, sources):
                     'template_export_index': data['ComponentTemplate'], 'template_sha256': digest(template),
                     'source_overrides': overrides, 'native_template_fields': native_fields, 'source': sources[identity[0]]})
             roots[name] = {**meta, 'source': sources[name], 'scs_export_index': script_index,
-                           'scs_sha256': digest(script), 'components': components, 'component_blocked': component_blocked,
+                           'scs_sha256': digest(script), 'components': components, 'native_components': native_components,
+                           'native_component_bindings_complete': not unresolved_native_components and not construction_effects,
+                           'component_blocked': component_blocked,
                            'component_lookup_complete': not unresolved_classes and not construction_effects,
                            'unresolved_construction_script': construction_effects,
                            'unresolved_component_classes': unresolved_classes}

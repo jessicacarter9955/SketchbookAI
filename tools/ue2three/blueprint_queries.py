@@ -56,7 +56,7 @@ def object_validity(value, package, owner, reads, outputs, depth):
     args = value.get('Parameters')
     if not isinstance(args, list) or len(args) != 1: raise Error('Original IsValid arity differs')
     target, schema = variable(args[0], package, owner, reads, outputs, depth)
-    if schema.get('reference_kind') not in ('runtime_actor', 'runtime_component'):
+    if schema.get('reference_kind') not in ('runtime_actor', 'runtime_component', 'runtime_native_component'):
         raise Error('IsValid requires an explicit original live-object binding; asset loading is not implied')
     return {'op': 'native_object_valid', 'target': target, 'schema': schema}
 

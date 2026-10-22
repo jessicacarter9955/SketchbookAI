@@ -25,6 +25,7 @@ NATIVE_COMPONENT_REFERENCES = {
         'CameraComponent', 'SpringArmComponent', 'AudioComponent')
 } | {
     ('/Script/Niagara', 'NiagaraComponent'),
+    ('/Script/HairStrandsCore', 'GroomComponent'),
 }
 NATIVE_OBJECT_REFERENCES = {('/Script/Niagara', 'NiagaraDataChannelWriter')}
 

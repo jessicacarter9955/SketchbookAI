@@ -97,8 +97,12 @@ export class BlueprintActorRuntime {
     bindSourceActor(sourceClass, target) {
         const wasBound = !!this.actorBindings.root;
         const binding = this.actorBindings.bind(sourceClass,target);
-        if (!wasBound) for (const [packageName, component] of this.actorBindings.components)
-            Object.assign(this.states[packageName], structuredClone(component.source_overrides));
+        if (!wasBound) {
+            for (const [packageName, component] of this.actorBindings.components)
+                Object.assign(this.states[packageName], structuredClone(component.source_overrides));
+            for (const component of this.actorBindings.nativeComponents.values())
+                this.states[sourceClass][component.variable]=this.actorBindings.nativeComponentReference(component.variable);
+        }
         this.guardCache.clear(); this.metricCache.clear();
         return binding;
     }

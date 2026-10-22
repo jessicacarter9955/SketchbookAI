@@ -81,6 +81,30 @@ class SourceObjectTests(unittest.TestCase):
         package.exports[0]['SuperStruct']=-4
         with self.assertRaisesRegex(BlueprintTranslationError,'ActorComponent'):expression(call,set(),set(),package=package,owner=1)
 
+    def test_native_scs_components_keep_their_source_field_class_and_template_identity(self):
+        root=self.packages()['/Game/Pawn']; root.imports.append({'ObjectName':'SceneComponent','OuterIndex':-2})
+        root.exports[0]['LoadedProperties'].append({'Name':'NativeRoot','SerializedType':'ObjectProperty','PropertyClass':-7})
+        root.exports[1]['Data']=data(RootNodes=[3,5],AllNodes=[3,5])
+        root.exports.extend([
+            {'ObjectName':'NativeNode','OuterIndex':2,'ClassIndex':-4,
+             'Data':data(ComponentClass=-7,ComponentTemplate=6,InternalVariableName='NativeRoot')},
+            {'ObjectName':'NativeRoot_GEN_VARIABLE','OuterIndex':1,'ClassIndex':-7,'Data':[]},
+        ])
+        graph=actor_graph({'/Game/Pawn':root,'/Game/Component':self.packages()['/Game/Component']},self.sources())
+        actor=graph['roots']['/Game/Pawn']
+        self.assertEqual({key:actor['native_components'][0][key] for key in ('variable','package','class_object',
+            'scs_node_export_index','template_export_index')},{'variable':'NativeRoot','package':'/Script/Engine',
+            'class_object':'SceneComponent','scs_node_export_index':5,'template_export_index':6})
+        self.assertEqual(len(actor['native_components'][0]['template_sha256']),64)
+        self.assertTrue(actor['native_component_bindings_complete'])
+
+    def test_groom_component_property_schema_is_source_native_component(self):
+        package=Package({'Imports':[{'ObjectName':'GroomComponent','OuterIndex':-2},
+            {'ObjectName':'/Script/HairStrandsCore','ClassName':'Package'}], 'Exports':[]})
+        self.assertEqual(property_schema(package,{'SerializedType':'ObjectProperty','PropertyClass':-1}),
+            {'type':'ObjectProperty','class':['/Script/HairStrandsCore','GroomComponent'],
+             'reference_kind':'runtime_native_component','default':None})
+
     def test_actor_context_requires_original_typed_receiver_and_exact_offset(self):
         package=self.packages()['/Game/Component'];function={'ObjectName':'Write','OuterIndex':1,'LoadedProperties':[
             {'Name':'OwningActor','SerializedType':'ObjectProperty','PropertyClass':-4}]}

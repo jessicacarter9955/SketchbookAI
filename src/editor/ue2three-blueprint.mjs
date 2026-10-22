@@ -45,6 +45,9 @@ function validateSchema(schema, value, depth = 0) {
                 || !/^\/Game\/[A-Za-z0-9_/.]+$/.test(value.source_package)
                 || !Number.isSafeInteger(value.source_owner_index) || value.source_owner_index <= 0
                 || !safeField(value.source_field)
+                || schema.reference_kind === 'runtime_native_component'
+                    && (typeof value.realm !== 'string' || !value.realm
+                        || typeof value.actor_id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(value.actor_id))
                 || JSON.stringify(value.declared_class) !== JSON.stringify(schema.class)))
                 throw new Error('Invalid original native object reference');
             return;

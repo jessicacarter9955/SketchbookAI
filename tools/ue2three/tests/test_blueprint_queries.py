@@ -66,6 +66,20 @@ class ComponentQueryTests(unittest.TestCase):
         call['Parameters']=[node('EX_NoObject')]
         with self.assertRaisesRegex(BlueprintTranslationError,'world context'): expression(call,set(),set(),package=caller,owner=1)
 
+    def test_is_valid_preserves_a_native_component_receiver_schema(self):
+        package=Package({'Imports':[{'ObjectName':'GroomComponent','OuterIndex':-2},
+            {'ObjectName':'/Script/HairStrandsCore','ClassName':'Package'},
+            {'ObjectName':'/Script/Engine','ClassName':'Package'},
+            {'ObjectName':'KismetSystemLibrary','OuterIndex':-3},
+            {'ObjectName':'IsValid','ClassName':'Function','OuterIndex':-4}], 'Exports':[
+                {'ObjectName':'BP_Manny_C','LoadedProperties':[
+                    {'Name':'Beard','SerializedType':'ObjectProperty','PropertyClass':-1}]}]})
+        call=node('EX_CallMath',StackNode=-5,Parameters=[var('EX_InstanceVariable','Beard',1)])
+        result=expression(call,set(),set(),package=package,owner=1)
+        self.assertEqual(result['op'],'native_object_valid')
+        self.assertEqual(result['schema'],{'type':'ObjectProperty','class':['/Script/HairStrandsCore','GroomComponent'],
+            'reference_kind':'runtime_native_component','default':None})
+
     def test_exact_original_component_query_and_schemas_translate(self):
         pool = self.packages(); result = {name: translate_package(package) for name, package in pool.items()}
         prune_queries(result)

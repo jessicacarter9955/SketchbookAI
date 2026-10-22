@@ -291,6 +291,32 @@ test('original IsValid distinguishes null and explicit bound objects without acc
     assert.throws(()=>sourceObjectValid(context,context.actors['actor-1'].reference,{reference_kind:'runtime_actor',class:['/Script/Engine','Character']}),/class differs/);
 });
 
+test('original IsValid binds only native components present in the source SCS graph',()=>{
+    const report=fixture().report;
+    const schema={type:'ObjectProperty',class:['/Script/HairStrandsCore','GroomComponent'],
+        reference_kind:'runtime_native_component',default:null};
+    report.packages['/Game/Pawn'].default_state.Beard=null;
+    report.packages['/Game/Pawn'].field_schemas={Beard:schema};
+    const graph=report.actor_graph.roots['/Game/Pawn'];
+    graph.native_components=[{variable:'Beard',package:'/Script/HairStrandsCore',class_object:'GroomComponent',
+        scs_node_export_index:8,template_export_index:9,template_sha256:'a'.repeat(64)}];
+    graph.native_component_bindings_complete=true;
+    const runtime=new BlueprintActorRuntime(report,report.project),player={actualPlayer:true};
+    runtime.bindSourceActor('/Game/Pawn',player);
+    const reference=runtime.states['/Game/Pawn'].Beard;
+    const context=runtime.nativeContext('/Game/Pawn');
+    assert.equal(reference.kind,'source_native_component');
+    assert.equal(sourceObjectValid(context,reference,schema),true);
+    assert.equal(sourceObjectValid(context,null,schema),false);
+    assert.throws(()=>sourceObjectValid(context,{...reference,realm:'foreign'},schema),/native component/);
+    const incomplete={...context,actors:{...context.actors,'actor-1':{...context.actors['actor-1'],native_component_bindings_complete:false}}};
+    assert.throws(()=>sourceObjectValid(incomplete,reference,schema),/owner binding/);
+    const program={schema_version:1,status:'translated_straight_line',source_owner_index:1,source_export_index:1,
+        input_fields:[],output_fields:[],self_reads:['Beard'],self_writes:[],field_types:{self:{Beard:'ObjectProperty'}},
+        schemas:{self:{Beard:schema}},steps:[{op:'return',value:{op:'native_object_valid',target:{op:'get',scope:'self',field:'Beard'},schema}}]};
+    assert.equal(executeBlueprint(program,runtime.states['/Game/Pawn'],{},{native:context}).value,true);
+});
+
 test('original component graph binds the actual actor and applies source template overrides once',()=>{
     const {runtime,player}=fixture();
     assert.equal(runtime.bindSourceActor('/Game/Pawn',player).components,1);
