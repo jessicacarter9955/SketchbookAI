@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 
 import unreal
+from map_actor_selection import resolve_actor_selection
 
 
 def atomic(path, data):
@@ -104,12 +105,27 @@ for index, item in enumerate(job["maps"], 1):
         world = editor.get_editor_world()
         if world is None:
             raise RuntimeError("Unreal returned no editor world after loading the level")
+        actors = list(unreal.EditorLevelLibrary.get_all_level_actors())
+        actor_set, selection = resolve_actor_selection(actors, item.get("selected_actor_names"))
+        row["actor_selection"] = selection
+        if job.get("actor_census_file"):
+            census = Path(job["actor_census_file"]).resolve()
+            if census == source_project.parent or source_project.parent in census.parents:
+                raise RuntimeError("[CENSUS_INSIDE_SOURCE] Actor diagnostics must stay outside the source project")
+            atomic(census, {"schema_version": 1, "package": package,
+                            "source_snapshot_hash": job["source_snapshot_hash"],
+                            "selection": selection,
+                            "actors": [{"name": actor.get_name(), "label": actor.get_actor_label(),
+                                        "class": actor.get_class().get_name()} for actor in actors]})
         resolved_materials = restore_parent_materials(world)
         if job.get("progress"):
             atomic(job["progress"], {"completed": index - 1, "total": len(job["maps"]),
                                       "package": package, "status": "baking",
                                       "message": "Converto materiali, texture e geometria della mappa"})
-        messages = unreal.GLTFExporter.export_to_gltf(world, str(target), options, set())
+        # Per Epic's GLTFExporter contract, a nonempty set limits the export to
+        # exactly those actors; an empty set exports all. The isolated subset
+        # mode is diagnostic only and must never be published as a full level.
+        messages = unreal.GLTFExporter.export_to_gltf(world, str(target), options, actor_set)
         errors = getattr(messages, "errors", []) if messages is not None else ["Exporter returned no result"]
         warnings = getattr(messages, "warnings", []) if messages is not None else []
         if errors:
