@@ -213,7 +213,7 @@ class Supervisor:
             if not node:
                 raise RuntimeError('Node.js unavailable: cannot validate reconciled Three.js changes')
             self.command('git-reconcile-node-tests',
-                         [node, '--test', *(str(path.relative_to(self.root)) for path in node_tests)],
+                         [node, '--test', *(path.relative_to(self.root).as_posix() for path in node_tests)],
                          timeout=300)
         head = agent._require_clean_repo(self.root)
         self.save('git_reconcile_validated', push_validation_required=False,
