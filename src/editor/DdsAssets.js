@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import {resolveDdsAssets, selectedDdsAssetSource} from './dds-asset-resolver.mjs';
 
-const BASE = 'build/local-scenes/dds/';
 export async function loadDdsPlayer() {
+    const source = selectedDdsAssetSource(typeof location === 'undefined' ? '' : location.search);
+    const BASE = source === 'ue2three' ? 'build/local-scenes/ue2three/projects/VIPExtractionKitDDS-23a280ac11/dds-assets/character/' : 'build/local-scenes/dds/';
     const response = await fetch(`${BASE}manifest.json`);
     if (!response.ok) throw new Error('DDS assets missing. Run tools/export-dds.ps1 with your editable Unreal project, then reload this scene.');
-    const manifest = await response.json();
+    const manifest = resolveDdsAssets(await response.json(), source);
     if(!manifest.clips?.crouch_walk || !manifest.clips?.heal || !manifest.weapons?.rifle || !manifest.weapons?.pistol)
         throw new Error('DDS export is outdated. Run tools/export-dds.ps1 again to add the single-player assets.');
     const loader = new GLTFLoader();
@@ -47,11 +49,12 @@ export async function loadDdsPlayer() {
         clip.name = name; clips.push(clip);
     }
     // Unreal's layered material needs a separate bake; use a readable neutral finish.
-    model.scene.traverse(object => {
+    if (source === 'legacy') model.scene.traverse(object => {
         if (object.isMesh) object.material = new THREE.MeshStandardMaterial({color:0xa7beca, metalness:0.35, roughness:0.55});
     });
     model.scene.animations = clips;
     model.scene.userData.playerProfile = 'dds';
+    model.scene.userData.ddsAssetSource = source;
     model.weapons = {};
     for (const [name, file] of Object.entries(manifest.weapons || {})) {
         model.weapons[name] = (await loader.loadAsync(safeURL(file))).scene;
