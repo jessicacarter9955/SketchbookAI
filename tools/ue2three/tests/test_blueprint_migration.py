@@ -13,6 +13,30 @@ def variable(token, name): return node(token, Variable={'New': {'Path': [name], 
 
 
 class BlueprintMigrationTests(unittest.TestCase):
+    def test_ue57_math_source_calls_translate_typed_literals(self):
+        for name, parameters in (
+            ('Abs', [node('EX_DoubleConst', Value='-2.5')]),
+            ('VSize', [node('EX_VectorConst', Value={'X':3,'Y':4,'Z':12})]),
+            ('Vector_Distance', [node('EX_VectorConst', Value={'X':3,'Y':4,'Z':12}),
+                                 node('EX_VectorConst', Value={'X':0,'Y':0,'Z':0})]),
+        ):
+            with self.subTest(name=name):
+                imports = [{'ObjectName':name,'ClassName':'Function','OuterIndex':-2},
+                           {'ObjectName':'KismetMathLibrary','OuterIndex':-3},
+                           {'ObjectName':'/Script/Engine'}]
+                function = self.function()
+                function['ScriptBytecode'][1]['Expression'] = node('EX_CallMath',StackNode=-1,Parameters=parameters)
+                package = Package({'Imports':imports,'ObjectVersionUE5':'IMPORT_TYPE_HIERARCHIES'})
+                result = translate_function(function,package)
+                value = result['steps'][0]['value']
+                self.assertEqual(value['op'],'math')
+                self.assertEqual(value['name'],name)
+                self.assertEqual(len(value['args']),len(parameters))
+                if name != 'Abs':
+                    self.assertEqual(value['args'][0]['value'],{'X':3.0,'Y':4.0,'Z':12.0})
+                else:
+                    self.assertEqual(value['args'][0],{'op':'constant','value':-2.5})
+
     def test_ue57_source_witnessed_abs_and_vector_length_native_signatures(self):
         from blueprint_migration import MATH_CALLS, NATIVE_MATH_INPUT_TYPES, native_math_result_type
         expected = {
