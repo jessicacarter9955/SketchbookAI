@@ -295,8 +295,9 @@ def variable(value, package, owner, reads, outputs, depth):
 
 
 def array_item_schema(value, package, owner, reads, outputs, depth):
-    """Resolve the exact reflected type of a simple source array item expression."""
-    from blueprint_migration import kind, BlueprintTranslationError as Error
+    """Resolve the exact reflected type of a simple source value expression."""
+    from blueprint_migration import kind, field, BlueprintTranslationError as Error
+    if depth > 48: return None
     token = kind(value)
     if token in ('EX_InstanceVariable', 'EX_LocalVariable', 'EX_LocalOutVariable'):
         return variable(value, package, owner, reads, outputs, depth)[1]
@@ -316,6 +317,11 @@ def array_item_schema(value, package, owner, reads, outputs, depth):
         identity = import_path(package, value.get('Struct'))
         return (getattr(package, 'source_structs', {}).get(identity)
                 or native_schema(identity)) if identity else None
+    if token == 'EX_StructMemberContext':
+        structure = array_item_schema(value.get('StructExpression'), package, owner, reads, outputs, depth + 1)
+        member = field(value.get('StructMemberExpression'))
+        if structure and structure.get('type') == 'StructProperty':
+            return structure.get('fields', {}).get(member)
     # Calls and object expressions need their reflected return or reference
     # contract. Do not infer a wildcard element type from the opcode alone.
     return None

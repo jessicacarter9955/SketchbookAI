@@ -547,9 +547,17 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
         if (expression.op === 'table_get') {
             const reference = evaluate(expression.table, depth+1), row = evaluate(expression.row, depth+1), target = expression.target;
             const table = reference && owns(tables, reference.asset) ? tables[reference.asset] : null;
-            if (!table || target?.op !== 'get' || target.scope !== 'local' || !safeField(target.field)
-                || table.schema?.source !== expression.row_source || program.schemas?.local?.[target.field]?.source !== expression.row_source
+            if (JSON.stringify(expression.identity) !== JSON.stringify([
+                '/Script/Engine', 'DataTableFunctionLibrary', 'GetDataTableRowFromName'])
+                || expression.dispatch !== 'EX_FinalFunction'
+                || JSON.stringify(expression.row_schema) !== JSON.stringify({type:'NameProperty',default:'None'}))
+                throw new Error('Original data table call identity, dispatch or row type differs');
+            if (!reference || JSON.stringify(reference.declared_class) !== JSON.stringify(['/Script/Engine','DataTable'])
+                || !table || target?.op !== 'get' || target.scope !== 'local' || !safeField(target.field)
+                || JSON.stringify(table.schema) !== JSON.stringify(program.schemas?.local?.[target.field])
+                || table.schema?.source !== expression.row_source
                 || typeof row !== 'string' || !row || /[^\x01-\x7f]/.test(row)) throw new Error('Unmigrated or incompatible original data table');
+            validateSchema(expression.row_schema, row);
             const key = Object.keys(table.rows).find(name => name.toUpperCase() === row.toUpperCase());
             if (key !== undefined) {
                 const value = table.rows[key]; validateSchema(program.schemas.local[target.field], value);

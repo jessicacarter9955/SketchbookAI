@@ -156,3 +156,40 @@ class SourceTypesTests(unittest.TestCase):
         self.assertNotIn('ReadFirst', translate_package(package, schemas, tables)['functions'])
         context['Offset'] = 41
         self.assertNotIn('ReadFirst', translate_package(package, schemas, {})['functions'])
+
+    def test_table_read_accepts_a_typed_asset_constant_and_a_name_struct_member(self):
+        package, schemas = self.native_array_package()
+        schema = schemas[('/Game/Slot', 'Slot')]
+        schema['fields']['Identity'] = {'type':'NameProperty','default':'None'}
+        schema['default']['Identity'] = 'None'
+        schema['member_order'].append('Identity')
+        package.exports[1]['LoadedProperties'].append(
+            {'Name':'Appearance','SerializedType':'StructProperty','Struct':-1})
+        package.imports.extend([
+            {'ObjectName':'GetDataTableRowFromName','ClassName':'Function','OuterIndex':-8},
+            {'ObjectName':'DataTableFunctionLibrary','OuterIndex':-6},
+            {'ObjectName':'Default__DataTableFunctionLibrary','ClassName':'DataTableFunctionLibrary','OuterIndex':-6},
+            {'ObjectName':'DT_Rows','ClassName':'DataTable','ClassPackage':'/Script/Engine','OuterIndex':-11},
+            {'ObjectName':'/Game/Rows','ClassName':'Package'},
+        ])
+        row = node('EX_StructMemberContext',
+            StructExpression=node('EX_InstanceVariable',Variable={'New':{'Path':['Appearance'],'ResolvedOwner':2}}),
+            StructMemberExpression={'New':{'Path':['Identity'],'ResolvedOwner':-1}})
+        call = node('EX_FinalFunction',StackNode=-7,Parameters=[node('EX_ObjectConst',Value=-10),row,
+            node('EX_LocalOutVariable',Variable={'New':{'Path':['Out'],'ResolvedOwner':1}})])
+        context = node('EX_Context',ObjectExpression=node('EX_ObjectConst',Value=-9),
+            ContextExpression=call,Offset=memory_size(call,package=package))
+        package.exports[0]['ScriptBytecode'][0] = context
+        tables = {'/Game/Rows.DT_Rows':{'schema':schema,'rows':{'First':schema['default']}}}
+        program = translate_package(package,schemas,tables)['functions']['ReadFirst']
+        translated = program['steps'][0]['value']
+        self.assertEqual(translated['op'],'table_get')
+        self.assertEqual(translated['table']['value']['asset'],'/Game/Rows.DT_Rows')
+        self.assertEqual(translated['row_schema'],{'type':'NameProperty','default':'None'})
+        self.assertEqual(translated['identity'],['/Script/Engine','DataTableFunctionLibrary','GetDataTableRowFromName'])
+        self.assertEqual(translated['dispatch'],'EX_FinalFunction')
+
+        row['StructMemberExpression']['New']['Path'] = ['Health']
+        blocked = translate_package(package,schemas,tables)
+        self.assertNotIn('ReadFirst',blocked['functions'])
+        self.assertIn('not a NameProperty',blocked['blocked'][0]['reason'])

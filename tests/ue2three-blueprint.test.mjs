@@ -46,7 +46,9 @@ test('original table lookup preserves missing-row output and copies typed rich s
     const program={schema_version:1,status:'translated_straight_line',input_fields:['Row'],output_fields:['Out'],
         field_types:{self:{Table:'ObjectProperty'},local:{Out:'StructProperty',Row:'NameProperty'}},
         schemas:{self:{Table:object},local:{Out:schema}},steps:[{op:'evaluate',value:{op:'table_get',table:{op:'get',scope:'self',field:'Table'},
-            row:{op:'get',scope:'local',field:'Row'},target:{op:'get',scope:'local',field:'Out'},row_source:'/Game/Row'}},
+            row:{op:'get',scope:'local',field:'Row'},target:{op:'get',scope:'local',field:'Out'},row_source:'/Game/Row',
+            row_schema:{type:'NameProperty',default:'None'},
+            identity:['/Script/Engine','DataTableFunctionLibrary','GetDataTableRowFromName'],dispatch:'EX_FinalFunction'}},
             {op:'return',value:{op:'constant',value:null}}]};
     const self={Table:{asset:'/Game/Table.Table',declared_class:object.class}};
     const found=executeBlueprint(program,self,{Row:'FIRST'},{tables});
@@ -56,6 +58,13 @@ test('original table lookup preserves missing-row output and copies typed rich s
     assert.throws(()=>executeBlueprint(program,self,{Row:'First'}),/Unmigrated/);
     assert.throws(()=>executeBlueprint(program,{Table:null},{Row:'First'},{tables}),/Unmigrated/);
     assert.throws(()=>executeBlueprint(program,{Table:{...self.Table,declared_class:['Other']}},{Row:'First'},{tables}),/asset identity/);
+    const lookup=program.steps[0].value;
+    assert.throws(()=>executeBlueprint({...program,steps:[{op:'evaluate',value:{...lookup,identity:['/Script/Engine','DataTableFunctionLibrary','Other']}},program.steps[1]]},
+        self,{Row:'First'},{tables}),/call identity/);
+    assert.throws(()=>executeBlueprint({...program,steps:[{op:'evaluate',value:{...lookup,identity:undefined}},program.steps[1]]},
+        self,{Row:'First'},{tables}),/call identity/);
+    assert.throws(()=>executeBlueprint({...program,steps:[{op:'evaluate',value:{...lookup,row_schema:{type:'StrProperty',default:''}}},program.steps[1]]},
+        self,{Row:'First'},{tables}),/row type/);
 });
 
 test('typed array copies and struct writes retain original nonzero defaults without aliasing', () => {

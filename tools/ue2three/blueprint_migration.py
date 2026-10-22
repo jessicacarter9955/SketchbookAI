@@ -285,25 +285,43 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
                 and kind(call) == 'EX_FinalFunction'
                 and import_path(package, call.get('StackNode')) == ('/Script/Engine', 'DataTableFunctionLibrary', 'GetDataTableRowFromName')):
             args = call.get('Parameters', [])
-            if len(args) != 3 or kind(args[0]) != 'EX_InstanceVariable' or kind(args[2]) not in ('EX_LocalVariable', 'EX_LocalOutVariable'):
+            if (len(args) != 3 or kind(args[0]) not in ('EX_InstanceVariable', 'EX_ObjectConst')
+                    or kind(args[2]) not in ('EX_LocalVariable', 'EX_LocalOutVariable')):
                 raise BlueprintTranslationError('Unsupported original table lookup arguments')
-            table_name = field(args[0].get('Variable')); target_name = field(args[2].get('Variable'))
-            cls = package.export(owner); function = getattr(package, '_active_function', {})
-            prop = next((p for p in (cls or {}).get('LoadedProperties', []) if p.get('Name') == table_name), {})
-            target_prop = next((p for p in function.get('LoadedProperties', []) if p.get('Name') == target_name), {})
-            schema = property_schema(package, target_prop)
-            try: default = asset_reference(package, getattr(package, 'source_defaults', {}).get(table_name), ('/Script/Engine', 'DataTable'))
-            except ValueError as error: raise BlueprintTranslationError(str(error))
-            table = getattr(package, 'source_tables', {}).get((default or {}).get('asset'))
-            if (import_path(package, prop.get('PropertyClass')) != ('/Script/Engine', 'DataTable')
-                    or args[0].get('Variable', {}).get('New', {}).get('ResolvedOwner') != owner
+            from blueprint_effects import array_item_schema, variable
+            row_schema = array_item_schema(args[1], package, owner, reads, outputs, depth)
+            if row_schema != {'type': 'NameProperty', 'default': 'None'}:
+                raise BlueprintTranslationError('Original table lookup row argument is not a NameProperty')
+            function = getattr(package, '_active_function', {})
+            target, schema = variable(args[2], package, owner, reads, outputs, depth)
+            if target.get('scope') != 'local':
+                raise BlueprintTranslationError('Original table lookup output is not a local out parameter')
+            if kind(args[0]) == 'EX_ObjectConst':
+                table_reference = expression(args[0], reads, outputs, depth+1, package, owner)
+                source_reference = table_reference.get('value')
+            else:
+                table_name = field(args[0].get('Variable'))
+                cls = package.export(owner)
+                prop = next((p for p in (cls or {}).get('LoadedProperties', []) if p.get('Name') == table_name), {})
+                if (import_path(package, prop.get('PropertyClass')) != ('/Script/Engine', 'DataTable')
+                        or args[0].get('Variable', {}).get('New', {}).get('ResolvedOwner') != owner):
+                    raise BlueprintTranslationError('Original table lookup receiver is not an owned DataTable property')
+                try:
+                    default = asset_reference(package, getattr(package, 'source_defaults', {}).get(table_name),
+                                              ('/Script/Engine', 'DataTable'))
+                except ValueError as error:
+                    raise BlueprintTranslationError(str(error))
+                table_reference = expression(args[0], reads, outputs, depth+1, package, owner)
+                source_reference = default
+            table = getattr(package, 'source_tables', {}).get((source_reference or {}).get('asset'))
+            if (not schema or not table or table['schema'] != schema
                     or package.export(args[2].get('Variable', {}).get('New', {}).get('ResolvedOwner')) is not function
-                    or not schema or not table or table['schema'] != schema
                     or value.get('Offset') != memory_size(call, package=package)):
                 raise BlueprintTranslationError('Unresolved original table, row type, owner or context offset')
-            return {'op': 'table_get', 'table': expression(args[0], reads, outputs, depth+1, package, owner),
+            return {'op': 'table_get', 'table': table_reference,
                     'row': expression(args[1], reads, outputs, depth+1, package, owner),
-                    'target': expression(args[2], reads, outputs, depth+1, package, owner), 'row_source': schema['source']}
+                    'target': target, 'row_source': schema['source'], 'row_schema': row_schema,
+                    'identity': list(import_path(package, call.get('StackNode'))), 'dispatch': 'EX_FinalFunction'}
         from blueprint_effects import array_context
         adapted = array_context(value, package, owner, reads, outputs, depth)
         if adapted is not None: return adapted
