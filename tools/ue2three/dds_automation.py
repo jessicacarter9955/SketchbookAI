@@ -17,6 +17,7 @@ import shutil
 import subprocess
 import sys
 import time
+from types import SimpleNamespace
 
 import dds_agent as agent
 from core import workspace_lock
@@ -67,6 +68,9 @@ class Supervisor:
         self.directory.mkdir(parents=True, exist_ok=True)
         self.state_path = self.directory / 'state.json'
         self.state = read(self.state_path, {'schema_version': 1, 'events': [], 'started_epoch': time.time()})
+        self.config['parallel_workers'] = self.config.get('parallel_workers', 4)
+        if type(self.config['parallel_workers']) is not int or not 1 <= self.config['parallel_workers'] <= 4:
+            raise ValueError('parallel_workers must be between one and four')
 
     def save(self, phase: str, **fields):
         self.state.update(phase=phase, updated_at=agent.utc_now(), **fields)
@@ -131,11 +135,22 @@ class Supervisor:
         self.command('git-push', ['git', 'push', 'origin', f'HEAD:refs/heads/{branch}'], timeout=120)
         self.save('pushed', pushed_commit=agent._git(self.root, 'rev-parse', 'HEAD'), pending_push=False)
 
+    def ensure_dependencies(self):
+        if (self.root / 'node_modules/three/package.json').is_file():
+            return
+        if not (self.root / 'package-lock.json').is_file():
+            raise RuntimeError('Lockfile missing; cannot prepare verified worker dependencies')
+        npm = shutil.which('npm') or shutil.which('npm.cmd')
+        if not npm:
+            raise RuntimeError('npm is missing; required worker dependencies unavailable')
+        self.command('worker-dependencies', [npm, 'ci', '--ignore-scripts', '--no-audit', '--no-fund'],
+                     timeout=900)
+        if not (self.root / 'node_modules/three/package.json').is_file():
+            raise RuntimeError('npm finished but Three.js worker dependency is missing')
+
     def promote(self, family: str, checkpoint: dict):
         record = checkpoint['families'][family]
         head = agent._require_clean_repo(self.root)
-        if record['base_head'] != head:
-            raise RuntimeError('Candidate base differs; preserve patch for reconciliation')
         worker = Path(record.get('worktree_path', self.root / agent.STATE_RELATIVE / 'worktrees' / family))
         if not agent._contained(worker.resolve(), (self.root / agent.STATE_RELATIVE / 'worktrees').resolve()):
             raise RuntimeError('Worker path escapes its isolated directory')
@@ -149,18 +164,39 @@ class Supervisor:
             agent._checkpoint_event(self.root / agent.STATE_RELATIVE, checkpoint, 'needs_review', family=family)
             self.save('needs_review', family=family)
             return
-        before = read(Path(self.config['publish_dir']) / 'blueprint-programs.json')
-        after = self.compile(worker, worker / '.local/ue2three/replay')
-        if not replay_improves(before, after):
-            record.update(status='needs_review', result='no_proven_conversion_gain')
-            agent._checkpoint_event(self.root / agent.STATE_RELATIVE, checkpoint, 'needs_review', family=family)
-            self.save('needs_review', family=family, reason='No proven conversion gain; patch retained')
-            return
         agent.verify_worker(worker, family)
         agent._git(worker, 'add', '--', *changed)
         agent._git(worker, 'diff', '--cached', '--check')
         agent._git(worker, 'commit', '-m', f'ue2three: source-verified {family} conversion')
-        commit = agent._git(worker, 'rev-parse', 'HEAD')
+        original_commit = agent._git(worker, 'rev-parse', 'HEAD')
+        target = worker
+        if record['base_head'] != head:
+            # A concurrent worker was based on the previous integration HEAD.
+            # Reapply in a *new* detached worktree, never into the dirty user
+            # checkout. Conflicts preserve both original patch and base.
+            stage_root = self.root / agent.STATE_RELATIVE / 'reconciliation'
+            target = agent._worktree_for(self.root, stage_root, SimpleNamespace(family_id=family), head)
+            try:
+                agent._git(target, 'cherry-pick', '--no-commit', original_commit, timeout=60)
+            except agent.RunnerError:
+                record.update(status='needs_review', result='reconciliation_conflict',
+                              original_commit=original_commit)
+                agent._checkpoint_event(self.root / agent.STATE_RELATIVE, checkpoint,
+                                        'needs_review', family=family)
+                self.save('needs_review', family=family, reason='Concurrent patch conflict; original retained')
+                return
+        before = read(Path(self.config['publish_dir']) / 'blueprint-programs.json')
+        after = self.compile(target, target / '.local/ue2three/replay')
+        if not replay_improves(before, after):
+            record.update(status='needs_review', result='no_proven_conversion_gain',
+                          original_commit=original_commit)
+            agent._checkpoint_event(self.root / agent.STATE_RELATIVE, checkpoint, 'needs_review', family=family)
+            self.save('needs_review', family=family, reason='No proven conversion gain; patch retained')
+            return
+        if target != worker:
+            agent.verify_worker(target, family)
+            agent._git(target, 'commit', '-m', f'ue2three: reconciled {family} conversion')
+        commit = agent._git(target, 'rev-parse', 'HEAD')
         # Save commit before FF: on interruption the complete candidate remains recoverable.
         self.save('promoting', candidate_commit=commit, candidate_family=family)
         agent._git(self.root, 'merge', '--ff-only', commit)
@@ -239,22 +275,31 @@ class Supervisor:
                 pending = [family for family, row in checkpoint['families'].items()
                            if row.get('status') == 'patch_ready_for_review']
                 if pending:
-                    self.promote(pending[0], checkpoint)
+                    for family in pending:
+                        self.promote(family, checkpoint)
                 else:
                     executable = self.config.get('codex_executable') or shutil.which('codex')
                     if not executable:
                         raise RuntimeError('Codex CLI missing; agent cannot start')
+                    self.ensure_dependencies()
                     self.command('codex-auth-check', [executable, 'login', 'status'], timeout=20)
                     self.save('agent_running', active_job='source-adapter-agent')
-                    result = agent.run_once(self.root, codex_executable=executable)
+                    result = agent.run_many(self.root, codex_executable=executable,
+                                            max_workers=self.config['parallel_workers'])
                     self.save('agent_checkpoint', agent_result=result, active_job=None)
-                    if result.get('error') in {'usage_limit', 'authentication_required', 'connection_interrupted'}:
-                        delay = 1800 if result['error'] == 'usage_limit' else 600
-                        self.save('waiting_account' if result['error'] == 'usage_limit' else 'waiting_connection',
-                                  retry_after=time.time() + delay, waiting_reason=result['error'], active_job=None)
+                    account_errors = {'usage_limit', 'authentication_required', 'connection_interrupted'}
+                    errors = {row.get('result') for row in result.get('results', [])}
+                    if errors and errors.issubset(account_errors):
+                        reason = 'usage_limit' if 'usage_limit' in errors else next(iter(errors))
+                        delay = 1800 if reason == 'usage_limit' else 600
+                        self.save('waiting_account' if reason == 'usage_limit' else 'waiting_connection',
+                                  retry_after=time.time() + delay, waiting_reason=reason, active_job=None)
                         return self.state
-                    if result['status'] == 'patch_ready_for_review':
-                        self.promote(result['family'], agent._read_checkpoint(self.root / agent.STATE_RELATIVE))
+                    if any(row.get('status') == 'patch_ready_for_review' for row in result.get('results', [])):
+                        checkpoint = agent._read_checkpoint(self.root / agent.STATE_RELATIVE)
+                        for family, row in list(checkpoint['families'].items()):
+                            if row.get('status') == 'patch_ready_for_review':
+                                self.promote(family, checkpoint)
                 self.pending_push()
                 # Commands completing does not establish gameplay or visual acceptance.
                 self.additional_stages()

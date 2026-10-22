@@ -57,7 +57,7 @@ class AutomationTests(unittest.TestCase):
     def test_session_budget_stops_new_agent_calls(self):
         self.supervisor.config['session_seconds'] = 7200
         self.supervisor.state['started_epoch'] = 0
-        with patch.object(automation.agent, 'run_once', side_effect=AssertionError('budget must block')):
+        with patch.object(automation.agent, 'run_many', side_effect=AssertionError('budget must block')):
             self.assertEqual(self.supervisor.tick()['phase'], 'session_budget_reached')
 
     def test_zero_session_budget_does_not_expire_even_after_days(self):
@@ -72,12 +72,20 @@ class AutomationTests(unittest.TestCase):
         self.supervisor.config['codex_executable'] = 'codex-test-double'
         with patch.object(automation.agent, '_require_clean_repo', return_value='a' * 40), \
                 patch.object(automation.agent, '_disk_guard'), \
+                patch.object(self.supervisor, 'ensure_dependencies'), \
                 patch.object(self.supervisor, 'command'), \
-                patch.object(automation.agent, 'run_once', return_value={'status': 'retry_wait', 'error': 'usage_limit'}):
+                patch.object(automation.agent, 'run_many', return_value={
+                    'status': 'parallel_batch_finished', 'results': [
+                        {'family': 'native-timers', 'status': 'retry_wait', 'result': 'usage_limit'}]}):
             result = self.supervisor.tick()
         self.assertEqual(result['phase'], 'waiting_account')
         self.assertEqual(result['waiting_reason'], 'usage_limit')
         self.assertGreater(result['retry_after'], 0)
+
+    def test_parallel_configuration_defaults_to_four_and_rejects_overcommit(self):
+        self.assertEqual(self.supervisor.config['parallel_workers'], 4)
+        with self.assertRaisesRegex(ValueError, 'parallel_workers'):
+            automation.Supervisor({**self.config, 'parallel_workers': 5}, self.root)
 
     def test_replay_requires_same_sources_and_preserves_translated_functions(self):
         before = {'project': 'DDS', 'counts': {'translated': 1, 'blocked': 2},

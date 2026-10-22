@@ -154,16 +154,33 @@ def snapshot(root, config_path):
     heartbeat = optional(root / '.local/ue2three/dds-agent/heartbeat.json')
     bridge = optional(Path.home() / '.chat-local-bridge/connection-health.json')
     jobs = []
+    lanes = []
+    worker_count = config.get('parallel_workers', 4)
+    if type(worker_count) is not int or not 1 <= worker_count <= 4:
+        worker_count = 4
     for name, record in checkpoint.get('families', {}).items():
         worker = Path(record.get('worktree_path', root / '.local/ue2three/dds-agent/worktrees' / name))
         detail = recent_worker(worker)
         running = record.get('status') == 'running'
-        heartbeat_age = age(heartbeat.get('updated_at'))
-        live = running and heartbeat.get('status') == 'running' and heartbeat_age is not None and heartbeat_age < 120
+        dedicated = root / '.local/ue2three/dds-agent/heartbeats' / name / 'heartbeat.json'
+        beat = optional(dedicated) if dedicated.exists() else heartbeat
+        heartbeat_age = age(beat.get('updated_at'))
+        live = (running and beat.get('status') == 'running'
+                and heartbeat_age is not None and heartbeat_age < 120)
         jobs.append({'name': name, 'status': 'running' if live else record.get('status', 'unknown'),
                      'live': live, 'stale': running and not live, 'attempt': record.get('attempts', 0),
+                     'lane': record.get('lane'), 'heartbeat_at': beat.get('updated_at'),
                      'result': record.get('result'), 'commit': record.get('commit'),
                      'started_at': record.get('started_at'), 'finished_at': record.get('finished_at'), **detail})
+    for lane in range(1, worker_count + 1):
+        entries = [item for item in jobs if item['lane'] == lane]
+        latest = max(entries, key=lambda item: item.get('started_at') or '') if entries else None
+        lanes.append({'id': lane, 'name': latest['name'] if latest else None,
+                      'status': latest['status'] if latest else 'not_started',
+                      'live': latest['live'] if latest else False,
+                      'stale': latest['stale'] if latest else False,
+                      'heartbeat_at': latest.get('heartbeat_at') if latest else None,
+                      'result': latest.get('result') if latest else None})
     counts = state.get('counts', {})
     total = counts.get('translated', 0) + counts.get('blocked', 0)
     bridge_age = age(bridge.get('time'))
@@ -175,7 +192,8 @@ def snapshot(root, config_path):
             'phase_label': LABELS.get(phase, phase), 'paused': config.get('paused', False),
             'continuous': config.get('session_seconds') == 0, 'counts': counts,
             'function_percent': round(100 * counts.get('translated', 0) / total, 1) if total else 0,
-            'function_total': total, 'jobs': jobs,
+            'function_total': total, 'jobs': jobs, 'lanes': lanes,
+            'configured_workers': worker_count, 'active_workers': sum(item['live'] for item in lanes),
             'bridge': {'connected': connected, 'status': bridge.get('status', 'unknown'),
                        'last_seen': bridge.get('time'), 'pending_results': bridge.get('pending_results', 0),
                        'incremental': bridge.get('incremental', False)},

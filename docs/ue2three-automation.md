@@ -12,6 +12,9 @@ Create `.local/ue2three/automation/config.json` with `project` (existing
 `.uproject`), `workspace` (verified cache inside this checkout), `publish_dir`
 (inside this checkout), `session_seconds` (default 0: no session expiry), `push` (boolean), and
 `branch` (explicit existing destination). Optionally supply `codex_executable`.
+`parallel_workers` defaults to **4** (allowed range: 1–4). Each slot handles a
+different source-witnessed native family in its own detached Git worktree;
+the configured Codex account still determines actual request capacity.
 Do not put credentials in this file. `push` never uses force.
 
 Run a tick with `python tools/ue2three/dds_automation.py --config PATH --once`;
@@ -29,21 +32,32 @@ retain bounded retries/timeouts so a failed operation can be retried later.
 1. Recover checkpoints and retry a pending push before doing more work.
 2. Detect changes across all ue2three Python modules, runtime modules and package
    manifests; compile from the verified package cache only when needed.
-3. Check the real CLI authentication, then choose a source-witnessed native
-   blocker family. Run Codex in a detached worktree, without a wall-clock expiry by default.
+3. Check the real CLI authentication, then assign up to four **distinct**
+   source-witnessed blocker families in one batch. Start independent Codex
+   processes concurrently in detached worktrees, without a wall-clock expiry.
 4. Keep JSON events, stderr and the final message under that worker's ignored
    `.local/dds-agent`. Chat disconnection does not own this process.
 5. Require focused Python/JavaScript tests. Replay the same cached source with
    candidate code. Preserve all previously translated function identities,
    preserve package source hashes, increase translated functions and decrease
    blocked functions. Retain unsuccessful patches for diagnosis.
-6. Fast-forward only the clean integration checkout, checkpoint the commit,
+6. Integrate sequentially into the clean integration checkout. When a later
+   parallel patch was based on an older head, cherry-pick into a separate
+   staging worktree, re-run tests and cached source replay, and fast-forward
+   only on a real conversion gain. Conflicts are marked `needs_review` while
+   retaining the original patch; no force push or discarded edits.
+   Checkpoint the commit,
    refresh its compiled output, and optionally push to the configured branch.
 7. Persist failure diagnostics and retry backoff; continue eligible families on
    later ticks. No unbounded retries, source rescans or Unreal launch.
 
 Progress is visible in `automation.html` / `automation-state.json` in the
-configured publish directory. State lists unsupported stages explicitly.
+configured publish directory. The live loopback dashboard at `127.0.0.1:8401`
+shows four lanes, each with its own source family, heartbeat timestamp and
+`running`/`stale`/`patch_ready_for_review`/`integrated` state. A lane is marked
+active only if its actual process heartbeat is recent. A GitHub CI job or a
+published web page alone cannot establish that the Windows conversion process
+is running. State lists unsupported stages explicitly.
 
 ## Asset export and deployment
 

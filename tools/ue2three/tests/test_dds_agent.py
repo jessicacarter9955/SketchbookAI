@@ -3,6 +3,8 @@ import json
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -92,6 +94,28 @@ class DdsAgentTests(unittest.TestCase):
     def _write_state(self, value):
         self.state_root.mkdir(parents=True, exist_ok=True)
         (self.state_root / 'checkpoint.json').write_text(json.dumps(value), encoding='utf-8')
+
+    def _make_four_verified_families(self):
+        plan_path = self.published / 'blueprint-plan.json'
+        plan = json.loads(plan_path.read_text(encoding='utf-8'))
+        original = plan['native_dependencies']['operations'][0]
+        for family in ('native-objects', 'native-physics', 'native-animation'):
+            operation = {**original, 'family': family, 'api': '/Script/Test.' + family}
+            packet = ('# ue2three native adapter task: ' + family + '\n\nProgram version: '
+                      + plan['programs_content_sha256'] + '.\n\n'
+                      '## Exact observed native calls and source witnesses\n```json\n'
+                      + json.dumps([operation]) + '\n```\n\n'
+                      '## Bounded original function examples\n```json\n[]\n```\n')
+            path = self.published / 'work-packets' / (family + '.md')
+            path.write_text(packet, encoding='utf-8')
+            plan['output_sha256'][f'work-packets/{family}.md'] = file_hash(path)
+            plan['native_dependencies']['families'].append({
+                'id': family, 'blocked_source_functions_involved': 1,
+                'apis_without_known_adapter_family': [operation['api']],
+                'packet': f'work-packets/{family}.md'})
+            plan['native_dependencies']['operations'].append(operation)
+        plan['content_sha256'] = digest({key: value for key, value in plan.items() if key != 'content_sha256'})
+        plan_path.write_text(json.dumps(plan, sort_keys=True), encoding='utf-8')
 
     def test_dry_run_selects_only_a_verified_source_witness_and_does_not_write(self):
         result = dds_agent.dry_run(self.repo, self.state_root)
@@ -191,6 +215,37 @@ class DdsAgentTests(unittest.TestCase):
         with patch.object(dds_agent, 'run_codex', side_effect=AssertionError('cooldown must not run Codex')) as run:
             self.assertEqual(dds_agent.run_once(self.repo, self.state_root)['status'], 'cooldown')
         run.assert_not_called()
+
+    def test_four_real_conversion_slots_overlap_and_keep_independent_checkpoints(self):
+        self._make_four_verified_families()
+        barrier = threading.Barrier(4, timeout=15)
+        seen = []
+        lock = threading.Lock()
+
+        def concurrent_codex(executable, worker, prompt):
+            with lock:
+                seen.append((worker, time.monotonic()))
+            barrier.wait()
+            self.assertTrue((worker / '.local/dds-agent/source-witness.json').is_file())
+            return 0
+
+        with patch.object(dds_agent, 'run_codex', side_effect=concurrent_codex), \
+                patch.object(dds_agent, 'verify_worker') as verify:
+            result = dds_agent.run_many(self.repo, self.state_root, 'codex-test-double', max_workers=4)
+        self.assertEqual(result['status'], 'parallel_batch_finished')
+        self.assertEqual(result['workers_started'], 4)
+        self.assertEqual(len({path for path, _ in seen}), 4)
+        self.assertLess(max(start for _, start in seen) - min(start for _, start in seen), 15)
+        self.assertEqual(verify.call_count, 4)
+        checkpoint = self._load_state()
+        self.assertEqual(len(checkpoint['families']), 4)
+        self.assertEqual({row['lane'] for row in checkpoint['families'].values()}, {1, 2, 3, 4})
+        for family, row in checkpoint['families'].items():
+            self.assertEqual(row['status'], 'patch_ready_for_review')
+            heartbeat = dds_agent._read_heartbeat(self.state_root / 'heartbeats' / family / 'heartbeat.json')
+            self.assertEqual(heartbeat['status'], 'idle')
+        with patch.object(dds_agent, 'run_codex', side_effect=AssertionError('no duplicate run')):
+            self.assertEqual(dds_agent.run_many(self.repo, self.state_root, 'codex-test-double')['status'], 'cooldown')
 
     def test_retry_count_is_bounded_and_failed_worktree_is_reused(self):
         workers = []

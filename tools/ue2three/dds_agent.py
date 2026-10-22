@@ -7,6 +7,7 @@ parsed source caches are read-only inputs and are never made agent workspaces.
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextvars import ContextVar
 import json
 import os
@@ -37,6 +38,7 @@ MAX_PACKET_BYTES = 4 * 1024 * 1024
 MAX_CACHE_BYTES = 64 * 1024 * 1024
 MAX_JOURNAL_RECORDS = 512
 MAX_ATTEMPTS = 3
+MAX_PARALLEL_WORKERS = 4
 # Zero disables wall-clock expiry. Network retries and deterministic validation
 # retain their own bounds; the development job can remain active for days.
 MAX_RUN_SECONDS = 0
@@ -432,7 +434,7 @@ def _load_candidate(repo_root: Path, checkpoint: dict) -> FamilyCandidate | None
             record['attempts'] = 0
             record['retry_after'] = 0
             record['status'] = 'pending_new_revision'
-        if (record.get('status') == 'patch_ready_for_review' or record.get('attempts', 0) >= MAX_ATTEMPTS
+        if (record.get('status') in {'running', 'patch_ready_for_review'} or record.get('attempts', 0) >= MAX_ATTEMPTS
                 or record.get('status') in {'needs_review', 'integrated'}
                 and record.get('plan_fingerprint') == candidate.plan_fingerprint):
             continue
@@ -606,6 +608,29 @@ def _disk_guard(path: Path) -> None:
         raise RunnerError('Available disk space is below the runner reserve.', 'disk_low')
 
 
+def _link_worker_dependencies(repo_root: Path, worker: Path) -> None:
+    """Expose installed JS dependencies to sparse worktrees without copying them."""
+    source = repo_root / 'node_modules'
+    target = worker / 'node_modules'
+    if not (source / 'three/package.json').is_file():
+        return
+    if target.exists() or target.is_symlink():
+        if (target / 'three/package.json').is_file():
+            return
+        raise RunnerError('Worker JavaScript dependencies are incomplete.', 'dependencies_invalid')
+    try:
+        if os.name == 'nt':
+            subprocess.run(['cmd', '/c', 'mklink', '/J', str(target), str(source)], check=True,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                           timeout=_bounded_timeout(GIT_TIMEOUT_SECONDS))
+        else:
+            target.symlink_to(source, target_is_directory=True)
+    except (OSError, subprocess.SubprocessError):
+        raise RunnerError('Could not link verified dependencies into worker.', 'dependencies_invalid') from None
+    if not (target / 'three/package.json').is_file():
+        raise RunnerError('Linked JavaScript dependencies failed verification.', 'dependencies_invalid')
+
+
 def _worktree_for(repo_root: Path, state_root: Path, candidate: FamilyCandidate, head: str) -> Path:
     worktrees_root = state_root / 'worktrees'
     worktrees_root.mkdir(parents=True, exist_ok=True)
@@ -617,6 +642,7 @@ def _worktree_for(repo_root: Path, state_root: Path, candidate: FamilyCandidate,
         worker_head = _git(worker, 'rev-parse', 'HEAD')
         if top != _normal_path(worker) or common != common_dir or worker_head != head:
             raise RunnerError('Existing family worktree is stale or belongs to another repository.', 'worktree_stale')
+        _link_worker_dependencies(repo_root, worker)
         return worker
     _disk_guard(state_root)
     try:
@@ -631,6 +657,7 @@ def _worktree_for(repo_root: Path, state_root: Path, candidate: FamilyCandidate,
     common = _normal_path(_git(worker, 'rev-parse', '--path-format=absolute', '--git-common-dir'))
     if top != _normal_path(worker) or common != common_dir:
         raise RunnerError('Created worktree failed isolation checks.', 'worktree_verify')
+    _link_worker_dependencies(repo_root, worker)
     return worker
 
 
@@ -950,6 +977,128 @@ def run_once(repo_root: Path = REPO_ROOT, state_root: Path | None = None,
         raise
     finally:
         RUN_DEADLINE.reset(deadline_token)
+
+
+def _parallel_attempt(executable: str, worker: Path, candidate: FamilyCandidate,
+                      state_root: Path, run_id: str) -> tuple[int | None, str | None]:
+    """Execute one real conversion independently, with its own durable heartbeat."""
+    heartbeat = Heartbeat(state_root / 'heartbeats' / candidate.family_id, run_id)
+    heartbeat.start()
+    result = None
+    error_code = None
+    try:
+        result = run_codex(executable, worker, _prompt(candidate))
+        if result == 0:
+            _disk_guard(state_root)
+            verify_worker(worker, candidate.family_id)
+        else:
+            error_code = codex_failure_kind(worker)
+    except RunnerError as error:
+        error_code = error.code
+    except Exception:
+        error_code = 'codex_failed'
+    finally:
+        heartbeat.stop('idle' if result == 0 and error_code is None else 'error')
+    return result, error_code
+
+
+def run_many(repo_root: Path = REPO_ROOT, state_root: Path | None = None,
+             codex_executable: str | None = None, max_workers: int = MAX_PARALLEL_WORKERS) -> dict:
+    """Run up to four *different* source-witnessed families concurrently.
+
+    One coordinator holds the checkout lock, while each detached worktree has
+    separate Codex logs and heartbeat. Only the coordinator writes the shared
+    checkpoint. A crashed/stale job is never silently scheduled a second time.
+    """
+    if type(max_workers) is not int or not 1 <= max_workers <= MAX_PARALLEL_WORKERS:
+        raise RunnerError('Parallel worker count must be between one and four.', 'workers_invalid')
+    repo_root = Path(repo_root).resolve()
+    state_root = Path(state_root).resolve() if state_root is not None else repo_root / STATE_RELATIVE
+    if (not _contained(state_root, (repo_root / '.local/ue2three').resolve())
+            or _paths_overlap(state_root, repo_root / '.git')):
+        raise RunnerError('Runner state must stay in the isolated checkout.', 'state_path')
+    state_root.mkdir(parents=True, exist_ok=True)
+    try:
+        with workspace_lock(state_root):
+            checkpoint = _read_checkpoint(state_root)
+            if _heartbeat_is_fresh(_read_heartbeat(state_root / 'heartbeat.json')):
+                raise RunnerError('A fresh runner heartbeat is already active.', 'heartbeat_active')
+            now = time.time()
+            last_attempt = checkpoint.get('last_attempt_epoch', 0)
+            if last_attempt and now - last_attempt < GLOBAL_COOLDOWN_SECONDS:
+                return {'status': 'cooldown', 'remaining_seconds': int(GLOBAL_COOLDOWN_SECONDS - (now - last_attempt))}
+            head = _require_clean_repo(repo_root)
+            _disk_guard(state_root)
+            executable = codex_executable or shutil.which('codex')
+            if not executable:
+                raise RunnerError('Installed Codex executable was not found on PATH.', 'codex_unavailable')
+            tasks = []
+            for lane in range(1, max_workers + 1):
+                candidate = _load_candidate(repo_root, checkpoint)
+                if candidate is None:
+                    break
+                worker = _worktree_for(repo_root, state_root, candidate, head)
+                evidence = worker / '.local/dds-agent/source-witness.json'
+                evidence.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(_cache_for_candidate(repo_root, candidate), evidence)
+                if file_hash(evidence) != candidate.parsed_sha256:
+                    raise RunnerError('Copied source witness checksum differs.', 'cache_invalid')
+                record = checkpoint.setdefault('families', {}).setdefault(candidate.family_id, {})
+                attempt = int(record.get('attempts', 0)) + 1
+                run_id = uuid.uuid4().hex
+                record.update({'attempts': attempt, 'status': 'running', 'retry_after': 0,
+                               'base_head': head, 'plan_fingerprint': candidate.plan_fingerprint,
+                               'worktree_path': str(worker), 'worktree_family': candidate.family_id,
+                               'last_run_id': run_id, 'lane': lane, 'started_at': utc_now()})
+                tasks.append((candidate, worker, run_id, attempt))
+            if not tasks:
+                checkpoint['last_status'] = 'idle'
+                _checkpoint_event(state_root, checkpoint, 'idle')
+                return {'status': 'no_eligible_family', 'workers_started': 0}
+            checkpoint.update({'last_attempt_epoch': now, 'last_attempt_at': utc_now(),
+                               'last_status': 'running', 'active_families': [task[0].family_id for task in tasks]})
+            for candidate, _, run_id, attempt in tasks:
+                _checkpoint_event(state_root, checkpoint, 'attempt_started', family=candidate.family_id,
+                                  attempt=attempt, run_id=run_id)
+            coordinator = Heartbeat(state_root, uuid.uuid4().hex)
+            results = []
+            coordinator.start()
+            try:
+                with ThreadPoolExecutor(max_workers=len(tasks), thread_name_prefix='dds-conversion') as pool:
+                    futures = {pool.submit(_parallel_attempt, executable, worker, candidate, state_root, run_id):
+                               (candidate, attempt) for candidate, worker, run_id, attempt in tasks}
+                    for future in as_completed(futures):
+                        candidate, attempt = futures[future]
+                        result, error = future.result()
+                        record = checkpoint['families'][candidate.family_id]
+                        record.update(finished_at=utc_now(), result=error or 'codex_exit_0')
+                        if error is None and result == 0:
+                            record['status'] = 'patch_ready_for_review'
+                            record.pop('retry_after', None)
+                            event = 'patch_ready_for_review'
+                        else:
+                            record['status'] = 'retry_wait' if attempt < MAX_ATTEMPTS else 'exhausted'
+                            if error in {'usage_limit', 'authentication_required', 'connection_interrupted'}:
+                                record['attempts'] = max(0, attempt - 1)
+                                record['status'] = 'retry_wait'
+                            if record['status'] == 'retry_wait':
+                                record['retry_after'] = time.time() + _retry_delay(attempt)
+                            event = 'attempt_failed'
+                        checkpoint['active_families'].remove(candidate.family_id)
+                        checkpoint['last_status'] = record['status']
+                        _checkpoint_event(state_root, checkpoint, event, family=candidate.family_id,
+                                          attempt=attempt, result=record['result'])
+                        results.append({'family': candidate.family_id, 'status': record['status'],
+                                        'result': record['result'], 'lane': record['lane']})
+            finally:
+                coordinator.stop('idle')
+                checkpoint.pop('active_families', None)
+                _checkpoint_event(state_root, checkpoint, 'parallel_batch_finished', workers=len(tasks))
+            return {'status': 'parallel_batch_finished', 'workers_started': len(tasks), 'results': results}
+    except RuntimeError as error:
+        if 'Another ue2three process owns this workspace' in str(error):
+            raise RunnerError('Another DDS runner already owns the process lock.', 'lock_active') from None
+        raise
 
 
 def main(argv: list[str] | None = None) -> int:
