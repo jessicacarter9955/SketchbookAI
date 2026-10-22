@@ -1,5 +1,20 @@
 # DDS migration checklist · 2026-10-13
 
+## Verifica isolata del branch remoto · 2026-10-22
+
+Su `chatgpt/ue2three-dds` al commit `23a4888` in un checkout pulito sono
+passati **267 test Python**, **127 test JavaScript** e la **build Webpack**.
+Il test Python FBX diagnostico dipende da `trimesh`: ora il workflow CI ne
+installa esplicitamente la versione `4.12.2` prima della suite. I primi
+tentativi nell'ambiente ristretto fallivano inoltre sui socket/processi figli;
+le esecuzioni definitive sono state ripetute con tali permessi.
+
+Questi risultati convalidano l'attuale codice e la build, **non** attestano
+conversione DDS 1:1, integrazione dei GLB originali, esecuzione dei worker
+Windows o accettazione visiva nel player. Nessuna area gameplay diventa verde
+grazie ai soli test. Mancano nel checkout remoto i dati privati locali necessari
+a rieseguire le conversioni e i confronti source-witnessed correnti.
+
 ## Condizione di sparo e ricarica inventario originali · 2026-10-20
 
 | Passaggio | Stato | Evidenza | Beneficio nel gioco dopo integrazione |
