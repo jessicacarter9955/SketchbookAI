@@ -35,6 +35,11 @@ WORKER_IMPACT = {
     'native-math': ('blueprints',),
 }
 
+ASSET_COUNTS = ('discovered', 'eligible', 'converted', 'verified', 'failed', 'skipped')
+ASSET_PHASES = {'not_started', 'inventory', 'converting', 'validating',
+                'completed', 'partial', 'blocked', 'failed'}
+ASSET_JOB_IDS = {'character', 'maps'}
+
 
 def worker_progress(record, state):
     """Evidence-based batch gates, NOT an estimate of translated code or ETA.
@@ -74,6 +79,99 @@ def age(stamp):
         return max(0, time.time() - datetime.fromisoformat(stamp.replace('Z', '+00:00')).timestamp())
     except (AttributeError, ValueError, TypeError):
         return None
+
+
+def measured_percent(completed, total):
+    """Return a percentage only for a valid, nonempty measured denominator."""
+    if (type(completed) is not int or type(total) is not int or
+            total <= 0 or completed < 0 or completed > total):
+        return None
+    return round(100 * completed / total, 1)
+
+
+def asset_snapshot(root):
+    """Read the independent Unreal->GLB worker's durable schema-v1 checkpoint.
+
+    A recorded 'running' flag is historical unless accompanied by a recent
+    heartbeat. Output coverage means GLBs verified among identified targets,
+    never the percentage of the DDS game port or a proof of playable maps.
+    """
+    path = root / '.local/ue2three/asset-export/progress.json'
+    payload = optional(path)
+    available = isinstance(payload, dict) and type(payload.get('schema_version')) is int \
+        and payload['schema_version'] == 1
+    if not available:
+        payload = {}
+    counts = payload.get('assets')
+    counts_valid = (isinstance(counts, dict) and all(
+        type(counts.get(key)) is int and counts[key] >= 0 for key in ASSET_COUNTS))
+    assets = {key: counts[key] if counts_valid else 0 for key in ASSET_COUNTS}
+    # Do not display a false 100% from a truncated, inconsistent or
+    # partly-inventoried checkpoint.
+    basis = payload.get('progress')
+    basis = basis.get('basis') if isinstance(basis, dict) else None
+    consistent = (counts_valid and assets['verified'] <= assets['converted']
+                  and assets['converted'] <= assets['eligible']
+                  and assets['eligible'] <= assets['discovered'])
+    percent = (measured_percent(assets['verified'], assets['eligible'])
+               if consistent and basis == 'verified_outputs_over_eligible' else None)
+    converted_percent = (measured_percent(assets['converted'], assets['eligible'])
+                         if consistent and basis == 'verified_outputs_over_eligible' else None)
+    raw_phase = payload.get('phase')
+    phase = raw_phase if isinstance(raw_phase, str) and raw_phase in ASSET_PHASES else 'not_started'
+    raw_status = payload.get('status')
+    status = raw_status if isinstance(raw_status, str) and raw_status in ASSET_PHASES else phase
+    stamp = payload.get('heartbeat_at') if isinstance(payload.get('heartbeat_at'), str) else None
+    heartbeat_age = age(stamp)
+    working = payload.get('running') is True
+    live = (available and working and phase in ('inventory', 'converting', 'validating')
+            and heartbeat_age is not None and heartbeat_age < 120)
+    stale = working and not live
+    complete = (status == 'completed' and percent == 100 and assets['failed'] == 0)
+
+    raw_jobs = payload.get('jobs') if isinstance(payload.get('jobs'), list) else []
+    jobs = []
+    for raw in raw_jobs[:20]:
+        if not isinstance(raw, dict) or not isinstance(raw.get('id'), str) \
+                or raw['id'] not in ASSET_JOB_IDS:
+            continue
+        raw_job_phase = raw.get('status')
+        current_phase = raw_job_phase if isinstance(raw_job_phase, str) \
+            and raw_job_phase in ASSET_PHASES else 'not_started'
+        job_stamp = raw.get('heartbeat_at') if isinstance(raw.get('heartbeat_at'), str) else None
+        job_age = age(job_stamp)
+        job_working = raw.get('running') is True
+        job_live = job_working and current_phase in ('inventory', 'converting', 'validating') \
+            and job_age is not None and job_age < 120
+        # The producer explicitly uses null when source inventory is incomplete;
+        # a numeric completed/total pair is not permission to claim coverage.
+        reported = raw.get('percent')
+        job_percent = (measured_percent(raw.get('completed'), raw.get('total'))
+                       if type(reported) in (int, float) and 0 <= reported <= 100 else None)
+        jobs.append({'id': raw['id'], 'status': current_phase, 'live': job_live,
+                     'stale': job_working and not job_live,
+                     'heartbeat_at': job_stamp,
+                     'completed': raw.get('completed') if type(raw.get('completed')) is int else None,
+                     'total': raw.get('total') if type(raw.get('total')) is int else None,
+                     'percent': job_percent,
+                     'manifest': raw.get('manifest') if isinstance(raw.get('manifest'), str) else None,
+                     'log': raw.get('log') if isinstance(raw.get('log'), str) else None,
+                     'error': raw.get('error') if isinstance(raw.get('error'), str) else None})
+    outputs = payload.get('outputs') if isinstance(payload.get('outputs'), dict) else {}
+    notes = payload.get('notes') if isinstance(payload.get('notes'), list) else []
+    return {'available': available, 'phase': phase, 'status': status, 'live': live,
+            'stale': stale, 'heartbeat_at': stamp,
+            'updated_at': payload.get('updated_at') if isinstance(payload.get('updated_at'), str) else None,
+            'assets': assets,
+            'source_project': payload.get('project') if isinstance(payload.get('project'), str) else None,
+            'counts_valid': bool(consistent), 'percent': percent,
+            'converted_percent': converted_percent, 'verified_complete': complete,
+            'progress_basis': basis or 'unknown',
+            'jobs': jobs,
+            'outputs': {key: outputs.get(key) if isinstance(outputs.get(key), str) else None
+                        for key in ('manifest_path', 'published_dir', 'source_root')},
+            'error': payload.get('error') if isinstance(payload.get('error'), str) else None,
+            'notes': [note[:500] for note in notes[:10] if isinstance(note, str)]}
 
 
 def recent_worker(worker):
@@ -117,7 +215,7 @@ def glb(path):
         return False
 
 
-def areas(root, config, state, checkpoint):
+def areas(root, config, state, checkpoint, asset_pipeline=None):
     published = Path(config['publish_dir'])
     character = root / 'build/local-scenes/ue2three/current'
     manifest = optional(character / 'manifest.json')
@@ -127,6 +225,18 @@ def areas(root, config, state, checkpoint):
     programs = optional(published / 'progress.json')
     rows = {row['id']: row for row in programs.get('rows', [])}
     integrated = any(row.get('commit') and row.get('verified_counts') for row in checkpoint.get('families', {}).values())
+    pipeline = asset_pipeline if asset_pipeline is not None else asset_snapshot(root)
+    project = str(config.get('project', '')).replace('\\', '/').casefold()
+    source_project = str(pipeline.get('source_project') or '').replace('\\', '/').casefold()
+    map_jobs = [job for job in pipeline.get('jobs', []) if job['id'] == 'maps']
+    map_job = map_jobs[0] if map_jobs else {}
+    # Only this specific export criterion can turn green from a GLB checkpoint.
+    # Play, collision, materials, traversal, and visual comparison remain manual.
+    maps_verified = (pipeline['counts_valid'] and project and project == source_project
+                     and map_job.get('status') == 'completed' and map_job.get('percent') == 100
+                     and map_job.get('total', 0) >= 10 and not map_job.get('error')
+                     and bool(map_job.get('manifest'))
+                     and Path(map_job['manifest']).is_file())
     return [
         area('automation', 'Automazione delle conversioni', [
             ('Autenticazione reale verificata', bool(state.get('agent_result'))),
@@ -162,7 +272,7 @@ def areas(root, config, state, checkpoint):
             'Movimenti e azioni fluidi e coerenti con l’originale.',
             'Verifica 1:1 rimandata su richiesta: area mantenuta gialla.', True),
         area('maps', 'Mappe e materiali', [
-            ('Export delle mappe richieste disponibile e verificato', False),
+            ('Export delle mappe richieste disponibile e verificato', maps_verified),
             ('Trasformazioni, gerarchie e terreno verificati', False),
             ('Materiali e texture originali confrontati', False),
             ('Collisioni e punti di ingresso verificati', False),
@@ -189,6 +299,7 @@ def snapshot(root, config_path):
     checkpoint = optional(root / '.local/ue2three/dds-agent/checkpoint.json')
     heartbeat = optional(root / '.local/ue2three/dds-agent/heartbeat.json')
     bridge = optional(Path.home() / '.chat-local-bridge/connection-health.json')
+    asset_pipeline = asset_snapshot(root)
     jobs = []
     lanes = []
     worker_count = config.get('parallel_workers', 4)
@@ -233,11 +344,12 @@ def snapshot(root, config_path):
             'continuous': config.get('session_seconds') == 0, 'counts': counts,
             'function_percent': round(100 * counts.get('translated', 0) / total, 1) if total else 0,
             'function_total': total, 'jobs': jobs, 'lanes': lanes,
+            'asset_pipeline': asset_pipeline,
             'configured_workers': worker_count, 'active_workers': sum(item['live'] for item in lanes),
             'bridge': {'connected': connected, 'status': bridge.get('status', 'unknown'),
                        'last_seen': bridge.get('time'), 'pending_results': bridge.get('pending_results', 0),
                        'incremental': bridge.get('incremental', False)},
-            'events': events, 'areas': areas(root, config, state, checkpoint),
+            'events': events, 'areas': areas(root, config, state, checkpoint, asset_pipeline),
             'last_commit': state.get('pushed_commit'), 'error': state.get('error') if phase == 'failed' else None,
             'retry_after': state.get('retry_after'), 'waiting_reason': state.get('waiting_reason'),
             'additional_stages': state.get('additional_stages', {}),
