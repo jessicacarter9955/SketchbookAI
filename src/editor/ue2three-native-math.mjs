@@ -58,6 +58,22 @@ export function evaluateNativeMath(name, args, warning = () => {}) {
         return {Rotation:makeQuaternion(args[1]),Translation:{X:args[0].X,Y:args[0].Y,Z:args[0].Z},
             Scale3D:{X:args[2].X,Y:args[2].Y,Z:args[2].Z}};
     }
+    if (name === 'Abs') {
+        if (!Array.isArray(args) || args.length !== 1 || typeof args[0] !== 'number' || !Number.isFinite(args[0]))
+            throw new Error('Invalid native Abs parameters');
+        return Math.abs(args[0]);
+    }
+    if (name === 'VSize' || name === 'Vector_Distance') {
+        const count = name === 'VSize' ? 1 : 2;
+        if (!Array.isArray(args) || args.length !== count || !args.every(isVector))
+            throw new Error('Invalid native ' + name + ' parameters');
+        const a = args[0], b = name === 'VSize' ? {X:0,Y:0,Z:0} : args[1];
+        const x = a.X - b.X, y = a.Y - b.Y, z = a.Z - b.Z;
+        // UE FVector::Size / FVector::Dist: sqrt of the three squared double components.
+        const distance = Math.sqrt(x*x + y*y + z*z);
+        if (!Number.isFinite(distance)) throw new Error('Non-finite native ' + name + ' result');
+        return distance;
+    }
     if (name === 'Round') {
         if (args.length !== 1 || typeof args[0] !== 'number' || !Number.isFinite(args[0]))
             throw new Error('Invalid native Round parameters');

@@ -13,6 +13,19 @@ def variable(token, name): return node(token, Variable={'New': {'Path': [name], 
 
 
 class BlueprintMigrationTests(unittest.TestCase):
+    def test_ue57_source_witnessed_abs_and_vector_length_native_signatures(self):
+        from blueprint_migration import MATH_CALLS, NATIVE_MATH_INPUT_TYPES, native_math_result_type
+        expected = {
+            'Abs': (1, ('DoubleProperty',)),
+            'VSize': (1, ('Vector',)),
+            'Vector_Distance': (2, ('Vector', 'Vector')),
+        }
+        for name, (arity, types) in expected.items():
+            with self.subTest(name=name):
+                self.assertEqual(MATH_CALLS[name][0], arity)
+                self.assertEqual(NATIVE_MATH_INPUT_TYPES[name], types)
+                self.assertEqual(native_math_result_type(name), 'DoubleProperty')
+
     def test_cached_ue57_int64_source_witness_preserves_value_and_vm_offsets(self):
         witness = json.loads((Path(__file__).parent / 'fixtures' / 'dds-int64-source-witness.json').read_text(encoding='utf-8'))
         self.assertEqual(witness['engine_version'], '5.7.4')

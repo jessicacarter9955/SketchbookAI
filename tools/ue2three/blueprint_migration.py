@@ -68,7 +68,9 @@ MATH_CALLS.update({'Divide_DoubleDouble': (2, 'DoubleDouble'),
                    'EqualEqual_BoolBool': (2, 'bool'), 'NotEqual_BoolBool': (2, 'bool'),
                    'EqualEqual_NameName': (2, 'name'), 'NotEqual_NameName': (2, 'name'),
                    'FClamp': (3, 'DoubleDouble'), 'Clamp': (3, 'IntInt'),
-                   'Round': (1, 'DoubleDouble')})
+                   'Round': (1, 'DoubleDouble'),
+                   'Abs': (1, 'DoubleDouble'), 'VSize': (1, 'vector'),
+                   'Vector_Distance': (2, 'VectorVector')})
 
 NATIVE_MATH_INPUT_TYPES = {
     'MakeVector': ('DoubleProperty', 'DoubleProperty', 'DoubleProperty'),
@@ -80,6 +82,8 @@ NATIVE_MATH_INPUT_TYPES = {
     'MakeTransform': ('Vector', 'Rotator', 'Vector'),
     'BreakVector': ('Vector',),
     'BreakRotator': ('Rotator',),
+    'Abs': ('DoubleProperty',), 'VSize': ('Vector',),
+    'Vector_Distance': ('Vector', 'Vector'),
 }
 
 
@@ -97,7 +101,8 @@ def native_math_result_type(name):
             return 'BoolProperty'
         return {'ByteByte':'ByteProperty','IntInt':'IntProperty','DoubleDouble':'DoubleProperty'}[suffix]
     if name in ('Min', 'Max', 'Clamp', 'SelectInt'): return 'IntProperty'
-    if name in ('Conv_IntToDouble', 'Lerp', 'FMin', 'FMax', 'FClamp', 'SelectFloat'):
+    if name in ('Conv_IntToDouble', 'Lerp', 'FMin', 'FMax', 'FClamp', 'SelectFloat',
+                'Abs', 'VSize', 'Vector_Distance'):
         return 'DoubleProperty'
     if name == 'InRange_FloatFloat': return 'BoolProperty'
     if name == 'Round': return 'IntProperty'

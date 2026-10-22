@@ -121,3 +121,20 @@ test('witnessed MakeTransform constructs source FTransform quaternion, translati
         {Rotation:{X:0,Y:-0,Z:0,W:1},Translation:{X:0,Y:0,Z:0},Scale3D:{X:1,Y:1,Z:1}});
     assert.throws(()=>evaluateNativeMath('MakeTransform',[location,{X:0,Y:0,Z:0},scale]),/Invalid native/);
 });
+
+
+test('UE 5.7 Abs, VSize and Vector_Distance retain source numeric/vector contracts', () => {
+    assert.equal(evaluateNativeMath('Abs', [-3.25]), 3.25);
+    assert.equal(evaluateNativeMath('Abs', [2]), 2);
+    assert.equal(evaluateNativeMath('VSize', [{X:3,Y:4,Z:12}]), 13);
+    assert.equal(evaluateNativeMath('Vector_Distance', [{X:3,Y:4,Z:12},{X:0,Y:0,Z:0}]), 13);
+    assert.equal(evaluateNativeMath('Vector_Distance', [{X:-2,Y:3,Z:1},{X:1,Y:-1,Z:13}]), 13);
+    assert.equal(evaluateNativeMath('VSize', [{X:0,Y:0,Z:0}]), 0);
+    for (const [name, args] of [
+        ['Abs', []], ['Abs', [NaN]], ['Abs', ['3']], ['Abs', [3,4]],
+        ['VSize', []], ['VSize', [{X:1,Y:2}]], ['VSize', [{X:1,Y:2,Z:Infinity}]],
+        ['Vector_Distance', [{X:1,Y:2,Z:3}]],
+        ['Vector_Distance', [{X:1,Y:2,Z:3},{X:1,Y:2,Z:NaN}]],
+        ['Vector_Distance', [{X:1e308,Y:0,Z:0},{X:-1e308,Y:0,Z:0}]],
+    ]) assert.throws(() => evaluateNativeMath(name, args), /Invalid native|Non-finite native/);
+});
