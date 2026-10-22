@@ -71,7 +71,7 @@ async function openModel() {
   }
   checks.hidden = false;
   const progress = document.querySelector('#project-progress');
-  progress.href = assetUrl.split('/maps/')[0] + '/progress.html';
+  progress.href = '/' + model.split('/').slice(0,5).join('/') + '/progress.html';
   progress.hidden = false;
   window.__ue2threeAudit.ready = true;
 }
