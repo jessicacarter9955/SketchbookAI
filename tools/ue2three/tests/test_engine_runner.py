@@ -19,6 +19,8 @@ class ExportMirrorTests(unittest.TestCase):
             project.write_text(json.dumps({"Plugins": [
                 {"Name": "PoseSearch", "Enabled": True},
                 {"Name": "AIAssistant", "Enabled": True},
+                {"Name": "MetaHumanCharacter", "Enabled": True},
+                {"Name": "MovieRenderPipeline", "Enabled": True},
                 {"Name": "OnlineSubsystemSteam", "Enabled": True},
                 {"Name": "Uninstalled", "Enabled": True},
                 {"Name": "Disabled", "Enabled": False},
@@ -31,6 +33,8 @@ class ExportMirrorTests(unittest.TestCase):
             executable.touch()
             for name, category in (("EnhancedInput", "Input"), ("Niagara", "FX"),
                                    ("PoseSearch", "Animation"), ("AIAssistant", "Experimental"),
+                                   ("MetaHumanCharacter", "MetaHuman"),
+                                   ("MovieRenderPipeline", "MovieScene"),
                                    ("OnlineSubsystemSteam", "Online"),
                                    ("Disabled", "Runtime"), ("ExternalPlugin", "Marketplace"),
                                    ("BadDescriptor", "Runtime")):
@@ -40,7 +44,8 @@ class ExportMirrorTests(unittest.TestCase):
                                     else json.dumps({"Modules": []}), encoding="utf-8")
             enabled, omitted = source_engine_plugins(project, executable)
             self.assertEqual(enabled, ["EnhancedInput", "Niagara", "PoseSearch"])
-            self.assertTrue({"AIAssistant", "OnlineSubsystemSteam", "Uninstalled",
+            self.assertTrue({"AIAssistant", "MetaHumanCharacter", "MovieRenderPipeline",
+                             "OnlineSubsystemSteam", "Uninstalled",
                              "ExternalPlugin", "BadDescriptor"}.issubset(omitted))
             self.assertNotIn("Disabled", enabled)
 
