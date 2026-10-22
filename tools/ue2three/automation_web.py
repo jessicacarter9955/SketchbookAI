@@ -228,6 +228,15 @@ def areas(root, config, state, checkpoint, asset_pipeline=None):
     pipeline = asset_pipeline if asset_pipeline is not None else asset_snapshot(root)
     project = str(config.get('project', '')).replace('\\', '/').casefold()
     source_project = str(pipeline.get('source_project') or '').replace('\\', '/').casefold()
+    character_jobs = [job for job in pipeline.get('jobs', []) if job['id'] == 'character']
+    character_job = character_jobs[0] if character_jobs else {}
+    character_export_verified = (pipeline['counts_valid'] and project and project == source_project
+                                 and character_job.get('status') == 'completed'
+                                 and character_job.get('percent') == 100
+                                 and character_job.get('total', 0) >= 48
+                                 and not character_job.get('error')
+                                 and bool(character_job.get('manifest'))
+                                 and Path(character_job['manifest']).is_file())
     map_jobs = [job for job in pipeline.get('jobs', []) if job['id'] == 'maps']
     map_job = map_jobs[0] if map_jobs else {}
     # Only this specific export criterion can turn green from a GLB checkpoint.
@@ -248,6 +257,7 @@ def areas(root, config, state, checkpoint, asset_pipeline=None):
         area('character', 'Personaggio e armi', [
             ('Mesh del personaggio pubblicata e leggibile', character_ok),
             ('Mesh di pistola e fucile pubblicate e leggibili', weapons_ok),
+            ('Ricetta originale di personaggio, armi e animazioni esportata e validata', character_export_verified),
             ('Materiali originali verificati sul personaggio', False),
             ('Socket e impugnature verificati nella scena', False),
             ('Inizializzazione ed equipaggiamento completi', False),
@@ -267,6 +277,7 @@ def areas(root, config, state, checkpoint, asset_pipeline=None):
             'La copertura delle funzioni è mostrata a parte: non è la percentuale del gioco.', True),
         area('animations', 'Animazioni', [
             ('Clip esportate leggibili', bool(clips) and all(glb(character / name) for name in clips)),
+            ('Ricetta completa delle clip originali verificata', character_export_verified),
             ('Transizioni e blending verificati', False), ('Root motion, curve e notifiche verificati', False),
             ('Mira, armi, IK e montage integrati', False), ('Fedeltà 1:1 verificata', False)],
             'Movimenti e azioni fluidi e coerenti con l’originale.',

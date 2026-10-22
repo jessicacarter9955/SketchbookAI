@@ -154,6 +154,111 @@ def _unreal_failure_detail(log_path, exit_code):
     return f"Unreal exited with code {exit_code} before producing a level result."
 
 
+def _material_baking_crash(log_path):
+    """Only a matching native GLTF material-baking access violation permits retry.
+
+    An arbitrary error, timeout, shader warning or missing GLB must not silently
+    reduce material quality. Read the crash stack from the individual attempt.
+    """
+    try:
+        log = Path(log_path).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+    return ("EXCEPTION_ACCESS_VIOLATION" in log and
+            "UnrealEditor-MaterialBaking.dll" in log and
+            "UnrealEditor-GLTFExporter.dll" in log)
+
+
+_BAKE_MODES = ("use_mesh_data", "simple", "disabled")
+_BAKE_FIDELITY_WARNING = {
+    "simple": ("UE2THREE_MATERIAL_FIDELITY_DEGRADED bake_mode=simple: material baking used a simple quad "
+               "after a certified native MaterialBaking access violation; geometry is preserved but "
+               "world-position and mesh-driven shaders can differ from Unreal. Visual 1:1 unverified."),
+    "disabled": ("UE2THREE_MATERIAL_FIDELITY_DEGRADED bake_mode=disabled: material baking disabled "
+                 "after repeated certified native MaterialBaking access violations; nontrivial shader inputs "
+                 "may fall back to defaults. Visual 1:1 unverified."),
+}
+
+
+def _material_fidelity(warnings):
+    warnings = warnings or []
+    mode = next((name for name in ("disabled", "simple")
+                 if any(f"UE2THREE_MATERIAL_FIDELITY_DEGRADED bake_mode={name}:" in str(warning)
+                        for warning in warnings)), "use_mesh_data")
+    return {"bake_mode": mode, "degraded": mode != "use_mesh_data", "verified_1to1": False,
+            "warning": _BAKE_FIDELITY_WARNING.get(mode)}
+
+
+def _run_map_export_attempt(record, *, bake_mode, map_index, map_total, workspace, scratch,
+                            project, snapshot_hash, engine, script, popen, flags, logger, timeout):
+    """Run one map in its own Unreal process and isolated staging directory."""
+    run_dir = workspace / "maps" / "runs" / (str(time.time_ns()) + "-" +
+                  _slug(record["package"].rsplit("/", 1)[-1]) + "-" + bake_mode)
+    stage = run_dir / "output"
+    stage.mkdir(parents=True, exist_ok=True)
+    job_path, result_path, progress_path = (run_dir / name for name in
+                                            ("request.json", "result.json", "progress.json"))
+    request = {"schema_version": 1, "source_project": str(project), "scratch_project": str(scratch),
+               "source_snapshot_hash": snapshot_hash, "output": str(stage), "material_bake_mode": bake_mode,
+               "result": str(result_path), "progress": str(progress_path), "maps": [record]}
+    atomic_json(job_path, request)
+    environment = os.environ.copy()
+    environment["UE2THREE_MAP_JOB_FILE"] = str(job_path)
+    command = [engine["executable"], str(scratch), "-run=pythonscript", f"-script={script}",
+               "-unattended", "-nosplash", "-AllowCommandletRendering",
+               # An on-demand shader cache avoids recompiling every permutation.
+               "-forceAllowShaderCompilerJobCache", "-nosound", "-NoSourceControl",
+               "-NoEpicPortal", "-NoAnalytics", "-stdout", "-FullStdOutLogOutput",
+               f"-abslog={run_dir / 'unreal.log'}"]
+    display_name = record["package"].rsplit("/", 1)[-1]
+    logger.event("map-progress", f"Esporto livello {map_index}/{map_total}: {display_name} ({bake_mode})",
+                 task="map_export", log=str(run_dir / "unreal.log"), material_bake_mode=bake_mode)
+    failure = None
+    started = time.monotonic()
+    with (run_dir / "stdout.log").open("wb") as stdout, (run_dir / "stderr.log").open("wb") as stderr:
+        process = popen(command, cwd=scratch.parent, env=environment, stdin=subprocess.DEVNULL,
+                        stdout=stdout, stderr=stderr, creationflags=flags)
+        atomic_json(run_dir / "process.json", {"pid": process.pid, "started": time.time(),
+                                                "command": command, "material_bake_mode": bake_mode})
+        previous = None
+        last_notice = started
+        try:
+            while process.poll() is None:
+                if time.monotonic() - started > timeout:
+                    failure = f"[MAP_EXPORT_TIMEOUT] Unreal exceeded {timeout}s; logs retained at {run_dir}"
+                    break
+                try:
+                    progress = read_json(progress_path)
+                    if progress != previous:
+                        current_name = str(progress.get("package", "una mappa Unreal")).rsplit("/", 1)[-1]
+                        logger.event("map-progress", f"{progress.get('message', 'Esporto livello')}: {current_name}",
+                                     task="map_export", completed=progress.get("completed"),
+                                     total=progress.get("total"), status=progress.get("status"),
+                                     material_bake_mode=bake_mode)
+                        previous = progress
+                        last_notice = time.monotonic()
+                except FileNotFoundError:
+                    pass
+                if time.monotonic() - last_notice >= 30:
+                    elapsed = int(time.monotonic() - started)
+                    stage_text = (previous or {}).get("message", "Preparo Unreal")
+                    logger.event("map-progress", f"{display_name}: {stage_text} · {elapsed // 60} min {elapsed % 60:02d} s trascorsi",
+                                 task="map_export", status="running", elapsed_seconds=elapsed,
+                                 material_bake_mode=bake_mode)
+                    last_notice = time.monotonic()
+                time.sleep(0.25)
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                try:
+                    process.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    process.wait()
+    return {"run_dir": run_dir, "stage": stage, "result_path": result_path,
+            "failure": failure, "exit_code": process.returncode, "material_bake_mode": bake_mode}
+
+
 def _package_sources(package, inventory):
     return [item for item in inventory.get("assets", []) if item.get("package") == package]
 
@@ -342,6 +447,7 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
                             'fingerprint': record['fingerprint'],
                             'processing_fingerprint': processed['fingerprint'],
                             'warnings': raw.get('warnings', []) + processed['validation'].get('warnings', []),
+                            'material_fidelity': _material_fidelity(raw.get('warnings', [])),
                             'cache': {'raw_export': 'reused', 'postprocess': 'reused' if processed['reused'] else 'processed',
                                       'unreal_started': False}})
             logger.event('map-reuse', f"Riutilizzo export Unreal: {record['package']} · correzioni " +
@@ -373,7 +479,8 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
                 checkpoint()
                 continue
             results.append({**prior, **record, "status": "reused", "output": str(target), "bytes": target.stat().st_size,
-                            "warnings": prior.get("warnings", []), "output_sha256": prior["output_sha256"], **geometry})
+                            "warnings": prior.get("warnings", []), "output_sha256": prior["output_sha256"], **geometry,
+                            'material_fidelity': _material_fidelity(prior.get('warnings', []))})
             logger.event("map-reuse", f"Reused unchanged map {record['package']}", task="map_export", output=str(target))
             checkpoint()
         else:
@@ -396,93 +503,70 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
         logger.event("map-export-start", f"Exporting {len(pending)} Unreal levels with glTF Exporter",
                      task="map_export", maps=len(pending))
         for map_index, record in enumerate(pending, 1):
-            run_dir = workspace / "maps" / "runs" / (str(time.time_ns()) + "-" + _slug(record["package"].rsplit("/", 1)[-1]))
-            stage = run_dir / "output"
-            stage.mkdir(parents=True, exist_ok=True)
-            job_path, result_path, progress_path = run_dir / "request.json", run_dir / "result.json", run_dir / "progress.json"
-            request = {"schema_version": 1, "source_project": str(project), "scratch_project": str(scratch),
-                       "source_snapshot_hash": state["snapshot_hash"], "output": str(stage),
-                       "result": str(result_path), "progress": str(progress_path), "maps": [record]}
-            atomic_json(job_path, request)
-            environment = os.environ.copy()
-            environment["UE2THREE_MAP_JOB_FILE"] = str(job_path)
-            command = [engine["executable"], str(scratch), "-run=pythonscript", f"-script={script}",
-                       "-unattended", "-nosplash", "-AllowCommandletRendering",
-                       # UE disables per-shader DDC for non-cook commandlets by default.
-                       # Enable the editor's on-demand path instead of compiling every
-                       # shader permutation of every material loaded with the level.
-                       "-forceAllowShaderCompilerJobCache",
-                       "-nosound", "-NoSourceControl",
-                       "-NoEpicPortal", "-NoAnalytics", "-stdout", "-FullStdOutLogOutput",
-                       f"-abslog={run_dir / 'unreal.log'}"]
             display_name = record["package"].rsplit("/", 1)[-1]
-            logger.event("map-progress", f"Esporto livello {map_index}/{len(pending)}: {display_name}",
-                         task="map_export", log=str(run_dir / "unreal.log"))
-            failure = None
-            started = time.monotonic()
-            with (run_dir / "stdout.log").open("wb") as stdout, (run_dir / "stderr.log").open("wb") as stderr:
-                process = popen(command, cwd=scratch.parent, env=environment, stdin=subprocess.DEVNULL,
-                                 stdout=stdout, stderr=stderr, creationflags=flags)
-                atomic_json(run_dir / "process.json", {"pid": process.pid, "started": time.time(), "command": command})
-                previous = None
-                last_notice = started
-                try:
-                    while process.poll() is None:
-                        if time.monotonic() - started > timeout:
-                            failure = f"[MAP_EXPORT_TIMEOUT] Unreal exceeded {timeout}s; logs retained at {run_dir}"
-                            break
-                        try:
-                            progress = read_json(progress_path)
-                            if progress != previous:
-                                current_name = str(progress.get("package", "una mappa Unreal")).rsplit("/", 1)[-1]
-                                logger.event("map-progress", f"{progress.get('message', 'Esporto livello')}: {current_name}",
-                                             task="map_export", completed=progress.get("completed"),
-                                             total=progress.get("total"), status=progress.get("status"))
-                                previous = progress
-                                last_notice = time.monotonic()
-                        except FileNotFoundError:
-                            pass
-                        if time.monotonic() - last_notice >= 30:
-                            elapsed = int(time.monotonic() - started)
-                            stage_text = (previous or {}).get("message", "Preparo Unreal")
-                            logger.event("map-progress", f"{display_name}: {stage_text} · {elapsed // 60} min {elapsed % 60:02d} s trascorsi",
-                                         task="map_export", status="running", elapsed_seconds=elapsed)
-                            last_notice = time.monotonic()
-                        time.sleep(0.25)
-                finally:
-                    if process.poll() is None:
-                        process.terminate()
-                        try:
-                            process.wait(timeout=10)
-                        except subprocess.TimeoutExpired:
-                            process.kill()
-                            process.wait()
+            attempts = []
+            # Retry only a certified native MaterialBaking/GLTFExporter crash.
+            # Other failures (including timeout) retain the original fidelity
+            # policy and are not hidden by an opportunistic lower-quality export.
+            for bake_mode in _BAKE_MODES:
+                attempt = _run_map_export_attempt(record, bake_mode=bake_mode, map_index=map_index,
+                           map_total=len(pending), workspace=workspace, scratch=scratch,
+                           project=project, snapshot_hash=state["snapshot_hash"], engine=engine,
+                           script=script, popen=popen, flags=flags, logger=logger, timeout=timeout)
+                run_dir, stage = attempt['run_dir'], attempt['stage']
+                result_path, failure = attempt['result_path'], attempt['failure']
+                exit_code = attempt['exit_code']
+                log_path = run_dir / 'unreal.log'
+                attempts.append({'bake_mode': bake_mode, 'log': str(log_path),
+                                 'exit_code': exit_code, 'crashed_in_material_baking': False})
+                if not failure and result_path.is_file():
+                    break
+                if (not failure and not result_path.is_file() and
+                        _material_baking_crash(log_path)):
+                    attempts[-1]['crashed_in_material_baking'] = True
+                    if bake_mode != _BAKE_MODES[-1]:
+                        logger.event('map-material-bake-fallback',
+                                     f'{display_name}: native MaterialBaking crash ({bake_mode}); '
+                                     'retry with lower material fidelity', task='map_export',
+                                     log=str(log_path), material_bake_mode=bake_mode,
+                                     next_material_bake_mode=_BAKE_MODES[len(attempts)])
+                        continue
+                break
             if failure:
                 results.append({**record, "status": "failed", "error": failure,
-                                "log": str(run_dir / "unreal.log")})
+                                "log": str(run_dir / "unreal.log"), 'bake_attempts': attempts})
                 logger.event("map-export-failed", failure, task="map_export")
                 continue
             if not result_path.is_file():
                 results.append({**record, "status": "failed", "error": _unreal_failure_detail(
-                                run_dir / "unreal.log", process.returncode),
-                                "log": str(run_dir / "unreal.log"), "engine_exit_code": process.returncode})
+                                run_dir / "unreal.log", exit_code),
+                                "log": str(run_dir / "unreal.log"), "engine_exit_code": exit_code,
+                                'bake_attempts': attempts})
                 logger.event("map-export-failed", f"Unreal did not finish {record['package']}; continuing with the next map",
-                             task="map_export", log=str(run_dir / "unreal.log"), exit_code=process.returncode)
+                             task="map_export", log=str(run_dir / "unreal.log"), exit_code=exit_code)
                 continue
             exported = read_json(result_path)
             if exported.get("source_project") != str(project) or exported.get("source_snapshot_hash") != state["snapshot_hash"]:
-                results.append({**record, "status": "failed", "error": "Unreal returned a result for a different project snapshot"})
+                results.append({**record, "status": "failed", "error": "Unreal returned a result for a different project snapshot",
+                                'bake_attempts': attempts})
                 continue
             result = next((item for item in exported.get("results", []) if item.get("package") == record["package"]),
                           {"status": "failed", "error": "Unreal did not report this map"})
             if result.get("status") != "exported":
                 results.append({**record, "status": "failed", "error": result.get("error", "Unreal failed to export this level"),
-                                "log": str(run_dir / "unreal.log")})
+                                "log": str(run_dir / "unreal.log"), 'bake_attempts': attempts})
+                continue
+            if result.get('material_bake_mode', bake_mode) != bake_mode:
+                results.append({**record, 'status': 'failed', 'error': 'Unreal reported an unexpected material bake mode',
+                                'log': str(run_dir / 'unreal.log'), 'bake_attempts': attempts})
                 continue
             staged = stage / record["filename"]
             if not valid_glb(staged):
-                results.append({**record, "status": "failed", "error": "The exported GLB header or byte length is invalid"})
+                results.append({**record, "status": "failed", "error": "The exported GLB header or byte length is invalid",
+                                'bake_attempts': attempts})
                 continue
+            bake_warnings = [_BAKE_FIDELITY_WARNING[bake_mode]] if bake_mode in _BAKE_FIDELITY_WARNING else []
+            full_warnings = list(result.get('warnings', [])) + bake_warnings
             geometry = glb_summary(staged)
             if geometry["mesh_count"] == 0:
                 verify_record_sources(record)
@@ -491,13 +575,15 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
                                                        snapshot_hash=state['snapshot_hash'], geometry=geometry)
                 results.append({**record, **geometry, **fallback,
                                 'log': str(run_dir / 'unreal.log'),
+                                'bake_attempts': attempts, 'material_fidelity': _material_fidelity(full_warnings),
+                                'warnings': full_warnings + fallback.get('warnings', []),
                                 'cache': {'source_only_manifest': 'created', 'unreal_started': True}})
                 checkpoint()
                 continue
             verify_record_sources(record)
             target = map_dir / record["filename"]
             raw = store_raw_export(staged, workspace, record['fingerprint'], project, record['package'],
-                                   warnings=result.get('warnings', []), source_hashes={
+                                   warnings=full_warnings, source_hashes={
                                        str(project.parent / row['path']): row['sha256'] for row in record['source_files']})
             processed = process_raw_export(raw, target, project, workspace)
             results.append({**record, **processed, 'fingerprint': record['fingerprint'],
@@ -505,6 +591,7 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
                             'status': 'exported', 'output': str(target),
                             'warnings': raw.get('warnings', []) + processed['validation'].get('warnings', []),
                             'log': str(run_dir / 'unreal.log'),
+                            'bake_attempts': attempts, 'material_fidelity': _material_fidelity(full_warnings),
                             'cache': {'raw_export': 'exported', 'postprocess': 'processed', 'unreal_started': True}})
             checkpoint()
             logger.event("map-export-done", f"Exported Unreal level {record['package']}", task="map_export",
@@ -535,6 +622,7 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
                   "Unreal collision data is not represented by glTF, so map collision and physics are not migrated.",
                   "Blueprint execution, Unreal widget screens, conversations, shops, inventory rules, AI and networking are not converted into running Three.js behavior by glTF export.",
                   "Map GLBs are static scenes. Animation assets are omitted only from a separate hard-link export mirror so UE 5.7 can inspect map geometry; character clips are migrated separately.",
+                  "After a certified Unreal MaterialBaking access-violation crash, exports may retry with SIMPLE or DISABLED baking. The downgrade is recorded per map; its shader appearance is degraded or unverified and never certifies 1:1 visual fidelity.",
                   "Unsupported or unresolved map actors are recorded in Unreal export logs; source assets remain unchanged."
               ]}
     checkpoint()

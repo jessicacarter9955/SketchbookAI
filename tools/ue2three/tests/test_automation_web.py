@@ -218,6 +218,37 @@ class WebTests(unittest.TestCase):
         self.assertEqual(next(a for a in web.snapshot(self.root, self.config)['areas']
                          if a['id'] == 'maps')['percent'], 0)
 
+    def test_character_export_advances_only_source_witnessed_gates_not_play(self):
+        manifest = self.root / 'build/character/manifest.json'
+        manifest.parent.mkdir(parents=True)
+        manifest.write_text('{"artifacts": []}')
+        stamp = web.datetime.now(web.timezone.utc).isoformat()
+        job = {'id': 'character', 'status': 'completed', 'running': False,
+               'completed': 48, 'total': 48, 'percent': 100,
+               'heartbeat_at': stamp, 'manifest': str(manifest), 'error': None}
+        self.asset_checkpoint(project='DDS.uproject', status='partial', phase='partial',
+                              running=False, jobs=[job],
+                              assets={'discovered': 58, 'eligible': 58, 'converted': 48,
+                                      'verified': 48, 'failed': 0, 'skipped': 0})
+        rows = {r['id']: r for r in web.snapshot(self.root, self.config)['areas']}
+        self.assertEqual(rows['character']['done'], 1)
+        self.assertEqual(rows['animations']['done'], 1)
+        self.assertEqual(rows['character']['status'], 'yellow')
+        self.assertEqual(rows['animations']['status'], 'yellow')
+
+        # A wrong source project, partial batch or missing proof keeps both gates unset.
+        for change in ({'project': 'Different.uproject'},
+                       {'jobs': [{**job, 'completed': 47, 'percent': 98}]},
+                       {'jobs': [{**job, 'manifest': 'missing-manifest.json'}]}):
+            partial = {'project': 'DDS.uproject', 'status': 'partial', 'phase': 'partial',
+                       'running': False, 'jobs': [job],
+                       'assets': {'discovered': 58, 'eligible': 58, 'converted': 48,
+                                  'verified': 48, 'failed': 0, 'skipped': 0}}
+            self.asset_checkpoint(**{**partial, **change})
+            rows = {r['id']: r for r in web.snapshot(self.root, self.config)['areas']}
+            self.assertEqual(rows['character']['done'], 0)
+            self.assertEqual(rows['animations']['done'], 0)
+
     def test_asset_malformed_checkpoint_is_safe(self):
         path = self.asset_checkpoint()
         path.write_text('{not JSON')

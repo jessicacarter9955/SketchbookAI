@@ -1,6 +1,7 @@
 """Supervisor regression checks; real Codex authentication is a separate smoke run."""
 import json
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -117,6 +118,121 @@ class AutomationTests(unittest.TestCase):
     def test_missing_stages_are_not_claimed_as_completed(self):
         self.supervisor.additional_stages()
         self.assertEqual(self.supervisor.state['additional_stages']['deploy_command'], 'not_configured')
+
+    def git(self, *args, cwd=None):
+        return subprocess.check_output(['git', *args], cwd=cwd or self.root,
+                                       text=True, stderr=subprocess.PIPE).strip()
+
+    def git_fixture(self):
+        branch = 'chatgpt/ue2three-dds'
+        remote = Path(self.temp.name) / 'remote.git'
+        self.git('init', '--bare', '--initial-branch', branch, str(remote))
+        self.git('init', '--initial-branch', branch, str(self.root))
+        self.git('config', 'user.name', 'Automation Test')
+        self.git('config', 'user.email', 'automation@example.test')
+        (self.root / '.gitignore').write_text('.local/\nbuild/\n')
+        (self.root / 'shared.txt').write_text('base\n')
+        self.git('add', '.gitignore', 'shared.txt')
+        self.git('commit', '-m', 'base')
+        self.git('remote', 'add', 'origin', str(remote))
+        self.git('push', '-u', 'origin', branch)
+        concurrent = Path(self.temp.name) / 'concurrent'
+        self.git('clone', '--branch', branch, str(remote), str(concurrent))
+        self.git('config', 'user.name', 'Other Author', cwd=concurrent)
+        self.git('config', 'user.email', 'other@example.test', cwd=concurrent)
+        self.supervisor.config.update(push=True, branch=branch)
+        return remote, concurrent, branch
+
+    def commit_file(self, repo: Path, name: str, content: str):
+        path = repo / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+        self.git('add', '--', name, cwd=repo)
+        self.git('commit', '-m', 'modify ' + name, cwd=repo)
+
+    def test_disjoint_remote_commit_is_merged_verified_and_pushed(self):
+        remote, concurrent, branch = self.git_fixture()
+        self.commit_file(self.root, 'docs/local.txt', 'local\n')
+        self.commit_file(concurrent, 'src/remote.txt', 'remote\n')
+        self.git('push', 'origin', branch, cwd=concurrent)
+        self.supervisor.save('integrated', pending_push=True)
+        with patch.object(self.supervisor, '_validate_reconciled_push') as validate:
+            self.supervisor.pending_push()
+        validate.assert_called_once_with()
+        merged = self.git('rev-parse', 'HEAD')
+        self.assertEqual(merged, self.git('rev-parse', 'refs/heads/' + branch, cwd=remote))
+        self.assertEqual(len(self.git('rev-list', '--parents', '-n', '1', 'HEAD').split()), 3)
+        self.assertFalse(self.supervisor.state['pending_push'])
+        self.assertIsNone(self.supervisor.state['push_blocker'])
+
+    def test_same_path_remote_divergence_needs_review_without_git_mutation(self):
+        remote, concurrent, branch = self.git_fixture()
+        self.commit_file(self.root, 'shared.txt', 'local\n')
+        self.commit_file(concurrent, 'shared.txt', 'remote\n')
+        self.git('push', 'origin', branch, cwd=concurrent)
+        local_head = self.git('rev-parse', 'HEAD')
+        remote_head = self.git('rev-parse', 'refs/heads/' + branch, cwd=remote)
+        self.supervisor.save('integrated', pending_push=True)
+        with patch.object(automation.agent, 'run_many', side_effect=AssertionError('must not run')):
+            self.assertEqual(self.supervisor.tick()['phase'], 'push_needs_review')
+        self.assertIn('shared.txt', self.supervisor.state['push_blocker'])
+        self.assertEqual(self.git('rev-parse', 'HEAD'), local_head)
+        self.assertEqual(self.git('rev-parse', 'refs/heads/' + branch, cwd=remote), remote_head)
+        self.assertEqual(self.git('status', '--porcelain'), '')
+        with patch.object(self.supervisor, 'command', side_effect=AssertionError('blocked must not run')):
+            self.assertEqual(self.supervisor.tick()['phase'], 'push_needs_review')
+
+    def test_dirty_checkout_never_fetches_or_pushes(self):
+        _, _, _ = self.git_fixture()
+        (self.root / 'untracked.txt').write_text('user work')
+        self.supervisor.save('integrated', pending_push=True)
+        with patch.object(self.supervisor, 'command', side_effect=AssertionError('Git fetch must not run')):
+            with self.assertRaisesRegex(automation.agent.RunnerError, 'clean'):
+                self.supervisor.pending_push()
+        self.assertTrue((self.root / 'untracked.txt').exists())
+
+    def test_remote_race_fails_once_then_recovers_on_next_tick(self):
+        remote, concurrent, branch = self.git_fixture()
+        self.commit_file(self.root, 'local.txt', 'original local commit\n')
+        self.supervisor.save('integrated', pending_push=True)
+        real_command = self.supervisor.command
+        raced = []
+
+        def remote_advances_before_push(name, args, **kwargs):
+            if name == 'git-push' and not raced:
+                raced.append(True)
+                self.commit_file(concurrent, 'remote.txt', 'racing remote commit\n')
+                self.git('push', 'origin', branch, cwd=concurrent)
+            return real_command(name, args, **kwargs)
+
+        with patch.object(self.supervisor, 'command', side_effect=remote_advances_before_push):
+            with self.assertRaisesRegex(RuntimeError, 'git-push'):
+                self.supervisor.pending_push()
+        self.assertTrue(self.supervisor.state['pending_push'])
+        self.assertEqual(self.git('rev-parse', 'HEAD^'), self.git('rev-parse', branch + '~1', cwd=remote))
+        with patch.object(self.supervisor, '_validate_reconciled_push') as validate:
+            self.supervisor.pending_push()
+        validate.assert_called_once_with()
+        self.assertFalse(self.supervisor.state['pending_push'])
+        self.assertEqual(self.git('rev-parse', 'HEAD'),
+                         self.git('rev-parse', 'refs/heads/' + branch, cwd=remote))
+
+    def test_validation_checks_python_and_node_and_records_commit(self):
+        self.git_fixture()
+        path = self.root / 'tests/ue2three-test.test.mjs'
+        path.parent.mkdir(parents=True)
+        path.write_text('test()')
+        self.git('add', 'tests/ue2three-test.test.mjs')
+        self.git('commit', '-m', 'add test')
+        self.supervisor.state['push_validation_required'] = True
+        with patch.object(self.supervisor, 'command') as command, \
+                patch.object(automation.shutil, 'which', return_value='node'):
+            self.supervisor._validate_reconciled_push()
+        self.assertEqual([call.args[0] for call in command.call_args_list],
+                         ['git-reconcile-python-tests', 'git-reconcile-node-tests'])
+        self.assertIn('tests/ue2three-test.test.mjs', command.call_args_list[1].args[1])
+        self.assertFalse(self.supervisor.state['push_validation_required'])
+        self.assertEqual(self.supervisor.state['validated_push_head'], self.git('rev-parse', 'HEAD'))
 
 
 if __name__ == '__main__':

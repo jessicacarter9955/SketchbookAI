@@ -25,6 +25,10 @@ from core import workspace_lock
 ROOT = Path(__file__).resolve().parents[2]
 
 
+class PushReconciliationBlocked(RuntimeError):
+    """Git changes need a person; repeating the same merge is unsafe."""
+
+
 def fingerprint(root: Path) -> str:
     paths = set((root / 'tools/ue2three').glob('*.py'))
     paths.update((root / 'src/editor').glob('ue2three*.mjs'))
@@ -126,14 +130,113 @@ class Supervisor:
             raise RuntimeError('Replay has missing source packages; refusing promotion')
         return result
 
+    def _changed_paths(self, base: str, commit: str) -> set[str]:
+        # NUL-delimited paths preserve whitespace and newlines. --no-renames
+        # counts both the old and new names, so a rename cannot evade overlap.
+        try:
+            result = subprocess.run(
+                ['git', '-C', str(self.root), 'diff', '--no-renames', '--name-only', '-z', base, commit],
+                check=True, capture_output=True, timeout=60)
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+            raise RuntimeError('Unable to compare both Git revisions; push left pending') from None
+        return {os.fsdecode(item) for item in result.stdout.split(b'\0') if item}
+
+    def _reconcile_remote_for_push(self, branch: str):
+        local = agent._require_clean_repo(self.root)
+        git_dir = Path(agent._git(self.root, 'rev-parse', '--absolute-git-dir'))
+        if any((git_dir / marker).exists() for marker in
+               ('MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD', 'rebase-apply', 'rebase-merge')):
+            raise PushReconciliationBlocked('Unfinished Git operation; manual review required before push')
+
+        # Fetch only the configured destination. The fetched commit is pinned
+        # by SHA below, even if FETCH_HEAD is subsequently changed elsewhere.
+        self.command('git-fetch', ['git', 'fetch', '--no-tags', 'origin', f'refs/heads/{branch}'], timeout=120)
+        remote = agent._git(self.root, 'rev-parse', 'FETCH_HEAD')
+        self.save('git_remote_checked', local_commit=local, remote_commit=remote)
+        if remote == local:
+            return
+        try:
+            bases = agent._git(self.root, 'merge-base', '--all', local, remote).splitlines()
+        except agent.RunnerError:
+            bases = []
+        if len(bases) != 1:
+            raise PushReconciliationBlocked('Remote and local Git histories have no unique common base; '
+                                            'push requires manual review')
+        base = bases[0]
+        if base == remote:
+            # Remote is an ancestor: the existing verified commit can be pushed.
+            return
+
+        local_paths = self._changed_paths(base, local)
+        remote_paths = self._changed_paths(base, remote)
+        # Windows case-insensitive checkouts also need protection from filename
+        # case collisions and file-versus-directory conflicts.
+        overlap = sorted({a for a in local_paths for b in remote_paths
+                          if (a.casefold() == b.casefold()
+                              or a.casefold().startswith(b.casefold() + '/')
+                              or b.casefold().startswith(a.casefold() + '/'))})
+        if overlap:
+            sample = ', '.join(overlap[:8])
+            if len(overlap) > 8:
+                sample += f' (+{len(overlap) - 8} more)'
+            raise PushReconciliationBlocked(f'Local/remote Git file overlap ({len(overlap)}): {sample}. '
+                                            'No automatic merge or push; review required')
+
+        # This durable flag is set *before* touching HEAD. Even an interrupted
+        # successful merge must pass tests before a subsequent tick can push it.
+        self.save('git_reconciling', push_validation_required=True,
+                  reconciliation_base=base, reconciliation_remote=remote,
+                  reconciliation_local=local,
+                  local_changed_files=len(local_paths), remote_changed_files=len(remote_paths))
+        agent._require_clean_repo(self.root)
+        if agent._git(self.root, 'rev-parse', 'HEAD') != local:
+            raise PushReconciliationBlocked('Local HEAD advanced during Git reconciliation; manual review required')
+        # Git's own merge engine is a second check for semantic conflicts;
+        # --no-ff preserves both histories for audit. Never force push.
+        try:
+            agent._git(self.root, 'merge', '--no-ff', '--no-edit', '-m',
+                       'ue2three: reconcile disjoint remote automation changes', remote, timeout=120)
+        except agent.RunnerError:
+            # Do not auto-abort: the exact conflict/worktree is retained for
+            # inspection, rather than risking unrelated concurrent edits.
+            raise PushReconciliationBlocked('Git refused disjoint-path merge; review working tree and '
+                                            'MERGE_HEAD before further automation') from None
+        self.save('git_reconciled', reconciled_commit=agent._git(self.root, 'rev-parse', 'HEAD'))
+
+    def _validate_reconciled_push(self):
+        self.command('git-reconcile-python-tests',
+                     [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools/ue2three/tests',
+                      '-p', 'test_*.py', '-q'], timeout=300)
+        node_tests = sorted((self.root / 'tests').glob('ue2three-*.test.mjs'))
+        if node_tests:
+            node = shutil.which('node')
+            if not node:
+                raise RuntimeError('Node.js unavailable: cannot validate reconciled Three.js changes')
+            self.command('git-reconcile-node-tests',
+                         [node, '--test', *(str(path.relative_to(self.root)) for path in node_tests)],
+                         timeout=300)
+        head = agent._require_clean_repo(self.root)
+        self.save('git_reconcile_validated', push_validation_required=False,
+                  validated_push_head=head)
+
     def pending_push(self):
         if not self.state.get('pending_push'):
             return
         if not self.config.get('push', False):
             return
+        if self.state.get('push_blocker'):
+            raise PushReconciliationBlocked(self.state['push_blocker'])
         branch = self.config['branch']
+        self._reconcile_remote_for_push(branch)
+        if (self.state.get('push_validation_required')
+                or (self.state.get('reconciled_commit')
+                    and self.state.get('validated_push_head') != agent._git(self.root, 'rev-parse', 'HEAD'))):
+            self._validate_reconciled_push()
+        agent._require_clean_repo(self.root)
         self.command('git-push', ['git', 'push', 'origin', f'HEAD:refs/heads/{branch}'], timeout=120)
-        self.save('pushed', pushed_commit=agent._git(self.root, 'rev-parse', 'HEAD'), pending_push=False)
+        self.save('pushed', pushed_commit=agent._git(self.root, 'rev-parse', 'HEAD'),
+                  pending_push=False, push_validation_required=False,
+                  reconciled_commit=None, push_blocker=None)
 
     def ensure_dependencies(self):
         if (self.root / 'node_modules/three/package.json').is_file():
@@ -308,6 +411,10 @@ class Supervisor:
                 # Commands completing does not establish gameplay or visual acceptance.
                 self.additional_stages()
                 self.save('waiting_next_tick', active_job=None, retry_after=0)
+                return self.state
+            except PushReconciliationBlocked as error:
+                self.save('push_needs_review', push_blocker=str(error)[:600], error=str(error)[:600],
+                          active_job=None, retry_after=0)
                 return self.state
             except Exception as error:
                 # Preserve output/patches; never restart the entire conversion after a chat drop.

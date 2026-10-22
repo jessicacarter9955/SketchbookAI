@@ -61,10 +61,16 @@ for name, value in (("export_uniform_scale", 0.01), ("export_vertex_skin_weights
                     ("export_lights", True), ("export_vertex_colors", False)):
     if hasattr(options, name):
         options.set_editor_property(name, value)
-if hasattr(unreal, "GLTFMaterialBakeMode") and hasattr(options, "bake_material_inputs"):
-    # World-position shaders need the actual component geometry. A quad bake
-    # removes their world-space grids and per-instance surface colors.
-    options.set_editor_property("bake_material_inputs", unreal.GLTFMaterialBakeMode.USE_MESH_DATA)
+requested_bake_mode = job.get("material_bake_mode", "use_mesh_data")
+bake_modes = {"use_mesh_data": "USE_MESH_DATA", "simple": "SIMPLE", "disabled": "DISABLED"}
+if requested_bake_mode not in bake_modes:
+    raise RuntimeError("[INVALID_MATERIAL_BAKE_MODE] Unknown glTF material bake mode")
+if not hasattr(unreal, "GLTFMaterialBakeMode") or not hasattr(options, "bake_material_inputs"):
+    raise RuntimeError("[MATERIAL_BAKE_OPTIONS_MISSING] This Unreal glTF exporter lacks explicit material bake controls")
+# World-position shaders need the actual component geometry. Keep this as the
+# default; lower-fidelity modes are allowed only by the crash-aware orchestrator.
+options.set_editor_property("bake_material_inputs", getattr(unreal.GLTFMaterialBakeMode,
+                                                             bake_modes[requested_bake_mode]))
 if hasattr(unreal, "GLTFTextureImageFormat") and hasattr(options, "texture_image_format"):
     options.set_editor_property("texture_image_format", unreal.GLTFTextureImageFormat.PNG)
 if hasattr(unreal, "GLTFMaterialBakeSize") and hasattr(options, "default_material_bake_size"):
@@ -74,7 +80,8 @@ if hasattr(unreal, "GLTFMaterialBakeSize") and hasattr(options, "default_materia
 for name, value in (("export_texture_transforms", True), ("adjust_normalmaps", True)):
     if hasattr(options, name):
         options.set_editor_property(name, value)
-unreal.log("UE2THREE_GLTF_OPTIONS bake_material_inputs=" + str(options.get_editor_property("bake_material_inputs")) +
+unreal.log("UE2THREE_GLTF_OPTIONS requested_material_bake_mode=" + requested_bake_mode +
+           " bake_material_inputs=" + str(options.get_editor_property("bake_material_inputs")) +
            " texture_image_format=" + str(options.get_editor_property("texture_image_format")) +
            " default_material_bake_size=" + str(options.get_editor_property("default_material_bake_size")))
 
@@ -84,7 +91,8 @@ results = []
 for index, item in enumerate(job["maps"], 1):
     package, filename = item["package"], item["filename"]
     target = output / filename
-    row = {"package": package, "filename": filename, "fingerprint": item["fingerprint"], "status": "failed"}
+    row = {"package": package, "filename": filename, "fingerprint": item["fingerprint"],
+           "material_bake_mode": requested_bake_mode, "status": "failed"}
     try:
         unreal.log(f"UE2THREE_MAP_START {index}/{len(job['maps'])} {package}")
         if job.get("progress"):
