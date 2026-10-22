@@ -95,6 +95,15 @@ class DdsAgentTests(unittest.TestCase):
         self.state_root.mkdir(parents=True, exist_ok=True)
         (self.state_root / 'checkpoint.json').write_text(json.dumps(value), encoding='utf-8')
 
+    def test_git_errors_identify_failed_verb_without_leaking_stderr(self):
+        exception = subprocess.CalledProcessError(128, ['git', 'merge'],
+                                                  stderr='https://secret.example/token')
+        with patch.object(dds_agent.subprocess, 'run', side_effect=exception):
+            with self.assertRaises(dds_agent.RunnerError) as raised:
+                dds_agent._git(self.repo, 'merge', '--ff-only', 'abc')
+        self.assertIn('Git merge failed (exit 128)', str(raised.exception))
+        self.assertNotIn('secret.example', str(raised.exception))
+
     def _make_four_verified_families(self):
         plan_path = self.published / 'blueprint-plan.json'
         plan = json.loads(plan_path.read_text(encoding='utf-8'))

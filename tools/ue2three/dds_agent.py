@@ -584,8 +584,17 @@ def _git(repo_root: Path, *args: str, timeout: int = GIT_TIMEOUT_SECONDS) -> str
     try:
         result = subprocess.run(['git', '-C', str(repo_root), *args], check=True, capture_output=True,
                                 text=True, encoding='utf-8', errors='replace', timeout=_bounded_timeout(timeout))
-    except (OSError, subprocess.SubprocessError):
-        raise RunnerError('Git operation failed or exceeded its time bound.', 'git_error') from None
+    except subprocess.CalledProcessError as error:
+        # Distinguish a checkout/reconciliation failure from a temporary push
+        # rejection without publishing potentially sensitive stderr or URLs.
+        verb = args[0] if args else 'command'
+        raise RunnerError(f'Git {verb} failed (exit {error.returncode}); source patches retained.',
+                          'git_error') from None
+    except subprocess.TimeoutExpired:
+        verb = args[0] if args else 'command'
+        raise RunnerError(f'Git {verb} timed out; source patches retained.', 'git_error') from None
+    except OSError:
+        raise RunnerError('Git executable could not be started.', 'git_error') from None
     return result.stdout.strip()
 
 
