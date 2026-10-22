@@ -25,6 +25,42 @@ LABELS = {'paused': 'In attesa di avvio', 'agent_running': 'Sviluppo del convert
           'waiting_next_tick': 'In attesa del prossimo ciclo', 'waiting_account': 'Pausa per limite account',
           'waiting_connection': 'Riconnessione programmata', 'failed': 'Intervento o nuovo tentativo necessario'}
 
+WORKER_IMPACT = {
+    'native-objects': ('blueprints', 'character'),
+    'native-timers': ('blueprints', 'systems'),
+    'native-data': ('blueprints', 'systems'),
+    'native-animation': ('blueprints', 'animations'),
+    'native-audio-vfx': ('physics',),
+    'native-physics': ('physics', 'character'),
+    'native-math': ('blueprints',),
+}
+
+
+def worker_progress(record, state):
+    """Evidence-based batch gates, NOT an estimate of translated code or ETA.
+
+    No elapsed-time guess is used. A worker can remain at 25/50 percent
+    indefinitely when it has not crossed the next verified gate.
+    """
+    status = record.get('status', 'new')
+    if status == 'running':
+        gates = 1
+    elif status == 'integrated' and record.get('commit') and record.get('verified_counts'):
+        gates = 4
+    elif (state.get('phase') == 'promoting' and state.get('candidate_family') == record.get('name')
+          and state.get('candidate_commit')):
+        gates = 3
+    elif status == 'patch_ready_for_review' or record.get('original_commit'):
+        gates = 2
+    elif record.get('attempts', 0) or record.get('started_at'):
+        gates = 1
+    else:
+        gates = 0
+    stages = ('Non avviato', 'Agente avviato', 'Patch e test del worker verificati',
+              'Replay con incremento verificato', 'Integrazione verificata')
+    return {'percent': gates * 25, 'completed_gates': gates, 'total_gates': 4,
+            'stage': stages[gates], 'verified_gain': record.get('verified_gain') if gates == 4 else None}
+
 
 def optional(path):
     try:
@@ -167,11 +203,13 @@ def snapshot(root, config_path):
         heartbeat_age = age(beat.get('updated_at'))
         live = (running and beat.get('status') == 'running'
                 and heartbeat_age is not None and heartbeat_age < 120)
+        progress = worker_progress({**record, 'name': name}, state)
         jobs.append({'name': name, 'status': 'running' if live else record.get('status', 'unknown'),
                      'live': live, 'stale': running and not live, 'attempt': record.get('attempts', 0),
                      'lane': record.get('lane'), 'heartbeat_at': beat.get('updated_at'),
                      'result': record.get('result'), 'commit': record.get('commit'),
-                     'started_at': record.get('started_at'), 'finished_at': record.get('finished_at'), **detail})
+                     'started_at': record.get('started_at'), 'finished_at': record.get('finished_at'),
+                     'affected_areas': WORKER_IMPACT.get(name, ()), 'progress': progress, **detail})
     for lane in range(1, worker_count + 1):
         entries = [item for item in jobs if item['lane'] == lane]
         latest = max(entries, key=lambda item: item.get('started_at') or '') if entries else None
@@ -180,7 +218,9 @@ def snapshot(root, config_path):
                       'live': latest['live'] if latest else False,
                       'stale': latest['stale'] if latest else False,
                       'heartbeat_at': latest.get('heartbeat_at') if latest else None,
-                      'result': latest.get('result') if latest else None})
+                      'result': latest.get('result') if latest else None,
+                      'progress': latest['progress'] if latest else worker_progress({}, state),
+                      'affected_areas': latest['affected_areas'] if latest else ()})
     counts = state.get('counts', {})
     total = counts.get('translated', 0) + counts.get('blocked', 0)
     bridge_age = age(bridge.get('time'))

@@ -53,6 +53,25 @@ class WebTests(unittest.TestCase):
         self.assertEqual(data['configured_workers'], 4)
         self.assertEqual(data['active_workers'], 0)
         self.assertEqual([item['status'] for item in data['lanes']], ['not_started'] * 4)
+        self.assertEqual([item['progress']['percent'] for item in data['lanes']], [0] * 4)
+
+    def test_worker_percent_tracks_verified_gates_not_elapsed_time(self):
+        self.assertEqual(web.worker_progress({}, {})['percent'], 0)
+        # A prior review outcome must not imply the new running attempt already passed its checks.
+        running = {'status': 'running', 'attempts': 2, 'started_at': '2026-10-22T09:00:00Z',
+                   'original_commit': 'prior_patch', 'result': 'no_proven_conversion_gain'}
+        self.assertEqual(web.worker_progress(running, {})['percent'], 25)
+        ready = {**running, 'status': 'patch_ready_for_review', 'result': 'codex_exit_0'}
+        self.assertEqual(web.worker_progress(ready, {})['percent'], 50)
+        self.assertEqual(web.worker_progress({**ready, 'status': 'needs_review',
+                         'result': 'no_proven_conversion_gain'}, {})['percent'], 50)
+        promoting = {'phase': 'promoting', 'candidate_family': 'native-data', 'candidate_commit': 'abc'}
+        self.assertEqual(web.worker_progress({**ready, 'name': 'native-data'}, promoting)['percent'], 75)
+        verified = {**ready, 'status': 'integrated', 'commit': 'abc',
+                    'verified_counts': {'translated': 401}, 'verified_gain': {'translated': 1, 'blocked': 1}}
+        self.assertEqual(web.worker_progress(verified, {})['percent'], 100)
+        self.assertEqual(web.worker_progress(verified, {})['verified_gain']['translated'], 1)
+        self.assertLess(web.worker_progress({**verified, 'verified_counts': {}}, {})['percent'], 100)
 
     def test_four_worker_heartbeats_drive_live_count_not_cached_checkpoints(self):
         import time
@@ -71,6 +90,8 @@ class WebTests(unittest.TestCase):
         self.assertEqual(data['active_workers'], 3)
         self.assertEqual(sum(item['live'] for item in data['jobs']), 3)
         self.assertTrue(data['lanes'][3]['stale'])
+        self.assertEqual(data['lanes'][0]['progress']['percent'], 25)
+        self.assertIn('blueprints', data['lanes'][0]['affected_areas'])
 
     def test_start_is_accepted_without_waiting_for_a_job(self):
         with patch.object(web.subprocess, 'Popen') as start:

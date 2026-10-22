@@ -200,7 +200,11 @@ class Supervisor:
         # Save commit before FF: on interruption the complete candidate remains recoverable.
         self.save('promoting', candidate_commit=commit, candidate_family=family)
         agent._git(self.root, 'merge', '--ff-only', commit)
-        record.update(status='integrated', commit=commit, verified_counts=after['counts'])
+        previous = before.get('counts', {})
+        verified = after['counts']
+        record.update(status='integrated', commit=commit, verified_counts=verified,
+                      verified_gain={'translated': verified.get('translated', 0) - previous.get('translated', 0),
+                                     'blocked': previous.get('blocked', 0) - verified.get('blocked', 0)})
         checkpoint['last_status'] = 'integrated'
         agent._checkpoint_event(self.root / agent.STATE_RELATIVE, checkpoint, 'integrated', family=family, commit=commit)
         self.save('integrated', counts=after['counts'], pending_push=self.config.get('push', False))
