@@ -60,6 +60,36 @@ function validateSchema(schema, value, depth = 0) {
     } else if (!validPrimitive(schema.type, value)) throw new Error('Invalid typed source member: ' + schema.type);
 }
 
+function requireArrayIdentity(expression, name, required = true) {
+    const identity = ['/Script/Engine', 'KismetArrayLibrary', name];
+    if (expression.identity === undefined && !required) return;
+    if (JSON.stringify(expression.identity) !== JSON.stringify(identity) || expression.dispatch !== 'EX_FinalFunction')
+        throw new Error('Original array call identity or dispatch differs');
+}
+
+function sourceArrayValueEqual(schema, left, right, depth = 0) {
+    if (!schema || depth > 16) throw new Error('Invalid original array equality schema');
+    validateSchema(schema, left); validateSchema(schema, right);
+    switch (schema.type) {
+    case 'BoolProperty': case 'ByteProperty': case 'IntProperty': case 'Int64Property':
+    case 'DoubleProperty': case 'StrProperty': return left === right;
+    case 'FloatProperty': return Math.fround(left) === Math.fround(right);
+    case 'NameProperty':
+        if (/[^\x01-\x7f]/.test(left) || /[^\x01-\x7f]/.test(right))
+            throw new Error('Unsupported Unicode FName array comparison');
+        return left.toUpperCase() === right.toUpperCase();
+    case 'ArrayProperty':
+        return left.length === right.length && left.every((value, index) =>
+            sourceArrayValueEqual(schema.element, value, right[index], depth+1));
+    case 'StructProperty':
+        if (!String(schema.source || '').startsWith('/Game/') || !schema.fields || !Object.keys(schema.fields).length)
+            throw new Error('Unsupported original native struct array comparison');
+        return Object.entries(schema.fields).every(([field, child]) =>
+            sourceArrayValueEqual(child, left[field], right[field], depth+1));
+    default: throw new Error('Unsupported original array element equality: ' + schema.type);
+    }
+}
+
 const nativeObject = identity => ({type:'ObjectProperty', ...(identity ? {class:identity} : {}), default:null});
 const nativeStruct = name => {
     if (name === 'Quat') return {type:'StructProperty',source:'/Script/CoreUObject',native:name,
@@ -527,11 +557,30 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             return key !== undefined;
         }
         if (expression.op === 'array_length') {
+            if (expression.identity !== undefined) requireArrayIdentity(expression, 'Array_Length', false);
             const array = evaluate(expression.array, depth+1);
             if (!Array.isArray(array)) throw new Error('Invalid source Array_Length');
             return array.length;
         }
+        if (expression.op === 'array_is_not_empty' || expression.op === 'array_last_index') {
+            const name = expression.op === 'array_is_not_empty' ? 'Array_IsNotEmpty' : 'Array_LastIndex';
+            requireArrayIdentity(expression, name);
+            const schema = schemaFor(expression.array), array = evaluate(expression.array, depth+1);
+            if (schema?.type !== 'ArrayProperty' || !Array.isArray(array)) throw new Error('Invalid typed source ' + name);
+            return expression.op === 'array_is_not_empty' ? array.length !== 0 : array.length - 1;
+        }
+        if (expression.op === 'array_contains' || expression.op === 'array_find') {
+            const name = expression.op === 'array_contains' ? 'Array_Contains' : 'Array_Find';
+            requireArrayIdentity(expression, name);
+            const schema = schemaFor(expression.array), array = evaluate(expression.array, depth+1);
+            if (schema?.type !== 'ArrayProperty' || JSON.stringify(schema.element) !== JSON.stringify(expression.element)
+                || !Array.isArray(array)) throw new Error('Unresolved typed source ' + name);
+            const item = evaluate(expression.item, depth+1); validateSchema(expression.element, item);
+            const index = array.findIndex(value => sourceArrayValueEqual(expression.element, value, item));
+            return expression.op === 'array_contains' ? index !== -1 : index;
+        }
         if (expression.op === 'array_valid') {
+            if (expression.identity !== undefined) requireArrayIdentity(expression, 'Array_IsValidIndex', false);
             const array = evaluate(expression.array, depth+1), index = evaluate(expression.index, depth+1);
             if (!Array.isArray(array) || !validPrimitive('IntProperty', index)) throw new Error('Invalid source Array_IsValidIndex');
             return index >= 0 && index < array.length;
@@ -544,8 +593,11 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 throw new Error('Unresolved typed source array mutation');
             const array = evaluate(target, depth+1), operation = expression.operation;
             if (!Array.isArray(array)) throw new Error('Invalid source array mutation');
+            const identityOperations = ['Array_AddUnique', 'Array_RemoveItem', 'Array_Insert', 'Array_Reverse'];
+            if (identityOperations.includes(operation)) requireArrayIdentity(expression, operation);
+            else if (expression.identity !== undefined) requireArrayIdentity(expression, operation, false);
             const index = expression.index ? evaluate(expression.index, depth+1) : null;
-            if (['Array_Set', 'Array_Remove'].includes(operation) && !validPrimitive('IntProperty', index)) throw new Error('Invalid source array index');
+            if (['Array_Set', 'Array_Remove', 'Array_Insert'].includes(operation) && !validPrimitive('IntProperty', index)) throw new Error('Invalid source array index');
             const value = expression.value ? structuredClone(evaluate(expression.value, depth+1)) : null;
             let result = null, inBounds = index >= 0 && index < array.length;
             if (operation === 'Array_Set') {
@@ -564,6 +616,29 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 validateSchema(expression.element, value);
                 if (array.length >= 100000) throw new Error('Source array resource limit exceeded');
                 result = array.length; array.push(value);
+            } else if (operation === 'Array_AddUnique') {
+                validateSchema(expression.element, value);
+                const found = array.findIndex(item => sourceArrayValueEqual(expression.element, item, value));
+                if (found === -1) {
+                    if (array.length >= 100000) throw new Error('Source array resource limit exceeded');
+                    result = array.length; array.push(value);
+                } else result = -1;
+                inBounds = found !== -1;
+            } else if (operation === 'Array_RemoveItem') {
+                validateSchema(expression.element, value);
+                let write = 0, removed = false;
+                for (const item of array) {
+                    if (sourceArrayValueEqual(expression.element, item, value)) removed = true;
+                    else array[write++] = item;
+                }
+                array.length = write; result = removed; inBounds = removed;
+            } else if (operation === 'Array_Insert') {
+                validateSchema(expression.element, value);
+                if (index < 0 || index > array.length) throw new RangeError('Original Array_Insert index is outside the valid range');
+                if (array.length >= 100000) throw new Error('Source array resource limit exceeded');
+                array.splice(index, 0, value); inBounds = true;
+            } else if (operation === 'Array_Reverse') {
+                array.reverse(); inBounds = true;
             } else if (operation === 'Array_Append') {
                 if (!Array.isArray(value) || array.length+value.length > 100000) throw new Error('Invalid or oversized source array append');
                 for (const item of value) validateSchema(expression.element, item);
@@ -604,6 +679,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             return null;
         }
         if (expression.op === 'array_add') {
+            if (expression.identity !== undefined) requireArrayIdentity(expression, 'Array_Add', false);
             const target = expression.target;
             if (target?.op !== 'get' || target.scope !== 'self' || !safeField(target.field))
                 throw new Error('Unsupported Array_Add source destination');
@@ -623,6 +699,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             return index;
         }
         if (expression.op === 'array_set') {
+            if (expression.identity !== undefined) requireArrayIdentity(expression, 'Array_Set', false);
             const target = expression.target;
             if (target?.op !== 'get' || target.scope !== 'self' || !safeField(target.field))
                 throw new Error('Unsupported Array_Set source destination');
@@ -655,6 +732,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             return null;
         }
         if (expression.op === 'array_get') {
+            if (expression.identity !== undefined) requireArrayIdentity(expression, 'Array_Get', false);
             const array = evaluate(expression.array, depth+1), index = evaluate(expression.index, depth+1), target = expression.target;
             if (!Array.isArray(array) || !validPrimitive('IntProperty', index) || target?.op !== 'get'
                 || !safeField(target.field) || !['local', 'self', 'persistent'].includes(target.scope)) throw new Error('Invalid source Array_Get');

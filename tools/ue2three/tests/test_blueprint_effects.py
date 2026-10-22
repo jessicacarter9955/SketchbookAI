@@ -240,6 +240,58 @@ class SourceEffectsTests(unittest.TestCase):
             if change == 'library': p.imports[2]['ObjectName'] = '/Game/Fake'
             with self.subTest(change=change), self.assertRaises(BlueprintTranslationError): expression(e, set(), set(), package=p, owner=1)
 
+    def test_source_witnessed_array_queries_and_mutations_retain_identity_and_typed_parameters(self):
+        for name, parameters, operation in (
+                ('Array_IsNotEmpty', [var('Items')], 'array_is_not_empty'),
+                ('Array_LastIndex', [var('Items')], 'array_last_index'),
+                ('Array_Contains', [var('Items'), var('Item', 2, True)], 'array_contains'),
+                ('Array_Find', [var('Items'), var('Item', 2, True)], 'array_find'),
+                ('Array_AddUnique', [var('Items'), var('Item', 2, True)], 'array_mutate'),
+                ('Array_RemoveItem', [var('Items'), var('Item', 2, True)], 'array_mutate'),
+                ('Array_Insert', [var('Items'), var('Item', 2, True), var('Index', 2, True)], 'array_mutate'),
+                ('Array_Reverse', [var('Items')], 'array_mutate')):
+            with self.subTest(name=name):
+                p = self.package(); p.imports[0]['ObjectName'] = name
+                function = p.exports[1]
+                function['LoadedProperties'] = [
+                    {'Name':'Item','SerializedType':'IntProperty','PropertyFlags':'CPF_Parm'},
+                    {'Name':'Index','SerializedType':'IntProperty','PropertyFlags':'CPF_Parm'}]
+                p._active_function = function
+                call = node('EX_FinalFunction', StackNode=-1, Parameters=parameters)
+                context = node('EX_Context', ObjectExpression=node('EX_ObjectConst', Value=-4),
+                    ContextExpression=call, Offset=memory_size(call, package=p))
+                result = expression(context, set(), set(), package=p, owner=1)
+                self.assertEqual(result['op'], operation)
+                self.assertEqual(result['identity'], ['/Script/Engine','KismetArrayLibrary',name])
+                self.assertEqual(result['dispatch'], 'EX_FinalFunction')
+                if operation == 'array_mutate': self.assertEqual(result['operation'], name)
+
+    def test_array_equality_and_rng_calls_fail_closed_for_unverified_source_contracts(self):
+        p=self.package(); p.imports[0]['ObjectName']='Array_Contains'
+        function=p.exports[1]; function['LoadedProperties']=[{'Name':'Item','SerializedType':'StrProperty'}]
+        p._active_function=function
+        call=node('EX_FinalFunction',StackNode=-1,Parameters=[var('Items'),var('Item',2,True)])
+        context=node('EX_Context',ObjectExpression=node('EX_ObjectConst',Value=-4),ContextExpression=call,
+                     Offset=memory_size(call,package=p))
+        with self.assertRaisesRegex(BlueprintTranslationError,'item type differs'):
+            expression(context,set(),set(),package=p,owner=1)
+        for name, parameters in (('Array_Random',[var('Items'),var('Item',2,True),var('Index',2,True)]),
+                                 ('Array_Shuffle',[var('Items')])):
+            p=self.package();p.imports[0]['ObjectName']=name
+            call=node('EX_FinalFunction',StackNode=-1,Parameters=parameters)
+            context=node('EX_Context',ObjectExpression=node('EX_ObjectConst',Value=-4),ContextExpression=call,
+                         Offset=memory_size(call,package=p))
+            with self.subTest(name=name), self.assertRaisesRegex(BlueprintTranslationError,'original random state'):
+                expression(context,set(),set(),package=p,owner=1)
+
+    def test_get_data_table_row_names_rejects_unverified_source_order(self):
+        p=Package({'Imports':[
+            {'ObjectName':'GetDataTableRowNames','ClassName':'Function','OuterIndex':-2},
+            {'ObjectName':'DataTableFunctionLibrary','OuterIndex':-3},
+            {'ObjectName':'/Script/Engine','ClassName':'Package'}]})
+        with self.assertRaisesRegex(BlueprintTranslationError,'row-name ordering is not verified'):
+            expression(node('EX_CallMath',StackNode=-1,Parameters=[]),set(),set(),package=p)
+
     def test_const_source_array_cannot_be_modified(self):
         p = self.package(); p.exports[1]['LoadedProperties'] = [dict(p.exports[0]['LoadedProperties'][0], Name='Input', PropertyFlags='CPF_Parm | CPF_ConstParm | CPF_OutParm | CPF_ReferenceParm')]
         e = self.array_call(p); e['ContextExpression']['Parameters'][0] = var('Input', 2, True)

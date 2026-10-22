@@ -294,6 +294,50 @@ def variable(value, package, owner, reads, outputs, depth):
     return target, schema
 
 
+def array_item_schema(value, package, owner, reads, outputs, depth):
+    """Resolve the exact reflected type of a simple source array item expression."""
+    from blueprint_migration import kind, BlueprintTranslationError as Error
+    token = kind(value)
+    if token in ('EX_InstanceVariable', 'EX_LocalVariable', 'EX_LocalOutVariable'):
+        return variable(value, package, owner, reads, outputs, depth)[1]
+    constants = {
+        'EX_True': ('BoolProperty', False), 'EX_False': ('BoolProperty', False),
+        'EX_IntZero': ('IntProperty', 0), 'EX_IntOne': ('IntProperty', 0), 'EX_IntConst': ('IntProperty', 0),
+        'EX_Int64Const': ('Int64Property', 0), 'EX_ByteConst': ('ByteProperty', 0),
+        'EX_FloatConst': ('FloatProperty', 0), 'EX_DoubleConst': ('DoubleProperty', 0),
+        'EX_StringConst': ('StrProperty', ''), 'EX_NameConst': ('NameProperty', 'None'),
+    }
+    if token in constants:
+        type_name, default = constants[token]
+        return {'type': type_name, 'default': default}
+    if token == 'EX_StructConst':
+        from blueprint_types import import_path
+        from blueprint_values import native_schema
+        identity = import_path(package, value.get('Struct'))
+        return (getattr(package, 'source_structs', {}).get(identity)
+                or native_schema(identity)) if identity else None
+    # Calls and object expressions need their reflected return or reference
+    # contract. Do not infer a wildcard element type from the opcode alone.
+    return None
+
+
+def array_equality_supported(schema, depth=0):
+    """Only admit source value types whose equality can be reproduced exactly."""
+    if not isinstance(schema, dict) or depth > 16:
+        return False
+    type_name = schema.get('type')
+    if type_name in ('BoolProperty', 'ByteProperty', 'IntProperty', 'Int64Property',
+                     'FloatProperty', 'DoubleProperty', 'StrProperty', 'NameProperty'):
+        return True
+    if type_name == 'ArrayProperty':
+        return array_equality_supported(schema.get('element'), depth + 1)
+    if type_name == 'StructProperty' and str(schema.get('source', '')).startswith('/Game/'):
+        fields = schema.get('fields')
+        return isinstance(fields, dict) and bool(fields) and all(
+            array_equality_supported(field, depth + 1) for field in fields.values())
+    return False
+
+
 def array_context(value, package, owner, reads, outputs, depth):
     from blueprint_migration import kind, expression, memory_size, BlueprintTranslationError as Error
     obj, call = value.get('ObjectExpression', {}), value.get('ContextExpression', {})
@@ -303,29 +347,64 @@ def array_context(value, package, owner, reads, outputs, depth):
         return None
     name = path[-1]
     counts = {'Array_Length': 1, 'Array_IsValidIndex': 2, 'Array_Get': 3,
-              'Array_Set': 4, 'Array_Remove': 2, 'Array_Clear': 1, 'Array_Add': 2, 'Array_Append': 2}
+              'Array_Set': 4, 'Array_Remove': 2, 'Array_Clear': 1, 'Array_Add': 2, 'Array_Append': 2,
+              'Array_AddUnique': 2, 'Array_Contains': 2, 'Array_IsNotEmpty': 1, 'Array_LastIndex': 1,
+              'Array_RemoveItem': 2, 'Array_Find': 2, 'Array_Insert': 3, 'Array_Reverse': 1,
+              'Array_Random': 3, 'Array_Shuffle': 1}
     if name not in counts: raise Error('Unsupported original array call: ' + name)
     args = call.get('Parameters', [])
     if len(args) != counts[name] or value.get('Offset') != memory_size(call, package=package):
         raise Error('Original array arity or source context offset differs')
+    if name in ('Array_Random', 'Array_Shuffle'):
+        raise Error('Unsupported original array call: ' + name + ' requires the original random state')
     target, schema = variable(args[0], package, owner, reads, outputs, depth)
     if schema['type'] != 'ArrayProperty': raise Error('Original adapter target is not a typed array')
     expr = lambda arg: expression(arg, reads, outputs, depth+1, package, owner)
-    if name == 'Array_Length': return {'op': 'array_length', 'array': target}
-    if name == 'Array_IsValidIndex': return {'op': 'array_valid', 'array': target, 'index': expr(args[1])}
+    identity = list(path)
+    if name == 'Array_Length': return {'op': 'array_length', 'array': target, 'identity': identity, 'dispatch': 'EX_FinalFunction'}
+    if name == 'Array_IsNotEmpty': return {'op': 'array_is_not_empty', 'array': target, 'identity': identity, 'dispatch': 'EX_FinalFunction'}
+    if name == 'Array_LastIndex': return {'op': 'array_last_index', 'array': target, 'identity': identity, 'dispatch': 'EX_FinalFunction'}
+    if name == 'Array_IsValidIndex': return {'op': 'array_valid', 'array': target, 'index': expr(args[1]), 'identity': identity, 'dispatch': 'EX_FinalFunction'}
     if name == 'Array_Get':
         output, output_schema = variable(args[2], package, owner, reads, outputs, depth)
         if output['scope'] not in ('local', 'persistent') or output_schema != schema['element']:
             raise Error('Array_Get output type or source owner differs')
-        return {'op': 'array_get', 'array': target, 'index': expr(args[1]), 'target': output, 'element': schema['element']}
+        return {'op': 'array_get', 'array': target, 'index': expr(args[1]), 'target': output,
+                'element': schema['element'], 'identity': identity, 'dispatch': 'EX_FinalFunction'}
+    if name in ('Array_Contains', 'Array_Find', 'Array_AddUnique', 'Array_RemoveItem'):
+        item_schema = array_item_schema(args[1], package, owner, reads, outputs, depth)
+        if item_schema != schema['element']:
+            raise Error(name + ' item type differs from the original array element')
+        if not array_equality_supported(schema['element']):
+            raise Error(name + ' element equality is not supported for the original source type')
+        item = expr(args[1])
+        if name == 'Array_Contains':
+            return {'op': 'array_contains', 'array': target, 'item': item, 'element': schema['element'],
+                    'identity': identity, 'dispatch': 'EX_FinalFunction'}
+        if name == 'Array_Find':
+            return {'op': 'array_find', 'array': target, 'item': item, 'element': schema['element'],
+                    'identity': identity, 'dispatch': 'EX_FinalFunction'}
+        result = {'op': 'array_mutate', 'operation': name, 'target': target,
+                  'element': schema['element'], 'value': item, 'identity': identity, 'dispatch': 'EX_FinalFunction'}
+        return result
+    if name == 'Array_Insert':
+        item_schema = array_item_schema(args[1], package, owner, reads, outputs, depth)
+        index_schema = array_item_schema(args[2], package, owner, reads, outputs, depth)
+        if item_schema != schema['element'] or index_schema != {'type': 'IntProperty', 'default': 0}:
+            raise Error('Array_Insert item or index type differs from the original signature')
+        return {'op': 'array_mutate', 'operation': name, 'target': target, 'element': schema['element'],
+                'value': expr(args[1]), 'index': expr(args[2]), 'identity': identity, 'dispatch': 'EX_FinalFunction'}
     # Preserve the already published Set/Add IR for source instance arrays.
     # The general mutation adapter also accepts source local arrays.
     if target['scope'] == 'self' and name == 'Array_Set':
         return {'op': 'array_set', 'target': target, 'element': schema['element'],
-                'index': expr(args[1]), 'item': expr(args[2]), 'size_to_fit': expr(args[3])}
+                'index': expr(args[1]), 'item': expr(args[2]), 'size_to_fit': expr(args[3]),
+                'identity': identity, 'dispatch': 'EX_FinalFunction'}
     if target['scope'] == 'self' and name == 'Array_Add':
-        return {'op': 'array_add', 'target': target, 'element': schema['element'], 'item': expr(args[1])}
-    result = {'op': 'array_mutate', 'operation': name, 'target': target, 'element': schema['element']}
+        return {'op': 'array_add', 'target': target, 'element': schema['element'], 'item': expr(args[1]),
+                'identity': identity, 'dispatch': 'EX_FinalFunction'}
+    result = {'op': 'array_mutate', 'operation': name, 'target': target, 'element': schema['element'],
+              'identity': identity, 'dispatch': 'EX_FinalFunction'}
     if name in ('Array_Set', 'Array_Remove'): result['index'] = expr(args[1])
     if name == 'Array_Set': result.update(value=expr(args[2]), resize=expr(args[3]))
     if name == 'Array_Add': result['value'] = expr(args[1])
@@ -333,6 +412,8 @@ def array_context(value, package, owner, reads, outputs, depth):
         other, other_schema = variable(args[1], package, owner, reads, outputs, depth)
         if other_schema != schema: raise Error('Array_Append element type differs')
         result['value'] = other
+    if name == 'Array_Reverse':
+        return result
     return result
 
 

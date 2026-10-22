@@ -273,6 +273,10 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
     if token == 'EX_Context' and package:
         obj, call = value.get('ObjectExpression', {}), value.get('ContextExpression', {})
         if (kind(obj) == 'EX_ObjectConst' and import_path(package, obj.get('Value')) == ('/Script/Engine', 'Default__DataTableFunctionLibrary')
+                and kind(call) == 'EX_CallMath'
+                and import_path(package, call.get('StackNode')) == ('/Script/Engine', 'DataTableFunctionLibrary', 'GetDataTableRowNames')):
+            raise BlueprintTranslationError('Unsupported original GetDataTableRowNames: source row-name ordering is not verified')
+        if (kind(obj) == 'EX_ObjectConst' and import_path(package, obj.get('Value')) == ('/Script/Engine', 'Default__DataTableFunctionLibrary')
                 and kind(call) == 'EX_FinalFunction'
                 and import_path(package, call.get('StackNode')) == ('/Script/Engine', 'DataTableFunctionLibrary', 'GetDataTableRowFromName')):
             args = call.get('Parameters', [])
@@ -338,6 +342,8 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         return multicast(value, package, owner, reads, outputs, depth)
     if token == 'EX_CallMath':
         if package:
+            if import_path(package, value.get('StackNode')) == ('/Script/Engine', 'DataTableFunctionLibrary', 'GetDataTableRowNames'):
+                raise BlueprintTranslationError('Unsupported original GetDataTableRowNames: source row-name ordering is not verified')
             from blueprint_effects import native_audio_vfx_call
             adapted = native_audio_vfx_call(value, package, owner, reads, outputs, depth, 'EX_CallMath')
             if adapted is not None: return adapted
@@ -1059,7 +1065,7 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
                              'Struct member reads, typed source-struct field writes/defaults, typed Array_Get copies and ASCII FName equality execute.',
                              'Cached typed DataTable row reads retain primitive/array/native-vector fields, FText identities and data-only asset references.',
                              'Asset references do not execute or convert their referenced assets. Other FText histories, unsupported identity characters and nested writes remain blocked.',
-                             'Typed source struct constants and array Get/Length/IsValidIndex/Set/Remove/Clear/Add/Append execute; other array operations and Unicode FName comparisons remain blocked.',
+                              'Typed source arrays support Get, Length, IsValidIndex, Set, Remove, Clear, Add and Append; IsNotEmpty, LastIndex, AddUnique, Contains, Find, RemoveItem, Insert and Reverse also execute when exact source parameter and equality schemas are available. Random, Shuffle, GetDataTableRowNames, other array operations and Unicode FName comparisons remain blocked.',
                              'Original property-dirty witnesses and typed multicast emissions execute locally. Explicitly registered translated handlers run transactionally; original world/UI bindings and network replication are not migrated.',
                              'Original SCS component ownership can bind to a scene actor. GetOwner and ForceNetUpdate require explicit standalone actor bindings with no game/demo net drivers; other object methods and full lifecycle remain blocked.',
                              'Original direct-class SCS component lookup, typed component field reads and explicit standalone double world game time execute. Unknown construction scripts/class hierarchies, unavailable matching templates and ambiguous component order reject.',

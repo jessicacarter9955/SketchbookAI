@@ -49,7 +49,9 @@ def adapter_present(identity):
             or identity == ('/Script/Engine', 'NetPushModelHelpers', 'MarkPropertyDirtyFromRepIndex')
             or identity in NATIVE_OBJECT_CALLS
             or identity[:2] == ('/Script/Engine', 'KismetArrayLibrary')
-            and identity[-1] in ('Array_Get', 'Array_Length', 'Array_IsValidIndex', 'Array_Set', 'Array_Remove', 'Array_Clear', 'Array_Add', 'Array_Append')
+            and identity[-1] in ('Array_Get', 'Array_Length', 'Array_IsValidIndex', 'Array_Set', 'Array_Remove', 'Array_Clear',
+                                 'Array_Add', 'Array_Append', 'Array_AddUnique', 'Array_Contains', 'Array_IsNotEmpty',
+                                 'Array_LastIndex', 'Array_RemoveItem', 'Array_Find', 'Array_Insert', 'Array_Reverse')
             or identity == ('/Script/Engine', 'DataTableFunctionLibrary', 'GetDataTableRowFromName'))
 
 

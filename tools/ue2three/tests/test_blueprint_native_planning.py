@@ -24,6 +24,13 @@ class NativePlanningTests(unittest.TestCase):
                      'Conv_DoubleToVector','MakeTransform','Subtract_VectorVector'):
             self.assertTrue(adapter_present(('/Script/Engine','KismetMathLibrary',name)), name)
         self.assertFalse(adapter_present(('/Script/Engine','KismetMathLibrary','MakeVector2D')))
+        for name in ('Array_AddUnique','Array_Contains','Array_IsNotEmpty','Array_LastIndex',
+                     'Array_RemoveItem','Array_Find','Array_Insert','Array_Reverse'):
+            self.assertTrue(adapter_present(('/Script/Engine','KismetArrayLibrary',name)), name)
+        for identity in (('/Script/Engine','KismetArrayLibrary','Array_Random'),
+                         ('/Script/Engine','KismetArrayLibrary','Array_Shuffle'),
+                         ('/Script/Engine','DataTableFunctionLibrary','GetDataTableRowNames')):
+            self.assertFalse(adapter_present(identity), identity)
         code = [node('EX_CallMath', StackNode=-1, Parameters=[node('EX_Self')]),
                 node('EX_FinalFunction', StackNode=-4, Parameters=[]),
                 node('EX_FinalFunction', StackNode=99, Parameters=[]),

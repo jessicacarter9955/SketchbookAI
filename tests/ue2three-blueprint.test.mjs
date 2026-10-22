@@ -179,6 +179,54 @@ test('source Array_Add appends a typed copy and returns the original new index',
         program.steps[1]]},initial,{NewItem:added}),/element schema/);
 });
 
+test('source native array queries and deterministic mutations preserve source identity and order', () => {
+    const element={type:'IntProperty',default:0}, arraySchema={type:'ArrayProperty',element,default:[]};
+    const identity=name=>({identity:['/Script/Engine','KismetArrayLibrary',name],dispatch:'EX_FinalFunction'});
+    const array={op:'get',scope:'self',field:'Items'};
+    const program=value=>({schema_version:1,status:'translated_straight_line',output_fields:[],input_fields:[],
+        field_types:{self:{Items:'ArrayProperty'}},schemas:{self:{Items:arraySchema}},steps:[{op:'return',value}]});
+    const run=(value,Items)=>executeBlueprint(program(value),{Items});
+    const query=(name,op,extra={})=>({op,array,...identity(name),...extra});
+    assert.equal(run(query('Array_IsNotEmpty','array_is_not_empty'),[]).value,false);
+    assert.equal(run(query('Array_IsNotEmpty','array_is_not_empty'),[3]).value,true);
+    assert.equal(run(query('Array_LastIndex','array_last_index'),[]).value,-1);
+    assert.equal(run(query('Array_LastIndex','array_last_index'),[3,4]).value,1);
+    assert.equal(run(query('Array_Contains','array_contains',{item:{op:'constant',value:4},element}),[3,4]).value,true);
+    assert.equal(run(query('Array_Find','array_find',{item:{op:'constant',value:4},element}),[4,3,4]).value,0);
+    assert.equal(run(query('Array_Find','array_find',{item:{op:'constant',value:9},element}),[4,3]).value,-1);
+
+    const addUnique={op:'array_mutate',operation:'Array_AddUnique',target:array,value:{op:'constant',value:3},element,
+        ...identity('Array_AddUnique')};
+    const duplicate=run(addUnique,[1,3]);
+    assert.equal(duplicate.value,-1);assert.deepEqual(duplicate.state.Items,[1,3]);
+    const added=run({...addUnique,value:{op:'constant',value:5}},[1,3]);
+    assert.equal(added.value,2);assert.deepEqual(added.state.Items,[1,3,5]);
+
+    const remove={op:'array_mutate',operation:'Array_RemoveItem',target:array,value:{op:'constant',value:2},element,
+        ...identity('Array_RemoveItem')};
+    const removed=run(remove,[2,1,2,3,2]);
+    assert.equal(removed.value,true);assert.deepEqual(removed.state.Items,[1,3]);
+    assert.equal(run(remove,[1,3]).value,false);
+    const insert={op:'array_mutate',operation:'Array_Insert',target:array,value:{op:'constant',value:8},
+        index:{op:'constant',value:1},element,...identity('Array_Insert')};
+    assert.deepEqual(run(insert,[2,4]).state.Items,[2,8,4]);
+    const reverse={op:'array_mutate',operation:'Array_Reverse',target:array,element,...identity('Array_Reverse')};
+    assert.deepEqual(run(reverse,[1,2,3]).state.Items,[3,2,1]);
+    assert.throws(()=>run({...insert,index:{op:'constant',value:3}},[2,4]),/outside the valid range/);
+    assert.throws(()=>run({...query('Array_Contains','array_contains',{item:{op:'constant',value:1},element}),
+        identity:['/Script/Engine','KismetArrayLibrary','Array_Find']},[1]),/identity or dispatch/);
+});
+
+test('source array FName equality uses ASCII FName identity and rejects unsupported Unicode',()=>{
+    const element={type:'NameProperty',default:'None'},arraySchema={type:'ArrayProperty',element,default:[]};
+    const expr={op:'array_contains',array:{op:'get',scope:'self',field:'Names'},item:{op:'constant',value:'target'},element,
+        identity:['/Script/Engine','KismetArrayLibrary','Array_Contains'],dispatch:'EX_FinalFunction'};
+    const program={schema_version:1,status:'translated_straight_line',output_fields:[],input_fields:[],
+        field_types:{self:{Names:'ArrayProperty'}},schemas:{self:{Names:arraySchema}},steps:[{op:'return',value:expr}]};
+    assert.equal(executeBlueprint(program,{Names:['Target']}).value,true);
+    assert.throws(()=>executeBlueprint(program,{Names:['Tárget']}),/Unicode FName/);
+});
+
 test('event calls retain typed per-instance frames and execute the original flow stack', () => {
     const event = {schema_version: 1, status: 'translated_control_flow', source_export_index: 2, source_owner_index: 3,
         input_fields: [], output_fields: [], persistent_types: {'2': {Value: 'BoolProperty'}},
