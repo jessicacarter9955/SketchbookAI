@@ -177,6 +177,33 @@ def source_enums(documents):
              for name, doc in documents.items() for export in doc.get('Exports', []) if 'Enum' in export}
 
 
+def witnessed_enum_tag_default(value, enums):
+    """Resolve a CDO enum inherited from a parent class using its own tag.
+
+    UAssetAPI preserves the full enum package path on the original ByteProperty
+    tag even when the generated child's LoadedProperties omits an inherited
+    declaration. Require the exact source enum table; never parse an ordinal
+    out of a display name or silently assume zero.
+    """
+    nodes = value.get('PropertyTypeName')
+    if (value.get('ByteType') != 'FName' or not isinstance(nodes, list) or len(nodes) != 3
+            or [n.get('InnerCount') for n in nodes if isinstance(n, dict)] != [1, 1, 0]
+            or not all(isinstance(n, dict) and isinstance(n.get('Name'), str) for n in nodes)
+            or nodes[0]['Name'] != 'ByteProperty' or nodes[1]['Name'] != value.get('EnumType')
+            or not nodes[1]['Name'] or not nodes[2]['Name'].startswith('/Game/')
+            or not isinstance(value.get('EnumValue'), str)
+            or not value['EnumValue'].startswith(nodes[1]['Name'] + '::')):
+        raise ValueError('Original inherited enum identity is incomplete')
+    enum_key = (nodes[2]['Name'], nodes[1]['Name'])
+    mapping = enums.get(enum_key)
+    if not isinstance(mapping, dict) or value['EnumValue'] not in mapping:
+        raise ValueError('Original enum value mapping not cached: ' + '/'.join(enum_key))
+    ordinal = mapping[value['EnumValue']]
+    if type(ordinal) is not int or not 0 <= ordinal <= 255:
+        raise ValueError('Original enum value outside byte range')
+    return ordinal
+
+
 def construct_source_structs(documents):
     from blueprint_types import property_schema
     enums = source_enums(documents)
