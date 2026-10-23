@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { clone } from 'three/examples/jsm/utils/SkeletonUtils';
 import { applyAttachmentSocket } from './ue2three-attachment.mjs';
 import { bindBlueprintInputs, BlueprintActorRuntime } from './ue2three-blueprint-runtime.mjs';
+import { renderSourceMetricHud } from './ue2three-source-hud.mjs';
+import { loadSourceAudioPlayback } from './ue2three-source-audio.mjs';
 
 // Source: CBP_Fixers_Mover_ABP's "Weapon Poses" LayeredBoneBlend branches.
 const WEAPON_POSE_BRANCHES = ['spine_01', 'clavicle_l', 'clavicle_r'];
@@ -30,6 +32,27 @@ export class Ue2ThreeGameplay {
         window.addEventListener('pointerup', this.pointerUp);
         this.canvas.addEventListener('contextmenu', this.contextMenu);
         this.installHint();
+        if (this.blueprints && world.levelRuntime?.mapPath) {
+            this.audioStatus = document.createElement('div');
+            this.audioStatus.className = 'ue2three-source-audio-status';
+            this.audioStatus.style.cssText = 'position:fixed;left:18px;bottom:42px;z-index:1000;background:#101923e8;color:#dce9ef;padding:5px 9px;border-radius:5px;font:11px system-ui';
+            this.audioStatus.textContent = 'Audio originale DDS: verifico gli export…';
+            document.body.append(this.audioStatus);
+            loadSourceAudioPlayback(world.levelRuntime.mapPath, fetch, {
+                onStatus:result => {
+                    if (!this.audioStatus) return;
+                    this.audioStatus.textContent = result.status === 'played' ? 'Audio originale DDS · riproduzione sorgente' :
+                        result.status === 'requested' ? 'Audio originale DDS · riproduzione richiesta…' :
+                        result.status === 'missing' ? 'Audio originale DDS · SoundWave non ancora esportato' :
+                        result.status === 'unsupported' ? 'Audio originale DDS · chiamata/parametri da migrare' :
+                        'Audio originale DDS · ' + (result.reason || 'errore');
+                }
+            }).then(player => {
+                this.sourceAudio = player;
+                if (!player.sounds.size) this.audioStatus.textContent = 'Audio DDS · 0 SoundWave originali pubblicati';
+                else this.audioStatus.textContent = `Audio DDS · ${player.sounds.size} SoundWave originali disponibili`;
+            }).catch(error => {this.audioStatus.textContent = 'Audio DDS: ' + error.message;});
+        }
         this.syncPlayer();
         world.registerUpdatable(this);
     }
@@ -49,7 +72,8 @@ export class Ue2ThreeGameplay {
             document.body.append(status); this.sourceStatus = status;
             const metrics = document.createElement('div');
             metrics.className = 'ue2three-source-metrics';
-            metrics.style.cssText = 'position:fixed;left:18px;bottom:102px;z-index:1000;background:#101923e8;color:#dce9ef;padding:8px 12px;border-radius:6px;font:12px system-ui;max-width:60vw';
+            metrics.setAttribute('aria-label', 'Indicatori originali DDS');
+            metrics.style.cssText = 'position:fixed;left:18px;bottom:102px;z-index:1000;background:#101923e8;color:#dce9ef;padding:12px;border:1px solid #496273;border-radius:8px;font:12px system-ui;width:min(260px,60vw);max-height:35vh;overflow:auto';
             document.body.append(metrics); this.sourceMetrics = metrics;
         }
     }
@@ -115,6 +139,7 @@ export class Ue2ThreeGameplay {
         this.blueprints?.advanceWorldTime(timeStep);
         this.blueprintInputs?.enforceHeld();
         this.refreshSourceMetrics();
+        this.sourceAudio?.update(this.blueprints);
         this.weaponMixer?.update(timeStep);
     }
 
@@ -131,11 +156,11 @@ export class Ue2ThreeGameplay {
     refreshSourceMetrics() {
         if (!this.sourceMetrics) return;
         try {
-            const values = this.blueprints.readMetrics();
-            const text = values.map(value => `${value.current.replace(/^Current/, '')}: ${Math.round(value.value * 100)}%`).join(' · ');
-            if (this.sourceMetrics.textContent !== text) this.sourceMetrics.textContent = text;
-            this.sourceMetrics.hidden = !text;
-        } catch (error) { this.sourceMetrics.textContent = 'Valori sorgenti non disponibili: ' + error.message; }
+            renderSourceMetricHud(this.sourceMetrics, this.blueprints.readMetrics());
+        } catch (error) {
+            this.sourceMetrics.replaceChildren(document.createTextNode('Valori sorgenti non disponibili: ' + error.message));
+            delete this.sourceMetrics.dataset.sourceMetricFingerprint;
+        }
     }
 
     cancelAction() {
