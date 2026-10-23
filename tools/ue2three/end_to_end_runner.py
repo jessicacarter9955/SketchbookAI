@@ -39,7 +39,7 @@ def execute(project, workspace, published, state_dir, *, timeout=3600, workers=4
         steps = [
             ("migrate-blueprints", [str(project), "--workspace", str(workspace),
                                     "--publish-dir", str(published)]),
-            ("plan-blueprints", [str(project), "--workspace", str(workspace),
+            ("plan-blueprints", ["--workspace", str(workspace),
                                  "--publish-dir", str(published)])]
         history = []
         for command, args in steps:
