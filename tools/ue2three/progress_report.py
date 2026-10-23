@@ -6,6 +6,7 @@ from pathlib import Path
 
 from core import atomic_json, digest, file_hash, read_json
 from map_migration import valid_glb
+from sound_migration import SoundMigrationError, validate_source_wave
 
 
 def offline_source_checks(programs, proof):
@@ -34,6 +35,7 @@ def project_progress(workspace, published, character_dir=None):
     inputs = {'inventory': workspace / 'artifacts/inventory.json',
               'registry': workspace / 'artifacts/engine_metadata.json',
               'maps': published / 'map-manifest.json', 'ui': published / 'ui-manifest.json',
+              'audio': published / 'audio-manifest.json',
               'blueprints': published / 'blueprint-programs.json',
               'live_blueprints': published / 'blueprint-live-verification.json',
               'audit_blueprints': published / 'blueprint-audit-verification.json',
@@ -58,11 +60,41 @@ def project_progress(workspace, published, character_dir=None):
     if registry.get('source_snapshot_hash') != digest(inventory.get('files', [])):
         raise ValueError('Cached registry and inventory snapshots differ')
     classes = Counter(asset.get('class') or 'Unknown' for asset in registry.get('assets', []))
+    soundwave_sources = {item.get('package') for item in registry.get('assets', [])
+                         if item.get('class') == 'SoundWave'}
+    audio = documents.get('audio', {})
+    audio_valid = (audio.get('schema_version') == 1 and audio.get('project') == project
+                   and audio.get('source_snapshot_hash') == registry['source_snapshot_hash']
+                   and isinstance(audio.get('sounds'), list))
+    sound_ready = []
+    sound_outputs = {}
+    seen_sounds = set()
+    if audio_valid:
+        for entry in audio['sounds']:
+            if not isinstance(entry, dict):
+                continue
+            package, name = entry.get('package'), entry.get('filename')
+            if (not isinstance(package, str) or package not in soundwave_sources
+                    or package in seen_sounds or not isinstance(name, str)
+                    or not name.startswith('audio/') or not name.endswith('.wav')
+                    or len(name) != len('audio/') + 64 + len('.wav')
+                    or any(c not in '0123456789abcdef' for c in name[6:-4])):
+                continue
+            seen_sounds.add(package)
+            path = published / name
+            sound_outputs[package] = file_hash(path) if path.is_file() else None
+            try:
+                checked = validate_source_wave(path)
+            except SoundMigrationError:
+                continue
+            if checked == entry.get('output_sha256'):
+                sound_ready.append(package)
     maps = documents.get('maps', {}).get('maps', [])
     ready = []
     # Check only published outputs, never source assets. Include missing/corrupt
     # outputs in the key so stale green/partial evidence cannot survive deletion.
     outputs = {}
+    outputs['audio_files'] = sound_outputs
     for row in maps:
         if not isinstance(row.get('package'), str) or not isinstance(row.get('filename'), str):
             continue
@@ -164,8 +196,11 @@ def project_progress(workspace, published, character_dir=None):
         'Conservare primitive, canali, query, contatti, ragdoll e comportamento del terreno')
     row('vfx', 'Effetti, Niagara e groom', f"{classes['NiagaraSystem']} sistemi Niagara, {classes['GroomAsset']} groom",
         'Tradurre emitter, materiali, eventi, effetti armi e personaggi')
-    row('audio', 'Audio e sequenze', f"{classes['SoundWave']} SoundWave, {classes['SoundCue']} SoundCue, {classes['MetaSoundSource']} MetaSound, {classes['LevelSequence']} sequenze",
-        'Migrare suoni, attenuazione, cue, MetaSound, animazioni temporali e cinematiche')
+    row('audio', 'Audio e sequenze',
+        f"{len(sound_ready)}/{classes['SoundWave']} SoundWave WAV pubblicati, sorgente e checksum verificati; "
+        f"{classes['SoundCue']} SoundCue, {classes['MetaSoundSource']} MetaSound, {classes['LevelSequence']} sequenze",
+        'Migrare suoni, attenuazione, cue, MetaSound, animazioni temporali e cinematiche; validare il Play originale',
+        bool(sound_ready))
     row('network', 'Multiplayer e servizi', 'Replica e servizi Unreal non tradotti',
         'Tradurre autorità, RPC, replica, sessioni e servizi presenti nel progetto')
     row('acceptance', 'Gioco completo 1:1', 'Nessuna equivalenza complessiva dimostrata',
