@@ -30,7 +30,7 @@ class DependencySchedulerTests(unittest.TestCase):
 
     def test_invalid_worker_count(self):
         with self.assertRaises(ValueError):
-            schedule({}, workers=0)
+            schedule({"programs_content_sha256": "snapshot"}, workers=0)
 
 
 if __name__ == "__main__":
