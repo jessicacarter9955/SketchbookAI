@@ -52,6 +52,13 @@ def parser():
     ui.add_argument("--workspace", type=Path, required=True, help="Verified ue2three scan and Asset Registry workspace")
     ui.add_argument("--publish-dir", type=Path, required=True, help="Local output directory, outside the source project")
     ui.add_argument("--force", action="store_true", help="Re-read source Widget Blueprints instead of reusing cached JSON")
+    sounds = commands.add_parser("migrate-sounds", help="Export source SoundWave WAV into the Three.js audio manifest")
+    sounds.add_argument("project", type=Path)
+    sounds.add_argument("--workspace", type=Path, required=True)
+    sounds.add_argument("--publish-dir", type=Path, required=True)
+    sounds.add_argument("--package", action="append", default=[])
+    sounds.add_argument("--limit", type=int, default=4)
+    sounds.add_argument("--timeout", type=int, default=600)
     controls = commands.add_parser("migrate-controls", help="Extract original Enhanced Input mappings and Blueprint event entries")
     controls.add_argument("project", type=Path, help="Editable Unreal .uproject")
     controls.add_argument("--workspace", type=Path, required=True, help="Verified ue2three scan workspace")
@@ -78,6 +85,12 @@ def default_workspace(project):
 
 
 def execute(args):
+    if args.command == 'migrate-sounds':
+        from sound_migration import migrate_sounds
+        report = migrate_sounds(args.project, args.workspace, args.publish_dir,
+                                args.package, args.limit, args.timeout)
+        print('SoundWave source export: ' + json.dumps(report, ensure_ascii=False), flush=True)
+        return 0
     if args.command == 'migrate-blueprints':
         from blueprint_migration import migrate_blueprints
         report = migrate_blueprints(args.project, args.workspace, args.publish_dir, args.package, args.read_package)

@@ -13,6 +13,7 @@ Questo intervento modifica il player della **mappa Unreal migrata**, non il gioc
 - Il player osserva le richieste audio prodotte dalle funzioni Blueprint realmente tradotte. Solo la chiamata originale `GameplayStatics.PlaySound2D` con parametri compatibili e `SoundWave` effettivamente pubblicato può avviare audio.
 - Le altre chiamate, i SoundCue, MetaSound, la spazializzazione, l'attenuazione e la concorrenza sono segnalate come non supportate, senza sostituirle con effetti sonori generati.
 - La pubblicazione deve fornire `audio-manifest.json` al fianco di `blueprint-programs.json`, schema 1, elenco `sounds` con `asset` originale, `kind: SoundWave`, `source_sha256`, `output_sha256` e `filename` relativo `audio/*.wav` (o `.ogg`/`.mp3`). Per ciascun record occorre una prova riproducibile del checksum e della decodifica del file sorgente.
+- L'exporter incrementale `python tools/ue2three/ue2three.py migrate-sounds <uproject> --workspace <verified-workspace> --publish-dir <projects/DDS> --limit 4` apre una copia isolata del progetto con l'Unreal installato; usa `SoundExporterWAV` nativo e verifica gli hash della sorgente e del WAV. Gli asset `SoundCue` e `MetaSound` non passano da questo exporter.
 - Se non c'è il manifest (HTTP 404), il player espone esplicitamente **0 SoundWave originali pubblicati**. Nessun suono falso viene emesso.
 - I browser richiedono un gesto dell'utente prima di consentire certe riproduzioni; una richiesta `play()` non equivale a playback verificato. Il contatore `played` cresce solo dopo la conferma della promise del browser.
 
