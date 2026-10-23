@@ -13,7 +13,7 @@ import sys
 import time
 from pathlib import Path
 
-from core import atomic_json, read_json, workspace_lock
+from core import atomic_json, file_hash, read_json, workspace_lock
 from map_migration import glb_summary, valid_glb
 
 
@@ -97,6 +97,48 @@ def initialize(run_dir, destination):
     return request, command, state
 
 
+def inspect_completed_export(request, record, group, result_file, glb, exit_code, failure=None):
+    """Validate a finalized subset by source identity, JSON metadata and GLB structure.
+
+    A nonzero UnrealEditor-Cmd exit cannot invalidate a fully written scene by
+    itself, but an incomplete result or meshless output cannot establish it.
+    """
+    exported = None
+    if result_file.is_file():
+        try:
+            exported = read_json(result_file)
+        except (OSError, ValueError):
+            pass
+    rows = exported.get("results", []) if isinstance(exported, dict) else []
+    item = rows[0] if len(rows) == 1 and isinstance(rows[0], dict) else {}
+    selection = item.get("actor_selection", {})
+    exported_exactly = (failure is None and isinstance(exported, dict) and exported.get("complete") is True
+                        and exported.get("source_project") == request.get("source_project")
+                        and exported.get("source_snapshot_hash") == request.get("source_snapshot_hash")
+                        and item.get("status") == "exported"
+                        and item.get("package") == record.get("package")
+                        and item.get("filename") == record.get("filename")
+                        and item.get("fingerprint") == record.get("fingerprint")
+                        and isinstance(selection, dict) and selection.get("mode") == "subset"
+                        and selection.get("selected") == len(group)
+                        and isinstance(selection.get("actor_names"), list)
+                        and sorted(selection["actor_names"]) == sorted(group)
+                        and valid_glb(glb))
+    geometry = glb_summary(glb) if exported_exactly else None
+    nonempty = geometry is not None and geometry["mesh_count"] > 0 and geometry["node_count"] > 0
+    # Exit=1 is observed even with a complete GLB (95 actual Gallery meshes).
+    # Preserve the exit anomaly rather than suppressing it.
+    recovered_unclean = (exit_code != 0 and exported_exactly and nonempty and
+                         item.get("bytes") == glb.stat().st_size)
+    success = bool(exported_exactly and nonempty and (exit_code == 0 or recovered_unclean))
+    return {"success": success, "error": failure or item.get("error"),
+            "glb": str(glb) if success else None,
+            "geometry": geometry if success else None,
+            "glb_sha256": file_hash(glb) if success else None,
+            "verification_mode": ("complete_export_unclean_exit" if recovered_unclean else
+                                  "complete_export_clean_exit" if success else None)}
+
+
 def _run_subset(request, command, group, destination, attempt_number, *, timeout, runner=subprocess.run):
     attempt_dir = destination / f"attempt-{attempt_number:04d}"
     output_dir = attempt_dir / "output"
@@ -124,25 +166,13 @@ def _run_subset(request, command, group, destination, attempt_number, *, timeout
         exit_code, failure = None, "timeout"
     except OSError as error:
         exit_code, failure = None, type(error).__name__
-    result_file = attempt_dir / "result.json"
-    exported = None
-    if result_file.is_file():
-        try:
-            exported = read_json(result_file)
-        except (OSError, ValueError):
-            pass
-    rows = exported.get("results", []) if isinstance(exported, dict) else []
-    item = rows[0] if len(rows) == 1 else {}
     glb = output_dir / record["filename"]
-    success = (failure is None and exit_code == 0 and item.get("status") == "exported" and
-               item.get("actor_selection", {}).get("mode") == "subset" and
-               sorted(item["actor_selection"].get("actor_names", [])) == sorted(group) and
-               valid_glb(glb))
+    inspected = inspect_completed_export(request, record, group,
+                                         attempt_dir / "result.json", glb, exit_code, failure)
     return {"actor_names": list(group), "attempt_dir": str(attempt_dir),
-            "exit_code": exit_code, "success": success, "error": failure or item.get("error"),
+            "exit_code": exit_code, **inspected,
             "elapsed_seconds": round(time.monotonic() - started, 2),
-            "glb": str(glb) if success else None,
-            "geometry": glb_summary(glb) if success else None}
+            }
 
 
 def diagnose(run_dir, destination, *, max_attempts=12, timeout=360, runner=subprocess.run):
@@ -174,6 +204,62 @@ def diagnose(run_dir, destination, *, max_attempts=12, timeout=360, runner=subpr
     return state
 
 
+def audit_existing_exports(run_dir, destination):
+    """Recover finished GLB candidates without repeating Unreal runs or changing job state.
+
+    Older diagnostic versions rejected complete files solely on Unreal's
+    nonzero shutdown exit. This read-only audit rechecks the actual artifacts,
+    selects non-overlapping actor groups and leaves pending jobs untouched.
+    """
+    source_request, _, names = load_source_attempt(run_dir)
+    destination = Path(destination).resolve()
+    state = read_json(destination / "diagnosis.json")
+    if (state.get("origin") != str(Path(run_dir).resolve()) or state.get("actors") != names
+            or state.get("source_snapshot_hash") != source_request["source_snapshot_hash"]):
+        raise DiagnosisError("Audit source and original actor census differ")
+    candidates = []
+    for number, attempt in enumerate(state["attempts"], 1):
+        if attempt.get("status") == "started" or not isinstance(attempt.get("actor_names"), list):
+            continue
+        attempt_dir = destination / f"attempt-{number:04d}"
+        job_path = attempt_dir / "request.json"
+        if not job_path.is_file():
+            continue
+        job = read_json(job_path)
+        maps = job.get("maps", [])
+        if (len(maps) != 1 or job.get("source_project") != source_request["source_project"]
+                or job.get("source_snapshot_hash") != source_request["source_snapshot_hash"]
+                or maps[0].get("package") != source_request["maps"][0]["package"]
+                or maps[0].get("fingerprint") != source_request["maps"][0]["fingerprint"]
+                or sorted(maps[0].get("selected_actor_names", [])) != sorted(attempt["actor_names"])):
+            continue
+        glb = attempt_dir / "output" / maps[0]["filename"]
+        inspected = inspect_completed_export(source_request, maps[0], attempt["actor_names"],
+                                             attempt_dir / "result.json", glb,
+                                             attempt.get("exit_code"), attempt.get("error"))
+        if inspected["success"]:
+            candidates.append({"attempt_number": number, "actor_names": attempt["actor_names"],
+                               "unreal_exit_code": attempt.get("exit_code"), **inspected})
+    recovered, covered = [], set()
+    for candidate in sorted(candidates, key=lambda row: (-len(row["actor_names"]), row["attempt_number"])):
+        group = set(candidate["actor_names"])
+        if group.isdisjoint(covered):
+            recovered.append(candidate)
+            covered.update(group)
+    report = {"schema_version": 1, "map": state["map"],
+              "source_snapshot_hash": state["source_snapshot_hash"],
+              "source_actor_count": len(names), "recovered_actor_count": len(covered),
+              "unrecovered_actor_names": sorted(set(names) - covered),
+              "verified_nonoverlapping_groups": recovered,
+              "candidates_including_overlaps": len(candidates),
+              "complete_geometry_export": False,
+              "limitations": ["An audited GLB subgroup is not a merged or playable Three.js scene.",
+                              "Niagara, illumination and source-authored actor behavior need separate translation.",
+                              "Nonzero Unreal shutdown exits remain recorded and require further verification."]}
+    atomic_json(destination / "recovered-geometry-audit.json", report)
+    return report
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Crash-isolate original Unreal map actors without losing geometry")
     parser.add_argument("--run-dir", type=Path, required=True,
@@ -183,6 +269,8 @@ def main(argv=None):
                         help="existing ue2three map scan workspace; serialized with other Unreal exports")
     parser.add_argument("--max-attempts", type=int, default=12)
     parser.add_argument("--timeout", type=int, default=360)
+    parser.add_argument("--audit-existing", action="store_true",
+                        help="audit completed GLB subsets without acquiring the Unreal export lock")
     args = parser.parse_args(argv)
     if args.max_attempts < 1 or args.timeout < 1:
         parser.error("max-attempts and timeout must be positive")
@@ -191,6 +279,14 @@ def main(argv=None):
         expected = args.workspace.resolve()
         if root.parent.name != "runs" or root.parent.parent.name != "maps" or root.parents[2] != expected:
             raise DiagnosisError("Source attempt does not belong to the specified locked map workspace")
+        if args.audit_existing:
+            report = audit_existing_exports(root, args.output)
+            print(json.dumps({"source_actors": report["source_actor_count"],
+                              "recovered_geometry_actors": report["recovered_actor_count"],
+                              "groups": len(report["verified_nonoverlapping_groups"]),
+                              "report": str(args.output / "recovered-geometry-audit.json")},
+                             sort_keys=True))
+            return 0
         with workspace_lock(expected):
             state = diagnose(root, args.output, max_attempts=args.max_attempts,
                              timeout=args.timeout)
