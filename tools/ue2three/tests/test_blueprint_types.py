@@ -1,7 +1,7 @@
 import unittest
 from blueprint_types import source_structs, property_schema
 from blueprint_migration import BlueprintTranslationError, translate_package, memory_size, property_type
-from blueprint_values import serialized_value, native_schema
+from blueprint_values import serialized_value, native_schema, witnessed_complete_default
 from umg_migration import Package
 from test_blueprint_migration import node
 
@@ -21,7 +21,43 @@ class SourceTypesTests(unittest.TestCase):
         result = translate_package(package, {('/Game/Original', 'Unknown'): schema})
         self.assertNotIn('State', result['default_state'])
         self.assertIn('State', result['unavailable_default_fields'])
+        self.assertEqual(result['unavailable_default_evidence']['State']['source_struct'], ['/Game/Original', 'Unknown'])
+        self.assertFalse(result['unavailable_default_evidence']['State']['source_cdo_present'])
         self.assertNotIn('ReadMissing', result['functions'])
+
+    def test_complete_original_cdo_struct_unblocks_without_constructor_guessing(self):
+        document = {'Exports': [
+            {'ObjectName': 'ReadOriginal', 'OuterIndex': 2, 'ScriptBytecode': [
+                node('EX_Return', ReturnExpression=node('EX_InstanceVariable',
+                     Variable={'New': {'Path': ['State'], 'ResolvedOwner': 2}})),
+                node('EX_EndOfScript')]},
+            {'ObjectName': 'Test_C', 'LoadedProperties': [
+                {'Name': 'State', 'SerializedType': 'StructProperty', 'Struct': -1}]},
+            {'ObjectName': 'Default__Test_C', 'Data': [{'Name': 'State', 'Value': [
+                {'Name': 'Amount', 'Value': 7}, {'Name': 'Enabled', 'Value': True}]}]}],
+            'Imports': [{'ObjectName': 'Unknown', 'OuterIndex': -2},
+                        {'ObjectName': '/Game/Original', 'ClassName': 'Package'}]}
+        schema = {'type': 'StructProperty', 'fields': {
+            'Amount': {'type': 'IntProperty'}, 'Enabled': {'type': 'BoolProperty'}}}
+        result = translate_package(Package(document), {('/Game/Original', 'Unknown'): schema})
+        self.assertEqual(result['default_state']['State'], {'Amount': 7, 'Enabled': True})
+        self.assertIn('ReadOriginal', result['functions'])
+        self.assertNotIn('State', result['unavailable_default_fields'])
+        document['Exports'][2]['Data'][0]['Value'].pop()
+        result = translate_package(Package(document), {('/Game/Original', 'Unknown'): schema})
+        self.assertNotIn('ReadOriginal', result['functions'])
+        self.assertEqual(result['unavailable_default_evidence']['State']['source_cdo_fields'], ['Amount'])
+
+    def test_complete_struct_witness_rejects_invalid_or_partial_fields(self):
+        schema = {'type': 'StructProperty', 'fields': {
+            'Offset': {'type': 'StructProperty', 'fields': {'X': {'type': 'DoubleProperty'}, 'Y': {'type': 'DoubleProperty'}}},
+            'Count': {'type': 'ByteProperty'}}}
+        self.assertEqual(witnessed_complete_default(schema, {'Offset': {'X': '3.5', 'Y': 0}, 'Count': 3}),
+                         {'Offset': {'X': 3.5, 'Y': 0.0}, 'Count': 3})
+        for value in ({'Offset': {'X': 1}, 'Count': 3}, {'Offset': {'X': float('nan'), 'Y': 0}, 'Count': 3},
+                      {'Offset': {'X': 1, 'Y': 0}, 'Count': 300}, {'Offset': {'X': 1, 'Y': 0}, 'Count': 3, 'Extra': 1}):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                witnessed_complete_default(schema, value)
 
     def test_native_transform_schema_preserves_quaternion_translation_and_scale_types(self):
         quaternion = native_schema(('/Script/CoreUObject', 'Quat'))
