@@ -701,7 +701,7 @@ def translate_package(package, structs=None, tables=None):
     class_properties = {prop['Name']: prop for export in package.exports
                         if str(export.get('ObjectName', '')).endswith('_C')
                         for prop in export.get('LoadedProperties', []) if prop.get('Name')}
-    defaults, unavailable_defaults = {}, {}
+    defaults, unavailable_defaults, inherited_enums = {}, {}, {}
     for export in package.exports:
         if str(export.get('ObjectName', '')).startswith('Default__'):
             defaults.update(package.props(export))
@@ -710,9 +710,18 @@ def translate_package(package, structs=None, tables=None):
                 name = value.get('Name'); prop = class_properties.get(name)
                 schema = property_schema(package, prop) if prop else None
                 try:
-                    from blueprint_values import serialized_value
-                    if not schema: raise ValueError('Original enum property schema is unavailable')
-                    defaults[name] = serialized_value(package, prop, schema, value)
+                    from blueprint_values import serialized_value, witnessed_enum_tag_default
+                    if schema:
+                        defaults[name] = serialized_value(package, prop, schema, value)
+                    elif prop is None:
+                        # Inherited FName-backed enums are absent from the
+                        # child's LoadedProperties, but the CDO retains their
+                        # complete enum identity and original tagged value.
+                        defaults[name] = witnessed_enum_tag_default(
+                            value, getattr(package, 'source_enums', {}))
+                        inherited_enums[name] = 'ByteProperty'
+                    else:
+                        raise ValueError('Original enum property schema is unavailable')
                 except ValueError as error:
                     defaults.pop(name, None); unavailable_defaults[name] = str(error)
     package.source_defaults = defaults
@@ -779,7 +788,8 @@ def translate_package(package, structs=None, tables=None):
                         for child in value: local_reads(child)
                 local_reads(step)
             program['field_types'] = {
-                'self': {name: property_type(class_properties[name], package) for name in program['self_reads'] if name in class_properties},
+                'self': {name: property_type(class_properties[name], package) if name in class_properties else inherited_enums[name]
+                         for name in program['self_reads'] if name in class_properties or name in inherited_enums},
                 'local': {prop['Name']: property_type(prop, package) for prop in export.get('LoadedProperties', []) if prop.get('Name') in used_locals}}
             program['source_property_types'] = {prop['Name']: prop for prop in export.get('LoadedProperties', []) if prop.get('Name') in used_locals}
             program['schemas'] = {'local': {name: schema for name, prop in program['source_property_types'].items()
@@ -848,10 +858,15 @@ def translate_package(package, structs=None, tables=None):
                         writes.add(binding['target']['field'])
             if reads != set(program['self_reads']) or writes != set(program['self_writes']): changed = True
             program['self_reads'], program['self_writes'] = sorted(reads), sorted(writes)
-            program['field_types']['self'] = {name: property_type(class_properties[name], package) for name in reads | writes if name in class_properties}
+            program['field_types']['self'] = {
+                name: property_type(class_properties[name], package) if name in class_properties else inherited_enums[name]
+                for name in reads | writes if name in class_properties or name in inherited_enums}
             program['source_defaults'] = {name: defaults[name] for name in reads | writes if name in defaults}
         if not changed: break
     default_state = {}
+    for name in inherited_enums:
+        if name in defaults and name not in unavailable_defaults and name not in class_properties:
+            default_state[name] = defaults[name]
     for name, prop in class_properties.items():
         if name in unavailable_defaults: continue
         try: type_name = property_type(prop, package)
