@@ -307,6 +307,29 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
     };
     const evaluate = (expression, depth = 0) => {
         if (!expression || depth > 48) throw new Error('Invalid Blueprint expression');
+        if (expression.op === 'switch_value') {
+            const cases = expression.cases;
+            if (expression.index_type !== 'ByteProperty' || !Array.isArray(cases)
+                || cases.length < 1 || cases.length > 64
+                || !Number.isSafeInteger(expression.source_end_offset) || expression.source_end_offset <= 0)
+                throw new Error('Unverified original switch-value bytecode');
+            const labels = new Set();
+            let previousOffset = 0;
+            for (const candidate of cases) {
+                if (!Number.isInteger(candidate?.match) || candidate.match < 0 || candidate.match > 255
+                    || labels.has(candidate.match) || !Number.isSafeInteger(candidate.next_offset)
+                    || candidate.next_offset <= previousOffset
+                    || candidate.next_offset >= expression.source_end_offset || !candidate.value)
+                    throw new Error('Unverified original switch-value case or VM offset');
+                labels.add(candidate.match);
+                previousOffset = candidate.next_offset;
+            }
+            const index = evaluate(expression.index, depth+1);
+            if (!Number.isInteger(index) || index < 0 || index > 255)
+                throw new Error('Original switch-value index is not a source byte');
+            const selected = cases.find(candidate => candidate.match === index);
+            return evaluate(selected ? selected.value : expression.default, depth+1);
+        }
         if (expression.op === 'native_game_time') {
             const context = notifications.native;
             if (!context || context.mode !== 'standalone' || context.net_drivers !== 0

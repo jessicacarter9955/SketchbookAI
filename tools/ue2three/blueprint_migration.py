@@ -268,6 +268,28 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
     if not isinstance(value, dict) or depth > 48:
         raise BlueprintTranslationError('Invalid or deeply nested Kismet expression')
     token = kind(value)
+    if token == 'EX_SwitchValue':
+        # UE's select node stores absolute VM offsets for every next-case
+        # boundary. memory_size verifies all of them against the serialized
+        # expression before admitting source-authored selection.
+        memory_size(value, package=package)
+        if native_math_source_type(value.get('IndexTerm'), package, owner) != 'ByteProperty':
+            raise BlueprintTranslationError('Source switch index is not a verified byte property')
+        cases = value['Cases']
+        if any(kind(row['CaseIndexValueTerm']) != 'EX_ByteConst' for row in cases):
+            raise BlueprintTranslationError('Source switch requires constant byte case values')
+        labels = [row['CaseIndexValueTerm'].get('Value') for row in cases]
+        if (any(type(label) is not int or not 0 <= label <= 255 for label in labels)
+                or len(labels) != len(set(labels))):
+            raise BlueprintTranslationError('Source switch labels are invalid or duplicated')
+        return {'op': 'switch_value', 'index_type': 'ByteProperty',
+                'index': expression(value['IndexTerm'], reads, outputs, depth+1, package, owner),
+                'cases': [{'match': label,
+                           'value': expression(row['CaseTerm'], reads, outputs, depth+1, package, owner),
+                           'next_offset': row['NextOffset']}
+                          for label, row in zip(labels, cases)],
+                'default': expression(value['DefaultTerm'], reads, outputs, depth+1, package, owner),
+                'source_end_offset': value['EndGotoOffset']}
     if token == 'EX_ObjectConst' and package:
         from blueprint_values import asset_constant
         try: return asset_constant(package, value.get('Value'))
@@ -479,6 +501,29 @@ def memory_size(value, depth=0, package=None):
         raise BlueprintTranslationError('Invalid bytecode size expression')
     token = kind(value)
     size = lambda child: memory_size(child, depth+1, package)
+    if token == 'EX_SwitchValue':
+        cases, end = value.get('Cases'), value.get('EndGotoOffset')
+        if (not isinstance(cases, list) or not 1 <= len(cases) <= 64
+                or type(end) is not int or end <= 0):
+            raise BlueprintTranslationError('Invalid original switch case count or final offset')
+        index_size = size(value.get('IndexTerm'))
+        default_size = size(value.get('DefaultTerm'))
+        widths = []
+        for row in cases:
+            if not isinstance(row, dict) or type(row.get('NextOffset')) is not int:
+                raise BlueprintTranslationError('Invalid original switch case offset')
+            widths.append(size(row.get('CaseIndexValueTerm')) + 4 + size(row.get('CaseTerm')))
+        total = 7 + index_size + sum(widths) + default_size
+        start, cursor = end - total, end - total + 7 + index_size
+        if start < 0:
+            raise BlueprintTranslationError('Original switch extends before function bytecode')
+        for row, width in zip(cases, widths):
+            cursor += width
+            if row['NextOffset'] != cursor:
+                raise BlueprintTranslationError('Original switch next-case VM offset is inconsistent')
+        if cursor + default_size != end:
+            raise BlueprintTranslationError('Original switch final VM offset is inconsistent')
+        return total
     if token == 'EX_SetArray':
         if value.get('ArrayInnerProp') is not None or not isinstance(value.get('Elements'), list):
             raise BlueprintTranslationError('Unverified SetArray memory layout')

@@ -13,6 +13,30 @@ def variable(token, name): return node(token, Variable={'New': {'Path': [name], 
 
 
 class BlueprintMigrationTests(unittest.TestCase):
+    def test_source_byte_switch_checks_original_vm_case_boundaries(self):
+        cases = [{'CaseIndexValueTerm': node('EX_ByteConst', Value=i),
+                  'NextOffset': 19 + 7 + 9 + (i + 1) * 8,
+                  'CaseTerm': node('EX_ByteConst', Value=i + 10)} for i in range(3)]
+        switch = node('EX_SwitchValue', EndGotoOffset=19 + 7 + 9 + 3*8 + 2,
+                      IndexTerm=variable('EX_LocalVariable', 'Choice'),
+                      Cases=cases, DefaultTerm=node('EX_ByteConst', Value=99))
+        function = self.function()
+        function['LoadedProperties'] = [{'Name': 'Choice', 'SerializedType': 'ByteProperty',
+                                          'PropertyFlags': 'CPF_Parm'}]
+        function['ScriptBytecode'][1]['Expression'] = switch
+        package = Package({'Exports': [function]})
+        result = translate_function(function, package)
+        self.assertEqual(memory_size(switch, package=package), 42)
+        self.assertEqual(result['steps'][0]['value']['op'], 'switch_value')
+        self.assertEqual([row['match'] for row in result['steps'][0]['value']['cases']], [0, 1, 2])
+        cases[1]['NextOffset'] += 1
+        with self.assertRaisesRegex(BlueprintTranslationError, 'next-case VM offset'):
+            translate_function(function, package)
+        cases[1]['NextOffset'] -= 1
+        cases[1]['CaseIndexValueTerm']['Value'] = 0
+        with self.assertRaisesRegex(BlueprintTranslationError, 'duplicated'):
+            translate_function(function, package)
+
     def test_ue57_math_source_calls_translate_typed_literals(self):
         for name, parameters in (
             ('Abs', [node('EX_DoubleConst', Value='-2.5')]),
