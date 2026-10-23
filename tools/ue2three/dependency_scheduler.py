@@ -6,14 +6,13 @@ never claims translated functions or Unreal/Three.js parity.
 """
 import argparse
 import json
-from collections import defaultdict
 from pathlib import Path
 
 
 def schedule(plan, workers=4, max_parallel_unreal=1):
     if workers < 1 or max_parallel_unreal < 1:
         raise ValueError("workers and max_parallel_unreal must be positive")
-    functions = plan.get("functions", [])
+    if not plan.get("programs_content_sha256"):\n        raise ValueError("Missing source-witnessed programs_content_sha256")\n    functions = plan.get("functions", [])
     modules = plan.get("modules", [])
     native = plan.get("native_dependencies", {})
     tasks = []
