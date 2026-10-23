@@ -863,13 +863,22 @@ def translate_package(package, structs=None, tables=None):
                     raise BlueprintTranslationError('Source actor defaults require an original world-object binding: ' + name)
                 default_state[name] = None
             else: default_state[name] = asset_reference(package, defaults.get(name, 0), schema['class'])
-        elif schema and schema['type'] == 'StructProperty' and (name not in defaults or isinstance(defaults[name], dict)):
+        elif schema and schema['type'] == 'StructProperty':
             # A source struct may deserialize with known field types but no
             # witnessed constructor (for example, a native plugin struct).
             # Do not invent an empty constructor, and never abort the entire
             # multi-package replay with KeyError: 'default'.
             if not isinstance(schema.get('default'), dict):
-                unavailable_defaults[name] = 'Original struct constructor defaults are unavailable'
+                from blueprint_values import witnessed_complete_default
+                try:
+                    default_state[name] = witnessed_complete_default(schema, defaults.get(name))
+                except ValueError as error:
+                    identity = import_path(package, prop.get('Struct'))
+                    unavailable_defaults[name] = ('Original struct constructor unavailable for '
+                                                  + '/'.join(identity or ('unknown',)) + ': ' + str(error))
+                continue
+            if name in defaults and not isinstance(defaults[name], dict):
+                unavailable_defaults[name] = 'Original CDO struct override is not a field map'
                 continue
             default_state[name] = {**schema['default'], **defaults.get(name, {})}
         elif name in defaults: default_state[name] = defaults[name]
@@ -922,7 +931,14 @@ def translate_package(package, structs=None, tables=None):
             'blocked': blocked, 'declarations': declarations, 'default_state': default_state,
             'field_schemas': {name: schema for name, prop in class_properties.items()
                               if (schema := property_schema(package, prop)) is not None},
-            'unavailable_default_fields': unavailable_defaults, 'counts': counts}
+            'unavailable_default_fields': unavailable_defaults,
+            'unavailable_default_evidence': {
+                name: {'source_struct': list(import_path(package, class_properties[name].get('Struct')) or []),
+                       'source_cdo_present': name in defaults,
+                       'source_cdo_fields': sorted(defaults[name]) if isinstance(defaults.get(name), dict) else [],
+                       'source_schema_fields': sorted((property_schema(package, class_properties[name]) or {}).get('fields', {}))}
+                for name in unavailable_defaults if name in class_properties},
+            'counts': counts}
 
 
 def character_guards(controls, packages, source_package):
