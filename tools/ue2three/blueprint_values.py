@@ -53,6 +53,37 @@ def native_schema(identity):
                             'Scale3D': {'X': 1, 'Y': 1, 'Z': 1}}, 'member_order': list(fields)}
 
 
+def witnessed_complete_default(schema, value):
+    """Accept only fully serialized original CDO values, never guessed struct zeros.
+
+    Sparse Unreal tagged properties require a witnessed constructor to fill
+    absent members. When no constructor is available, a *complete* CDO struct
+    can still safely initialize the instance if every field is type checked.
+    """
+    kind = schema.get('type') if isinstance(schema, dict) else None
+    if kind == 'StructProperty':
+        fields = schema.get('fields')
+        if not isinstance(fields, dict) or not fields or not isinstance(value, dict) or value.keys() != fields.keys():
+            raise ValueError('Complete original CDO struct members are unavailable')
+        return {field: witnessed_complete_default(child, value[field]) for field, child in fields.items()}
+    if kind == 'ArrayProperty':
+        if not isinstance(value, list) or len(value) > 100000: raise ValueError('Invalid original CDO array')
+        return [witnessed_complete_default(schema.get('element'), item) for item in value]
+    if kind == 'BoolProperty' and type(value) is bool: return value
+    if kind in ('IntProperty', 'ByteProperty', 'Int64Property') and type(value) is int:
+        lower, upper = {'IntProperty': (-2**31, 2**31 - 1), 'ByteProperty': (0, 255),
+                        'Int64Property': (-2**53 + 1, 2**53 - 1)}[kind]
+        if lower <= value <= upper: return value
+    if kind in ('FloatProperty', 'DoubleProperty') and type(value) in (int, float, str):
+        try: number = float(value)
+        except ValueError: pass
+        else:
+            if math.isfinite(number): return number
+    if kind in ('StrProperty', 'NameProperty') and isinstance(value, str): return value
+    if kind in ('ObjectProperty', 'ClassProperty') and value is None: return None
+    raise ValueError('Invalid or unsupported original CDO struct field: ' + str(kind))
+
+
 def asset_reference(package, value, declared_class):
     from blueprint_types import import_path
     if value == 0 and type(value) is int: return None
