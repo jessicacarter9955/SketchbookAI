@@ -74,7 +74,7 @@ def migrate_sounds(project, workspace, publish_dir, packages=(), limit=4, timeou
     inventory = read_json(workspace / "artifacts/inventory.json")
     registry = read_json(workspace / "artifacts/engine_metadata.json")
     engine = read_json(workspace / "artifacts/engine.json")
-    snapshot = read_json(workspace / "artifacts/snapshot.json")
+    snapshot = read_json(workspace / "snapshot.json")
     if (registry.get("complete") is not True or
             Path(registry.get("project", "")).resolve() != project or
             registry.get("source_snapshot_hash") != digest(inventory.get("files", [])) or
