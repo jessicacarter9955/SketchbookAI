@@ -55,7 +55,8 @@ class ProgressReportTests(unittest.TestCase):
         self.assertEqual(report, project_progress(self.workspace, self.published, self.character))
 
     def test_audio_progress_only_counts_source_witnessed_intact_wav(self):
-        inventory = {'files': [{'path': 'Content/Map.umap', 'sha256': 'source'}], 'maps': ['/Game/A', '/Game/B']}
+        inventory = {'files': [{'path': 'Content/Map.umap', 'sha256': 'source'}], 'maps': ['/Game/A', '/Game/B'],
+                     'assets': [{'package': '/Game/Audio/Birds', 'sha256': 'original-asset-hash'}]}
         registry = {'project': self.project, 'complete': True,
                     'source_snapshot_hash': digest(inventory['files']),
                     'assets': [{'class': 'SoundWave', 'package': '/Game/Audio/Birds'}]}
@@ -65,7 +66,8 @@ class ProgressReportTests(unittest.TestCase):
         source = self.published / name
         source.parent.mkdir(parents=True, exist_ok=True)
         source.write_bytes(b'RIFF' + (36).to_bytes(4, 'little') + b'WAVE' + b'\x00' * 32)
-        item = {'package': '/Game/Audio/Birds', 'filename': name, 'output_sha256': file_hash(source)}
+        item = {'package': '/Game/Audio/Birds', 'kind': 'SoundWave', 'source_sha256': 'original-asset-hash',
+                'filename': name, 'output_sha256': file_hash(source)}
         manifest = {'schema_version': 1, 'project': self.project,
                     'source_snapshot_hash': registry['source_snapshot_hash'], 'sounds': [item]}
         atomic_json(self.published / 'audio-manifest.json', manifest)
@@ -81,6 +83,11 @@ class ProgressReportTests(unittest.TestCase):
         self.assertEqual(audio['status'], 'red')
         self.assertIn('0/1 SoundWave WAV', audio['evidence'])
         source.write_bytes(b'RIFF' + (36).to_bytes(4, 'little') + b'WAVE' + b'\x00' * 32)
+        manifest['sounds'][0]['source_sha256'] = 'wrong-original'
+        atomic_json(self.published / 'audio-manifest.json', manifest)
+        forged = project_progress(self.workspace, self.published, self.character)
+        self.assertEqual(next(row for row in forged['rows'] if row['id'] == 'audio')['status'], 'red')
+        manifest['sounds'][0]['source_sha256'] = 'original-asset-hash'
         manifest['source_snapshot_hash'] = 'stale'
         atomic_json(self.published / 'audio-manifest.json', manifest)
         stale = project_progress(self.workspace, self.published, self.character)

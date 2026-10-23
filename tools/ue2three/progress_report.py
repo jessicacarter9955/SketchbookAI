@@ -62,6 +62,8 @@ def project_progress(workspace, published, character_dir=None):
     classes = Counter(asset.get('class') or 'Unknown' for asset in registry.get('assets', []))
     soundwave_sources = {item.get('package') for item in registry.get('assets', [])
                          if item.get('class') == 'SoundWave'}
+    source_asset_hashes = {item.get('package'): item.get('sha256')
+                           for item in inventory.get('assets', []) if isinstance(item, dict)}
     audio = documents.get('audio', {})
     audio_valid = (audio.get('schema_version') == 1 and audio.get('project') == project
                    and audio.get('source_snapshot_hash') == registry['source_snapshot_hash']
@@ -75,6 +77,9 @@ def project_progress(workspace, published, character_dir=None):
                 continue
             package, name = entry.get('package'), entry.get('filename')
             if (not isinstance(package, str) or package not in soundwave_sources
+                    or not isinstance(source_asset_hashes.get(package), str)
+                    or entry.get('source_sha256') != source_asset_hashes[package]
+                    or entry.get('kind') != 'SoundWave'
                     or package in seen_sounds or not isinstance(name, str)
                     or not name.startswith('audio/') or not name.endswith('.wav')
                     or len(name) != len('audio/') + 64 + len('.wav')
