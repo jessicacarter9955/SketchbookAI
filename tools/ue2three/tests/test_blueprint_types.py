@@ -1,12 +1,48 @@
 import unittest
 from blueprint_types import source_structs, property_schema
 from blueprint_migration import BlueprintTranslationError, translate_package, memory_size, property_type
-from blueprint_values import serialized_value, native_schema, witnessed_complete_default
+from blueprint_values import serialized_value, native_schema, witnessed_complete_default, witnessed_enum_tag_default
 from umg_migration import Package
 from test_blueprint_migration import node
 
 
 class SourceTypesTests(unittest.TestCase):
+    def test_inherited_original_enum_tag_is_resolved_without_guessing(self):
+        identity = '/Game/Fixers/Core/Blueprints/Components/Identity/Enum/E_Faction'
+        tag = {'Name': 'Faction', 'ByteType': 'FName', 'EnumType': 'E_Faction',
+               'EnumValue': 'E_Faction::NewEnumerator2',
+               'PropertyTypeName': [{'Name': 'ByteProperty', 'InnerCount': 1},
+                                    {'Name': 'E_Faction', 'InnerCount': 1},
+                                    {'Name': identity, 'InnerCount': 0}]}
+        enums = {(identity, 'E_Faction'): {'E_Faction::NewEnumerator2': 5}}
+        self.assertEqual(witnessed_enum_tag_default(tag, enums), 5)
+        package = Package({'Exports': [
+            {'ObjectName': 'ReadFaction', 'OuterIndex': 2, 'ScriptBytecode': [
+                node('EX_Return', ReturnExpression=node('EX_InstanceVariable',
+                     Variable={'New': {'Path': ['Faction'], 'ResolvedOwner': 2}})),
+                node('EX_EndOfScript')]},
+            {'ObjectName': 'Child_C', 'LoadedProperties': []},
+            {'ObjectName': 'Default__Child_C', 'Data': [tag]}]})
+        package.source_enums = enums
+        report = translate_package(package)
+        self.assertEqual(report['default_state']['Faction'], 5)
+        self.assertEqual(report['functions']['ReadFaction']['source_defaults']['Faction'], 5)
+        self.assertEqual(report['functions']['ReadFaction']['field_types']['self']['Faction'], 'ByteProperty')
+        self.assertNotIn('Faction', report['unavailable_default_fields'])
+        for bad in ({}, {(identity, 'E_Faction'): {'E_Faction::Other': 5}}):
+            with self.subTest(bad=bad):
+                package.source_enums = bad
+                report = translate_package(package)
+                self.assertNotIn('ReadFaction', report['functions'])
+        for changed in ('path', 'value', 'type'):
+            other = dict(tag)
+            other['PropertyTypeName'] = [dict(x) for x in tag['PropertyTypeName']]
+            if changed == 'path': other['PropertyTypeName'][2]['Name'] = '/Game/Fake/E_Faction'
+            elif changed == 'value': other['EnumValue'] = 'E_Faction::MadeUp'
+            else: other['PropertyTypeName'][0]['Name'] = 'IntProperty'
+            with self.subTest(changed=changed), self.assertRaises(ValueError):
+                witnessed_enum_tag_default(other, enums)
+
     def test_struct_without_source_constructor_is_blocked_without_crashing_replay(self):
         package = Package({'Exports': [
             {'ObjectName': 'ReadMissing', 'OuterIndex': 2, 'ScriptBytecode': [
