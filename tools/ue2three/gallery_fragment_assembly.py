@@ -57,8 +57,8 @@ def read_glb(path):
     unsupported = set(doc.get("extensionsUsed", [])) - SUPPORTED_EXTENSIONS
     if unsupported or set(doc.get("extensionsRequired", [])) - SUPPORTED_EXTENSIONS:
         raise AssemblyError(f"Unknown extension(s): {sorted(unsupported)}")
-    if doc.get("animations") or doc.get("skins") or not doc.get("scenes") or not doc.get("meshes"):
-        raise AssemblyError("Fragment must contain static, renderable source geometry")
+    if not doc.get("scenes") or not doc.get("meshes"):
+        raise AssemblyError("Fragment must contain renderable source geometry")
     for view in doc.get("bufferViews", []):
         if view.get("buffer", 0) != 0 or view.get("byteOffset", 0) + view["byteLength"] > len(binary):
             raise AssemblyError("Out-of-bounds binary view")
@@ -83,7 +83,7 @@ def _material_textures(material, offset):
 def merge_fragment(out, doc, binary):
     offsets = {key: len(out[key]) for key in ("bufferViews", "accessors", "materials",
                                              "samplers", "images", "textures", "meshes",
-                                             "nodes", "cameras", "lights")}
+                                             "nodes", "cameras", "lights", "skins", "animations")}
     out["binary"] += _pad(binary)
     base_byte = len(out["binary"]) - len(_pad(binary))
     for item in doc.get("bufferViews", []):
@@ -118,10 +118,13 @@ def merge_fragment(out, doc, binary):
     for mesh in doc.get("meshes", []):
         copied = copy.deepcopy(mesh)
         for primitive in copied.get("primitives", []):
-            if primitive.get("targets") or primitive.get("extensions"):
-                raise AssemblyError("Unexpected animated or extended primitive")
+            if primitive.get("extensions"):
+                raise AssemblyError("Unexpected primitive extension")
             primitive["attributes"] = {name: index + offsets["accessors"]
                                        for name, index in primitive.get("attributes", {}).items()}
+            for target in primitive.get("targets", []):
+                for name in list(target):
+                    target[name] += offsets["accessors"]
             for field, category in (("indices", "accessors"), ("material", "materials")):
                 if field in primitive:
                     primitive[field] += offsets[category]
@@ -129,13 +132,21 @@ def merge_fragment(out, doc, binary):
     out["cameras"].extend(copy.deepcopy(doc.get("cameras", [])))
     lights = doc.get("extensions", {}).get("KHR_lights_punctual", {}).get("lights", [])
     out["lights"].extend(copy.deepcopy(lights))
+    for skin in doc.get("skins", []):
+        copied = copy.deepcopy(skin)
+        copied["joints"] = [index + offsets["nodes"] for index in copied.get("joints", [])]
+        if "skeleton" in copied:
+            copied["skeleton"] += offsets["nodes"]
+        if "inverseBindMatrices" in copied:
+            copied["inverseBindMatrices"] += offsets["accessors"]
+        out["skins"].append(copied)
     for node in doc.get("nodes", []):
         copied = copy.deepcopy(node)
         for field, category in (("mesh", "meshes"), ("camera", "cameras")):
             if field in copied:
                 copied[field] += offsets[category]
         if "skin" in copied:
-            raise AssemblyError("Skin hierarchy would not be preserved")
+            copied["skin"] += offsets["skins"]
         if "children" in copied:
             copied["children"] = [child + offsets["nodes"] for child in copied["children"]]
         node_extensions = copied.get("extensions", {})
@@ -144,6 +155,17 @@ def merge_fragment(out, doc, binary):
         if "KHR_lights_punctual" in node_extensions:
             node_extensions["KHR_lights_punctual"]["light"] += offsets["lights"]
         out["nodes"].append(copied)
+    for animation in doc.get("animations", []):
+        copied = copy.deepcopy(animation)
+        for sampler in copied.get("samplers", []):
+            sampler["input"] += offsets["accessors"]
+            sampler["output"] += offsets["accessors"]
+        for channel in copied.get("channels", []):
+            if "node" in channel.get("target", {}):
+                channel["target"]["node"] += offsets["nodes"]
+            if channel.get("extensions"):
+                raise AssemblyError("Animation channel extension requires explicit remapping")
+        out["animations"].append(copied)
     scene = doc["scenes"][doc.get("scene", 0)]
     out["roots"].extend(root + offsets["nodes"] for root in scene.get("nodes", []))
     out["extensionsUsed"].update(doc.get("extensionsUsed", []))
@@ -156,7 +178,7 @@ def _write_glb(out, path):
            "nodes": out["nodes"], "meshes": out["meshes"],
            "bufferViews": out["bufferViews"], "accessors": out["accessors"],
            "buffers": [{"byteLength": len(out["binary"])}]}
-    for key in ("materials", "samplers", "images", "textures", "cameras"):
+    for key in ("materials", "samplers", "images", "textures", "cameras", "skins", "animations"):
         if out[key]:
             doc[key] = out[key]
     if out["lights"]:
@@ -193,7 +215,8 @@ def assemble(diagnosis_file, gallery_static_file, output_file):
         raise AssemblyError("Missing original actor census")
     out = {"binary": b"", "roots": [], "extensionsUsed": set(), "extensionsRequired": set(),
            **{key: [] for key in ("bufferViews", "accessors", "materials", "samplers", "images",
-                                   "textures", "meshes", "nodes", "cameras", "lights")}}
+                                   "textures", "meshes", "nodes", "cameras", "lights", "skins",
+                                   "animations")}}
     fragments = []
     covered = set()
     for group in diagnosis.get("verified_groups", []):
