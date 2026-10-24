@@ -71,7 +71,8 @@ MATH_CALLS.update({'Divide_DoubleDouble': (2, 'DoubleDouble'),
                    'Round': (1, 'DoubleDouble'),
                    'Abs': (1, 'DoubleDouble'), 'VSize': (1, 'vector'), 'VSizeXY': (1, 'vector'),
                    'Conv_IntToInt64': (1, 'IntInt'),
-                   'Vector_Distance': (2, 'VectorVector')})
+                   'Vector_Distance': (2, 'VectorVector'),
+                   'Conv_LinearColorToVector': (1, 'LinearColor')})
 
 NATIVE_MATH_INPUT_TYPES = {
     'MakeVector': ('DoubleProperty', 'DoubleProperty', 'DoubleProperty'),
@@ -85,13 +86,14 @@ NATIVE_MATH_INPUT_TYPES = {
     'BreakRotator': ('Rotator',),
     'Abs': ('DoubleProperty',), 'VSize': ('Vector',), 'VSizeXY': ('Vector',),
     'Conv_IntToInt64': ('IntProperty',),
+    'Conv_LinearColorToVector': ('LinearColor',),
     'Vector_Distance': ('Vector', 'Vector'),
 }
 
 
 def native_math_result_type(name):
     if name in ('MakeVector', 'Add_VectorVector', 'Subtract_VectorVector', 'Multiply_VectorVector',
-                'Conv_DoubleToVector'): return 'Vector'
+                'Conv_DoubleToVector', 'Conv_LinearColorToVector'): return 'Vector'
     if name == 'MakeRotator': return 'Rotator'
     if name == 'MakeTransform': return 'Transform'
     if name == 'Conv_IntToInt64': return 'Int64Property'
@@ -141,7 +143,9 @@ def native_math_source_type(value, package, owner):
         schema = property_schema(package, properties[0])
         return schema.get('native') if schema and schema.get('type') == 'StructProperty' else property_type(properties[0], package)
     if token == 'EX_StructConst' and package:
-        identity = import_path(package, value.get('StructType'))
+        # UAssetAPI EX_StructConst records the reflected UScriptStruct in `Struct`;
+        # `StructType` is not its serialized field (unlike some property tags).
+        identity = import_path(package, value.get('Struct'))
         schema = native_schema(identity) or getattr(package, 'source_structs', {}).get(identity)
         return schema.get('native') if schema else None
     return None
