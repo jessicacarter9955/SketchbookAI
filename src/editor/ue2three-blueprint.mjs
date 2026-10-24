@@ -936,6 +936,28 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             trace.push({source_index: sourceIndex, op: step.op, taken: take, target: take ? pc : null});
             continue;
         }
+        if (step.op === 'jump_dynamic') {
+            const vmOffset = evaluate(step.value);
+            const targets = program.source_offset_targets;
+            if (!Number.isInteger(vmOffset) || vmOffset < 0 || vmOffset > 2147483647 || !Array.isArray(targets))
+                throw new Error('Invalid original Blueprint computed jump offset');
+            // Source-authored VM offsets, not array indices: a binary search
+            // matches the compiler's exact verified instruction boundaries.
+            let low = 0, high = targets.length - 1, targetIndex = null;
+            while (low <= high) {
+                const mid = (low + high) >>> 1, row = targets[mid];
+                if (!Array.isArray(row) || row.length !== 2 || !Number.isInteger(row[0]))
+                    throw new Error('Invalid original Blueprint boundary table');
+                if (row[0] === vmOffset) { targetIndex = row[1]; break; }
+                if (row[0] < vmOffset) low = mid + 1;
+                else high = mid - 1;
+            }
+            if (targetIndex === null)
+                throw new Error('Computed Blueprint jump misses an original instruction boundary');
+            pc = jumpTarget(targetIndex);
+            trace.push({source_index: sourceIndex, op: 'jump_dynamic', target_offset: vmOffset, target: pc});
+            continue;
+        }
         if (step.op === 'jump' || step.op === 'branch') {
             if (!Number.isInteger(step.target) || step.target < 0 || step.target >= program.steps.length)
                 throw new Error('Invalid Blueprint jump target');
