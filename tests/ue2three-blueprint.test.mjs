@@ -3,6 +3,23 @@ import assert from 'node:assert/strict';
 import { executeBlueprint } from '../src/editor/ue2three-blueprint.mjs';
 import { blueprintFixtureState, blueprintFixtureMembers } from '../src/editor/ue2three-fixtures.mjs';
 
+test('original ExecuteUbergraph EntryPoint dispatch uses verified VM bytecode boundaries', () => {
+    const program = {schema_version:1,status:'translated_control_flow',input_fields:['EntryPoint'],output_fields:[],
+        field_types:{local:{EntryPoint:'IntProperty'}},source_offset_targets:[[0,0],[10,1],[12,2],[14,3]],
+        steps:[{op:'jump_dynamic',source_index:0,value:{op:'get',scope:'local',field:'EntryPoint'}},
+               {op:'return',source_index:1,value:{op:'constant',value:11}},
+               {op:'return',source_index:2,value:{op:'constant',value:22}},
+               {op:'end',source_index:3}]};
+    assert.equal(executeBlueprint(program, {}, {EntryPoint:10}).value,11);
+    assert.equal(executeBlueprint(program, {}, {EntryPoint:12}).value,22);
+    for (const offset of [-1,11,13,2147483647])
+        assert.throws(() => executeBlueprint(program, {}, {EntryPoint:offset}), /computed jump|instruction boundary/i);
+    assert.throws(() => executeBlueprint(program, {}, {EntryPoint:14}), /EndOfScript/);
+    assert.throws(() => executeBlueprint(program, {}, {EntryPoint:12.5}), /IntProperty/);
+    assert.throws(() => executeBlueprint({...program,source_offset_targets:undefined}, {}, {EntryPoint:12}), /computed jump/);
+    assert.throws(() => executeBlueprint({...program,source_offset_targets:[[0,0],[10,99],[12,2]]}, {}, {EntryPoint:10}), /jump target/);
+});
+
 test('source byte switch preserves case selection and laziness', () => {
     const value={op:'switch_value',index_type:'ByteProperty',
         index:{op:'get',scope:'local',field:'Choice'},source_end_offset:54,
