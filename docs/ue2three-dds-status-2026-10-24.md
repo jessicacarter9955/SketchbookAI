@@ -13,7 +13,7 @@ conversazione ChatGPT non si carica. I GLB originali/licenziati restano locali.
 | Mappe | Otto GLB in `dds-assets/maps/maps/` hanno risposto HTTP 200 sul server locale 8401; `LV_Fixers_Startup` e `GalleryLevel` non complete. | 🟡 |
 | Gallery | `GalleryPartialSource.glb` (52.264.952 byte); 163/185 attori coperti da geometria, 22 non coperti. Luce, VFX, spawn e altri attori non-mesh richiedono adapter Three.js tipizzati. | 🟡 |
 | Materiali originali | Grafi sorgente recuperati secondo report precedente; fedeltà shader originale e confronti visivi non certificati. | 🟡 |
-| Blueprint | Ricompilazione isolata sui *medesimi* SHA sorgenti: 436→439 tradotte, 1.521→1.518 bloccate. Tre funzioni `CBP_Fixers_Mover_ABP` convertite. | 🔴 gioco / 🟢 incremento offline |
+| Blueprint | Ricompilazione isolata sui *medesimi* SHA sorgenti: 436→440 tradotte, 1.521→1.517 bloccate. Tre funzioni `CBP_Fixers_Mover_ABP` e `ExecuteUbergraph_AC_PreCMCTick` convertite. | 🔴 gioco / 🟢 incremento offline |
 | Runtime e Play DDS | End-to-end originale e Play manuale non superati; il `dds-portland` training raid è un demo distinto. | 🔴 |
 | Test di migrazione CI | Workflow UE2Three verde al commit `4e3e29c` (nuove modifiche successive da verificare). | 🟢 nell'ambito testato |
 | Deploy Netlify | La build GitHub ha passato lo step Build; lo step `Verify Netlify credentials` è fallito e il deploy è stato saltato. | 🔴 |
@@ -39,9 +39,11 @@ runtime reale, test pertinenti e accettazione manuale.
    aggiunti quattro test di verifica della corrispondenza SHA sorgente.
 5. Implementato compilatore/runtime del salto dinamico originale
    `ExecuteUbergraph` limitato al parametro `EntryPoint` Int32 verificato e
-   alla tabella completa dei confini VM. I 153 casi di primo blocco sono
-   `EX_LocalVariable EntryPoint`; la ricompilazione sul PC deve ancora
-   determinare il guadagno reale e gli ulteriori blocchi.
+   alla tabella completa dei confini VM. I 153 casi di primo blocco erano
+   `EX_LocalVariable EntryPoint`; dopo il supporto al prologo
+   `EX_PushExecutionFlow`, **nessuno dei 153 resta bloccato per quel salto**.
+   È stata tradotta una funzione completa ulteriore; le altre hanno rivelato
+   blocchi successivi (context/native/schema) e non sono verdi.
 6. Pubblicata [la checklist completa per il tester](ue2three-dds-manual-play-acceptance.md)
    con ID, azioni e risultati attesi, distinguendo il demo dalla sorgente DDS.
 
@@ -56,7 +58,10 @@ Percorsi relativi alla checkout d'integrazione Windows:
 - `.local/ue2three/blueprint-finterp-verify-20261024/blueprint-programs.json`
   — 439/1.518, stesso snapshot fonte, tre funzioni nuove.
 - `.local/ue2three/blueprint-entrypoint-verify-20261024/` — output del job
-  di ricompilazione successivo: **non assumere conclusione prima di leggerlo**.
+  di ricompilazione: 440 tradotte, 1.517 bloccate; confronto SHA fonte invariato.
+- `.local/ue2three/blueprint-flowstack-verify-20261024/blueprint-programs.json`
+  — stessa conta 440/1.517, ma nessun primo blocco rimasto per il salto
+  `EntryPoint` verificato: gli altri operatori sono ancora da migrare.
 - `.local/ue2three/gallery-assembled-20261024/GalleryPartialSource.glb`
   — geometria Gallery ancora incompleta.
 
