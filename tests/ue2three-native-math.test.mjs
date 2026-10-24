@@ -23,6 +23,18 @@ test('UE 5.7 Round uses FMath half-toward-positive-infinity rounding within int3
     assert.throws(() => evaluateNativeMath('Floor', [1.5]), /Unsupported native math/);
 });
 
+test('UE 5.7 FInterpTo preserves source speed, small-distance and clamping branches', () => {
+    assert.equal(evaluateNativeMath('FInterpTo', [0, 10, 0.1, 2]), 2);
+    assert.equal(evaluateNativeMath('FInterpTo', [0, 10, 1, 2]), 10);
+    assert.equal(evaluateNativeMath('FInterpTo', [0, 10, -1, 2]), 0);
+    assert.equal(evaluateNativeMath('FInterpTo', [0, 10, 0.1, 0]), 10);
+    assert.equal(evaluateNativeMath('FInterpTo', [0, 10, 0.1, -2]), 10);
+    assert.equal(evaluateNativeMath('FInterpTo', [1, 1 + 0.00001, 0, 5]), 1.00001);
+    assert.equal(evaluateNativeMath('FInterpTo', [10, -10, 0.25, 1]), 5);
+    for (const args of [[], [1,2,3], [1,2,3,4,5], [NaN,1,1,1], [1,Infinity,1,1], [1,'2',1,1]])
+        assert.throws(() => evaluateNativeMath('FInterpTo', args), /Invalid native FInterpTo parameters/);
+});
+
 test('source double arithmetic and divide-by-zero behavior match Kismet', () => {
     assert.equal(evaluateNativeMath('Add_DoubleDouble', [1.25, 2.5]), 3.75);
     assert.equal(evaluateNativeMath('Subtract_DoubleDouble', [10, 3]), 7);
