@@ -64,6 +64,37 @@ def validate_source_wave(path):
     return file_hash(path)
 
 
+def verified_engine_result(result_file, requested, stage, exit_code):
+    """Accept an unclean Unreal shutdown only when every staged sound was exported.
+
+    A completed Unreal Python result plus source-linked, checked WAV output
+    is stronger evidence than UnrealEditor's process exit on shutdown. An
+    interrupted, partial or corrupted batch still fails closed.
+    """
+    result_file = Path(result_file)
+    if not result_file.is_file():
+        raise SoundMigrationError("Unreal sound export did not write its result")
+    results = read_json(result_file)
+    if results.get("complete") is not True:
+        raise SoundMigrationError("Sound exporter did not finish")
+    if exit_code:
+        rows = results.get("results", [])
+        if len(rows) != len(requested):
+            raise SoundMigrationError("Unreal exited nonzero with incomplete SoundWave results")
+        by_package = {item.get("package"): item for item in rows}
+        if len(by_package) != len(requested):
+            raise SoundMigrationError("Unreal exited nonzero with duplicate SoundWave results")
+        for record in requested:
+            item = by_package.get(record["package"], {})
+            if item.get("status") != "exported" or item.get("filename") != record["filename"]:
+                raise SoundMigrationError("Unreal exited nonzero with a failed SoundWave export")
+            path = Path(stage) / record["filename"]
+            validate_source_wave(path)
+            if item.get("bytes") != path.stat().st_size:
+                raise SoundMigrationError("Unreal exited nonzero with altered SoundWave output")
+    return results
+
+
 def migrate_sounds(project, workspace, publish_dir, packages=(), limit=4, timeout=600):
     project = Path(project).resolve(strict=True)
     workspace = Path(workspace).resolve(strict=True)
@@ -122,11 +153,13 @@ def migrate_sounds(project, workspace, publish_dir, packages=(), limit=4, timeou
         process = subprocess.run(command, cwd=scratch.parent, env=env,
                                  stdout=out, stderr=err, stdin=subprocess.DEVNULL,
                                  timeout=timeout, creationflags=flags, check=False)
-    if process.returncode or not result_file.is_file():
-        raise SoundMigrationError("Unreal sound export failed; see " + str(run_dir / "unreal.log"))
-    results = read_json(result_file)
-    if results.get("complete") is not True:
-        raise SoundMigrationError("Sound exporter did not finish")
+    try:
+        results = verified_engine_result(result_file, requested, stage, process.returncode)
+    except (OSError, ValueError, SoundMigrationError) as error:
+        raise SoundMigrationError("Unreal sound export failed; see " + str(run_dir / "unreal.log")) from error
+    if process.returncode:
+        print("SOUND_RECOVERED_UNCLEAN_EXIT", process.returncode,
+              len(requested), str(run_dir / "unreal.log"), flush=True)
     by_package = {row["package"]: row for row in results["results"]}
     published = [*existing]
     for record in requested:
@@ -146,7 +179,8 @@ def migrate_sounds(project, workspace, publish_dir, packages=(), limit=4, timeou
             raise SoundMigrationError("SoundWave changed during publication")
         os.replace(temporary, target)
         published.append({k:record[k] for k in ("package", "asset", "kind", "source_sha256", "filename")}
-                         | {"output_sha256":sha, "bytes":target.stat().st_size})
+                         | {"output_sha256":sha, "bytes":target.stat().st_size,
+                            "engine_exit_code":process.returncode})
         print("SOUND_EXPORTED", record["package"], target.stat().st_size, flush=True)
     manifest = {"schema_version": 1, "project": str(project),
                 "source_snapshot_hash": registry["source_snapshot_hash"],
@@ -155,4 +189,6 @@ def migrate_sounds(project, workspace, publish_dir, packages=(), limit=4, timeou
     atomic_json(old_path, manifest)
     return {"status": "exported" if len(published)-len(existing) == len(requested) else "partial",
             "attempted":len(requested), "published":len(published),
-            "new":len(published)-len(existing), "manifest":str(old_path), "run_dir":str(run_dir)}
+            "new":len(published)-len(existing), "manifest":str(old_path),
+            "engine_exit_code":process.returncode, "unclean_exit_recovered":bool(process.returncode),
+            "run_dir":str(run_dir)}
