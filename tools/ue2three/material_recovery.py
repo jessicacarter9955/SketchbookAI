@@ -41,7 +41,9 @@ def verified_materials(project, workspace):
             continue
         package = asset.get("package", "")
         row = source.get(package)
-        if not package.startswith("/Game/") or not row:
+        # Source plugins may mount as /PluginName/ rather than /Game/.
+        # The witnessed inventory and in-project file path are the authority.
+        if not package.startswith("/") or not row:
             raise MaterialRecoveryError("Material is missing from the witnessed source inventory")
         original = (project.parent / row["path"]).resolve()
         if project.parent not in original.parents or not original.is_file():
