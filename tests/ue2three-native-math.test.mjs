@@ -131,6 +131,8 @@ test('UE 5.7 Abs, VSize and Vector_Distance retain source numeric/vector contrac
     assert.equal(evaluateNativeMath('VSizeXY', [{X:0,Y:0,Z:9000}]), 0);
     assert.equal(evaluateNativeMath('Conv_IntToInt64', [-2147483648]), -2147483648);
     assert.equal(evaluateNativeMath('Conv_IntToInt64', [2147483647]), 2147483647);
+    assert.deepEqual(evaluateNativeMath('Conv_LinearColorToVector', [{R:0.25,G:0.5,B:0.75,A:0.125}]),
+        {X:0.25,Y:0.5,Z:0.75});
     assert.equal(evaluateNativeMath('Vector_Distance', [{X:3,Y:4,Z:12},{X:0,Y:0,Z:0}]), 13);
     assert.equal(evaluateNativeMath('Vector_Distance', [{X:-2,Y:3,Z:1},{X:1,Y:-1,Z:13}]), 13);
     assert.equal(evaluateNativeMath('VSize', [{X:0,Y:0,Z:0}]), 0);
@@ -140,6 +142,9 @@ test('UE 5.7 Abs, VSize and Vector_Distance retain source numeric/vector contrac
         ['VSizeXY', []], ['VSizeXY', [{X:1,Y:2}]],
         ['Conv_IntToInt64', [2147483648]], ['Conv_IntToInt64', [-2147483649]],
         ['Conv_IntToInt64', [1.5]],
+        ['Conv_LinearColorToVector', []],
+        ['Conv_LinearColorToVector', [{R:1,G:0,B:0}]],
+        ['Conv_LinearColorToVector', [{R:1,G:0,B:0,A:NaN}]],
         ['Vector_Distance', [{X:1,Y:2,Z:3}]],
         ['Vector_Distance', [{X:1,Y:2,Z:3},{X:1,Y:2,Z:NaN}]],
         ['Vector_Distance', [{X:1e308,Y:0,Z:0},{X:-1e308,Y:0,Z:0}]],
