@@ -6,6 +6,7 @@ migration gain. Exit 2 when source identities differ; 1 for changed outcomes.
 """
 import argparse
 import json
+import re
 from pathlib import Path
 
 
@@ -46,20 +47,29 @@ def compare(before, after):
     a, b = entries(before), entries(after)
     sources_a = {p: r.get("source", {}).get("source_sha256") for p, r in before["packages"].items()}
     sources_b = {p: r.get("source", {}).get("source_sha256") for p, r in after["packages"].items()}
+    valid_hash = lambda value: isinstance(value, str) and bool(re.fullmatch(r'[0-9a-f]{64}', value))
     mismatched = {p: {"before": sources_a.get(p), "after": sources_b.get(p)}
                   for p in sorted(sources_a.keys() | sources_b.keys())
-                  if sources_a.get(p) != sources_b.get(p)}
+                  if sources_a.get(p) != sources_b.get(p)
+                  or not valid_hash(sources_a.get(p)) or not valid_hash(sources_b.get(p))}
     changed = []
     for key in sorted(a.keys() | b.keys()):
         old, new = a.get(key), b.get(key)
         if old != new:
             changed.append({"package": key[0], "export_index": key[1], "before": old, "after": new})
+    new_translations = [row for row in changed if row['before'] and row['after']
+                        and row['before']['status'] == 'blocked' and row['after']['status'] == 'translated']
+    regressions = [row for row in changed if row['before'] and row['before']['status'] == 'translated'
+                   and (not row['after'] or row['after']['status'] != 'translated')]
+    dropped = [row for row in changed if row['before'] and not row['after']]
     return {"same_source_snapshot": not mismatched, "source_mismatches": mismatched,
             "before_counts": before.get("counts", {}), "after_counts": after.get("counts", {}),
             "changed_functions": changed, "changed_count": len(changed),
-            "certifiable_gain": not mismatched and any(
-                x["before"] and x["after"] and x["before"]["status"] == "blocked"
-                and x["after"]["status"] == "translated" for x in changed)}
+            "new_translations": new_translations, "new_translation_count": len(new_translations),
+            "regressions": regressions, "regression_count": len(regressions),
+            "disappeared_functions": dropped, "disappeared_count": len(dropped),
+            "monotonic_source_compilation": not mismatched and not regressions and not dropped,
+            "certifiable_gain": not mismatched and not regressions and not dropped and bool(new_translations)}
 
 
 def main():
@@ -67,12 +77,16 @@ def main():
     parser.add_argument("before", type=Path)
     parser.add_argument("after", type=Path)
     parser.add_argument("--output", type=Path, help="Optional JSON diagnostic report")
+    parser.add_argument("--require-monotonic", action="store_true",
+                        help="Fail with exit 3 when a same-source function regresses or disappears")
     args = parser.parse_args()
     result = compare(load(args.before), load(args.after))
     print(json.dumps(result, ensure_ascii=False, indent=2))
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    if args.require_monotonic and not result['monotonic_source_compilation']:
+        return 3
     return 2 if not result["same_source_snapshot"] else 1 if result["changed_count"] else 0
 
 

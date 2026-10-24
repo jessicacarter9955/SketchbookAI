@@ -25,6 +25,9 @@ class CompareBlueprintReportsTests(unittest.TestCase):
         self.assertEqual(result["changed_count"], 1)
         self.assertEqual(result["changed_functions"][0]["before"]["status"], "blocked")
         self.assertEqual(result["changed_functions"][0]["after"]["status"], "translated")
+        self.assertTrue(result['monotonic_source_compilation'])
+        self.assertEqual(result['new_translation_count'], 1)
+        self.assertEqual(result['regression_count'], 0)
 
     def test_different_original_package_hash_is_not_certifiable(self):
         result = compare(report(), report(translated=True, source="b" * 64))
@@ -35,6 +38,42 @@ class CompareBlueprintReportsTests(unittest.TestCase):
         result = compare(report(), report(reason="Unresolved source struct"))
         self.assertEqual(result["changed_count"], 1)
         self.assertFalse(result["certifiable_gain"])
+        self.assertTrue(result['monotonic_source_compilation'])
+
+    def test_real_regression_is_explicit_and_not_green(self):
+        before, after = report(translated=True), report()
+        result = compare(before, after)
+        self.assertEqual(result['regression_count'], 1)
+        self.assertFalse(result['monotonic_source_compilation'])
+        self.assertFalse(result['certifiable_gain'])
+        self.assertEqual(result['regressions'][0]['before']['function'], 'UpdateBlend')
+
+    def test_missing_translated_function_is_a_hard_regression(self):
+        before, after = report(translated=True), report()
+        after['packages']['/Game/BP_Original']['blocked'].clear()
+        result = compare(before, after)
+        self.assertEqual(result['disappeared_count'], 1)
+        self.assertEqual(result['regression_count'], 1)
+        self.assertFalse(result['monotonic_source_compilation'])
+
+    def test_missing_source_hash_is_not_a_matching_snapshot(self):
+        before, after = report(), report(translated=True)
+        before['packages']['/Game/BP_Original']['source'].pop('source_sha256')
+        after['packages']['/Game/BP_Original']['source'].pop('source_sha256')
+        result = compare(before, after)
+        self.assertFalse(result['same_source_snapshot'])
+        self.assertFalse(result['certifiable_gain'])
+
+    def test_net_gain_with_an_unrelated_regression_is_not_certifiable(self):
+        before, after = report(), report(translated=True)
+        before['packages']['/Game/BP_Original']['functions']['Old'] = {
+            'name': 'Old', 'source_export_index': 3}
+        after['packages']['/Game/BP_Original']['blocked'].append({
+            'function': 'Old', 'source_export_index': 3, 'reason': 'Unsupported opcode: EX_Context'})
+        result = compare(before, after)
+        self.assertEqual(result['new_translation_count'], 1)
+        self.assertEqual(result['regression_count'], 1)
+        self.assertFalse(result['certifiable_gain'])
 
     def test_duplicate_source_export_identity_fails_closed(self):
         value = report(translated=True)

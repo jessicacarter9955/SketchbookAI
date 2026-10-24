@@ -9,6 +9,7 @@ from core import atomic_json, digest, file_hash, read_json
 from umg_migration import Package
 from blueprint_migration import kind
 from blueprint_native_planning import FAMILIES, native_surface, rank_native_families
+from blueprint_cascade_impact import dependency_cascade_impact
 
 
 MODULES = {
@@ -125,7 +126,8 @@ def build_blueprint_plan(workspace, published):
     fingerprint = digest({'compiled_payload': digest(compiler_payload),
                           'implementations': {name: file_hash(Path(__file__).with_name(name)) for name in (
                               'blueprint_planning.py', 'blueprint_native_planning.py', 'blueprint_migration.py',
-                              'blueprint_events.py', 'blueprint_types.py', 'umg_migration.py', 'core.py')}})
+                              'blueprint_events.py', 'blueprint_types.py', 'blueprint_cascade_impact.py',
+                              'umg_migration.py', 'core.py')}})
     target = published / 'blueprint-plan.json'
     try:
         prior = read_json(target)
@@ -155,6 +157,7 @@ def build_blueprint_plan(workspace, published):
                 sample = example(document, record, programs['packages'][name]['source'])
                 if len(json.dumps(sample)) < 50000: examples[key].append(sample)
     first = Counter(record['first_blocker'] for record in records)
+    cascades = dependency_cascade_impact(programs)
     native = rank_native_families(records)
     observed_ops = sorted({node['op'] for node in walk(programs['packages']) if isinstance(node.get('op'), str)})
     ranked = []
@@ -240,6 +243,7 @@ Runtime: src/editor/ue2three-blueprint.mjs
             'blocked_functions': len(records), 'missing_cached_packages': len(programs['missing_cached_packages']),
             'event_entry_wrappers': sum(bool(r['event_target']) for r in records),
             'first_blockers': dict(first.most_common()), 'modules': ranked, 'functions': records,
+            'dependency_cascades': cascades,
             'native_dependencies': native, 'observed_ir_operations': observed_ops,
             'scope': 'Parsed cached packages only; overlapping candidate counts, no game-completion or speed percentage'}
     rows = ''.join('<tr><td>' + html.escape(row['title']) + '</td><td>' + str(row['first_blocked_functions'])
@@ -248,6 +252,11 @@ Runtime: src/editor/ue2three-blueprint.mjs
     native_rows = ''.join('<tr><td>' + html.escape(row['title']) + '</td><td>' + str(row['distinct_observed_apis'])
                           + '</td><td>' + str(row['blocked_source_functions_involved']) + '</td><td><a download href="'
                           + row['packet'] + '">Scarica contratto e sorgenti</a></td></tr>' for row in native['families'])
+    cascade_rows = ''.join('<tr><td>' + html.escape(row['package']) + '</td><td>'
+                           + html.escape(row['function']) + '</td><td>'
+                           + str(row['observed_dependency_callers']) + '</td><td>'
+                           + html.escape(row['first_blocker']) + '</td></tr>'
+                           for row in cascades['roots'][:15])
     page = '''<!doctype html><html lang="it"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
 <title>ue2three · Priorità e lavoro parallelo</title><style>body{background:#101923;color:#e8f0f5;font:16px system-ui;margin:24px;max-width:1100px}p{line-height:1.5;color:#bdd0df}table{border-collapse:collapse;width:100%}td,th{padding:14px;border:1px solid #344d61;text-align:left}a{color:#8edbff}</style>
 <h1>Priorità per accelerare la migrazione</h1><p>''' + str(len(records)) + ' funzioni bloccate nei ' + str(len(caches)) + ''' pacchetti letti.
@@ -258,6 +267,11 @@ Le famiglie si sovrappongono: risolvere il primo blocco può rivelare altre dipe
 con entry costante e layout verificato. Le famiglie sono suggerimenti di lavoro.
 I conteggi si sovrappongono e non promettono lo sblocco completo delle funzioni.</p>
 <table><tr><th>Famiglia</th><th>API distinte</th><th>Funzioni bloccate coinvolte</th><th>Pacchetto locale</th></tr>''' + native_rows + '''</table>
+<h2>Dipendenze a cascata: primi blocchi da risolvere</h2>
+<p>Conteggio dei chiamanti osservati, non previsione di funzioni traducibili:
+correggere la radice può scoprire altri blocchi. Riferimenti mancanti o cicli
+restano esclusi dalla graduatoria.</p>
+<table><tr><th>Pacchetto</th><th>Funzione radice</th><th>Chiamanti dipendenti</th><th>Primo blocco</th></tr>''' + cascade_rows + '''</table>
 <p>Assegna un pacchetto diverso a ciascuna chat GLM/ChatGPT. Riporta qui il risultato
 per integrazione e verifica. I pacchetti vengono preparati sul PC; il tool non li invia.</p>
 <p>''' + str(plan['event_entry_wrappers']) + ''' funzioni richiamano grafi di eventi condivisi.
