@@ -104,6 +104,24 @@ class DdsAgentTests(unittest.TestCase):
         self.assertIn('Git merge failed (exit 128)', str(raised.exception))
         self.assertNotIn('secret.example', str(raised.exception))
 
+    def test_clean_worktree_scan_has_separate_windows_timeout(self):
+        calls = []
+
+        def fake_git(path, *args, **kwargs):
+            calls.append((args, kwargs))
+            if args[0] == 'rev-parse' and '--show-toplevel' in args:
+                return str(self.repo)
+            if args[0] == 'rev-parse':
+                return 'a' * 40
+            return ''
+
+        with patch.object(dds_agent, '_git', side_effect=fake_git):
+            self.assertEqual(dds_agent._require_clean_repo(self.repo), 'a' * 40)
+        status = [(args, kwargs) for args, kwargs in calls if args[0] == 'status']
+        self.assertEqual(len(status), 1)
+        self.assertEqual(status[0][1]['timeout'], dds_agent.GIT_STATUS_TIMEOUT_SECONDS)
+        self.assertGreater(dds_agent.GIT_STATUS_TIMEOUT_SECONDS, dds_agent.GIT_TIMEOUT_SECONDS)
+
     def _make_four_verified_families(self):
         plan_path = self.published / 'blueprint-plan.json'
         plan = json.loads(plan_path.read_text(encoding='utf-8'))
