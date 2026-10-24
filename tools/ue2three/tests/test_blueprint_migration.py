@@ -33,6 +33,19 @@ class BlueprintMigrationTests(unittest.TestCase):
         dispatcher['LoadedProperties'][0]['SerializedType'] = 'DoubleProperty'
         with self.assertRaises(BlueprintTranslationError):
             translate_function(dispatcher, package)
+        # 61 original UE5.7 ExecuteUbergraph packages have an authored flow
+        # stack push before the EntryPoint jump; retain its exact VM boundary.
+        dispatcher['LoadedProperties'][0]['SerializedType'] = 'IntProperty'
+        dispatcher['ScriptBytecode'].insert(0, node('EX_PushExecutionFlow', PushingAddress=16))
+        dispatcher['ScriptBytecodeSize'] = 19
+        with_flow = translate_function(dispatcher, package)
+        self.assertEqual([step['op'] for step in with_flow['steps']],
+                         ['push_flow', 'jump_dynamic', 'nop', 'return', 'end'])
+        self.assertEqual(with_flow['steps'][0]['target'], 3)
+        self.assertEqual(with_flow['source_offset_targets'], [[0, 0], [5, 1], [15, 2], [16, 3], [18, 4]])
+        dispatcher['ScriptBytecode'][0]['PushingAddress'] = 17
+        with self.assertRaisesRegex(BlueprintTranslationError, 'flow stack target'):
+            translate_function(dispatcher, package)
 
     def test_source_byte_switch_checks_original_vm_case_boundaries(self):
         cases = [{'CaseIndexValueTerm': node('EX_ByteConst', Value=i),
