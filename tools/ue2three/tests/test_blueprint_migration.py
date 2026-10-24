@@ -78,6 +78,9 @@ class BlueprintMigrationTests(unittest.TestCase):
             ('VSize', [node('EX_VectorConst', Value={'X':3,'Y':4,'Z':12})]),
             ('VSizeXY', [node('EX_VectorConst', Value={'X':3,'Y':4,'Z':12})]),
             ('Conv_IntToInt64', [node('EX_IntConst', Value=-2147483648)]),
+            ('Square', [node('EX_DoubleConst', Value='-2.5')]),
+            ('FFloor', [node('EX_DoubleConst', Value='-2.5')]),
+            ('Conv_BoolToDouble', [node('EX_True')]),
             ('Vector_Distance', [node('EX_VectorConst', Value={'X':3,'Y':4,'Z':12}),
                                  node('EX_VectorConst', Value={'X':0,'Y':0,'Z':0})]),
         ):
@@ -97,8 +100,24 @@ class BlueprintMigrationTests(unittest.TestCase):
                     self.assertEqual(value['args'][0]['value'],{'X':3.0,'Y':4.0,'Z':12.0})
                 elif name == 'Conv_IntToInt64':
                     self.assertEqual(value['args'][0],{'op':'constant','value':-2147483648})
+                elif name == 'Conv_BoolToDouble':
+                    self.assertEqual(value['args'][0],{'op':'constant','value':True})
                 else:
                     self.assertEqual(value['args'][0],{'op':'constant','value':-2.5})
+
+    def test_new_native_math_signature_contracts(self):
+        from blueprint_migration import MATH_CALLS, NATIVE_MATH_INPUT_TYPES, native_math_result_type
+        signatures = {
+            'Square': (1, ('DoubleProperty',), 'DoubleProperty'),
+            'FFloor': (1, ('DoubleProperty',), 'IntProperty'),
+            'Conv_BoolToDouble': (1, ('BoolProperty',), 'DoubleProperty'),
+            'Multiply_LinearColorLinearColor': (2, ('LinearColor', 'LinearColor'), 'LinearColor'),
+        }
+        for name, (arity, source_types, result_type) in signatures.items():
+            with self.subTest(name=name):
+                self.assertEqual(MATH_CALLS[name][0], arity)
+                self.assertEqual(NATIVE_MATH_INPUT_TYPES[name], source_types)
+                self.assertEqual(native_math_result_type(name), result_type)
 
     def test_ue57_source_witnessed_abs_and_vector_length_native_signatures(self):
         from blueprint_migration import MATH_CALLS, NATIVE_MATH_INPUT_TYPES, native_math_result_type
