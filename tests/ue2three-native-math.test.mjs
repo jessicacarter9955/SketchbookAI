@@ -127,12 +127,19 @@ test('UE 5.7 Abs, VSize and Vector_Distance retain source numeric/vector contrac
     assert.equal(evaluateNativeMath('Abs', [-3.25]), 3.25);
     assert.equal(evaluateNativeMath('Abs', [2]), 2);
     assert.equal(evaluateNativeMath('VSize', [{X:3,Y:4,Z:12}]), 13);
+    assert.equal(evaluateNativeMath('VSizeXY', [{X:3,Y:4,Z:12}]), 5);
+    assert.equal(evaluateNativeMath('VSizeXY', [{X:0,Y:0,Z:9000}]), 0);
+    assert.equal(evaluateNativeMath('Conv_IntToInt64', [-2147483648]), -2147483648);
+    assert.equal(evaluateNativeMath('Conv_IntToInt64', [2147483647]), 2147483647);
     assert.equal(evaluateNativeMath('Vector_Distance', [{X:3,Y:4,Z:12},{X:0,Y:0,Z:0}]), 13);
     assert.equal(evaluateNativeMath('Vector_Distance', [{X:-2,Y:3,Z:1},{X:1,Y:-1,Z:13}]), 13);
     assert.equal(evaluateNativeMath('VSize', [{X:0,Y:0,Z:0}]), 0);
     for (const [name, args] of [
         ['Abs', []], ['Abs', [NaN]], ['Abs', ['3']], ['Abs', [3,4]],
         ['VSize', []], ['VSize', [{X:1,Y:2}]], ['VSize', [{X:1,Y:2,Z:Infinity}]],
+        ['VSizeXY', []], ['VSizeXY', [{X:1,Y:2}]],
+        ['Conv_IntToInt64', [2147483648]], ['Conv_IntToInt64', [-2147483649]],
+        ['Conv_IntToInt64', [1.5]],
         ['Vector_Distance', [{X:1,Y:2,Z:3}]],
         ['Vector_Distance', [{X:1,Y:2,Z:3},{X:1,Y:2,Z:NaN}]],
         ['Vector_Distance', [{X:1e308,Y:0,Z:0},{X:-1e308,Y:0,Z:0}]],
