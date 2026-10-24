@@ -20,8 +20,16 @@ def entries(data):
     out = {}
     for package, record in data["packages"].items():
         source = record.get("source", {})
-        for group in ("translated", "blocked"):
-            for item in record.get(group, []):
+        # The compiler's actual translated programs live in the `functions`
+        # mapping, not a `translated` array. Omitting that mapping made genuine
+        # blocked→translated transitions appear to be blocked→missing, yielding
+        # a false "no certifiable gain" despite a matching source snapshot.
+        translated = record.get("functions", {})
+        if not isinstance(translated, dict):
+            raise ValueError(f"{package}: functions must be an object")
+        for group, items in (("translated", translated.values()),
+                             ("blocked", record.get("blocked", []))):
+            for item in items:
                 idx = item.get("source_export_index")
                 if idx is None:
                     raise ValueError(f"{package}: {group} item without source_export_index")
