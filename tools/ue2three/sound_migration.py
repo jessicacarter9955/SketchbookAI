@@ -43,7 +43,7 @@ def select_soundwaves(inventory, registry, project, existing=(), requested=(), l
         if not source.is_file() or file_hash(source) != row["sha256"]:
             raise SoundMigrationError("Source SoundWave changed: " + name)
         basename = str(asset.get("object_name") or name.rsplit("/", 1)[-1]).removesuffix("_C")
-        if not re.fullmatch(r"[A-Za-z0-9_]+", basename):
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", basename):
             raise SoundMigrationError("Unsafe original SoundWave object name")
         records.append({"package": name, "asset": name + "." + basename,
                         "kind": "SoundWave", "source_sha256": row["sha256"],
