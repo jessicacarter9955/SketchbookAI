@@ -69,7 +69,8 @@ MATH_CALLS.update({'Divide_DoubleDouble': (2, 'DoubleDouble'),
                    'EqualEqual_NameName': (2, 'name'), 'NotEqual_NameName': (2, 'name'),
                    'FClamp': (3, 'DoubleDouble'), 'Clamp': (3, 'IntInt'),
                    'Round': (1, 'DoubleDouble'),
-                   'Abs': (1, 'DoubleDouble'), 'VSize': (1, 'vector'),
+                   'Abs': (1, 'DoubleDouble'), 'VSize': (1, 'vector'), 'VSizeXY': (1, 'vector'),
+                   'Conv_IntToInt64': (1, 'IntInt'),
                    'Vector_Distance': (2, 'VectorVector')})
 
 NATIVE_MATH_INPUT_TYPES = {
@@ -82,7 +83,8 @@ NATIVE_MATH_INPUT_TYPES = {
     'MakeTransform': ('Vector', 'Rotator', 'Vector'),
     'BreakVector': ('Vector',),
     'BreakRotator': ('Rotator',),
-    'Abs': ('DoubleProperty',), 'VSize': ('Vector',),
+    'Abs': ('DoubleProperty',), 'VSize': ('Vector',), 'VSizeXY': ('Vector',),
+    'Conv_IntToInt64': ('IntProperty',),
     'Vector_Distance': ('Vector', 'Vector'),
 }
 
@@ -92,6 +94,7 @@ def native_math_result_type(name):
                 'Conv_DoubleToVector'): return 'Vector'
     if name == 'MakeRotator': return 'Rotator'
     if name == 'MakeTransform': return 'Transform'
+    if name == 'Conv_IntToInt64': return 'Int64Property'
     if name.startswith(('Boolean', 'Not_PreBool', 'EqualEqual_BoolBool', 'NotEqual_BoolBool')):
         return 'BoolProperty'
     suffix = name.rsplit('_', 1)[-1]
@@ -102,7 +105,7 @@ def native_math_result_type(name):
         return {'ByteByte':'ByteProperty','IntInt':'IntProperty','DoubleDouble':'DoubleProperty'}[suffix]
     if name in ('Min', 'Max', 'Clamp', 'SelectInt'): return 'IntProperty'
     if name in ('Conv_IntToDouble', 'Lerp', 'FMin', 'FMax', 'FClamp', 'SelectFloat',
-                'Abs', 'VSize', 'Vector_Distance'):
+                'Abs', 'VSize', 'VSizeXY', 'Vector_Distance'):
         return 'DoubleProperty'
     if name == 'InRange_FloatFloat': return 'BoolProperty'
     if name == 'Round': return 'IntProperty'
