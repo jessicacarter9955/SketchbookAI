@@ -13,7 +13,7 @@ conversazione ChatGPT non si carica. I GLB originali/licenziati restano locali.
 | Mappe | Otto GLB in `dds-assets/maps/maps/` hanno risposto HTTP 200 sul server locale 8401; `LV_Fixers_Startup` e `GalleryLevel` non complete. | 🟡 |
 | Gallery | `GalleryPartialSource.glb` (52.264.952 byte); 163/185 attori coperti da geometria, 22 non coperti. Luce, VFX, spawn e altri attori non-mesh richiedono adapter Three.js tipizzati. | 🟡 |
 | Materiali originali | Grafi sorgente recuperati secondo report precedente; fedeltà shader originale e confronti visivi non certificati. | 🟡 |
-| Blueprint | Ricompilazione isolata sui *medesimi* SHA sorgenti: 436→440 tradotte, 1.521→1.517 bloccate. Tre funzioni `CBP_Fixers_Mover_ABP` e `ExecuteUbergraph_AC_PreCMCTick` convertite. | 🔴 gioco / 🟢 incremento offline |
+| Blueprint | Miglior report precedente: 440/1.957 tradotte. **Ultima ricompilazione comparativa: 436/1.957**, sugli stessi SHA sorgenti: regressione di 4 funzioni da diagnosticare, senza un nuovo verde certificabile. | 🔴 regressione non risolta |
 | Runtime e Play DDS | End-to-end originale e Play manuale non superati; il `dds-portland` training raid è un demo distinto. | 🔴 |
 | Test di migrazione CI | Workflow UE2Three verde al commit `4e3e29c` (nuove modifiche successive da verificare). | 🟢 nell'ambito testato |
 | Deploy Netlify | La build GitHub ha passato lo step Build; lo step `Verify Netlify credentials` è fallito e il deploy è stato saltato. | 🔴 |
@@ -46,6 +46,14 @@ runtime reale, test pertinenti e accettazione manuale.
    blocchi successivi (context/native/schema) e non sono verdi.
 6. Pubblicata [la checklist completa per il tester](ue2three-dds-manual-play-acceptance.md)
    con ID, azioni e risultati attesi, distinguendo il demo dalla sorgente DDS.
+
+## Ultimo controllo di regressione (nuovo lotto matematico)
+
+- GitHub commit `02b2ef83ccb7e4f2a2a6cd090ec1f72352a59b53`: test CI UE2Three **success**, Netlify **failure**.
+- Quattro primitivi sorgente-typizzati pubblicati: `Square`, `FFloor`, `Conv_BoolToDouble`, `Multiply_LinearColorLinearColor`; corretto il tracciamento delle scritture di output matematico. Il metodo vettoriale `NotEqual_VectorVector` **non** è stato abilitato: l'header UE 5.7 mostra un terzo parametro di tolleranza e la prima ipotesi a due argomenti sarebbe errata.
+- Job Windows `dds_bp_math_recompile_short_20261024_2118`: checkout di verifica pulita, `git fetch` e `merge --ff-only` riusciti fino a `02b2ef8`; report `.local/ue2three/blueprint-math-verify-20261024/blueprint-programs.json`: **436 tradotte/1.521 bloccate**.
+- Confronto con `blueprint-flowstack-verify-20261024` su **276 pacchetti**: nessuno SHA sorgente differente segnalato; regressioni specifiche: `AC_PreCMCTick.ExecuteUbergraph_AC_PreCMCTick` (salto dinamico) e `CBP_Fixers_Mover_ABP` nelle funzioni `Update_AnimationBlendWeights`, `Update_WeaponOverlay`, `Update_WeaponStateAlphas` (`FInterpTo` dichiarato unsupported nel report nuovo). Serve identificare il modulo compilatore/caricamento cache attivo prima di considerare valido l'incremento.
+- Il bridge GitHub Issue #1 ha raggiunto il limite di **2.500 commenti**. Conservare i job/report già presenti; occorre ripristinare un canale di comando funzionante senza cancellare prove prima di proseguire i test Windows.
 
 ## Report locali PC da recuperare
 
