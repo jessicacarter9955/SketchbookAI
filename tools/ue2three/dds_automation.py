@@ -407,7 +407,19 @@ class Supervisor:
                 self.save('paused', active_job=None)
                 return self.state
             if time.time() < self.state.get('retry_after', 0):
-                return {'phase': 'retry_wait', 'retry_after': self.state['retry_after']}
+                # An account/connection backoff must not stall independent export
+                # and deploy stages. Verified input fingerprints prevent repeats.
+                if self.state.get('phase') in ('waiting_account', 'waiting_connection'):
+                    try:
+                        self.additional_stages()
+                        self.save(self.state['phase'], independent_stage_error=None)
+                    except Exception as error:
+                        # Preserve the underlying account wait and record the
+                        # independent stage failure without dropping checkpoints.
+                        self.save(self.state['phase'], independent_stage_error=str(error)[:600])
+                return {'phase': 'retry_wait', 'retry_after': self.state['retry_after'],
+                        'additional_stages': self.state.get('additional_stages', {}),
+                        'independent_stage_error': self.state.get('independent_stage_error')}
             try:
                 self.recover_promotion()
                 self.pending_push()
@@ -440,6 +452,9 @@ class Supervisor:
                     account_errors = {'usage_limit', 'authentication_required', 'connection_interrupted'}
                     errors = {row.get('result') for row in result.get('results', [])}
                     if errors and errors.issubset(account_errors):
+                        # Run configured source-verified stages before backing off
+                        # Codex authentication/usage. These stages do not use Codex.
+                        self.additional_stages()
                         reason = 'usage_limit' if 'usage_limit' in errors else next(iter(errors))
                         delay = 1800 if reason == 'usage_limit' else 600
                         self.save('waiting_account' if reason == 'usage_limit' else 'waiting_connection',
