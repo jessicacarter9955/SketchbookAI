@@ -69,6 +69,7 @@ MATH_CALLS.update({'Divide_DoubleDouble': (2, 'DoubleDouble'),
                    'EqualEqual_NameName': (2, 'name'), 'NotEqual_NameName': (2, 'name'),
                    'FClamp': (3, 'DoubleDouble'), 'Clamp': (3, 'IntInt'),
                    'Round': (1, 'DoubleDouble'),
+                   'FInterpTo': (4, 'DoubleDouble'),
                    'Abs': (1, 'DoubleDouble'), 'VSize': (1, 'vector'), 'VSizeXY': (1, 'vector'),
                    'Conv_IntToInt64': (1, 'IntInt'),
                    'Vector_Distance': (2, 'VectorVector'),
@@ -85,6 +86,7 @@ NATIVE_MATH_INPUT_TYPES = {
     'BreakVector': ('Vector',),
     'BreakRotator': ('Rotator',),
     'Abs': ('DoubleProperty',), 'VSize': ('Vector',), 'VSizeXY': ('Vector',),
+    'FInterpTo': ('DoubleProperty', 'DoubleProperty', 'DoubleProperty', 'DoubleProperty'),
     'Conv_IntToInt64': ('IntProperty',),
     'Conv_LinearColorToVector': ('LinearColor',),
     'Vector_Distance': ('Vector', 'Vector'),
@@ -107,7 +109,7 @@ def native_math_result_type(name):
         return {'ByteByte':'ByteProperty','IntInt':'IntProperty','DoubleDouble':'DoubleProperty'}[suffix]
     if name in ('Min', 'Max', 'Clamp', 'SelectInt'): return 'IntProperty'
     if name in ('Conv_IntToDouble', 'Lerp', 'FMin', 'FMax', 'FClamp', 'SelectFloat',
-                'Abs', 'VSize', 'VSizeXY', 'Vector_Distance'):
+                'Abs', 'VSize', 'VSizeXY', 'Vector_Distance', 'FInterpTo'):
         return 'DoubleProperty'
     if name == 'InRange_FloatFloat': return 'BoolProperty'
     if name == 'Round': return 'IntProperty'
