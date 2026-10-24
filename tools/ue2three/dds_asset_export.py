@@ -356,6 +356,20 @@ class ExportSupervisor:
             self._update_job("character", total=total)
             fingerprint, _source_files = character_fingerprint(self.project, recipe)
             self._fingerprint = fingerprint
+            # Repeated --loop ticks must not re-export the same 48 original
+            # assets when the prior GLBs and source fingerprint still match.
+            # Validate every output again rather than trusting the old status.
+            try:
+                cached = _verified_character_files(
+                    self.character_output, self.project, fingerprint, total,
+                    set(recipe["clips"]), set(recipe["attachment_assets"]))
+            except (OSError, ValueError, KeyError):
+                cached = []
+            if len(cached) == total:
+                self._update_job("character", status="completed", completed=total,
+                                 converted=total, failed=0, outputs=cached,
+                                 reused_verified_outputs=True, error=None)
+                return False
             return True
         except (OSError, ValueError) as exc:
             self._update_job("character", status="blocked", running=False,
