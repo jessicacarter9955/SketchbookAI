@@ -13,6 +13,27 @@ def variable(token, name): return node(token, Variable={'New': {'Path': [name], 
 
 
 class BlueprintMigrationTests(unittest.TestCase):
+    def test_source_event_entrypoint_dispatch_retains_vm_offset_and_type(self):
+        dispatcher = {'ObjectName': 'ExecuteUbergraph_Original', 'OuterIndex': 2,
+                      'LoadedProperties': [{'Name': 'EntryPoint', 'SerializedType': 'IntProperty',
+                                            'PropertyFlags': 'CPF_Parm'}],
+                      'ScriptBytecode': [node('EX_ComputedJump', CodeOffsetExpression=variable('EX_LocalVariable', 'EntryPoint')),
+                                         node('EX_Tracepoint'), node('EX_Return', ReturnExpression=node('EX_IntOne')),
+                                         node('EX_EndOfScript')], 'ScriptBytecodeSize': 14}
+        package = Package({'Exports': [dispatcher, {'ObjectName': 'Original_C'}]})
+        translated = translate_function(dispatcher, package)
+        self.assertEqual([step['op'] for step in translated['steps']], ['jump_dynamic', 'nop', 'return', 'end'])
+        self.assertEqual(translated['steps'][0]['value'], {'op': 'get', 'scope': 'local', 'field': 'EntryPoint'})
+        self.assertEqual(translated['source_offset_targets'], [[0, 0], [10, 1], [11, 2], [13, 3]])
+        self.assertEqual(translated['memory_size_verified'], 14)
+        dispatcher['ObjectName'] = 'UnrelatedFunction'
+        with self.assertRaisesRegex(BlueprintTranslationError, 'Dynamic computed jump'):
+            translate_function(dispatcher, package)
+        dispatcher['ObjectName'] = 'ExecuteUbergraph_Original'
+        dispatcher['LoadedProperties'][0]['SerializedType'] = 'DoubleProperty'
+        with self.assertRaises(BlueprintTranslationError):
+            translate_function(dispatcher, package)
+
     def test_source_byte_switch_checks_original_vm_case_boundaries(self):
         cases = [{'CaseIndexValueTerm': node('EX_ByteConst', Value=i),
                   'NextOffset': 19 + 7 + 9 + (i + 1) * 8,
