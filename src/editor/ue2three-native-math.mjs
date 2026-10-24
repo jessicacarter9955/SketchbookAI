@@ -3,6 +3,8 @@ const isVector = value => value && typeof value === 'object' && !Array.isArray(v
     && ['X','Y','Z'].every(field => typeof value[field] === 'number' && Number.isFinite(value[field]));
 const isRotator = value => value && typeof value === 'object' && !Array.isArray(value)
     && ['Pitch','Yaw','Roll'].every(field => typeof value[field] === 'number' && Number.isFinite(value[field]));
+const isLinearColor = value => value && typeof value === 'object' && !Array.isArray(value)
+    && ['R','G','B','A'].every(field => typeof value[field] === 'number' && Number.isFinite(value[field]));
 const makeQuaternion = rotation => {
     const pitch=rotation.Pitch*Math.PI/360, yaw=rotation.Yaw*Math.PI/360, roll=rotation.Roll*Math.PI/360;
     const sp=Math.sin(pitch), cp=Math.cos(pitch), sy=Math.sin(yaw), cy=Math.cos(yaw),
@@ -24,6 +26,12 @@ export function evaluateNativeMath(name, args, warning = () => {}) {
         if (!Array.isArray(args) || args.length !== 1 || typeof args[0] !== 'number' || !Number.isFinite(args[0]))
             throw new Error('Invalid native Conv_DoubleToVector parameters');
         return {X:args[0],Y:args[0],Z:args[0]};
+    }
+    if (name === 'Conv_LinearColorToVector') {
+        if (!Array.isArray(args) || args.length !== 1 || !isLinearColor(args[0]))
+            throw new Error('Invalid native Conv_LinearColorToVector parameters');
+        // Original Kismet conversion copies linear R/G/B as X/Y/Z; alpha is not converted.
+        return {X:args[0].R,Y:args[0].G,Z:args[0].B};
     }
     if (['Add_VectorVector','Subtract_VectorVector','Multiply_VectorVector'].includes(name)) {
         if (!Array.isArray(args) || args.length !== 2 || !args.every(isVector))
