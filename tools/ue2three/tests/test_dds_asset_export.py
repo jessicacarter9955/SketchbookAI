@@ -6,6 +6,7 @@ import struct
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -13,7 +14,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from core import atomic_json, digest, file_hash, read_json
 from character import character_fingerprint, load_character_recipe
 from dds_asset_export import (ExportSupervisor, _verified_character_files,
-                              _verified_map_rows, _map_issues, main, new_progress, outside_source)
+                              _verified_map_rows, _map_issues, main, new_progress,
+                              outside_source, stalled_retry_delay)
 
 
 def fixture_glb(path: Path, mesh=True, animation=False):
@@ -247,6 +249,39 @@ class AssetSupervisorTests(unittest.TestCase):
             self.assertEqual(main(["--status", "--state-dir", str(target)]), 0)
         self.assertEqual(json.loads(stream.getvalue())["status"], "not_started")
         self.assertFalse(target.exists())
+
+    def test_partial_export_loop_backs_off_but_resets_after_real_progress(self):
+        self.assertEqual(stalled_retry_delay(300, 0, 900), 300)
+        self.assertEqual(stalled_retry_delay(300, 1, 900), 600)
+        self.assertEqual(stalled_retry_delay(300, 2, 900), 900)
+        counts = iter([8, 8, 8, 9])
+        delays = []
+
+        class FakeSupervisor:
+            def __init__(self, *args, **kwargs):
+                self._source_snapshot_hash = "source-snapshot"
+                self._fingerprint = "source-characters"
+                self.progress = {"jobs": []}
+
+            def run(self):
+                self.progress["jobs"] = [
+                    {"id": "character", "completed": 48, "failed": 0, "skipped": 0},
+                    {"id": "maps", "completed": next(counts), "failed": 2, "skipped": 0}]
+                return 3
+
+        def pause(seconds):
+            delays.append(seconds)
+            if len(delays) == 4:
+                raise KeyboardInterrupt()
+
+        with patch("dds_asset_export.ExportSupervisor", FakeSupervisor), \
+             patch("dds_asset_export.time.sleep", side_effect=pause):
+            self.assertEqual(main(["--loop", "--project", str(self.project),
+                                   "--map-workspace", str(self.map_workspace),
+                                   "--publish-dir", str(self.publish),
+                                   "--interval-seconds", "300",
+                                   "--max-stalled-delay-seconds", "900"]), 130)
+        self.assertEqual(delays, [300, 600, 900, 300])
 
 
 if __name__ == "__main__":
