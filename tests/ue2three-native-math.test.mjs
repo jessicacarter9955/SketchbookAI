@@ -162,3 +162,20 @@ test('UE 5.7 Abs, VSize and Vector_Distance retain source numeric/vector contrac
         ['Vector_Distance', [{X:1e308,Y:0,Z:0},{X:-1e308,Y:0,Z:0}]],
     ]) assert.throws(() => evaluateNativeMath(name, args), /Invalid native|Non-finite native/);
 });
+
+test('witnessed DDS scalar conversions, comparisons and componentwise color products remain source-typed', () => {
+    assert.equal(evaluateNativeMath('Square', [-3]), 9);
+    assert.equal(evaluateNativeMath('FFloor', [-2.01]), -3);
+    assert.equal(evaluateNativeMath('FFloor', [2147483647.5]), 2147483647);
+    assert.equal(evaluateNativeMath('Conv_BoolToDouble', [true]), 1);
+    assert.equal(evaluateNativeMath('Conv_BoolToDouble', [false]), 0);
+    assert.deepEqual(evaluateNativeMath('Multiply_LinearColorLinearColor', [
+        {R:0.5,G:0.25,B:0.75,A:1},{R:0.2,G:4,B:0,A:0.5},
+    ]),{R:0.1,G:1,B:0,A:0.5});
+    for (const [name,args] of [
+        ['Square', [NaN]], ['Square', [1e308]], ['Square', [2,3]],
+        ['FFloor', [2147483648]], ['FFloor', [-2147483649]],
+        ['Conv_BoolToDouble', [1]],
+        ['Multiply_LinearColorLinearColor', [{R:1,G:1,B:1,A:1},{R:1,G:1,B:1}]],
+    ]) assert.throws(()=>evaluateNativeMath(name,args), /Invalid native|Out-of-range|Non-finite/);
+});
