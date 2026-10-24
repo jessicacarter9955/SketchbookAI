@@ -447,6 +447,12 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         if token != 'EX_InstanceVariable' and frame and str(frame.get('ObjectName', '')).startswith('ExecuteUbergraph_'):
             if frame.get('OuterIndex') != owner:
                 raise BlueprintTranslationError('Persistent read belongs to a different source class')
+            if frame is getattr(package, '_active_function', None) and name == 'EntryPoint':
+                props = [prop for prop in frame.get('LoadedProperties', []) if prop.get('Name') == name]
+                if (len(props) == 1 and property_type(props[0], package) == 'IntProperty'
+                        and 'CPF_Parm' in str(props[0].get('PropertyFlags'))
+                        and 'CPF_OutParm' not in str(props[0].get('PropertyFlags'))):
+                    return {'op': 'get', 'scope': 'local', 'field': name}
             return {'op': 'get', 'scope': 'persistent', 'frame': reference, 'field': name}
         if token == 'EX_InstanceVariable': reads.add(name)
         if token == 'EX_LocalOutVariable': outputs.add(name)
@@ -638,10 +644,28 @@ def translate_function(export, package=None, entry_offset=None):
                 steps.append({'op': 'jump', 'target': boundaries[entry_offset],
                               'target_offset': entry_offset, 'source_index': index})
             else:
-                # Preserve only bytecode-authored, immutable absolute offsets.
-                # EntryPoint and other data-dependent jumps need source control
-                # flow / lifecycle analysis; never guess their destinations.
                 operand = instruction.get('CodeOffsetExpression')
+                # The UE Kismet ExecuteUbergraph entry dispatcher reads an
+                # original Int32 EntryPoint parameter containing a *bytecode*
+                # offset. Retain that dynamic target, but only at the witnessed
+                # prologue and only with a complete source boundary table.
+                if (package and str(export.get('ObjectName', '')).startswith('ExecuteUbergraph_')
+                        and all(kind(prior) in ('EX_Tracepoint', 'EX_WireTracepoint', 'EX_Nothing')
+                                for prior in bytecode[:index])
+                        and kind(operand) == 'EX_LocalVariable'
+                        and field(operand.get('Variable')) == 'EntryPoint'
+                        and native_math_source_type(operand, package, export.get('OuterIndex')) == 'IntProperty'):
+                    pointer = operand['Variable'].get('New', {})
+                    props = [prop for prop in export.get('LoadedProperties', []) if prop.get('Name') == 'EntryPoint']
+                    if (package.export(pointer.get('ResolvedOwner')) is not export or len(props) != 1
+                            or 'CPF_Parm' not in str(props[0].get('PropertyFlags'))
+                            or 'CPF_OutParm' in str(props[0].get('PropertyFlags'))):
+                        raise BlueprintTranslationError('Unverified original event EntryPoint parameter')
+                    steps.append({'op': 'jump_dynamic', 'value': expression(operand, reads, outputs,
+                                   package=package, owner=export.get('OuterIndex')), 'source_index': index})
+                    continue
+                # All other data-dependent computed jumps remain unsupported.
+                # A runtime target is never guessed from parsed disk offsets.
                 if not isinstance(operand, dict) or kind(operand) not in ('EX_IntConst', 'EX_IntZero', 'EX_IntOne'):
                     raise BlueprintTranslationError('Dynamic computed jump has no verified original constant target')
                 literal = expression(operand, reads, outputs, package=package, owner=export.get('OuterIndex'))
@@ -741,6 +765,8 @@ def translate_function(export, package=None, entry_offset=None):
     return {'schema_version': 1, 'name': export['ObjectName'] + ('@' + str(entry_offset) if entry_offset is not None else ''), 'status': 'translated_control_flow' if branching else 'translated_straight_line',
             'internal_event_entry': entry_offset is not None, 'event_entry_offset': entry_offset,
             'memory_size_verified': offset if branching else None,
+            **({'source_offset_targets': [[vm_offset, source_index] for vm_offset, source_index in sorted(boundaries.items())]}
+               if any(step['op'] == 'jump_dynamic' for step in steps) else {}),
             'source_bytecode_sha256': digest(bytecode), 'self_reads': sorted(reads),
             'source_owner_index': export.get('OuterIndex'),
             'self_writes': sorted(writes),
