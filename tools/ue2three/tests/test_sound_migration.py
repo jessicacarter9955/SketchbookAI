@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from sound_migration import SoundMigrationError, select_soundwaves, validate_source_wave
+from sound_migration import SoundMigrationError, select_soundwaves, validate_source_wave, verified_engine_result
 
 
 class SoundMigrationTests(unittest.TestCase):
@@ -54,6 +54,28 @@ class SoundMigrationTests(unittest.TestCase):
         registry["assets"][0]["object_name"] = "../not-safe"
         with self.assertRaisesRegex(SoundMigrationError, "Unsafe original"):
             select_soundwaves(inventory, registry, self.project)
+
+    def test_unclean_editor_exit_recovers_only_complete_checked_wav(self):
+        stage = self.root / "stage"
+        output = stage / "audio" / (self.hash + ".wav")
+        output.parent.mkdir(parents=True)
+        output.write_bytes(b"RIFF" + (36).to_bytes(4, "little") + b"WAVE" + b"\0" * 40)
+        entry = {"package":"/Game/Audio/Starter_Birds01",
+                 "filename":"audio/" + self.hash + ".wav"}
+        completed = {"schema_version":1, "complete":True,
+                     "results":[{**entry, "status":"exported", "bytes":output.stat().st_size}]}
+        result = self.root / "result.json"
+        result.write_text(json.dumps(completed), encoding="utf-8")
+        self.assertTrue(verified_engine_result(result, [entry], stage, 1)["complete"])
+        completed["results"][0]["bytes"] += 1
+        result.write_text(json.dumps(completed), encoding="utf-8")
+        with self.assertRaisesRegex(SoundMigrationError, "altered"):
+            verified_engine_result(result, [entry], stage, 1)
+        completed["results"][0]["bytes"] -= 1
+        completed["complete"] = False
+        result.write_text(json.dumps(completed), encoding="utf-8")
+        with self.assertRaisesRegex(SoundMigrationError, "did not finish"):
+            verified_engine_result(result, [entry], stage, 1)
 
     def test_source_hash_mutation_and_bad_limits_fail_closed(self):
         self.asset_file.write_bytes(b"changed")
