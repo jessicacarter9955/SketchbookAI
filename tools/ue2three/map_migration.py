@@ -169,13 +169,31 @@ def _material_baking_crash(log_path):
             "UnrealEditor-GLTFExporter.dll" in log)
 
 
+
+def _native_gltf_exporter_crash(log_path):
+    """Recognize a witnessed GLTFExporter access violation without MaterialBaking frames.
+
+    GalleryLevel crashes in UnrealEditor-GLTFExporter.dll after reporting a
+    non-uniform, zero-axis actor scale. A bounded SIMPLE/DISABLED retry can
+    rescue its geometry, but the resulting materials remain unverified.
+    No generic editor crash qualifies for a fidelity-changing retry.
+    """
+    try:
+        log = Path(log_path).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return False
+    return ("EXCEPTION_ACCESS_VIOLATION" in log and
+            "UnrealEditor-GLTFExporter.dll" in log and
+            "LogGLTFExporter:" in log)
+
+
 _BAKE_MODES = ("use_mesh_data", "simple", "disabled")
 _BAKE_FIDELITY_WARNING = {
     "simple": ("UE2THREE_MATERIAL_FIDELITY_DEGRADED bake_mode=simple: material baking used a simple quad "
-               "after a certified native MaterialBaking access violation; geometry is preserved but "
+               "after a witnessed native glTF exporter access violation; geometry is preserved but "
                "world-position and mesh-driven shaders can differ from Unreal. Visual 1:1 unverified."),
     "disabled": ("UE2THREE_MATERIAL_FIDELITY_DEGRADED bake_mode=disabled: material baking disabled "
-                 "after repeated certified native MaterialBaking access violations; nontrivial shader inputs "
+                 "after repeated witnessed native glTF exporter access violations; nontrivial shader inputs "
                  "may fall back to defaults. Visual 1:1 unverified."),
 }
 
@@ -520,15 +538,17 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
                 exit_code = attempt['exit_code']
                 log_path = run_dir / 'unreal.log'
                 attempts.append({'bake_mode': bake_mode, 'log': str(log_path),
-                                 'exit_code': exit_code, 'crashed_in_material_baking': False})
+                                 'exit_code': exit_code, 'crashed_in_material_baking': False,
+                                 'crashed_in_gltf_exporter': False})
                 if not failure and result_path.is_file():
                     break
-                if (not failure and not result_path.is_file() and
-                        _material_baking_crash(log_path)):
-                    attempts[-1]['crashed_in_material_baking'] = True
+                if not failure and not result_path.is_file() and (
+                        _material_baking_crash(log_path) or _native_gltf_exporter_crash(log_path)):
+                    attempts[-1]['crashed_in_material_baking'] = _material_baking_crash(log_path)
+                    attempts[-1]['crashed_in_gltf_exporter'] = True
                     if bake_mode != _BAKE_MODES[-1]:
                         logger.event('map-material-bake-fallback',
-                                     f'{display_name}: native MaterialBaking crash ({bake_mode}); '
+                                     f'{display_name}: witnessed native glTF exporter crash ({bake_mode}); '
                                      'retry with lower material fidelity', task='map_export',
                                      log=str(log_path), material_bake_mode=bake_mode,
                                      next_material_bake_mode=_BAKE_MODES[len(attempts)])
@@ -624,7 +644,7 @@ def migrate_maps(project, workspace, publish_dir, logger, engine_override=None, 
                   "Unreal collision data is not represented by glTF, so map collision and physics are not migrated.",
                   "Blueprint execution, Unreal widget screens, conversations, shops, inventory rules, AI and networking are not converted into running Three.js behavior by glTF export.",
                   "Map GLBs are static scenes. Animation assets are omitted only from a separate hard-link export mirror so UE 5.7 can inspect map geometry; character clips are migrated separately.",
-                  "After a certified Unreal MaterialBaking access-violation crash, exports may retry with SIMPLE or DISABLED baking. The downgrade is recorded per map; its shader appearance is degraded or unverified and never certifies 1:1 visual fidelity.",
+                  "After a witnessed native Unreal glTF exporter access violation, exports may retry with SIMPLE or DISABLED baking. The downgrade is recorded per map; its shader appearance is degraded or unverified and never certifies 1:1 visual fidelity.",
                   "Unsupported or unresolved map actors are recorded in Unreal export logs; source assets remain unchanged."
               ]}
     checkpoint()
