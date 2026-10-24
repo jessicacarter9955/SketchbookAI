@@ -41,6 +41,8 @@ class BlueprintMigrationTests(unittest.TestCase):
         for name, parameters in (
             ('Abs', [node('EX_DoubleConst', Value='-2.5')]),
             ('VSize', [node('EX_VectorConst', Value={'X':3,'Y':4,'Z':12})]),
+            ('VSizeXY', [node('EX_VectorConst', Value={'X':3,'Y':4,'Z':12})]),
+            ('Conv_IntToInt64', [node('EX_IntConst', Value=-2147483648)]),
             ('Vector_Distance', [node('EX_VectorConst', Value={'X':3,'Y':4,'Z':12}),
                                  node('EX_VectorConst', Value={'X':0,'Y':0,'Z':0})]),
         ):
@@ -56,8 +58,10 @@ class BlueprintMigrationTests(unittest.TestCase):
                 self.assertEqual(value['op'],'math')
                 self.assertEqual(value['name'],name)
                 self.assertEqual(len(value['args']),len(parameters))
-                if name != 'Abs':
+                if name in ('VSize', 'VSizeXY', 'Vector_Distance'):
                     self.assertEqual(value['args'][0]['value'],{'X':3.0,'Y':4.0,'Z':12.0})
+                elif name == 'Conv_IntToInt64':
+                    self.assertEqual(value['args'][0],{'op':'constant','value':-2147483648})
                 else:
                     self.assertEqual(value['args'][0],{'op':'constant','value':-2.5})
 
@@ -66,6 +70,7 @@ class BlueprintMigrationTests(unittest.TestCase):
         expected = {
             'Abs': (1, ('DoubleProperty',)),
             'VSize': (1, ('Vector',)),
+            'VSizeXY': (1, ('Vector',)),
             'Vector_Distance': (2, ('Vector', 'Vector')),
         }
         for name, (arity, types) in expected.items():
@@ -73,6 +78,9 @@ class BlueprintMigrationTests(unittest.TestCase):
                 self.assertEqual(MATH_CALLS[name][0], arity)
                 self.assertEqual(NATIVE_MATH_INPUT_TYPES[name], types)
                 self.assertEqual(native_math_result_type(name), 'DoubleProperty')
+        self.assertEqual(MATH_CALLS['Conv_IntToInt64'][0], 1)
+        self.assertEqual(NATIVE_MATH_INPUT_TYPES['Conv_IntToInt64'], ('IntProperty',))
+        self.assertEqual(native_math_result_type('Conv_IntToInt64'), 'Int64Property')
 
     def test_cached_ue57_int64_source_witness_preserves_value_and_vm_offsets(self):
         witness = json.loads((Path(__file__).parent / 'fixtures' / 'dds-int64-source-witness.json').read_text(encoding='utf-8'))
