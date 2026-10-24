@@ -39,6 +39,22 @@ class SoundMigrationTests(unittest.TestCase):
             select_soundwaves(self.inventory,self.registry,self.project,
                               requested=["/Game/Audio/BackgroundMix"])
 
+    def test_original_hyphenated_soundwave_is_witnessed_and_safe(self):
+        name = "M4A1_-Shot_10"
+        path = self.asset_file.parent / (name + ".uasset")
+        path.write_bytes(b"original-with-hyphen")
+        sha = hashlib.sha256(path.read_bytes()).hexdigest()
+        inventory = {"assets":[{"package":"/Game/Audio/" + name,
+                               "path":"Content/Audio/" + name + ".uasset", "sha256":sha}]}
+        registry = {"assets":[{"package":"/Game/Audio/" + name,
+                              "class":"SoundWave", "object_name":name}]}
+        selected = select_soundwaves(inventory, registry, self.project)
+        self.assertEqual(len(selected), 1)
+        self.assertEqual(selected[0]["asset"], "/Game/Audio/" + name + "." + name)
+        registry["assets"][0]["object_name"] = "../not-safe"
+        with self.assertRaisesRegex(SoundMigrationError, "Unsafe original"):
+            select_soundwaves(inventory, registry, self.project)
+
     def test_source_hash_mutation_and_bad_limits_fail_closed(self):
         self.asset_file.write_bytes(b"changed")
         with self.assertRaisesRegex(SoundMigrationError,"changed"):
