@@ -48,6 +48,11 @@ MAX_CODEX_SECONDS = 0
 PYTHON_VERIFY_SECONDS = 120
 JAVASCRIPT_VERIFY_SECONDS = 120
 GIT_TIMEOUT_SECONDS = 5
+# A full porcelain status on Windows must scan the integrated checkout and
+# normal untracked files. It is markedly slower than rev-parse or branch
+# operations, especially during simultaneous Unreal exports. Keep the clean
+# worktree safety gate, but allow it a separately bounded scan budget.
+GIT_STATUS_TIMEOUT_SECONDS = 60
 GLOBAL_COOLDOWN_SECONDS = 120
 RETRY_BASE_SECONDS = 600
 RETRY_MAX_SECONDS = 3600
@@ -604,7 +609,8 @@ def _require_clean_repo(repo_root: Path) -> str:
     top = _git(repo_root, 'rev-parse', '--show-toplevel')
     if _normal_path(top) != _normal_path(repo_root):
         raise RunnerError('Runner repository root does not match the selected worktree.', 'repo_root')
-    dirty = _git(repo_root, 'status', '--porcelain', '--untracked-files=normal')
+    dirty = _git(repo_root, 'status', '--porcelain', '--untracked-files=normal',
+                 timeout=GIT_STATUS_TIMEOUT_SECONDS)
     if dirty:
         raise RunnerError('Repository worktree must be clean before autonomous work starts.', 'repo_dirty')
     return _git(repo_root, 'rev-parse', 'HEAD')
