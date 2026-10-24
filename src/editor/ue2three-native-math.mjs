@@ -78,6 +78,21 @@ export function evaluateNativeMath(name, args, warning = () => {}) {
         // Signed int32 always converts exactly to the supported JS int64 range.
         return args[0];
     }
+    if (name === 'FInterpTo') {
+        if (!Array.isArray(args) || args.length !== 4 || args.some(x => typeof x !== 'number' || !Number.isFinite(x)))
+            throw new Error('Invalid native FInterpTo parameters');
+        const [current, target, deltaTime, speed] = args;
+        // UE 5.7 UnrealMathUtility.h FMath::FInterpTo: stop at the source
+        // small-number threshold and clamp DeltaTime * InterpSpeed to [0,1].
+        if (speed <= 0) return target;
+        const distance = target - current;
+        if (!Number.isFinite(distance)) throw new Error('Invalid native FInterpTo distance');
+        if (distance * distance < Math.fround(1e-8)) return target;
+        const alpha = Math.max(0, Math.min(1, deltaTime * speed));
+        const result = current + distance * alpha;
+        if (!Number.isFinite(result)) throw new Error('Non-finite native FInterpTo result');
+        return result;
+    }
     if (name === 'VSize' || name === 'VSizeXY' || name === 'Vector_Distance') {
         const count = name === 'Vector_Distance' ? 2 : 1;
         if (!Array.isArray(args) || args.length !== count || !args.every(isVector))
