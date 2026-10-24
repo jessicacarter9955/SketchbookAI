@@ -40,6 +40,7 @@ class BlueprintMigrationTests(unittest.TestCase):
     def test_ue57_math_source_calls_translate_typed_literals(self):
         for name, parameters in (
             ('Abs', [node('EX_DoubleConst', Value='-2.5')]),
+            ('FInterpTo', [node('EX_DoubleConst', Value=x) for x in (-2.5, 5.0, 0.1, 2.0)]),
             ('VSize', [node('EX_VectorConst', Value={'X':3,'Y':4,'Z':12})]),
             ('VSizeXY', [node('EX_VectorConst', Value={'X':3,'Y':4,'Z':12})]),
             ('Conv_IntToInt64', [node('EX_IntConst', Value=-2147483648)]),
@@ -69,6 +70,7 @@ class BlueprintMigrationTests(unittest.TestCase):
         from blueprint_migration import MATH_CALLS, NATIVE_MATH_INPUT_TYPES, native_math_result_type
         expected = {
             'Abs': (1, ('DoubleProperty',)),
+            'FInterpTo': (4, ('DoubleProperty',) * 4),
             'VSize': (1, ('Vector',)),
             'VSizeXY': (1, ('Vector',)),
             'Vector_Distance': (2, ('Vector', 'Vector')),
