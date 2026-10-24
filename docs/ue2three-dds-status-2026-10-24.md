@@ -55,6 +55,17 @@ runtime reale, test pertinenti e accettazione manuale.
 - Confronto con `blueprint-flowstack-verify-20261024` su **276 pacchetti**: nessuno SHA sorgente differente segnalato; regressioni specifiche: `AC_PreCMCTick.ExecuteUbergraph_AC_PreCMCTick` (salto dinamico) e `CBP_Fixers_Mover_ABP` nelle funzioni `Update_AnimationBlendWeights`, `Update_WeaponOverlay`, `Update_WeaponStateAlphas` (`FInterpTo` dichiarato unsupported nel report nuovo). Serve identificare il modulo compilatore/caricamento cache attivo prima di considerare valido l'incremento.
 - Il bridge GitHub Issue #1 ha raggiunto il limite di **2.500 commenti**. Conservare i job/report già presenti; occorre ripristinare un canale di comando funzionante senza cancellare prove prima di proseguire i test Windows.
 
+## Nuova accelerazione misurabile: cascata e regressioni
+
+Commit `497fb195bce347e47853ca033a798f2e015e604d` sul branch DDS:
+
+- `tools/ue2three/blueprint_cascade_impact.py` traccia i primi blocchi `Untranslated function dependency` alla radice del medesimo pacchetto, classifica i chiamanti coinvolti e segnala cicli, nomi duplicati e riferimenti mancanti senza inventare traduzioni.
+- `blueprint_planning.py` salva `dependency_cascades` nel `blueprint-plan.json` e mostra i 15 blocchi condivisi con il più alto impatto osservato.
+- `compare_blueprint_reports.py` espone `regressions`, `disappeared_functions`, `new_translations` e la porta `--require-monotonic`. La porta fallisce anche in caso di SHA sorgente assente o diverso.
+- `cli.py migrate-blueprints --baseline-report PERCORSO_DEL_REPORT_PRECEDENTE` esegue il controllo automaticamente dopo la ricompilazione, salva `blueprint-regression-gate.json` e restituisce exit code 3 se compaiono regressioni. I report vengono conservati per debug.
+- **Verifiche locali effettuate**: 120 test Python Blueprint e due file di test JavaScript superati. Questo migliora misurazione e priorità; **non** sblocca di per sé nuove funzioni DDS. La ricompilazione Windows resta necessaria.
+- Per la ricompilazione successiva usare come baseline il miglior report precedente con gli stessi SHA, **440/1.957**, e diagnosticare qualsiasi riduzione. Non promuovere artificialmente 436→440 senza dimostrazione.
+
 ## Report locali PC da recuperare
 
 Percorsi relativi alla checkout d'integrazione Windows:
