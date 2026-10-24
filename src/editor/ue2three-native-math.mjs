@@ -63,14 +63,21 @@ export function evaluateNativeMath(name, args, warning = () => {}) {
             throw new Error('Invalid native Abs parameters');
         return Math.abs(args[0]);
     }
-    if (name === 'VSize' || name === 'Vector_Distance') {
-        const count = name === 'VSize' ? 1 : 2;
+    if (name === 'Conv_IntToInt64') {
+        if (!Array.isArray(args) || args.length !== 1 || !Number.isInteger(args[0]) ||
+            args[0] < -2147483648 || args[0] > 2147483647)
+            throw new Error('Invalid native Conv_IntToInt64 parameters');
+        // Signed int32 always converts exactly to the supported JS int64 range.
+        return args[0];
+    }
+    if (name === 'VSize' || name === 'VSizeXY' || name === 'Vector_Distance') {
+        const count = name === 'Vector_Distance' ? 2 : 1;
         if (!Array.isArray(args) || args.length !== count || !args.every(isVector))
             throw new Error('Invalid native ' + name + ' parameters');
-        const a = args[0], b = name === 'VSize' ? {X:0,Y:0,Z:0} : args[1];
-        const x = a.X - b.X, y = a.Y - b.Y, z = a.Z - b.Z;
+        const a = args[0], sourceB = name === 'Vector_Distance' ? args[1] : {X:0,Y:0,Z:0};
+        const x = a.X - sourceB.X, y = a.Y - sourceB.Y, z = a.Z - sourceB.Z;
         // UE FVector::Size / FVector::Dist: sqrt of the three squared double components.
-        const distance = Math.sqrt(x*x + y*y + z*z);
+        const distance = Math.sqrt(x*x + y*y + (name === 'VSizeXY' ? 0 : z*z));
         if (!Number.isFinite(distance)) throw new Error('Non-finite native ' + name + ' result');
         return distance;
     }
