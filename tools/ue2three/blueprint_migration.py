@@ -52,6 +52,9 @@ for _type in ('IntInt', 'DoubleDouble'):
     for _operation in ('Add', 'Subtract', 'Multiply'):
         MATH_CALLS[_operation + '_' + _type] = (2, _type)
 MATH_CALLS.update({'Divide_DoubleDouble': (2, 'DoubleDouble'),
+                   'Square': (1, 'DoubleDouble'), 'FFloor': (1, 'DoubleDouble'),
+                   'Conv_BoolToDouble': (1, 'bool'),
+                   'Multiply_LinearColorLinearColor': (2, 'LinearColor'),
                    'Lerp': (3, 'DoubleDouble'), 'FMin': (2, 'DoubleDouble'), 'FMax': (2, 'DoubleDouble'),
                    'InRange_FloatFloat': (5, 'double_range'),
                    'MakeVector': (3, 'vector'),
@@ -89,6 +92,9 @@ NATIVE_MATH_INPUT_TYPES = {
     'FInterpTo': ('DoubleProperty', 'DoubleProperty', 'DoubleProperty', 'DoubleProperty'),
     'Conv_IntToInt64': ('IntProperty',),
     'Conv_LinearColorToVector': ('LinearColor',),
+    'Square': ('DoubleProperty',), 'FFloor': ('DoubleProperty',),
+    'Conv_BoolToDouble': ('BoolProperty',),
+    'Multiply_LinearColorLinearColor': ('LinearColor', 'LinearColor'),
     'Vector_Distance': ('Vector', 'Vector'),
 }
 
@@ -96,6 +102,7 @@ NATIVE_MATH_INPUT_TYPES = {
 def native_math_result_type(name):
     if name in ('MakeVector', 'Add_VectorVector', 'Subtract_VectorVector', 'Multiply_VectorVector',
                 'Conv_DoubleToVector', 'Conv_LinearColorToVector'): return 'Vector'
+    if name == 'Multiply_LinearColorLinearColor': return 'LinearColor'
     if name == 'MakeRotator': return 'Rotator'
     if name == 'MakeTransform': return 'Transform'
     if name == 'Conv_IntToInt64': return 'Int64Property'
@@ -108,11 +115,11 @@ def native_math_result_type(name):
             return 'BoolProperty'
         return {'ByteByte':'ByteProperty','IntInt':'IntProperty','DoubleDouble':'DoubleProperty'}[suffix]
     if name in ('Min', 'Max', 'Clamp', 'SelectInt'): return 'IntProperty'
-    if name in ('Conv_IntToDouble', 'Lerp', 'FMin', 'FMax', 'FClamp', 'SelectFloat',
+    if name in ('Conv_IntToDouble', 'Conv_BoolToDouble', 'Square', 'Lerp', 'FMin', 'FMax', 'FClamp', 'SelectFloat',
                 'Abs', 'VSize', 'VSizeXY', 'Vector_Distance', 'FInterpTo'):
         return 'DoubleProperty'
     if name == 'InRange_FloatFloat': return 'BoolProperty'
-    if name == 'Round': return 'IntProperty'
+    if name in ('Round', 'FFloor'): return 'IntProperty'
     return None
 
 
@@ -425,7 +432,6 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
             targets = []
             for argument in args[1:]:
                 target, prop = native_math_output_target(argument, package, owner, 'FloatProperty')
-                if target['scope'] == 'self': writes.add(target['field'])
                 if target['scope'] == 'local' and 'CPF_OutParm' in str(prop.get('PropertyFlags')):
                     outputs.add(target['field'])
                 targets.append({**target, 'type': 'FloatProperty'})
@@ -835,6 +841,10 @@ def translate_package(package, structs=None, tables=None):
                         if value.get('op') == 'math_outputs' and any(target.get('scope') == 'local'
                                 and target.get('field') in const_inputs for target in value.get('targets', [])):
                             raise BlueprintTranslationError('Native math output writes original const input')
+                        if value.get('op') == 'math_outputs':
+                            program['self_writes'] = sorted(set(program['self_writes']) | {
+                                target['field'] for target in value.get('targets', [])
+                                if target.get('scope') == 'self'})
                         if value.get('op') == 'array_mutate' and target.get('scope') == 'self':
                             program['self_writes'] = sorted(set(program['self_writes']) | {target['field']})
                         if value.get('op') in ('call', 'component_query') and any(binding.get('mode') == 'output'
