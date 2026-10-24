@@ -33,6 +33,14 @@ export function evaluateNativeMath(name, args, warning = () => {}) {
         // Original Kismet conversion copies linear R/G/B as X/Y/Z; alpha is not converted.
         return {X:args[0].R,Y:args[0].G,Z:args[0].B};
     }
+    if (name === 'Multiply_LinearColorLinearColor') {
+        if (!Array.isArray(args) || args.length !== 2 || !args.every(isLinearColor))
+            throw new Error('Invalid native Multiply_LinearColorLinearColor parameters');
+        const result={R:args[0].R*args[1].R,G:args[0].G*args[1].G,
+            B:args[0].B*args[1].B,A:args[0].A*args[1].A};
+        if (!isLinearColor(result)) throw new Error('Non-finite native Multiply_LinearColorLinearColor result');
+        return result;
+    }
     if (['Add_VectorVector','Subtract_VectorVector','Multiply_VectorVector'].includes(name)) {
         if (!Array.isArray(args) || args.length !== 2 || !args.every(isVector))
             throw new Error(`Invalid native ${name} parameters`);
@@ -70,6 +78,19 @@ export function evaluateNativeMath(name, args, warning = () => {}) {
         if (!Array.isArray(args) || args.length !== 1 || typeof args[0] !== 'number' || !Number.isFinite(args[0]))
             throw new Error('Invalid native Abs parameters');
         return Math.abs(args[0]);
+    }
+    if (name === 'Square' || name === 'FFloor') {
+        if (!Array.isArray(args) || args.length !== 1 || typeof args[0] !== 'number' || !Number.isFinite(args[0]))
+            throw new Error(`Invalid native ${name} parameters`);
+        const result = name === 'Square' ? args[0] * args[0] : Math.floor(args[0]);
+        if (!Number.isFinite(result) || name === 'FFloor' && (result < -2147483648 || result > 2147483647))
+            throw new Error(`Out-of-range native ${name} result`);
+        return result;
+    }
+    if (name === 'Conv_BoolToDouble') {
+        if (!Array.isArray(args) || args.length !== 1 || typeof args[0] !== 'boolean')
+            throw new Error('Invalid native Conv_BoolToDouble parameters');
+        return args[0] ? 1 : 0;
     }
     if (name === 'Conv_IntToInt64') {
         if (!Array.isArray(args) || args.length !== 1 || !Number.isInteger(args[0]) ||
