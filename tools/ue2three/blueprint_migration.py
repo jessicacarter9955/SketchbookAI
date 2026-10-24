@@ -650,7 +650,8 @@ def translate_function(export, package=None, entry_offset=None):
                 # offset. Retain that dynamic target, but only at the witnessed
                 # prologue and only with a complete source boundary table.
                 if (package and str(export.get('ObjectName', '')).startswith('ExecuteUbergraph_')
-                        and all(kind(prior) in ('EX_Tracepoint', 'EX_WireTracepoint', 'EX_Nothing')
+                        and all(kind(prior) in ('EX_Tracepoint', 'EX_WireTracepoint', 'EX_Nothing',
+                                                'EX_PushExecutionFlow')
                                 for prior in bytecode[:index])
                         and kind(operand) == 'EX_LocalVariable'
                         and field(operand.get('Variable')) == 'EntryPoint'
