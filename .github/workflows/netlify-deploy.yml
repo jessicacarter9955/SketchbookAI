@@ -25,6 +25,18 @@ jobs:
       - name: Build
         run: npm run build
 
+      # nwtgck/actions-netlify exits successfully when credentials are missing,
+      # producing a misleading green deployment without publishing anything.
+      - name: Verify Netlify credentials
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ] || [ -z "$NETLIFY_SITE_ID" ]; then
+            echo "::error::Netlify deployment was not attempted: NETLIFY_AUTH_TOKEN or NETLIFY_SITE_ID is missing."
+            exit 1
+          fi
+
       - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v3.0
         with:
