@@ -82,6 +82,18 @@ class BlueprintMigrationTests(unittest.TestCase):
         self.assertEqual(NATIVE_MATH_INPUT_TYPES['Conv_IntToInt64'], ('IntProperty',))
         self.assertEqual(native_math_result_type('Conv_IntToInt64'), 'Int64Property')
 
+    def test_native_linear_color_to_vector_uses_original_struct_identity(self):
+        from blueprint_migration import MATH_CALLS, NATIVE_MATH_INPUT_TYPES, native_math_result_type, native_math_source_type
+        imports = [{'ObjectName': 'LinearColor', 'ClassName': 'ScriptStruct', 'OuterIndex': -2},
+                   {'ObjectName': '/Script/CoreUObject', 'ClassName': 'Package'}]
+        package = Package({'Imports': imports})
+        struct = node('EX_StructConst', Struct=-1, StructSize=16,
+                      Value=[node('EX_FloatConst', Value=x) for x in (0.25, 0.5, 0.75, 0.125)])
+        self.assertEqual(native_math_source_type(struct, package, None), 'LinearColor')
+        self.assertEqual(MATH_CALLS['Conv_LinearColorToVector'][0], 1)
+        self.assertEqual(NATIVE_MATH_INPUT_TYPES['Conv_LinearColorToVector'], ('LinearColor',))
+        self.assertEqual(native_math_result_type('Conv_LinearColorToVector'), 'Vector')
+
     def test_cached_ue57_int64_source_witness_preserves_value_and_vm_offsets(self):
         witness = json.loads((Path(__file__).parent / 'fixtures' / 'dds-int64-source-witness.json').read_text(encoding='utf-8'))
         self.assertEqual(witness['engine_version'], '5.7.4')
