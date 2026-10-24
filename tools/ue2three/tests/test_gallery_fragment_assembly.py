@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from gallery_fragment_assembly import AssemblyError, assemble, read_glb
 
 
-def make_glb(path, *, light=False, external_image=False):
+def make_glb(path, *, light=False, external_image=False, animated=False):
     binary = struct.pack('<fff', 1, 2, 3) + b'PNG!'
     doc = {'asset': {'version': '2.0'}, 'scene': 0, 'scenes': [{'nodes': [0]}],
            'buffers': [{'byteLength': len(binary)}],
@@ -30,6 +30,12 @@ def make_glb(path, *, light=False, external_image=False):
         doc['extensionsUsed'].append('KHR_lights_punctual')
         doc['extensions'] = {'KHR_lights_punctual': {'lights': [{'type': 'directional', 'color': [1, 1, 1]}]}}
         doc['nodes'][0]['extensions'] = {'KHR_lights_punctual': {'light': 0}}
+    if animated:
+        doc['skins'] = [{'joints': [0], 'skeleton': 0, 'inverseBindMatrices': 0}]
+        doc['nodes'][0]['skin'] = 0
+        doc['meshes'][0]['primitives'][0]['targets'] = [{'POSITION': 0}]
+        doc['animations'] = [{'samplers': [{'input': 0, 'output': 0}],
+                              'channels': [{'sampler': 0, 'target': {'node': 0, 'path': 'translation'}}]}]
     encoded = json.dumps(doc).encode()
     encoded += b' ' * (-len(encoded) % 4)
     path.write_bytes(struct.pack('<4sII', b'glTF', 2, 28 + len(encoded) + len(binary)) +
@@ -45,8 +51,8 @@ class GalleryFragmentAssemblyTests(unittest.TestCase):
         self.first = self.root / 'first.glb'
         self.second = self.root / 'second.glb'
         self.static = self.root / 'GalleryStaticSubset.glb'
-        make_glb(self.first, light=True)
-        make_glb(self.second, light=True)
+        make_glb(self.first, light=True, animated=True)
+        make_glb(self.second, light=True, animated=True)
         make_glb(self.static)
         self.source_manifest = self.root / 'source-actors.json'
         self.source_manifest.write_text(json.dumps({'actors': [['C', []]]}))
@@ -89,6 +95,15 @@ class GalleryFragmentAssemblyTests(unittest.TestCase):
         self.assertEqual([node['extensions']['KHR_lights_punctual']['light']
                           for node in doc['nodes'][:2]], [0, 1])
         self.assertEqual(len(doc['extensions']['KHR_lights_punctual']['lights']), 2)
+        self.assertEqual([node['skin'] for node in doc['nodes'][:2]], [0, 1])
+        self.assertEqual([skin['joints'] for skin in doc['skins']], [[0], [1]])
+        self.assertEqual([skin['inverseBindMatrices'] for skin in doc['skins']], [0, 1])
+        self.assertEqual([animation['channels'][0]['target']['node']
+                          for animation in doc['animations']], [0, 1])
+        self.assertEqual([animation['samplers'][0]['input']
+                          for animation in doc['animations']], [0, 1])
+        self.assertEqual([doc['meshes'][i]['primitives'][0]['targets'][0]['POSITION']
+                          for i in range(2)], [0, 1])
         self.assertEqual([hashlib.sha256(p.read_bytes()).hexdigest()
                           for p in (self.first, self.second, self.static)], original_hashes)
 
