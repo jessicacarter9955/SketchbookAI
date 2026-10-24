@@ -11,6 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from core import atomic_json, digest, file_hash, read_json
+from character import character_fingerprint, load_character_recipe
 from dds_asset_export import (ExportSupervisor, _verified_character_files,
                               _verified_map_rows, _map_issues, main, new_progress, outside_source)
 
@@ -148,6 +149,30 @@ class AssetSupervisorTests(unittest.TestCase):
         fixture_glb(folder / "clip-idle.glb", mesh=False, animation=True)
         with self.assertRaisesRegex(ValueError, "omitted or renamed"):
             _verified_character_files(folder, self.project, "f" * 64, 3, {"different"}, {"pistol"})
+
+    def test_verified_character_outputs_are_reused_until_original_source_changes(self):
+        self._assets()
+        recipe = load_character_recipe(self.recipe)
+        fingerprint, _ = character_fingerprint(self.project, recipe)
+        folder = self.publish / "dds-assets" / "character"
+        fixture_glb(folder / "character.glb")
+        fixture_glb(folder / "clip-idle.glb", mesh=False, animation=True)
+        fixture_glb(folder / "attachment-pistol.glb")
+        atomic_json(folder / "manifest.json", {"schema_version": 1, "kind": "character",
+                    "fingerprint": fingerprint, "recipe_id": "test-character",
+                    "mesh": "character.glb", "clips": {"idle": "clip-idle.glb"},
+                    "attachment_assets": {"pistol": {"file": "attachment-pistol.glb",
+                                                     "bone": "right_hand"}}})
+        runner = self._runner()
+        self.assertFalse(runner._prepare_character(), "Verified outputs must skip redundant Unreal export")
+        job = next(item for item in runner.progress["jobs"] if item["id"] == "character")
+        self.assertEqual(job["status"], "completed")
+        self.assertEqual(job["completed"], 3)
+        self.assertTrue(job["reused_verified_outputs"])
+        (self.source / "Content/Hero/Pistol.uasset").write_bytes(b"modified source")
+        changed = self._runner()
+        self.assertTrue(changed._prepare_character(), "A changed source must require a new export")
+        self.assertFalse(changed.progress["jobs"][0].get("reused_verified_outputs", False))
 
     def test_no_sources_prevents_fabricated_completion_without_launch(self):
         runner = self._runner(scan_if_needed=False)
