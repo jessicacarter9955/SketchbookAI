@@ -38,6 +38,17 @@ function validateSchema(schema, value, depth = 0) {
                 || JSON.stringify(value.declared_class) !== JSON.stringify(schema.class))) throw new Error('Invalid original component reference');
             return;
         }
+        if (schema.reference_kind === 'runtime_native_widget') {
+            if (value !== null && (value?.kind !== 'source_native_widget'
+                || typeof value.source_package !== 'string'
+                || !/^\/Game\/[A-Za-z0-9_/.]+$/.test(value.source_package)
+                || !Number.isSafeInteger(value.source_owner_index) || value.source_owner_index < 1
+                || !safeField(value.source_field)
+                || typeof value.widget_id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(value.widget_id)
+                || JSON.stringify(value.declared_class) !== JSON.stringify(schema.class)))
+                throw new Error('Unverified original native UMG widget reference');
+            return;
+        }
         if (schema.reference_kind === 'runtime_native_component' || schema.reference_kind === 'runtime_native_object') {
             const expectedKind = schema.reference_kind === 'runtime_native_component'
                 ? 'source_native_component' : 'source_native_object';
@@ -476,6 +487,55 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 || typeof context.source_package !== 'string') throw new Error('Original Blueprint self reference is unavailable');
             return {kind:'source_self',source_package:context.source_package,
                 source_owner_index:program.source_owner_index,declared_class:expression.class || null};
+        }
+        if (expression.op === 'native_widget_effect') {
+            const identity=expression.identity;
+            const method=expression.method;
+            const supported=method === 'SetVisibility'
+                && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','Widget','SetVisibility'])
+                && expression.dispatch === 'EX_VirtualFunction'
+                && expression.parameter?.schema?.type === 'ByteProperty'
+                || method === 'SetText'
+                && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','TextBlock','SetText'])
+                && expression.dispatch === 'EX_FinalFunction'
+                && expression.parameter?.schema?.type === 'TextProperty';
+            if (!supported || expression.source_owner_index !== program.source_owner_index
+                || expression.source_binding_required !== true
+                || expression.visual_1to1_certified !== false || !expression.receiver_schema
+                || expression.receiver_schema.reference_kind !== 'runtime_native_widget'
+                || !safeField(expression.receiver_field) || expression.receiver?.op !== 'get'
+                || expression.receiver.scope !== 'self'
+                || expression.receiver.field !== expression.receiver_field)
+                throw new Error('Unsupported or unbound original UMG context contract');
+            const reference=evaluate(expression.receiver,depth+1);
+            if (reference === null) {
+                trace.push({source_index:sourceIndex,op:'warning',message:'Accessed None: UMG widget call skipped'});
+                return null;
+            }
+            validateSchema(expression.receiver_schema,reference);
+            const widgets=notifications.native?.widgets;
+            const descriptor=widgets && Object.hasOwn(widgets,expression.receiver_field)
+                ? widgets[expression.receiver_field] : null;
+            if (!descriptor || descriptor.binding_complete !== true
+                || descriptor.source_owner_index !== expression.source_owner_index
+                || descriptor.source_field !== expression.receiver_field
+                || JSON.stringify(descriptor.declared_class) !== JSON.stringify(expression.receiver_schema.class)
+                || JSON.stringify(descriptor.reference) !== JSON.stringify(reference)
+                || reference.source_package !== notifications.native.source_package
+                || reference.source_field !== expression.receiver_field
+                || reference.source_owner_index !== expression.source_owner_index)
+                throw new Error('Original widget source binding is unavailable or foreign');
+            const value=evaluate(expression.parameter.value,depth+1);
+            validateSchema(expression.parameter.schema,value);
+            if (method === 'SetVisibility' && (!Number.isInteger(value) || value < 0 || value > 4))
+                throw new Error('Unverified original ESlateVisibility value');
+            const effect={op:'native_widget_effect',identity:[...identity],dispatch:expression.dispatch,
+                widget_id:reference.widget_id,source_field:expression.receiver_field,
+                source_package:reference.source_package,source_owner_index:reference.source_owner_index,
+                method,parameter:structuredClone(value)};
+            emit(effect);
+            trace.push({source_index:sourceIndex,...structuredClone(effect)});
+            return null;
         }
         if (expression.op === 'native_audio_vfx') {
             const contract=nativeAudioVfxContracts.get(JSON.stringify(expression.identity));
