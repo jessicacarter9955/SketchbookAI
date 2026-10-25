@@ -18,7 +18,8 @@ function effect(method,value,{sourceClass=klass}={}) {
     dispatch:text?'EX_FinalFunction':'EX_VirtualFunction',method,
     receiver:{op:'get',scope:'self',field:'Txt_Label'},receiver_field:'Txt_Label',
     receiver_schema:{type:'ObjectProperty',class:sourceClass,reference_kind:'runtime_native_widget',default:null},
-    parameter:{schema:text?textSchema:byteSchema,value:{op:'constant',value}}};
+    parameter:{schema:text?textSchema:byteSchema,value:text
+      ? {op:'typed_literal',schema:textSchema,value} : {op:'constant',value}}};
 }
 function program(command) {
   return {schema_version:1,status:'translated_straight_line',
