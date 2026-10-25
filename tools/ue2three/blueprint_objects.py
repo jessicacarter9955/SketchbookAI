@@ -18,6 +18,10 @@ NATIVE_OBJECT_CALLS = {
         'parameter_types': ('IntProperty',), 'return_type': 'StrProperty',
         'argument_tokens': (('EX_IntConst', 'EX_IntZero', 'EX_IntOne'),),
     },
+    ('/Script/Engine', 'KismetStringLibrary', 'Len'): {
+        'parameter_types': ('StrProperty',), 'return_type': 'IntProperty',
+        'argument_tokens': (('EX_StringConst', 'EX_UnicodeStringConst'),),
+    },
 }
 
 
