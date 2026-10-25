@@ -82,5 +82,49 @@ class VerifiedGalleryAssemblyTests(unittest.TestCase):
             assemble_audit(self.audit, self.diagnosis, self.output)
 
 
+    def test_reconciles_original_static_supplement_without_actor_overlap(self):
+        static = self.root / 'static.glb'
+        make_glb(static)
+        source_manifest = self.root / 'source-instances.json'
+        source_manifest.write_text(json.dumps({
+            'level': LEVEL, 'actors': [['Unexportable', []]]}), encoding='utf8')
+        supplement = {
+            'level': LEVEL, 'status': 'static_geometry_subset_only',
+            'complete_level': False, 'source_manifest': str(source_manifest),
+            'source_manifest_sha256': hashlib.sha256(source_manifest.read_bytes()).hexdigest(),
+            'output_sha256': hashlib.sha256(static.read_bytes()).hexdigest()
+        }
+        sidecar = static.with_suffix('.source.json')
+        sidecar.write_text(json.dumps(supplement), encoding='utf8')
+        result = assemble_audit(self.audit, self.diagnosis, self.output, static_file=static)
+        self.assertEqual(result['audited_native_actors'], 2)
+        self.assertEqual(result['original_static_supplement_actors'], 1)
+        self.assertEqual(result['selected_original_actors'], 3)
+        self.assertEqual(result['unrecovered_original_actors'], [])
+        self.assertEqual(result['mesh_count'], 3)
+        self.assertFalse(result['complete_level'])
+        self.assertFalse(result['play_verified'])
+
+    def test_static_source_checks_checksum_actor_overlap_and_missing_manifest(self):
+        static = self.root / 'static.glb'
+        make_glb(static)
+        source_manifest = self.root / 'source-instances.json'
+        source_manifest.write_text(json.dumps({
+            'level': LEVEL, 'actors': [['ActorA', []]]}), encoding='utf8')
+        supplement = {
+            'level': LEVEL, 'status': 'static_geometry_subset_only',
+            'complete_level': False, 'source_manifest': str(source_manifest),
+            'source_manifest_sha256': hashlib.sha256(source_manifest.read_bytes()).hexdigest(),
+            'output_sha256': hashlib.sha256(static.read_bytes()).hexdigest()
+        }
+        static.with_suffix('.source.json').write_text(json.dumps(supplement), encoding='utf8')
+        with self.assertRaisesRegex(AssemblyError, 'overlap'):
+            assemble_audit(self.audit, self.diagnosis, self.output, static_file=static)
+        source_manifest.write_text(json.dumps({
+            'level': LEVEL, 'actors': [['Unexportable', []]]}), encoding='utf8')
+        with self.assertRaisesRegex(AssemblyError, 'SHA-256'):
+            assemble_audit(self.audit, self.diagnosis, self.output, static_file=static)
+
+
 if __name__ == '__main__':
     unittest.main()
