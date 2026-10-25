@@ -22,6 +22,13 @@ NATIVE_OBJECT_CALLS = {
         'parameter_types': ('StrProperty',), 'return_type': 'IntProperty',
         'argument_tokens': (('EX_StringConst', 'EX_UnicodeStringConst'),),
     },
+    ('/Script/Engine', 'KismetStringLibrary', 'Contains'): {
+        'parameter_types': ('StrProperty', 'StrProperty', 'BoolProperty', 'BoolProperty'),
+        'return_type': 'BoolProperty',
+        'argument_tokens': (('EX_StringConst', 'EX_UnicodeStringConst'),
+                            ('EX_StringConst', 'EX_UnicodeStringConst'),
+                            ('EX_False',), ('EX_False',)),
+    },
 }
 
 
@@ -48,12 +55,13 @@ def native_object_call(value, package, owner, reads, outputs, depth):
             result, schema = variable(arg, package, owner, reads, outputs, depth)
             if schema.get('type') != expected:
                 raise Error('Original native object parameter type differs')
-        elif token in literal_tokens and expected in ('StrProperty', 'NameProperty', 'IntProperty'):
+        elif token in literal_tokens and expected in ('StrProperty', 'NameProperty', 'IntProperty', 'BoolProperty'):
             memory_size(arg, package=package)
             result = expression(arg, reads, outputs, depth+1, package, owner)
             literal = result.get('value')
             valid = (result.get('op') == 'constant'
-                     and (isinstance(literal, str) if expected != 'IntProperty'
+                     and (type(literal) is bool if expected == 'BoolProperty'
+                          else isinstance(literal, str) if expected != 'IntProperty'
                           else type(literal) is int and -(2**31) <= literal < 2**31))
             if not valid:
                 raise Error('Original native object literal type differs')
