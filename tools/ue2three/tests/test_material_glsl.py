@@ -97,5 +97,41 @@ class SourceMaterialShaderTests(unittest.TestCase):
         self.assertEqual(result['translated_roots'], {})
 
 
+    def test_original_named_reroute_resolves_by_export_and_guid(self):
+        declaration = node(3, 'NamedRerouteDeclaration', inputs={'Input': link(2)},
+                           props={'VariableGuid': {'VariableGuid': '{ORIGINAL-GUID}'}})
+        usage = node(4, 'NamedRerouteUsage',
+                     props={'Declaration': 3,
+                            'DeclarationGuid': {'DeclarationGuid': '{ORIGINAL-GUID}'}})
+        source = graph([node(2, 'Constant', props={'R': 0.42}), declaration, usage],
+                       {'Roughness': link(4)})
+        result = compile_graph(source)
+        self.assertEqual(result['translated_roots']['Roughness']['glsl'], '0.42')
+        self.assertEqual(result['blocked_roots'], {})
+        usage['properties']['DeclarationGuid']['DeclarationGuid'] = '{DIFFERENT}'
+        self.assertIn('GUID', compile_graph(source)['blocked_roots']['Roughness'])
+        usage['properties']['DeclarationGuid']['DeclarationGuid'] = '{ORIGINAL-GUID}'
+        usage['properties']['Declaration'] = 5
+        self.assertIn('missing', compile_graph(source)['blocked_roots']['Roughness'])
+
+    def test_source_vector_min_max_dot_and_fail_closed_widths(self):
+        vec_a = node(1, 'Constant3Vector', props={
+            'Constant': {'R': 0.1, 'G': 0.2, 'B': 0.3, 'A': 1}})
+        vec_b = node(2, 'Constant3Vector', props={
+            'Constant': {'R': 0.4, 'G': 0.5, 'B': 0.6, 'A': 1}})
+        minimum = node(3, 'Min', inputs={'A': link(1), 'B': link(2)})
+        maximum = node(4, 'Max', inputs={'A': link(1), 'B': link(2)})
+        product = node(5, 'DotProduct', inputs={'A': link(1), 'B': link(2)})
+        result = compile_graph(graph([vec_a, vec_b, minimum, maximum, product], {
+            'BaseColor': link(3), 'EmissiveColor': link(4), 'Roughness': link(5)}))
+        self.assertEqual(result['blocked_roots'], {})
+        self.assertTrue(result['translated_roots']['BaseColor']['glsl'].startswith('min('))
+        self.assertTrue(result['translated_roots']['EmissiveColor']['glsl'].startswith('max('))
+        self.assertTrue(result['translated_roots']['Roughness']['glsl'].startswith('dot('))
+        scalar = node(2, 'Constant', props={'R': 1})
+        invalid = compile_graph(graph([vec_a, scalar, product], {'Roughness': link(5)}))
+        self.assertIn('widths differ', invalid['blocked_roots']['Roughness'])
+
+
 if __name__ == '__main__':
     unittest.main()
