@@ -15,7 +15,48 @@ from gallery_fragment_assembly import AssemblyError, read_glb, merge_fragment, _
 LEVEL = '/Game/Fixers/VFX/NiagaraExamples/GalleryLevel'
 
 
-def assemble_audit(audit_path, diagnosis_path, output_path, static_file=None):
+
+def original_target_point(project, workspace):
+    """Read and verify the non-rendering original TargetPoint_0 from its .umap."""
+    from map_fixup import source_scene
+    from umg_migration import Package
+    from core import file_hash
+
+    project = Path(project).resolve(strict=True)
+    workspace = Path(workspace).resolve(strict=True)
+    scene = source_scene(project, LEVEL, workspace)
+    original = project.parent / 'Content' / (LEVEL[6:] + '.umap')
+    if scene.get('source_sha256') != file_hash(original):
+        raise AssemblyError('Original Gallery source .umap SHA-256 differs')
+    matches = [a for a in scene.get('actors', []) if a.get('source_object') == 'TargetPoint_0']
+    if (len(matches) != 1 or matches[0].get('source_class') != 'TargetPoint'
+            or matches[0].get('root_component_class') != 'SceneComponent'
+            or matches[0].get('attached')):
+        raise AssemblyError('Original TargetPoint_0 actor or root component differs')
+    actor = matches[0]
+    transform = actor.get('transform', {})
+    position = transform.get('translation')
+    if (not isinstance(position, list) or len(position) != 3
+            or set(transform) != {'translation'}
+            or not all(type(v) in (int, float) and abs(v) < 1e12 for v in position)):
+        raise AssemblyError('Original TargetPoint world transform is not an exact translation')
+    parsed_file = workspace / 'artifacts' / 'uasset-json' / (scene['source_sha256'] + '.json')
+    parsed = Package(json.loads(parsed_file.read_text(encoding='utf8')))
+    index = actor.get('source_export_index')
+    if type(index) is not int or parsed.export(index).get('ObjectName') != 'TargetPoint_0':
+        raise AssemblyError('TargetPoint export differs from source actor record')
+    children = [parsed.class_name(e) for e in parsed.exports if e.get('OuterIndex') == index]
+    if ('SceneComponent' not in children or set(children) - {'SceneComponent', 'ArrowComponent', 'BillboardComponent'}):
+        raise AssemblyError('Unexpected original renderable TargetPoint component')
+    return {'name': 'TargetPoint_0', 'translation': position,
+            'extras': {'unreal_actor': 'TargetPoint_0', 'original_class': 'TargetPoint',
+                       'original_map_sha256': scene['source_sha256'],
+                       'non_rendering_source_marker': True,
+                       'editor_gizmo_geometry_excluded': True}}
+
+
+def assemble_audit(audit_path, diagnosis_path, output_path, static_file=None,
+                   target_point_project=None, target_point_workspace=None):
     audit_path = Path(audit_path).resolve(strict=True)
     diagnosis_path = Path(diagnosis_path).resolve(strict=True)
     output_path = Path(output_path).resolve()
@@ -104,7 +145,21 @@ def assemble_audit(audit_path, diagnosis_path, output_path, static_file=None):
             witnesses.append({'type': 'original_static_instances', 'actors': sorted(names),
                               'glb': str(static_file), 'sha256': checksum,
                               'source_manifest_sha256': supplement['source_manifest_sha256']})
+    represented = set(covered)
+    marker_names = []
+    if (target_point_project is None) != (target_point_workspace is None):
+        raise AssemblyError('TargetPoint project and source workspace must both be supplied')
+    if target_point_project is not None:
+        marker = original_target_point(target_point_project, target_point_workspace)
+        marker_name = marker['extras']['unreal_actor']
+        if marker_name not in source or marker_name in represented:
+            raise AssemblyError('Original TargetPoint marker is not an uncovered source actor')
+        output['roots'].append(len(output['nodes']))
+        output['nodes'].append(marker)
+        marker_names.append(marker_name)
+        represented.add(marker_name)
     missing = source - covered
+    unrepresented = source - represented
     output_hash, gltf = _write_glb(output, output_path)
     report = {'schema_version': 1, 'map': LEVEL,
               'status': 'audited_partial_native_gallery',
@@ -113,6 +168,10 @@ def assemble_audit(audit_path, diagnosis_path, output_path, static_file=None):
               'source_diagnosis_sha256': hashlib.sha256(diagnosis_path.read_bytes()).hexdigest(),
               'original_actor_count': len(source),
               'selected_original_actors': len(covered),
+              'geometry_covered_actors': len(covered),
+              'represented_original_actors': len(represented),
+              'non_rendering_original_actors': marker_names,
+              'unrepresented_original_actors': sorted(unrepresented),
               'audited_native_actors': len(native_covered),
               'original_static_supplement_actors': len(static_covered),
               'unrecovered_original_actors': sorted(missing),
@@ -138,11 +197,19 @@ def main():
     parser.add_argument('--output', required=True, type=Path)
     parser.add_argument('--static', action='append', type=Path, default=[],
                         help='Repeat for independent witnessed original static subset GLBs')
+    parser.add_argument('--target-point-project', type=Path,
+                        help='Original Unreal project to witness non-rendering TargetPoint')
+    parser.add_argument('--target-point-workspace', type=Path,
+                        help='Verified original map source parser cache')
     args = parser.parse_args()
-    report = assemble_audit(args.audit, args.diagnosis, args.output, static_file=args.static)
+    report = assemble_audit(args.audit, args.diagnosis, args.output, static_file=args.static,
+                            target_point_project=args.target_point_project,
+                            target_point_workspace=args.target_point_workspace)
     print(json.dumps({k: report[k] for k in (
         'original_actor_count', 'selected_original_actors', 'audited_native_actors',
         'original_static_supplement_actors', 'unrecovered_original_actors',
+        'represented_original_actors', 'non_rendering_original_actors',
+        'unrepresented_original_actors',
         'mesh_count', 'node_count', 'material_count', 'texture_count', 'glb_sha256')},
         sort_keys=True))
 
