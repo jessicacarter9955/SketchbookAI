@@ -166,6 +166,23 @@ class Compiler:
                 width = max(a.width, b.width)
                 name = 'min' if cls.endswith('Min') else 'max'
                 expr = Expr(f'{name}({promote(a, width)}, {promote(b, width)})', width)
+            elif cls == 'MaterialExpressionClamp':
+                # Native Clamp defaults to [0, 1]. Accept only the witnessed
+                # default clamp mode and explicit/default bounds; unknown
+                # clamp modes and unverified bound links remain blocked.
+                if props.get('ClampMode', 0) not in (0, 'CMODE_Clamp'):
+                    raise MaterialGLSLError('Unsupported original clamp mode')
+                x = self.required(node, 'Input')
+                def bound(key, default_key, fallback):
+                    link = node['inputs'].get(key)
+                    if link is not None and link.get('expression'):
+                        return self.input(link)
+                    if link is not None and link.get('use_constant'):
+                        return self.input(link)
+                    return vector([props.get(default_key, fallback)])
+                lo = bound('Min', 'MinDefault', 0)
+                hi = bound('Max', 'MaxDefault', 1)
+                expr = Expr(f'clamp({x.code}, {promote(lo, x.width)}, {promote(hi, x.width)})', x.width)
             elif cls == 'MaterialExpressionDotProduct':
                 a, b = self.required(node, 'A'), self.required(node, 'B')
                 if a.width != b.width or a.width not in (2, 3, 4):
