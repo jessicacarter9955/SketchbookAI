@@ -133,5 +133,20 @@ class SourceMaterialShaderTests(unittest.TestCase):
         self.assertIn('widths differ', invalid['blocked_roots']['Roughness'])
 
 
+    def test_native_clamp_defaults_and_source_mode_fail_closed(self):
+        x = node(1, 'Constant', props={'R': 0.65})
+        cl = node(2, 'Clamp', inputs={'Input': link(1)})
+        source = graph([x, cl], {'Roughness': link(2)})
+        result = compile_graph(source)
+        self.assertEqual(result['translated_roots']['Roughness']['glsl'],
+                         'clamp(0.65, 0.0, 1.0)')
+        cl['properties']['ClampMode'] = 'CMODE_ClampMin'
+        result = compile_graph(source)
+        self.assertIn('clamp mode', result['blocked_roots']['Roughness'])
+        cl['properties']['ClampMode'] = 0
+        cl['properties']['MinDefault'] = 0.2
+        self.assertIn('0.2', compile_graph(source)['translated_roots']['Roughness']['glsl'])
+
+
 if __name__ == '__main__':
     unittest.main()
