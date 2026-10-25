@@ -46,7 +46,7 @@ function validate(lowering) {
     const lexical = value.glsl.replace(/(?<![a-zA-Z_0-9])(?:\d+(?:\.\d*)?|\.\d+)[eE][+-]?\d+/g, '0.0');
     const identifiers = lexical.match(/[a-zA-Z_][a-zA-Z_0-9]*/g) || [];
     const builtins = new Set(['vec2', 'vec3', 'vec4', 'mix', 'clamp',
-      'abs', 'floor', 'sin', 'cos', 'fract']);
+      'abs', 'floor', 'sin', 'cos', 'fract', 'min', 'max', 'dot']);
     if (identifiers.some(id => !(builtins.has(id) || /^[xyzw]{1,4}$/.test(id) ||
         (/^uep_[1-9]\d*$/.test(id) &&
           Object.prototype.hasOwnProperty.call(lowering.uniforms || {}, id))))) {
