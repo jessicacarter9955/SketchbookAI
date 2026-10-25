@@ -66,6 +66,29 @@ class NativeStringConversionTests(unittest.TestCase):
         with self.assertRaisesRegex(BlueprintTranslationError, 'parameter type'):
             expression(call(var), set(), set(), package=p, owner=1)
 
+    def test_combat_contains_four_original_typed_parameters(self):
+        p = package('Contains', 'StrProperty')
+        source = node('EX_InstanceVariable', Variable={'New': {'Path': ['Value'], 'ResolvedOwner': 1}})
+        arguments = [source, node('EX_StringConst', Value='head'),
+                     node('EX_False'), node('EX_False')]
+        result = expression(node('EX_CallMath', StackNode=-1, Parameters=arguments),
+                            set(), set(), package=p, owner=1)
+        self.assertEqual(result['identity'],
+                         ['/Script/Engine', 'KismetStringLibrary', 'Contains'])
+        self.assertEqual(result['parameter_types'],
+                         ['StrProperty', 'StrProperty', 'BoolProperty', 'BoolProperty'])
+        self.assertEqual(result['return_type'], 'BoolProperty')
+        self.assertEqual(result['args'][2]['value'], False)
+        with self.assertRaisesRegex(BlueprintTranslationError, 'typed source property or matching literal'):
+            arguments[2] = node('EX_True')
+            expression(node('EX_CallMath', StackNode=-1, Parameters=arguments),
+                       set(), set(), package=p, owner=1)
+        arguments[2] = node('EX_False')
+        p.exports[0]['LoadedProperties'][0]['SerializedType'] = 'NameProperty'
+        with self.assertRaisesRegex(BlueprintTranslationError, 'parameter type'):
+            expression(node('EX_CallMath', StackNode=-1, Parameters=arguments),
+                       set(), set(), package=p, owner=1)
+
     def test_no_arity_or_native_identity_fallback(self):
         p = package('Conv_NameToString', 'NameProperty')
         with self.assertRaisesRegex(BlueprintTranslationError, 'arity'):
