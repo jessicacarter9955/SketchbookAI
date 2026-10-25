@@ -56,9 +56,16 @@ def checkpoint(rows):
     os.replace(temporary, progress)
 
 
+material_mode = job.get('material_mode', 'original_material_bake')
+if material_mode not in ('original_material_bake', 'geometry_only_no_bake'):
+    raise RuntimeError('Unknown original glTF material export mode')
 options = unreal.GLTFExportOptions()
 options.set_editor_property('export_uniform_scale', 0.01)
-options.set_editor_property('bake_material_inputs', unreal.GLTFMaterialBakeMode.USE_MESH_DATA)
+# The geometry-only fallback avoids shader/texture baking hangs. Its material
+# fidelity is explicitly NOT certified; original material graphs remain separate.
+options.set_editor_property('bake_material_inputs',
+                            unreal.GLTFMaterialBakeMode.DISABLED if material_mode == 'geometry_only_no_bake'
+                            else unreal.GLTFMaterialBakeMode.USE_MESH_DATA)
 rows = []
 for item in job['meshes']:
     package = item['asset']
@@ -68,7 +75,8 @@ for item in job['meshes']:
             not filename.endswith('.glb')):
         raise RuntimeError('Invalid original source asset or output filename')
     target = directory / filename
-    row = {'asset': package, 'filename': filename, 'status': 'pending'}
+    row = {'asset': package, 'filename': filename, 'status': 'pending',
+           'material_mode': material_mode, 'visual_1to1_certified': False}
     rows.append(row)
     checkpoint(rows)
     try:
