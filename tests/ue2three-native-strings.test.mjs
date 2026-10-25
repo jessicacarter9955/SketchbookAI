@@ -31,7 +31,7 @@ test('source int32 conversion preserves original signed range without JS coercio
   }
   for (const invalid of [2147483648,-2147483649,1.25,'12',null,NaN,Infinity]) {
     assert.throws(()=>executeBlueprint(program(contract('Conv_IntToString','IntProperty',invalid)),{},{}),
-      /Invalid original native object int32 parameter|Invalid source|property/);
+      /Invalid original native object int32 parameter|Invalid source|Invalid typed source member/);
   }
 });
 
