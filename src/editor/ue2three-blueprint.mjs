@@ -859,7 +859,8 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 Concat_StrStr: {args: ['StrProperty', 'StrProperty'], result: 'StrProperty'},
                 Conv_NameToString: {args: ['NameProperty'], result: 'StrProperty'},
                 Conv_IntToString: {args: ['IntProperty'], result: 'StrProperty'},
-                Len: {args: ['StrProperty'], result: 'IntProperty'}
+                Len: {args: ['StrProperty'], result: 'IntProperty'},
+                Contains: {args: ['StrProperty', 'StrProperty', 'BoolProperty', 'BoolProperty'], result: 'BoolProperty'}
             };
             const name = expression.identity?.[2];
             const contract = Object.hasOwn(contracts, name) ? contracts[name] : null;
@@ -886,12 +887,24 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 if (sourceType === 'IntProperty') {
                     if (!Number.isInteger(value) || value < -2147483648 || value > 2147483647)
                         throw new Error('Invalid original native object int32 parameter');
+                } else if (sourceType === 'BoolProperty') {
+                    if (typeof value !== 'boolean')
+                        throw new Error('Invalid original native object bool parameter');
                 } else if (typeof value !== 'string') {
                     throw new Error('Invalid original native object string parameter');
                 }
                 return value;
             });
             if (name === 'Len') return values[0].length; // Unreal FString.Len counts UTF-16 TCHAR units.
+            if (name === 'Contains') {
+                if (values[2] !== false || values[3] !== false)
+                    throw new Error('Original FString.Contains search mode is not supported');
+                // Fail closed for Unicode case folds that do not necessarily
+                // match Unreal FChar::ToLower; ASCII bone names are source-backed.
+                if (!/^[\x00-\x7f]*$/.test(values[0]) || !/^[\x00-\x7f]*$/.test(values[1]))
+                    throw new Error('Original Unicode FString.Contains case folding requires Unreal parity');
+                return values[0].toLowerCase().includes(values[1].toLowerCase());
+            }
             if (name === 'Concat_StrStr') return values[0] + values[1];
             if (name === 'Conv_IntToString') return String(values[0]);
             return values[0]; // Original FName spelling preserved by the source value.
