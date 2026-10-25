@@ -74,3 +74,30 @@ test('native UMG rejects altered function identity and incompatible source type'
   assert.throws(()=>executeBlueprint(program(wrong),{Txt_Label:ref},{},{native:native()}),
     /FText|typed source/);
 });
+
+test('native virtual TextBlock text dispatch preserves authored FText data',()=>{
+  const operation=effect('SetText',textValue);
+  operation.dispatch='EX_VirtualFunction';
+  const result=executeBlueprint(program(operation),{Txt_Label:ref},{},{native:native()});
+  assert.equal(result.effects.length,1);
+  assert.equal(result.effects[0].dispatch,'EX_VirtualFunction');
+  assert.equal(result.effects[0].method,'SetText');
+});
+
+test('native text color requires original LinearColor struct type and four finite channels',()=>{
+  const rgba={R:0.25,G:0.5,B:0.75,A:1};
+  const field=Object.fromEntries(['R','G','B','A'].map(name=>[name,{type:'FloatProperty'}]));
+  const schema={type:'StructProperty',source:'/Script/CoreUObject',native:'LinearColor',fields:field,
+    default:{R:0,G:0,B:0,A:1},member_order:['R','G','B','A']};
+  const operation=effect('SetText',textValue);
+  operation.method='SetColorAndOpacity';
+  operation.identity=['/Script/UMG','TextBlock','SetColorAndOpacity'];
+  operation.parameter={schema,value:{op:'typed_literal',schema,value:rgba}};
+  const result=executeBlueprint(program(operation),{Txt_Label:ref},{},{native:native()});
+  assert.equal(result.effects.length,1);
+  assert.deepEqual(result.effects[0].parameter,rgba);
+  const bad=structuredClone(operation);
+  bad.parameter.value.value.B=Infinity;
+  assert.throws(()=>executeBlueprint(program(bad),{Txt_Label:ref},{},{native:native()}),
+    /Invalid typed source member/);
+});
