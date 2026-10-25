@@ -45,6 +45,38 @@ class NativeWidgetContextTests(unittest.TestCase):
         self.assertEqual(result['parameter']['schema']['type'], 'TextProperty')
         self.assertFalse(result['visual_1to1_certified'])
 
+    def test_virtual_umg_text_uses_original_text_property(self):
+        p = source_package()
+        call = node('EX_VirtualFunction', VirtualFunctionName='SetText',
+                    Parameters=[node('EX_InstanceVariable',
+                                     Variable={'New': {'Path': ['LabelText'], 'ResolvedOwner': 1}})])
+        result = expression(node('EX_Context', ObjectExpression=receiver(),
+            ContextExpression=call, Offset=memory_size(call, package=p), PropertyType=0,
+            RValuePointer={'New': {'Path': [], 'ResolvedOwner': 0}}),
+            set(), set(), package=p, owner=1)
+        self.assertEqual(result['identity'], ['/Script/UMG','TextBlock','SetText'])
+        self.assertEqual(result['dispatch'], 'EX_VirtualFunction')
+        self.assertEqual(result['parameter']['schema']['type'], 'TextProperty')
+
+    def test_umg_textblock_color_source_struct_only(self):
+        p = source_package()
+        p.imports[0]['ObjectName'] = 'SetColorAndOpacity'
+        p.imports.extend([
+            {'ObjectName': 'LinearColor', 'ClassName': 'ScriptStruct', 'OuterIndex': -6},
+            {'ObjectName': '/Script/CoreUObject', 'ClassName': 'Package'}
+        ])
+        p.exports[0]['LoadedProperties'].append({
+            'Name': 'HighlightColor', 'SerializedType': 'StructProperty', 'Struct': -5})
+        call = node('EX_FinalFunction', StackNode=-1, Parameters=[
+            node('EX_InstanceVariable',
+                 Variable={'New': {'Path': ['HighlightColor'], 'ResolvedOwner': 1}})])
+        result = expression(node('EX_Context', ObjectExpression=receiver(),
+            ContextExpression=call, Offset=memory_size(call, package=p), PropertyType=0,
+            RValuePointer={'New': {'Path': [], 'ResolvedOwner': 0}}),
+            set(), set(), package=p, owner=1)
+        self.assertEqual(result['identity'], ['/Script/UMG','TextBlock','SetColorAndOpacity'])
+        self.assertEqual(result['parameter']['schema']['native'], 'LinearColor')
+
     def test_original_umg_visibility_preserves_source_enum_byte(self):
         p = source_package()
         for value in range(5):
