@@ -4,6 +4,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from gallery_fragment_assembly import AssemblyError, read_glb
 from gallery_audit_assembly import assemble_audit, LEVEL
@@ -155,6 +156,34 @@ class VerifiedGalleryAssemblyTests(unittest.TestCase):
         other = self.root / 'duplicate.glb'
         with self.assertRaisesRegex(AssemblyError, 'Repeated static'):
             assemble_audit(self.audit, self.diagnosis, other, static_file=[supplements[0], supplements[0]])
+
+
+    def test_original_non_rendering_actor_node_does_not_falsify_glb_geometry_coverage(self):
+        self.diagnosis_doc['actors'].append('TargetPoint_0')
+        self.audit_doc['source_actor_count'] = 4
+        self.audit_doc['unrecovered_actor_names'] = ['Unexportable', 'TargetPoint_0']
+        self.save()
+        node = {'name': 'TargetPoint_0', 'translation': [0.1, 0.2, 0.3],
+                'extras': {'unreal_actor': 'TargetPoint_0',
+                           'non_rendering_source_marker': True}}
+        with patch('gallery_audit_assembly.original_target_point', return_value=node):
+            result = assemble_audit(self.audit, self.diagnosis, self.output,
+                                    target_point_project=self.root,
+                                    target_point_workspace=self.root)
+        self.assertEqual(result['geometry_covered_actors'], 2)
+        self.assertEqual(result['represented_original_actors'], 3)
+        self.assertEqual(result['non_rendering_original_actors'], ['TargetPoint_0'])
+        self.assertEqual(result['unrepresented_original_actors'], ['Unexportable'])
+        self.assertFalse(result['complete_level'])
+        self.assertFalse(result['play_verified'])
+        gltf, _, _ = read_glb(self.output)
+        self.assertEqual(gltf['nodes'][-1]['extras']['unreal_actor'], 'TargetPoint_0')
+
+    def test_marker_requires_complete_original_provenance_arguments(self):
+        with self.assertRaisesRegex(AssemblyError, 'both'):
+            assemble_audit(self.audit, self.diagnosis, self.output,
+                           target_point_project=self.root)
+        self.assertFalse(self.output.exists())
 
 
 if __name__ == '__main__':
