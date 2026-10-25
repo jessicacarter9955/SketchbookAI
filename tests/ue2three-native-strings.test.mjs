@@ -47,3 +47,23 @@ test('native strings reject unrelated method identity and source parameter schem
   wrongSignature.parameter_types=['StrProperty'];
   assert.throws(()=>executeBlueprint(program(wrongSignature),{},{}), /Unsupported original native object call/);
 });
+
+test('Unreal FString.Len retains UTF-16 code-unit semantics with typed int output',()=>{
+  const typed = input => ({op:'native_call',identity:identity('Len'),parameter_types:['StrProperty'],
+    return_type:'IntProperty',args:[{op:'typed_literal',schema:{type:'StrProperty'},value:input}]});
+  const run = input => {
+    const p = {schema_version:1,status:'translated_straight_line',
+      source_owner_index:1,source_export_index:1,input_fields:[],output_fields:['Length'],
+      self_reads:[],self_writes:[],field_types:{local:{Length:'IntProperty'}},
+      steps:[{op:'set',scope:'local',field:'Length',value:typed(input)},
+             {op:'return',value:{op:'constant',value:null}}]};
+    return executeBlueprint(p,{},{}).outputs.Length;
+  };
+  for(const [str,length] of [['',0],['Ammo',4],['😀',2],['A😀B',4]])
+    assert.equal(run(str),length);
+  assert.throws(()=>run(42),/Invalid original native object string parameter|Invalid source|Invalid typed source member/);
+  const wrong=typed('Actor');
+  wrong.parameter_types=['NameProperty'];
+  const p={...program(wrong),field_types:{local:{Text:'IntProperty'}}};
+  assert.throws(()=>executeBlueprint(p,{},{}),/Unsupported original native object call/);
+});
