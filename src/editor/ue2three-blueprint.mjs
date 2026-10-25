@@ -852,12 +852,21 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             return value;
         }
         if (expression.op === 'native_call') {
-            const identity = ['/Script/Engine', 'KismetStringLibrary', 'Concat_StrStr'];
-            const parameterTypes = ['StrProperty', 'StrProperty'];
-            if (JSON.stringify(expression.identity) !== JSON.stringify(identity)
-                || JSON.stringify(expression.parameter_types) !== JSON.stringify(parameterTypes)
-                || expression.return_type !== 'StrProperty' || !Array.isArray(expression.args)
-                || expression.args.length !== parameterTypes.length)
+            // Only source-witnessed pure Kismet string conversions are valid.
+            // No generic method dispatch, JS coercion, locale-dependent text or
+            // guessed native API fallbacks.
+            const contracts = {
+                Concat_StrStr: {args: ['StrProperty', 'StrProperty'], result: 'StrProperty'},
+                Conv_NameToString: {args: ['NameProperty'], result: 'StrProperty'},
+                Conv_IntToString: {args: ['IntProperty'], result: 'StrProperty'}
+            };
+            const name = expression.identity?.[2];
+            const contract = Object.hasOwn(contracts, name) ? contracts[name] : null;
+            if (!contract
+                || JSON.stringify(expression.identity) !== JSON.stringify(['/Script/Engine', 'KismetStringLibrary', name])
+                || JSON.stringify(expression.parameter_types) !== JSON.stringify(contract.args)
+                || expression.return_type !== contract.result || !Array.isArray(expression.args)
+                || expression.args.length !== contract.args.length)
                 throw new Error('Unsupported original native object call');
             const values = expression.args.map((argument, index) => {
                 let sourceType = null;
@@ -870,12 +879,20 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                         throw new Error('Original native object parameter schema differs');
                     sourceType = schemaType || declaredType || null;
                 }
-                if (sourceType !== parameterTypes[index]) throw new Error('Original native object parameter type differs');
+                if (sourceType !== contract.args[index])
+                    throw new Error('Original native object parameter type differs');
                 const value = evaluate(argument, depth+1);
-                if (typeof value !== 'string') throw new Error('Invalid original native object string parameter');
+                if (sourceType === 'IntProperty') {
+                    if (!Number.isInteger(value) || value < -2147483648 || value > 2147483647)
+                        throw new Error('Invalid original native object int32 parameter');
+                } else if (typeof value !== 'string') {
+                    throw new Error('Invalid original native object string parameter');
+                }
                 return value;
             });
-            return values[0] + values[1];
+            if (name === 'Concat_StrStr') return values[0] + values[1];
+            if (name === 'Conv_IntToString') return String(values[0]);
+            return values[0]; // Original FName spelling preserved by the source value.
         }
         if (expression.op === 'constant') {
             const value = expression.value;
