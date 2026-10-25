@@ -69,7 +69,7 @@ class NativeWidgetContextTests(unittest.TestCase):
             expression(original, set(), set(), package=p, owner=1)
         p = source_package()
         p.imports[1]['ObjectName'] = 'NotTextBlock'
-        with self.assertRaisesRegex(BlueprintTranslationError, 'receiver class'):
+        with self.assertRaisesRegex(BlueprintTranslationError, 'Unsupported opcode: EX_Context'):
             expression(context(original=p), set(), set(), package=p, owner=1)
 
     def test_widget_call_requires_matching_source_parameter_types(self):
