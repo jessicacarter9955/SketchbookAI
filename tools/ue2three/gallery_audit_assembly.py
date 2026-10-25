@@ -68,38 +68,42 @@ def assemble_audit(audit_path, diagnosis_path, output_path, static_file=None):
             or sorted(source - native_covered) != sorted(audit.get('unrecovered_actor_names', []))):
         raise AssemblyError('Audited actor accounting differs from assembled source groups')
     static_covered = set()
-    if static_file is not None:
-        static_file = Path(static_file).resolve(strict=True)
-        if static_file in (output_path, audit_path, diagnosis_path):
-            raise AssemblyError('Static supplement aliases an original source or output')
-        sidecar = static_file.with_suffix('.source.json')
-        supplement = json.loads(sidecar.read_text(encoding='utf-8-sig'))
-        if (supplement.get('level') != LEVEL
-                or supplement.get('status') != 'static_geometry_subset_only'
-                or supplement.get('complete_level') is not False):
-            raise AssemblyError('Supplement is not a witnessed original static subset')
-        manifest_file = Path(supplement.get('source_manifest') or '').resolve(strict=True)
-        manifest = json.loads(manifest_file.read_text(encoding='utf-8-sig'))
-        actors = manifest.get('actors')
-        if (manifest.get('level') != LEVEL or not isinstance(actors, list)
-                or not actors or any(not isinstance(actor, list) or not actor
-                                     or not isinstance(actor[0], str) for actor in actors)):
-            raise AssemblyError('Original static instance manifest differs')
-        static_covered = {actor[0] for actor in actors}
-        if (len(static_covered) != len(actors) or not static_covered <= source
-                or static_covered & covered):
-            raise AssemblyError('Static source actors overlap audit or original census differs')
-        if (hashlib.sha256(manifest_file.read_bytes()).hexdigest()
-                != supplement.get('source_manifest_sha256')):
-            raise AssemblyError('Original static actor manifest SHA-256 differs')
-        doc, binary, checksum = read_glb(static_file)
-        if checksum != supplement.get('output_sha256'):
-            raise AssemblyError('Original static mesh GLB checksum differs')
-        merge_fragment(output, doc, binary)
-        covered.update(static_covered)
-        witnesses.append({'type': 'original_static_instances', 'actors': sorted(static_covered),
-                          'glb': str(static_file), 'sha256': checksum,
-                          'source_manifest_sha256': supplement['source_manifest_sha256']})
+    static_files = [] if static_file is None else ([static_file] if isinstance(static_file, (str, Path)) else list(static_file))
+    if len(static_files) != len({str(x) for x in static_files}):
+        raise AssemblyError('Repeated static GLB supplement')
+    for static_file in static_files:
+            static_file = Path(static_file).resolve(strict=True)
+            if static_file in (output_path, audit_path, diagnosis_path):
+                raise AssemblyError('Static supplement aliases an original source or output')
+            sidecar = static_file.with_suffix('.source.json')
+            supplement = json.loads(sidecar.read_text(encoding='utf-8-sig'))
+            if (supplement.get('level') != LEVEL
+                    or supplement.get('status') != 'static_geometry_subset_only'
+                    or supplement.get('complete_level') is not False):
+                raise AssemblyError('Supplement is not a witnessed original static subset')
+            manifest_file = Path(supplement.get('source_manifest') or '').resolve(strict=True)
+            manifest = json.loads(manifest_file.read_text(encoding='utf-8-sig'))
+            actors = manifest.get('actors')
+            if (manifest.get('level') != LEVEL or not isinstance(actors, list)
+                    or not actors or any(not isinstance(actor, list) or not actor
+                                         or not isinstance(actor[0], str) for actor in actors)):
+                raise AssemblyError('Original static instance manifest differs')
+            names = {actor[0] for actor in actors}
+            if (len(names) != len(actors) or not names <= source
+                    or names & covered):
+                raise AssemblyError('Static source actors overlap audit or original census differs')
+            if (hashlib.sha256(manifest_file.read_bytes()).hexdigest()
+                    != supplement.get('source_manifest_sha256')):
+                raise AssemblyError('Original static actor manifest SHA-256 differs')
+            doc, binary, checksum = read_glb(static_file)
+            if checksum != supplement.get('output_sha256'):
+                raise AssemblyError('Original static mesh GLB checksum differs')
+            merge_fragment(output, doc, binary)
+            covered.update(names)
+            static_covered.update(names)
+            witnesses.append({'type': 'original_static_instances', 'actors': sorted(names),
+                              'glb': str(static_file), 'sha256': checksum,
+                              'source_manifest_sha256': supplement['source_manifest_sha256']})
     missing = source - covered
     output_hash, gltf = _write_glb(output, output_path)
     report = {'schema_version': 1, 'map': LEVEL,
@@ -132,7 +136,8 @@ def main():
     parser.add_argument('--audit', required=True, type=Path)
     parser.add_argument('--diagnosis', required=True, type=Path)
     parser.add_argument('--output', required=True, type=Path)
-    parser.add_argument('--static', type=Path, help='Optional witnessed original static subset GLB')
+    parser.add_argument('--static', action='append', type=Path, default=[],
+                        help='Repeat for independent witnessed original static subset GLBs')
     args = parser.parse_args()
     report = assemble_audit(args.audit, args.diagnosis, args.output, static_file=args.static)
     print(json.dumps({k: report[k] for k in (
