@@ -379,7 +379,10 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         adapted = widget_context(value, package, owner, reads, outputs, depth)
         if adapted is not None: return adapted
         raise BlueprintTranslationError('Unsupported opcode: EX_Context')
-    if token in ('EX_LocalVirtualFunction', 'EX_LocalFinalFunction', 'EX_FinalFunction'):
+    if token in ('EX_VirtualFunction', 'EX_LocalVirtualFunction', 'EX_LocalFinalFunction', 'EX_FinalFunction'):
+        # A source-owned EX_VirtualFunction can use the existing original
+        # method-dispatch/arity checks. Native/foreign methods remain blocked:
+        # local_call resolves only a unique function on this exact source class.
         if token == 'EX_FinalFunction' and package:
             from blueprint_objects import native_owner
             adapted = native_owner(value, package, owner)
