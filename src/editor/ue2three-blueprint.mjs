@@ -858,7 +858,8 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             const contracts = {
                 Concat_StrStr: {args: ['StrProperty', 'StrProperty'], result: 'StrProperty'},
                 Conv_NameToString: {args: ['NameProperty'], result: 'StrProperty'},
-                Conv_IntToString: {args: ['IntProperty'], result: 'StrProperty'}
+                Conv_IntToString: {args: ['IntProperty'], result: 'StrProperty'},
+                Len: {args: ['StrProperty'], result: 'IntProperty'}
             };
             const name = expression.identity?.[2];
             const contract = Object.hasOwn(contracts, name) ? contracts[name] : null;
@@ -890,6 +891,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 }
                 return value;
             });
+            if (name === 'Len') return values[0].length; // Unreal FString.Len counts UTF-16 TCHAR units.
             if (name === 'Concat_StrStr') return values[0] + values[1];
             if (name === 'Conv_IntToString') return String(values[0]);
             return values[0]; // Original FName spelling preserved by the source value.
