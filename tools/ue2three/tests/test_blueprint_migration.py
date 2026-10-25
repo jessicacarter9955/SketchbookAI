@@ -600,6 +600,26 @@ class BlueprintMigrationTests(unittest.TestCase):
                                node('EX_Return', ReturnExpression=node('EX_Nothing')), node('EX_EndOfScript')]}
         return Package({'Exports': [caller, callee, {'ObjectName': 'Test_C', 'LoadedProperties': []}]})
 
+    def test_original_source_owned_virtual_call_uses_exact_source_method(self):
+        package = self.call_package()
+        package.exports[0]['ScriptBytecode'][0]['$type'] = (
+            'UAssetAPI.Kismet.Bytecode.Expressions.EX_VirtualFunction, UAssetAPI')
+        report = translate_package(package)
+        self.assertEqual(report['counts']['translated'], 2)
+        callee = report['functions']['Caller']['steps'][0]['value']
+        self.assertEqual(callee['op'], 'call')
+        self.assertEqual(callee['function'], 'Predicate')
+        self.assertEqual(callee['export_index'], 2)
+        package.exports[1]['OuterIndex'] = 4
+        report = translate_package(package)
+        self.assertNotIn('Caller', report['functions'])
+        package = self.call_package()
+        package.exports[0]['ScriptBytecode'][0]['$type'] = (
+            'UAssetAPI.Kismet.Bytecode.Expressions.EX_VirtualFunction, UAssetAPI')
+        package.exports[0]['ScriptBytecode'][0]['VirtualFunctionName'] = 'NativeNotInSource'
+        report = translate_package(package)
+        self.assertNotIn('Caller', report['functions'])
+
     def test_local_call_preserves_signature_and_output_reference(self):
         result = translate_package(self.call_package())
         self.assertEqual(result['counts']['translated'], 2)
