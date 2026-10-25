@@ -40,6 +40,18 @@ function validate(lowering) {
         !/^[a-zA-Z0-9_.,()\s+\-*\/]+$/.test(value.glsl)) {
       throw new Error('Unsafe typed material GLSL for: ' + root);
     }
+    // Whitelist emitted operations/identifiers, not just punctuation: a
+    // hand-modified source report must not inject arbitrary GLSL calls.
+    // Strip numeric scientific notation before scanning identifiers.
+    const lexical = value.glsl.replace(/(?<![a-zA-Z_0-9])(?:\d+(?:\.\d*)?|\.\d+)[eE][+-]?\d+/g, '0.0');
+    const identifiers = lexical.match(/[a-zA-Z_][a-zA-Z_0-9]*/g) || [];
+    const builtins = new Set(['vec2', 'vec3', 'vec4', 'mix', 'clamp',
+      'abs', 'floor', 'sin', 'cos', 'fract']);
+    if (identifiers.some(id => !(builtins.has(id) || /^[xyzw]{1,4}$/.test(id) ||
+        (/^uep_[1-9]\d*$/.test(id) &&
+          Object.prototype.hasOwnProperty.call(lowering.uniforms || {}, id))))) {
+      throw new Error('Unsafe typed material GLSL for: ' + root);
+    }
   }
 }
 
