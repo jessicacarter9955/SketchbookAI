@@ -15,7 +15,7 @@ from gallery_fragment_assembly import AssemblyError, read_glb, merge_fragment, _
 LEVEL = '/Game/Fixers/VFX/NiagaraExamples/GalleryLevel'
 
 
-def assemble_audit(audit_path, diagnosis_path, output_path):
+def assemble_audit(audit_path, diagnosis_path, output_path, static_file=None):
     audit_path = Path(audit_path).resolve(strict=True)
     diagnosis_path = Path(diagnosis_path).resolve(strict=True)
     output_path = Path(output_path).resolve()
@@ -60,11 +60,47 @@ def assemble_audit(audit_path, diagnosis_path, output_path):
         witnesses.append({'actors': actors, 'glb': str(path), 'sha256': fingerprint,
                           'unreal_exit_code': group.get('unreal_exit_code'),
                           'verification_mode': group['verification_mode']})
-    missing = source - covered
-    if (len(covered) != audit.get('recovered_actor_count')
+    # Validate the independent native audit before admitting optional
+    # reconstruction from *actual* original StaticMesh GLB exports.
+    native_covered = set(covered)
+    if (len(native_covered) != audit.get('recovered_actor_count')
             or len(source) != audit.get('source_actor_count')
-            or sorted(missing) != sorted(audit.get('unrecovered_actor_names', []))):
+            or sorted(source - native_covered) != sorted(audit.get('unrecovered_actor_names', []))):
         raise AssemblyError('Audited actor accounting differs from assembled source groups')
+    static_covered = set()
+    if static_file is not None:
+        static_file = Path(static_file).resolve(strict=True)
+        if static_file in (output_path, audit_path, diagnosis_path):
+            raise AssemblyError('Static supplement aliases an original source or output')
+        sidecar = static_file.with_suffix('.source.json')
+        supplement = json.loads(sidecar.read_text(encoding='utf-8-sig'))
+        if (supplement.get('level') != LEVEL
+                or supplement.get('status') != 'static_geometry_subset_only'
+                or supplement.get('complete_level') is not False):
+            raise AssemblyError('Supplement is not a witnessed original static subset')
+        manifest_file = Path(supplement.get('source_manifest') or '').resolve(strict=True)
+        manifest = json.loads(manifest_file.read_text(encoding='utf-8-sig'))
+        actors = manifest.get('actors')
+        if (manifest.get('level') != LEVEL or not isinstance(actors, list)
+                or not actors or any(not isinstance(actor, list) or not actor
+                                     or not isinstance(actor[0], str) for actor in actors)):
+            raise AssemblyError('Original static instance manifest differs')
+        static_covered = {actor[0] for actor in actors}
+        if (len(static_covered) != len(actors) or not static_covered <= source
+                or static_covered & covered):
+            raise AssemblyError('Static source actors overlap audit or original census differs')
+        if (hashlib.sha256(manifest_file.read_bytes()).hexdigest()
+                != supplement.get('source_manifest_sha256')):
+            raise AssemblyError('Original static actor manifest SHA-256 differs')
+        doc, binary, checksum = read_glb(static_file)
+        if checksum != supplement.get('output_sha256'):
+            raise AssemblyError('Original static mesh GLB checksum differs')
+        merge_fragment(output, doc, binary)
+        covered.update(static_covered)
+        witnesses.append({'type': 'original_static_instances', 'actors': sorted(static_covered),
+                          'glb': str(static_file), 'sha256': checksum,
+                          'source_manifest_sha256': supplement['source_manifest_sha256']})
+    missing = source - covered
     output_hash, gltf = _write_glb(output, output_path)
     report = {'schema_version': 1, 'map': LEVEL,
               'status': 'audited_partial_native_gallery',
@@ -73,6 +109,8 @@ def assemble_audit(audit_path, diagnosis_path, output_path):
               'source_diagnosis_sha256': hashlib.sha256(diagnosis_path.read_bytes()).hexdigest(),
               'original_actor_count': len(source),
               'selected_original_actors': len(covered),
+              'audited_native_actors': len(native_covered),
+              'original_static_supplement_actors': len(static_covered),
               'unrecovered_original_actors': sorted(missing),
               'native_fragments': witnesses, 'mesh_count': len(gltf['meshes']),
               'node_count': len(gltf['nodes']),
@@ -94,10 +132,12 @@ def main():
     parser.add_argument('--audit', required=True, type=Path)
     parser.add_argument('--diagnosis', required=True, type=Path)
     parser.add_argument('--output', required=True, type=Path)
+    parser.add_argument('--static', type=Path, help='Optional witnessed original static subset GLB')
     args = parser.parse_args()
-    report = assemble_audit(args.audit, args.diagnosis, args.output)
+    report = assemble_audit(args.audit, args.diagnosis, args.output, static_file=args.static)
     print(json.dumps({k: report[k] for k in (
-        'original_actor_count', 'selected_original_actors', 'unrecovered_original_actors',
+        'original_actor_count', 'selected_original_actors', 'audited_native_actors',
+        'original_static_supplement_actors', 'unrecovered_original_actors',
         'mesh_count', 'node_count', 'material_count', 'texture_count', 'glb_sha256')},
         sort_keys=True))
 
