@@ -148,6 +148,29 @@ class Compiler:
                 expr = Expr(uniform, len(vals))
             elif cls in ('MaterialExpressionReroute', 'MaterialExpressionNamedRerouteDeclaration'):
                 expr = self.required(node, 'Input')
+            elif cls == 'MaterialExpressionNamedRerouteUsage':
+                # The original usage export points to a declaration export by
+                # index. Do not resolve by display name or guess a default.
+                declaration_index = props.get('Declaration')
+                declaration = self.nodes.get(declaration_index) if type(declaration_index) is int else None
+                if not declaration or declaration.get('class') != 'MaterialExpressionNamedRerouteDeclaration':
+                    raise MaterialGLSLError('Original named reroute declaration is missing')
+                usage_guid = props.get('DeclarationGuid', {}).get('DeclarationGuid')
+                declaration_guid = declaration.get('properties', {}).get('VariableGuid', {}).get('VariableGuid')
+                if (not isinstance(usage_guid, str) or not usage_guid
+                        or usage_guid != declaration_guid):
+                    raise MaterialGLSLError('Original named reroute GUID does not match declaration')
+                expr = self.node(declaration_index)
+            elif cls in ('MaterialExpressionMin', 'MaterialExpressionMax'):
+                a, b = self.required(node, 'A'), self.required(node, 'B')
+                width = max(a.width, b.width)
+                name = 'min' if cls.endswith('Min') else 'max'
+                expr = Expr(f'{name}({promote(a, width)}, {promote(b, width)})', width)
+            elif cls == 'MaterialExpressionDotProduct':
+                a, b = self.required(node, 'A'), self.required(node, 'B')
+                if a.width != b.width or a.width not in (2, 3, 4):
+                    raise MaterialGLSLError('Original dot product vector widths differ')
+                expr = Expr(f'dot({a.code}, {b.code})', 1)
             elif cls in ('MaterialExpressionAdd', 'MaterialExpressionSubtract',
                          'MaterialExpressionMultiply', 'MaterialExpressionDivide'):
                 operator = {'MaterialExpressionAdd': '+', 'MaterialExpressionSubtract': '-',
