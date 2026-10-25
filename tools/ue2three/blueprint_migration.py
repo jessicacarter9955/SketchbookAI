@@ -375,6 +375,9 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         from blueprint_queries import component_query
         adapted = component_query(value, package, owner, reads, outputs, depth)
         if adapted is not None: return adapted
+        from blueprint_widgets import widget_context
+        adapted = widget_context(value, package, owner, reads, outputs, depth)
+        if adapted is not None: return adapted
         raise BlueprintTranslationError('Unsupported opcode: EX_Context')
     if token in ('EX_LocalVirtualFunction', 'EX_LocalFinalFunction', 'EX_FinalFunction'):
         if token == 'EX_FinalFunction' and package:
