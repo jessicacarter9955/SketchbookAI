@@ -497,8 +497,13 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 && expression.parameter?.schema?.type === 'ByteProperty'
                 || method === 'SetText'
                 && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','TextBlock','SetText'])
+                && ['EX_FinalFunction','EX_VirtualFunction'].includes(expression.dispatch)
+                && expression.parameter?.schema?.type === 'TextProperty'
+                || method === 'SetColorAndOpacity'
+                && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','TextBlock','SetColorAndOpacity'])
                 && expression.dispatch === 'EX_FinalFunction'
-                && expression.parameter?.schema?.type === 'TextProperty';
+                && expression.parameter?.schema?.type === 'StructProperty'
+                && expression.parameter?.schema?.native === 'LinearColor';
             if (!supported || expression.source_owner_index !== program.source_owner_index
                 || expression.source_binding_required !== true
                 || expression.visual_1to1_certified !== false || !expression.receiver_schema
