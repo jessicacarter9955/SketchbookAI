@@ -126,5 +126,36 @@ class VerifiedGalleryAssemblyTests(unittest.TestCase):
             assemble_audit(self.audit, self.diagnosis, self.output, static_file=static)
 
 
+    def test_two_disjoint_static_source_groups_combine_without_faking_completion(self):
+        self.diagnosis_doc['actors'].extend(['AdditionalStatic', 'MissingTarget'])
+        self.audit_doc['source_actor_count'] = 5
+        self.audit_doc['unrecovered_actor_names'] = ['Unexportable', 'AdditionalStatic', 'MissingTarget']
+        self.save()
+        supplements = []
+        for idx, actor in enumerate(('Unexportable', 'AdditionalStatic')):
+            glb = self.root / f'supplement-{idx}.glb'
+            manifest = self.root / f'supplement-{idx}.json'
+            make_glb(glb)
+            manifest.write_text(json.dumps({'level': LEVEL, 'actors': [[actor, []]]}), encoding='utf8')
+            glb.with_suffix('.source.json').write_text(json.dumps({
+                'level': LEVEL, 'status': 'static_geometry_subset_only',
+                'complete_level': False,
+                'source_manifest': str(manifest),
+                'source_manifest_sha256': hashlib.sha256(manifest.read_bytes()).hexdigest(),
+                'output_sha256': hashlib.sha256(glb.read_bytes()).hexdigest()
+            }), encoding='utf8')
+            supplements.append(glb)
+        result = assemble_audit(self.audit, self.diagnosis, self.output, static_file=supplements)
+        self.assertEqual(result['selected_original_actors'], 4)
+        self.assertEqual(result['original_static_supplement_actors'], 2)
+        self.assertEqual(result['unrecovered_original_actors'], ['MissingTarget'])
+        self.assertEqual(result['mesh_count'], 4)
+        self.assertFalse(result['complete_level'])
+        self.assertFalse(result['visual_1to1_verified'])
+        other = self.root / 'duplicate.glb'
+        with self.assertRaisesRegex(AssemblyError, 'Repeated static'):
+            assemble_audit(self.audit, self.diagnosis, other, static_file=[supplements[0], supplements[0]])
+
+
 if __name__ == '__main__':
     unittest.main()
