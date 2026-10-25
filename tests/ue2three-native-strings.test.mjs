@@ -67,3 +67,25 @@ test('Unreal FString.Len retains UTF-16 code-unit semantics with typed int outpu
   const p={...program(wrong),field_types:{local:{Text:'IntProperty'}}};
   assert.throws(()=>executeBlueprint(p,{},{}),/Unsupported original native object call/);
 });
+
+test('source combat bone-zone Contains uses Unreal four-parameter ASCII-insensitive mode',()=>{
+  const sourceCall=(search,substring,caseSensitive=false,fromEnd=false)=>({
+    op:'native_call',identity:identity('Contains'),
+    parameter_types:['StrProperty','StrProperty','BoolProperty','BoolProperty'],
+    return_type:'BoolProperty',args:[
+      {op:'typed_literal',schema:{type:'StrProperty'},value:search},
+      {op:'typed_literal',schema:{type:'StrProperty'},value:substring},
+      {op:'typed_literal',schema:{type:'BoolProperty'},value:caseSensitive},
+      {op:'typed_literal',schema:{type:'BoolProperty'},value:fromEnd},
+    ]});
+  const run=call=>executeBlueprint({...program(call),
+    field_types:{local:{Text:'BoolProperty'}}},{},{}).outputs.Text;
+  assert.equal(run(sourceCall('Head_BONE','head')),true);
+  assert.equal(run(sourceCall('Spine_02','head')),false);
+  assert.equal(run(sourceCall('','')),true);
+  assert.throws(()=>run(sourceCall('Böne','bö')),/Unicode FString.Contains case folding/);
+  assert.throws(()=>run(sourceCall('Head','head',true,false)),/search mode is not supported/);
+  assert.throws(()=>run(sourceCall('Head','head',false,true)),/search mode is not supported/);
+  const invalid=sourceCall('head','head');invalid.args[2].schema.type='StrProperty';
+  assert.throws(()=>run(invalid),/parameter type differs/);
+});
