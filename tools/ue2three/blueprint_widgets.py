@@ -19,6 +19,9 @@ NATIVE_WIDGET_CLASSES = frozenset((
 OPERATIONS = {
     ('EX_VirtualFunction', 'SetVisibility'): {'type': 'ByteProperty', 'classes': NATIVE_WIDGET_CLASSES},
     ('EX_FinalFunction', 'SetText'): {'type': 'TextProperty', 'classes': frozenset(('TextBlock',))},
+    ('EX_VirtualFunction', 'SetText'): {'type': 'TextProperty', 'classes': frozenset(('TextBlock',))},
+    ('EX_FinalFunction', 'SetColorAndOpacity'): {'type': 'StructProperty', 'native': 'LinearColor',
+                                                'classes': frozenset(('TextBlock',))},
 }
 
 
@@ -32,7 +35,7 @@ def widget_context(value, package, owner, reads, outputs, depth):
     contract = OPERATIONS.get((dispatch, name))
     if contract is None:
         return None
-    if (dispatch == 'EX_FinalFunction' and identity != ('/Script/UMG', 'TextBlock', 'SetText')):
+    if (dispatch == 'EX_FinalFunction' and identity != ('/Script/UMG', 'TextBlock', name)):
         return None
     obj = value.get('ObjectExpression', {})
     if kind(obj) != 'EX_InstanceVariable':
@@ -65,12 +68,14 @@ def widget_context(value, package, owner, reads, outputs, depth):
         arg_schema = {'type': 'TextProperty', 'default': {'history': 'empty', 'text': '', 'flags': 0}}
     else:
         raise Error('Original UMG call requires source-typed parameter')
-    if arg_schema.get('type') != contract['type']:
+    if (arg_schema.get('type') != contract['type']
+            or contract.get('native') and arg_schema.get('native') != contract['native']):
         raise Error('Original UMG argument schema differs')
     if name == 'SetVisibility' and arg.get('op') == 'constant':
         if type(arg.get('value')) is not int or not 0 <= arg['value'] <= 4:
             raise Error('Unknown original ESlateVisibility value')
-    return {'op': 'native_widget_effect', 'identity': list(identity) if identity else ['/Script/UMG','Widget',name],
+    return {'op': 'native_widget_effect', 'identity': list(identity) if identity else
+            ['/Script/UMG', 'Widget' if name == 'SetVisibility' else 'TextBlock', name],
             'dispatch': dispatch, 'method': name, 'source_owner_index': owner,
             'receiver': receiver, 'receiver_field': field(obj.get('Variable')),
             'receiver_schema': schema,
