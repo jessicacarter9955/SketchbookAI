@@ -51,6 +51,21 @@ class NativeStringConversionTests(unittest.TestCase):
         with self.assertRaisesRegex(BlueprintTranslationError, 'outside Engine.KismetMathLibrary'):
             expression(call(node('EX_IntZero')), set(), set(), package=original, owner=1)
 
+    def test_fstring_len_matches_original_typed_string_source(self):
+        p = package('Len', 'StrProperty')
+        for value in ('', 'Combat', '😀'):
+            with self.subTest(value=value):
+                result = expression(call(node('EX_UnicodeStringConst', Value=value)),
+                                    set(), set(), package=p, owner=1)
+                self.assertEqual(result['return_type'], 'IntProperty')
+                self.assertEqual(result['parameter_types'], ['StrProperty'])
+                self.assertEqual(result['args'][0]['schema']['type'], 'StrProperty')
+        var = node('EX_InstanceVariable', Variable={'New': {'Path': ['Value'], 'ResolvedOwner': 1}})
+        expression(call(var), set(), set(), package=p, owner=1)
+        p.exports[0]['LoadedProperties'][0]['SerializedType'] = 'NameProperty'
+        with self.assertRaisesRegex(BlueprintTranslationError, 'parameter type'):
+            expression(call(var), set(), set(), package=p, owner=1)
+
     def test_no_arity_or_native_identity_fallback(self):
         p = package('Conv_NameToString', 'NameProperty')
         with self.assertRaisesRegex(BlueprintTranslationError, 'arity'):
