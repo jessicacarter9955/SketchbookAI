@@ -41,6 +41,10 @@ def property_schema(package, prop):
         return schema
     if type_name == 'ObjectProperty':
         identity = import_path(package, prop.get('PropertyClass'))
+        from blueprint_widgets import NATIVE_WIDGET_CLASSES
+        if identity and identity[0] == '/Script/UMG' and identity[1] in NATIVE_WIDGET_CLASSES:
+            return {'type': type_name, 'class': list(identity),
+                    'reference_kind': 'runtime_native_widget', 'default': None}
         if identity in {('/Script/Engine', name) for name in ('Actor', 'Pawn', 'Character')}:
             return {'type': type_name, 'class': list(identity), 'reference_kind': 'runtime_actor', 'default': None}
         if identity in NATIVE_COMPONENT_REFERENCES:
