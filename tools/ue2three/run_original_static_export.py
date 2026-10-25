@@ -23,7 +23,8 @@ def file_hash(path):
     return hash_value.hexdigest()
 
 
-def run(old_job_file, engine_file, destination, asset, filename, timeout=540):
+def run(old_job_file, engine_file, destination, asset, filename, timeout=540,
+        material_mode='original_material_bake'):
     old_job_file = Path(old_job_file).resolve(strict=True)
     engine_file = Path(engine_file).resolve(strict=True)
     output = Path(destination).resolve()
@@ -41,6 +42,8 @@ def run(old_job_file, engine_file, destination, asset, filename, timeout=540):
         raise ValueError('Invalid original source StaticMesh identity or output filename')
     if not isinstance(timeout, int) or not 30 <= timeout <= 1200:
         raise ValueError('Invalid bounded Unreal timeout')
+    if material_mode not in ('original_material_bake', 'geometry_only_no_bake'):
+        raise ValueError('Unknown original material export mode')
     if output.exists():
         raise FileExistsError('Refusing to reuse/overwrite an existing native GLB export directory')
     try:
@@ -53,7 +56,8 @@ def run(old_job_file, engine_file, destination, asset, filename, timeout=540):
     output.mkdir(parents=True)
     job_file = output / 'job.json'
     job = {'source_project': str(source), 'scratch_project': str(scratch),
-           'output_dir': str(output), 'meshes': [{'asset': asset, 'filename': filename}]}
+           'output_dir': str(output), 'material_mode': material_mode,
+           'meshes': [{'asset': asset, 'filename': filename}]}
     job_file.write_text(json.dumps(job, indent=2), encoding='utf-8')
     cmd = [str(exe), str(scratch), '-run=pythonscript',
            '-script=' + str(script), '-unattended', '-nosplash',
@@ -100,8 +104,11 @@ def main():
     parser.add_argument('--asset', required=True)
     parser.add_argument('--filename', required=True)
     parser.add_argument('--timeout', type=int, default=540)
+    parser.add_argument('--material-mode', choices=['original_material_bake','geometry_only_no_bake'],
+                        default='original_material_bake')
     args = parser.parse_args()
-    run(args.previous_job, args.engine, args.output, args.asset, args.filename, args.timeout)
+    run(args.previous_job, args.engine, args.output, args.asset, args.filename,
+        args.timeout, args.material_mode)
 
 
 if __name__ == '__main__':
