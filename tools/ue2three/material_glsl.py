@@ -114,6 +114,20 @@ class Compiler:
             raise MaterialGLSLError('Source input absent: ' + key)
         return self.input(node['inputs'][key])
 
+    def optional(self, node, key, property_name, native_default):
+        """Use original UE C++ Const* pin initializers if pin is unconnected.
+
+        An actually connected expression must compile successfully; never
+        replace failed connected source expressions with defaults.
+        """
+        link = node['inputs'].get(key)
+        if link is not None:
+            if not isinstance(link, dict):
+                raise MaterialGLSLError('Invalid native optional material link')
+            if link.get('expression') or link.get('use_constant'):
+                return self.input(link)
+        return vector([node['properties'].get(property_name, native_default)])
+
     def node(self, index):
         if index in self.memo:
             return self.memo[index]
@@ -162,7 +176,8 @@ class Compiler:
                     raise MaterialGLSLError('Original named reroute GUID does not match declaration')
                 expr = self.node(declaration_index)
             elif cls in ('MaterialExpressionMin', 'MaterialExpressionMax'):
-                a, b = self.required(node, 'A'), self.required(node, 'B')
+                a = self.optional(node, 'A', 'ConstA', 0)
+                b = self.optional(node, 'B', 'ConstB', 1)
                 width = max(a.width, b.width)
                 name = 'min' if cls.endswith('Min') else 'max'
                 expr = Expr(f'{name}({promote(a, width)}, {promote(b, width)})', width)
@@ -192,13 +207,16 @@ class Compiler:
                          'MaterialExpressionMultiply', 'MaterialExpressionDivide'):
                 operator = {'MaterialExpressionAdd': '+', 'MaterialExpressionSubtract': '-',
                             'MaterialExpressionMultiply': '*', 'MaterialExpressionDivide': '/'}[cls]
-                expr = binary(self.required(node, 'A'), self.required(node, 'B'), operator)
+                defaults = {'MaterialExpressionAdd': (0, 1), 'MaterialExpressionSubtract': (1, 1),
+                            'MaterialExpressionMultiply': (0, 1), 'MaterialExpressionDivide': (1, 2)}[cls]
+                expr = binary(self.optional(node, 'A', 'ConstA', defaults[0]),
+                              self.optional(node, 'B', 'ConstB', defaults[1]), operator)
             elif cls == 'MaterialExpressionPower':
                 # Source-native Base/Exponent links are both required. GLSL
                 # will reject undefined domains at shader validation time;
                 # this lowering alone never establishes Unreal visual parity.
                 base = self.required(node, 'Base')
-                exponent = self.required(node, 'Exponent')
+                exponent = self.optional(node, 'Exponent', 'ConstExponent', 2)
                 width = max(base.width, exponent.width)
                 expr = Expr(f'pow({promote(base, width)}, {promote(exponent, width)})', width)
             elif cls == 'MaterialExpressionSmoothStep':
@@ -231,7 +249,8 @@ class Compiler:
                 value = self.required(node, 'Input')
                 expr = Expr(f'{name}({value.code})', value.width)
             elif cls == 'MaterialExpressionLinearInterpolate':
-                a, b, alpha = [self.required(node, key) for key in ('A', 'B', 'Alpha')]
+                a, b, alpha = [self.optional(node, key, 'Const' + key, default)
+                               for key, default in (('A', 0), ('B', 1), ('Alpha', 0.5))]
                 width = max(a.width, b.width)
                 if alpha.width not in (1, width):
                     raise MaterialGLSLError('Unverified interpolator alpha dimension')
@@ -276,12 +295,14 @@ def compile_graph(graph):
     compiled, blocked = {}, {}
     for name in ROOTS:
         uniforms = dict(compiler.uniforms)
+        memo, visited = dict(compiler.memo), set(compiler.visited)
         try:
             result = compiler.root(name)
             if result is not None:
                 compiled[name] = {'glsl': result.code, 'width': result.width}
         except MaterialGLSLError as error:
             compiler.uniforms = uniforms
+            compiler.memo, compiler.visited = memo, visited
             blocked[name] = str(error)
     # Connected roots not supported by this subset are explicitly blocked.
     for name, link in graph['roots'].items():
