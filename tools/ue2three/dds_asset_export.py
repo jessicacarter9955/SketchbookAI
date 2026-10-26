@@ -8,6 +8,7 @@ are confined to explicitly separate workspaces and publication directories.
 from __future__ import annotations
 
 import argparse
+import copy
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 import os
@@ -95,15 +96,16 @@ def _verified_map_rows(manifest: dict | None, project: Path, packages: list[str]
         output = Path(row.get("output") or "")
         source_root = project.parent.resolve()
         resolved = output.resolve()
+        summary = glb_summary(output)
+        checksum = file_hash(output) if output.is_file() else None
         if (resolved == source_root or source_root in resolved.parents or
                 not output.is_file() or not valid_glb(output) or
-                glb_summary(output)["mesh_count"] < 1 or
-                row.get("output_sha256") != file_hash(output)):
+                summary["mesh_count"] < 1 or row.get("output_sha256") != checksum):
             failures += 1
             continue
         verified.append({"kind": "map", "source_package": row["package"],
                          "path": str(output), "bytes": output.stat().st_size,
-                         "sha256": file_hash(output), "mesh_count": glb_summary(output)["mesh_count"],
+                         "sha256": checksum, "mesh_count": summary["mesh_count"],
                          "material_fidelity": row.get("material_fidelity")
                          if isinstance(row.get("material_fidelity"), dict) else None})
     return verified, failures, source_only
@@ -184,7 +186,8 @@ class ExportSupervisor:
     def __init__(self, project: Path, map_workspace: Path, publish_dir: Path,
                  state_dir: Path, recipe_path: Path = DEFAULT_RECIPE,
                  engine: str | None = None, max_parallel: int = 2, scan_if_needed: bool = True,
-                 cli_path: Path = CLI, python: str = sys.executable):
+                 cli_path: Path = CLI, python: str = sys.executable,
+                 retry_base_seconds: int = 300, retry_cap_seconds: int = 3600, clock=time.time):
         self.project = Path(project).resolve()
         self.map_workspace = Path(map_workspace).resolve()
         self.publish_dir = Path(publish_dir).resolve()
@@ -195,11 +198,19 @@ class ExportSupervisor:
         self.scan_if_needed = scan_if_needed
         self.cli_path = Path(cli_path).resolve()
         self.python = python
+        if not 30 <= retry_base_seconds <= retry_cap_seconds:
+            raise ValueError("Invalid durable export retry interval")
+        self.retry_base_seconds = retry_base_seconds
+        self.retry_cap_seconds = retry_cap_seconds
+        self.clock = clock
         self.character_workspace = self.state_dir / "character-workspace"
         self.character_output = self.publish_dir / "dds-assets" / "character"
         self.map_output = self.publish_dir / "dds-assets" / "maps"
         self.progress_path = self.state_dir / "progress.json"
         self.manifest_path = self.state_dir / "manifest.json"
+        self.retry_path = self.state_dir / "retry.json"
+        self._retry_records = {}
+        self._source_metadata_guard = None
         self.guard = threading.RLock()
         self.progress = new_progress(self.project, self.publish_dir)
         self._inventory_complete = False
@@ -282,8 +293,10 @@ class ExportSupervisor:
 
     def _launch(self, job_id, args, *, manifest=None, read_progress=None, initial_status="converting"):
         log = self.state_dir / (job_id + ".log")
+        job = next(item for item in self.progress["jobs"] if item["id"] == job_id)
         self._update_job(job_id, status=initial_status, running=True, log=str(log), error=None,
-                         started_at=_iso())
+                         started_at=_iso(), attempts=job["attempts"] + 1,
+                         retry_deferred=False, next_retry_at=None)
         flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
         with log.open("ab") as stream:
             stream.write((f"\n[{_iso()}] launching {job_id}: {json.dumps(args)}\n").encode("utf-8"))
@@ -437,6 +450,9 @@ class ExportSupervisor:
         except RuntimeError:
             self._update_job("maps", status="blocked", error="Existing ue2three map/scan job owns the workspace lock; retry next tick")
             return
+        # Retain previously verified maps even if this retry crashes before it
+        # can write a new manifest. They remain partial, never a green level.
+        self._map_checkpoint()
         path = self.map_output / "map-manifest.json"
         self._map_manifest_initial_mtime = path.stat().st_mtime_ns if path.is_file() else None
         args = [self.python, str(self.cli_path), "migrate-maps", str(self.project),
@@ -456,6 +472,92 @@ class ExportSupervisor:
         else:
             self._update_job("maps", status="completed", error=None)
 
+    def _retry_signature(self, job_id):
+        """Stat only files already named by the verified snapshot; never rescan the PC.
+
+        Metadata changes invalidate the wait immediately. The CLI still owns
+        authoritative full source hashes before accepting any new conversion.
+        """
+        if self._source_metadata_guard is None:
+            snapshot = _read(self.map_workspace / "snapshot.json") or {}
+            guards = []
+            root = self.project.parent.resolve()
+            for row in snapshot.get("files", []):
+                path = (root / row.get("path", "")).resolve()
+                if path == root or root not in path.parents:
+                    raise ExportPrerequisiteError("Snapshot contains a path outside the original project")
+                try:
+                    info = path.stat()
+                    guards.append((row["path"], info.st_size, info.st_mtime_ns))
+                except OSError:
+                    guards.append((row["path"], "unavailable"))
+            self._source_metadata_guard = digest(guards)
+        names = {"dds_asset_export.py", "ue2three.py", "core.py", "adapters.py", "engine_runner.py"}
+        if job_id == "maps":
+            names.update({"map_migration.py", "map_processing.py", "map_fixup.py",
+                          "map_actor_selection.py", "unreal_world_export.py", "pipeline.py"})
+        else:
+            names.update({"character.py", "unreal_character_export.py"})
+        implementation = {name: file_hash(path) if path.is_file() else None
+                          for name in sorted(names) for path in [self.cli_path.parent / name]}
+        return digest({"project": str(self.project), "descriptor": file_hash(self.project),
+                       "snapshot": self._source_snapshot_hash, "source_metadata": self._source_metadata_guard,
+                       "character_fingerprint": self._fingerprint if job_id == "character" else None,
+                       "recipe": file_hash(self.recipe_path) if self.recipe_path.is_file() else None,
+                       "map_manifest": file_hash(self.map_output / "map-manifest.json")
+                       if job_id == "maps" and (self.map_output / "map-manifest.json").is_file() else None,
+                       "engine": self.engine, "implementation": implementation})
+
+    def _output_guards(self, outputs):
+        guards = []
+        for row in outputs:
+            path = Path(row["path"]).resolve()
+            outside_source(path, self.project, "Cached GLB")
+            if not valid_glb(path):
+                raise ValueError("Previously verified GLB is no longer structurally valid")
+            info = path.stat()
+            guards.append((str(path), info.st_size, info.st_mtime_ns, row["sha256"]))
+        return digest(guards)
+
+    def _defer_retry(self, job_id):
+        prior = self._retry_records.get(job_id)
+        if not isinstance(prior, dict) or prior.get("signature") != self._retry_signature(job_id):
+            return False
+        if prior.get("retry_after", 0) <= self.clock() and prior.get("job", {}).get("status") != "completed":
+            return False
+        cached = prior.get("job", {})
+        try:
+            if self._output_guards(cached.get("outputs", [])) != prior.get("output_guards"):
+                return False
+        except (OSError, ValueError, KeyError):
+            return False
+        job = next(item for item in self.progress["jobs"] if item["id"] == job_id)
+        job.update(copy.deepcopy(cached))
+        job.update(running=False, retry_deferred=True, next_retry_at=prior.get("retry_after"),
+                   skipped_duplicate_launches=int(prior.get("skipped_duplicate_launches", 0)) + 1)
+        job.pop("process_id", None)
+        prior["skipped_duplicate_launches"] = job["skipped_duplicate_launches"]
+        atomic_json(self.retry_path, {"schema_version": 1, "project": str(self.project), "jobs": self._retry_records})
+        self._write("retry-deferred", f"{job_id}: unchanged inputs; verified outputs retained without launching Unreal")
+        return True
+
+    def _record_retry(self, job_id):
+        job = next(item for item in self.progress["jobs"] if item["id"] == job_id)
+        signature = self._retry_signature(job_id)
+        result = digest({key: job[key] for key in ("completed", "failed", "skipped", "outputs", "issues")})
+        prior = self._retry_records.get(job_id, {})
+        unchanged = (int(prior.get("unchanged_rounds", 0)) + 1
+                     if prior.get("signature") == signature and prior.get("result") == result else 0)
+        delay = stalled_retry_delay(self.retry_base_seconds, unchanged, self.retry_cap_seconds)
+        retry_after = 0 if job["status"] == "completed" else self.clock() + delay
+        job.update(retry_deferred=False, next_retry_at=retry_after)
+        self._retry_records[job_id] = {
+            "signature": signature, "result": result, "unchanged_rounds": unchanged,
+            "retry_after": retry_after, "last_attempt_at": self.clock(), "job": copy.deepcopy(job),
+            "output_guards": self._output_guards(job["outputs"]),
+            "skipped_duplicate_launches": prior.get("skipped_duplicate_launches", 0)}
+        atomic_json(self.retry_path, {"schema_version": 1, "project": str(self.project), "jobs": self._retry_records})
+
     def run(self):
         self.state_dir.mkdir(parents=True, exist_ok=True)
         with workspace_lock(self.state_dir):
@@ -464,17 +566,17 @@ class ExportSupervisor:
             if isinstance(prior, dict) and prior.get("project") == str(self.project):
                 for job in self.progress["jobs"]:
                     old = next((item for item in prior.get("jobs", []) if item.get("id") == job["id"]), {})
-                    job["attempts"] = int(old.get("attempts", 0)) + 1
-            else:
-                for job in self.progress["jobs"]:
-                    job["attempts"] = 1
+                    job["attempts"] = int(old.get("attempts", 0))
+            retry = _read(self.retry_path)
+            if isinstance(retry, dict) and retry.get("project") == str(self.project):
+                self._retry_records = retry.get("jobs", {})
             self._write("started", "Source-preserving Unreal export lanes started")
             character_ready = self._prepare_character()
             maps_ready = self._prepare_maps()
             targets = []
-            if character_ready:
+            if character_ready and not self._defer_retry("character"):
                 targets.append(("character", self._convert_character))
-            if maps_ready:
+            if maps_ready and not self._defer_retry("maps"):
                 targets.append(("maps", self._convert_maps))
             with ThreadPoolExecutor(max_workers=self.max_parallel, thread_name_prefix="dds-assets") as pool:
                 futures = {pool.submit(operation): name for name, operation in targets}
@@ -495,6 +597,8 @@ class ExportSupervisor:
                         job.update(status="partial", completed=0, converted=0, outputs=[],
                                    error="Original .uproject changed during export; verification invalidated")
                 self._write("source-changed", "Original project descriptor changed during export")
+            for name, _operation in targets:
+                self._record_retry(name)
             report = {"schema_version": 1, "source_project": str(self.project),
                 "source_project_sha256": file_hash(self.project),
                 "source_snapshot_hash": self._source_snapshot_hash,
@@ -569,7 +673,9 @@ def main(argv=None):
     try:
         while True:
             runner = ExportSupervisor(args.project, args.map_workspace, args.publish_dir, args.state_dir,
-                                      args.recipe, args.engine, args.max_parallel, not args.no_scan)
+                                      args.recipe, args.engine, args.max_parallel, not args.no_scan,
+                                      retry_base_seconds=args.interval_seconds,
+                                      retry_cap_seconds=args.max_stalled_delay_seconds)
             result = runner.run()
             if not args.loop:
                 return result

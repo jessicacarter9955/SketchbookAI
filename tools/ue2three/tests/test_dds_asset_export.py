@@ -283,6 +283,79 @@ class AssetSupervisorTests(unittest.TestCase):
                                    "--max-stalled-delay-seconds", "900"]), 130)
         self.assertEqual(delays, [300, 600, 900, 300])
 
+    def _partial_retry(self, now):
+        runner = ExportSupervisor(self.project, self.map_workspace, self.publish,
+                                  self.checkpoint, recipe_path=self.recipe, scan_if_needed=False,
+                                  clock=lambda: now[0])
+        runner._prepare_character = lambda: False
+        def partial():
+            output = self.publish / 'partial.glb'
+            if not output.exists():
+                fixture_glb(output)
+            runner._update_job('maps', status='partial', completed=1, converted=1, total=2,
+                               failed=1, error='Native export crash', outputs=[{
+                                   'kind': 'map', 'path': str(output), 'sha256': file_hash(output)}])
+        runner._convert_maps = partial
+        return runner
+
+    def test_once_restarts_restore_verified_outputs_without_launch_until_durable_deadline(self):
+        self._assets()
+        self._inventory()
+        now = [1000]
+        first = self._partial_retry(now)
+        self.assertEqual(first.run(), 3)
+        self.assertEqual(read_json(first.retry_path)['jobs']['maps']['retry_after'], 1300)
+        now[0] = 1100
+        second = self._partial_retry(now)
+        with patch.object(second, '_convert_maps', side_effect=AssertionError('duplicate Unreal export')):
+            self.assertEqual(second.run(), 3)
+        job = second.progress['jobs'][1]
+        self.assertEqual(job['completed'], 1)
+        self.assertEqual(job['total'], 2)
+        self.assertTrue(job['retry_deferred'])
+        self.assertEqual(job['skipped_duplicate_launches'], 1)
+        self.assertEqual(read_json(second.manifest_path)['files'][0]['sha256'], file_hash(self.publish/'partial.glb'))
+        now[0] = 1301
+        third = self._partial_retry(now)
+        third.run()
+        self.assertEqual(read_json(third.retry_path)['jobs']['maps']['retry_after'], 1901)
+
+    def test_changed_source_or_exporter_invalidates_durable_wait_immediately(self):
+        self._assets()
+        self._inventory()
+        now = [1000]
+        self._partial_retry(now).run()
+        now[0] = 1001
+        (self.source/'Content/Worlds/Start.umap').write_bytes(b'changed original source')
+        changed = self._partial_retry(now)
+        with patch.object(changed, '_convert_maps', wraps=changed._convert_maps) as launched:
+            changed.run()
+            launched.assert_called_once()
+        compiler = self.root/'custom-cli'
+        compiler.mkdir()
+        (compiler/'ue2three.py').write_text('version1')
+        (compiler/'unreal_world_export.py').write_text('version1')
+        source = self._partial_retry(now)
+        source.cli_path = compiler/'ue2three.py'
+        source.run()
+        (compiler/'unreal_world_export.py').write_text('version2')
+        changed = self._partial_retry(now)
+        changed.cli_path = compiler/'ue2three.py'
+        with patch.object(changed, '_convert_maps', wraps=changed._convert_maps) as launched:
+            changed.run()
+            launched.assert_called_once()
+
+    def test_corrupted_cached_output_cannot_be_restored_during_backoff(self):
+        self._assets()
+        self._inventory()
+        now = [1000]
+        self._partial_retry(now).run()
+        (self.publish/'partial.glb').write_bytes(b'corrupted')
+        changed = self._partial_retry(now)
+        changed._prepare_maps()
+        changed._retry_records = read_json(changed.retry_path)['jobs']
+        self.assertFalse(changed._defer_retry('maps'))
+
 
 if __name__ == "__main__":
     unittest.main()
