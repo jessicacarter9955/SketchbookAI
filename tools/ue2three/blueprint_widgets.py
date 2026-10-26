@@ -29,6 +29,11 @@ OPERATIONS = {
                                                       'MaterialInstanceConstant', 'MaterialInterface'))},
     ('EX_FinalFunction', 'SetPercent'): {'type': 'FloatProperty',
                                         'classes': frozenset(('ProgressBar',))},
+    # UImage::SetBrushFromTexture(UTexture2D*, bool). The original asset
+    # identity and bMatchSize value are both required; no fallback texture.
+    ('EX_VirtualFunction', 'SetBrushFromTexture'): {
+        'type': 'ObjectProperty', 'classes': frozenset(('Image',)),
+        'texture_classes': frozenset(('Texture2D',))},
 }
 
 
@@ -43,6 +48,7 @@ def widget_context(value, package, owner, reads, outputs, depth):
     if contract is None:
         return None
     native_class = ('Widget' if name == 'SetVisibility' else
+                    'Image' if name == 'SetBrushFromTexture' else
                     identity[1] if identity else 'TextBlock')
     if (dispatch == 'EX_FinalFunction' and identity != ('/Script/UMG', native_class, name)):
         return None
@@ -63,7 +69,8 @@ def widget_context(value, package, owner, reads, outputs, depth):
             or widget_class[1] not in contract['classes']):
         raise Error('Original native UMG widget receiver class differs')
     args = call.get('Parameters')
-    if not isinstance(args, list) or len(args) != 1:
+    arity = 2 if name == 'SetBrushFromTexture' else 1
+    if not isinstance(args, list) or len(args) != arity:
         raise Error('Original UMG call parameter count differs')
     argument = args[0]
     token = kind(argument)
@@ -88,18 +95,45 @@ def widget_context(value, package, owner, reads, outputs, depth):
     elif name == 'SetPercent' and token == 'EX_FloatConst':
         arg = expression(argument, reads, outputs, depth + 1, package, owner)
         arg_schema = {'type': 'FloatProperty', 'default': 0}
+    elif name == 'SetBrushFromTexture' and token == 'EX_ObjectConst':
+        arg = expression(argument, reads, outputs, depth + 1, package, owner)
+        arg_schema = arg.get('schema') if isinstance(arg, dict) else None
+    elif name == 'SetBrushFromTexture' and token == 'EX_StructMemberContext':
+        from blueprint_effects import array_item_schema
+        arg_schema = array_item_schema(argument, package, owner, reads, outputs, depth)
+        if arg_schema is not None:
+            arg = expression(argument, reads, outputs, depth + 1, package, owner)
     else:
         raise Error('Original UMG call requires source-typed parameter')
     if (arg_schema.get('type') != contract['type']
             or contract.get('native') and arg_schema.get('native') != contract['native']):
         raise Error('Original UMG argument schema differs')
+    options = {}
+    if name == 'SetBrushFromTexture':
+        texture_class = arg_schema.get('class') if isinstance(arg_schema, dict) else None
+        if (not isinstance(texture_class, list) or len(texture_class) != 2
+                or texture_class[0] != '/Script/Engine'
+                or texture_class[1] not in contract['texture_classes']):
+            raise Error('Original image brush requires a typed Texture2D source asset')
+        match = args[1]
+        match_token = kind(match)
+        if match_token in ('EX_True', 'EX_False'):
+            match_value = expression(match, reads, outputs, depth + 1, package, owner)
+        elif match_token in ('EX_InstanceVariable', 'EX_LocalVariable', 'EX_LocalOutVariable'):
+            match_value, match_schema = variable(match, package, owner, reads, outputs, depth)
+            if match_schema.get('type') != 'BoolProperty':
+                raise Error('Original bMatchSize Boolean property differs')
+        else:
+            raise Error('Original bMatchSize Boolean input is unsupported')
+        options = {'bMatchSize': {'schema': {'type': 'BoolProperty'}, 'value': match_value}}
     if name == 'SetVisibility' and arg.get('op') == 'constant':
         if type(arg.get('value')) is not int or not 0 <= arg['value'] <= 4:
             raise Error('Unknown original ESlateVisibility value')
     return {'op': 'native_widget_effect', 'identity': list(identity) if identity else
-            ['/Script/UMG', 'Widget' if name == 'SetVisibility' else 'TextBlock', name],
+            ['/Script/UMG', native_class, name],
             'dispatch': dispatch, 'method': name, 'source_owner_index': owner,
             'receiver': receiver, 'receiver_field': field(obj.get('Variable')),
             'receiver_schema': schema,
             'parameter': {'schema': arg_schema, 'value': arg},
+            **({'options': options} if options else {}),
             'source_binding_required': True, 'visual_1to1_certified': False}
