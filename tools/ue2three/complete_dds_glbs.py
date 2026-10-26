@@ -161,8 +161,17 @@ def finish(project: Path, workspace: Path, gallery_source: Path,
     if not valid_glb(gallery_source) or gallery_counts["mesh_count"] < 184:
         raise ValueError("Gallery GLB is not structurally verified and renderable")
     gallery_scene = source_scene(project, GALLERY, workspace)
-    if len(gallery_scene["actors"]) != gallery_meta["original_actor_count"]:
-        raise ValueError("Original Gallery actor source census differs")
+    # The raw UAssetAPI source scene also includes extra editor-only/rooted
+    # exports (186 here); the independent native-audited actor census is 185.
+    # Check original .umap identity and the explicitly non-rendering TargetPoint,
+    # not equality between two deliberately different actor scopes.
+    from gallery_audit_assembly import original_target_point
+    marker = original_target_point(project, workspace)
+    if (len(gallery_scene["actors"]) < gallery_meta["original_actor_count"]
+            or marker.get("name") != "TargetPoint_0"
+            or marker.get("extras", {}).get("original_map_sha256") != gallery_scene["source_sha256"]
+            or marker.get("extras", {}).get("non_rendering_source_marker") is not True):
+        raise ValueError("Original Gallery actor evidence or target marker differs")
     startup_scene = source_scene(project, START, workspace)
     evidence = certify_startup(startup_scene, checked_package(project, workspace))
 
