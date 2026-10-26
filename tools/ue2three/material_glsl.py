@@ -114,6 +114,20 @@ class Compiler:
             raise MaterialGLSLError('Source input absent: ' + key)
         return self.input(node['inputs'][key])
 
+    def optional(self, node, key, property_name, native_default):
+        """UE 5.7 MaterialExpressions.cpp uses Const* when the pin is absent.
+
+        Missing serialized properties retain the C++ class initializer. A
+        connected pin must still compile; it must never fall back on failure.
+        """
+        link = node['inputs'].get(key)
+        if link is not None:
+            if not isinstance(link, dict):
+                raise MaterialGLSLError('Invalid native optional material link')
+            if link.get('expression') or link.get('use_constant'):
+                return self.input(link)
+        return vector([node['properties'].get(property_name, native_default)])
+
     def node(self, index):
         if index in self.memo:
             return self.memo[index]
@@ -162,7 +176,8 @@ class Compiler:
                     raise MaterialGLSLError('Original named reroute GUID does not match declaration')
                 expr = self.node(declaration_index)
             elif cls in ('MaterialExpressionMin', 'MaterialExpressionMax'):
-                a, b = self.required(node, 'A'), self.required(node, 'B')
+                a = self.optional(node, 'A', 'ConstA', 0)
+                b = self.optional(node, 'B', 'ConstB', 1)
                 width = max(a.width, b.width)
                 name = 'min' if cls.endswith('Min') else 'max'
                 expr = Expr(f'{name}({promote(a, width)}, {promote(b, width)})', width)
@@ -192,21 +207,54 @@ class Compiler:
                          'MaterialExpressionMultiply', 'MaterialExpressionDivide'):
                 operator = {'MaterialExpressionAdd': '+', 'MaterialExpressionSubtract': '-',
                             'MaterialExpressionMultiply': '*', 'MaterialExpressionDivide': '/'}[cls]
-                expr = binary(self.required(node, 'A'), self.required(node, 'B'), operator)
+                defaults = {'MaterialExpressionAdd': (0, 1), 'MaterialExpressionSubtract': (1, 1),
+                            'MaterialExpressionMultiply': (0, 1), 'MaterialExpressionDivide': (1, 2)}[cls]
+                expr = binary(self.optional(node, 'A', 'ConstA', defaults[0]),
+                              self.optional(node, 'B', 'ConstB', defaults[1]), operator)
+            elif cls == 'MaterialExpressionAppendVector':
+                a, b = self.required(node, 'A'), self.required(node, 'B')
+                if a.width + b.width > 4:
+                    raise MaterialGLSLError('Appended vector exceeds four source components')
+                expr = Expr(f'vec{a.width + b.width}({a.code}, {b.code})', a.width + b.width)
+            elif cls == 'MaterialExpressionPower':
+                base = self.required(node, 'Base')
+                exponent = self.optional(node, 'Exponent', 'ConstExponent', 2)
+                # UE legacy and analytic paths differ for vector exponents;
+                # keep those blocked until the renderer path is witnessed.
+                if exponent.width != 1:
+                    raise MaterialGLSLError('Source Power vector exponent needs renderer-path witness')
+                expr = Expr(f'uePositiveClampedPow({base.code}, {exponent.code})', base.width)
+            elif cls == 'MaterialExpressionStaticSwitchParameter':
+                if not isinstance(props.get('ParameterName'), str) or not props['ParameterName']:
+                    raise MaterialGLSLError('Original static parameter name unavailable')
+                value = props.get('DefaultValue', False)
+                if type(value) is not bool:
+                    raise MaterialGLSLError('Invalid original static switch value')
+                expr = self.required(node, 'A' if value else 'B')
             elif cls == 'MaterialExpressionOneMinus':
                 expr = binary(vector([1]), self.required(node, 'Input'), '-')
             elif cls == 'MaterialExpressionSaturate':
                 x = self.required(node, 'Input')
                 expr = Expr(f'clamp({x.code}, {promote(vector([0]), x.width)}, {promote(vector([1]), x.width)})', x.width)
-            elif cls in ('MaterialExpressionAbs', 'MaterialExpressionFloor',
-                         'MaterialExpressionSine', 'MaterialExpressionCosine', 'MaterialExpressionFrac'):
+            elif cls in ('MaterialExpressionSine', 'MaterialExpressionCosine'):
+                value = self.required(node, 'Input')
+                period = float(number(props.get('Period', 1)))
+                # MaterialExpressions.cpp: Sine with nonpositive period uses
+                # the raw input, while Cosine multiplies the input by zero.
+                scale = 2 * math.pi / period if period > 0 else (1 if cls.endswith('Sine') else 0)
+                argument = binary(value, vector([scale]), '*')
+                name = 'sin' if cls.endswith('Sine') else 'cos'
+                expr = Expr(f'{name}({argument.code})', value.width)
+            elif cls in ('MaterialExpressionAbs', 'MaterialExpressionFloor', 'MaterialExpressionCeil',
+                         'MaterialExpressionFrac', 'MaterialExpressionSquareRoot'):
                 name = {'MaterialExpressionAbs': 'abs', 'MaterialExpressionFloor': 'floor',
-                        'MaterialExpressionSine': 'sin', 'MaterialExpressionCosine': 'cos',
+                        'MaterialExpressionCeil': 'ceil', 'MaterialExpressionSquareRoot': 'sqrt',
                         'MaterialExpressionFrac': 'fract'}[cls]
                 value = self.required(node, 'Input')
                 expr = Expr(f'{name}({value.code})', value.width)
             elif cls == 'MaterialExpressionLinearInterpolate':
-                a, b, alpha = [self.required(node, key) for key in ('A', 'B', 'Alpha')]
+                a, b, alpha = [self.optional(node, key, 'Const' + key, default)
+                               for key, default in (('A', 0), ('B', 1), ('Alpha', 0.5))]
                 width = max(a.width, b.width)
                 if alpha.width not in (1, width):
                     raise MaterialGLSLError('Unverified interpolator alpha dimension')
@@ -251,12 +299,14 @@ def compile_graph(graph):
     compiled, blocked = {}, {}
     for name in ROOTS:
         uniforms = dict(compiler.uniforms)
+        memo, visited = dict(compiler.memo), set(compiler.visited)
         try:
             result = compiler.root(name)
             if result is not None:
                 compiled[name] = {'glsl': result.code, 'width': result.width}
         except MaterialGLSLError as error:
             compiler.uniforms = uniforms
+            compiler.memo, compiler.visited = memo, visited
             blocked[name] = str(error)
     # Connected roots not supported by this subset are explicitly blocked.
     for name, link in graph['roots'].items():

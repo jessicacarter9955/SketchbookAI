@@ -46,7 +46,8 @@ function validate(lowering) {
     const lexical = value.glsl.replace(/(?<![a-zA-Z_0-9])(?:\d+(?:\.\d*)?|\.\d+)[eE][+-]?\d+/g, '0.0');
     const identifiers = lexical.match(/[a-zA-Z_][a-zA-Z_0-9]*/g) || [];
     const builtins = new Set(['vec2', 'vec3', 'vec4', 'mix', 'clamp',
-      'abs', 'floor', 'sin', 'cos', 'fract', 'min', 'max', 'dot']);
+      'abs', 'floor', 'ceil', 'sqrt', 'sin', 'cos', 'fract', 'min', 'max', 'dot',
+      'uePositiveClampedPow']);
     if (identifiers.some(id => !(builtins.has(id) || /^[xyzw]{1,4}$/.test(id) ||
         (/^uep_[1-9]\d*$/.test(id) &&
           Object.prototype.hasOwnProperty.call(lowering.uniforms || {}, id))))) {
@@ -84,7 +85,15 @@ function uniformBindings(lowering, overrides) {
 
 function inject(fragment, lowering, uniforms) {
   const headers = Object.keys(uniforms).map(k => 'uniform ' + uniforms[k].type + ' ' + k + ';').join('\n');
-  let result = headers + '\n' + fragment;
+  // UE Common.ush PositiveClampedPow avoids NaNs for nonpositive bases.
+  // Preserve the same cutoff instead of substituting raw GLSL pow.
+  const power = Object.values(lowering.translated_roots).some(x => x.glsl.includes('uePositiveClampedPow')) ? `
+float uePositiveClampedPow(float b, float e) { return b <= 2.980233e-8 ? 0.0 : pow(b, e); }
+vec2 uePositiveClampedPow(vec2 b, float e) { return vec2(uePositiveClampedPow(b.x,e),uePositiveClampedPow(b.y,e)); }
+vec3 uePositiveClampedPow(vec3 b, float e) { return vec3(uePositiveClampedPow(b.x,e),uePositiveClampedPow(b.y,e),uePositiveClampedPow(b.z,e)); }
+vec4 uePositiveClampedPow(vec4 b, float e) { return vec4(uePositiveClampedPow(b.x,e),uePositiveClampedPow(b.y,e),uePositiveClampedPow(b.z,e),uePositiveClampedPow(b.w,e)); }
+` : '';
+  let result = headers + '\n' + power + fragment;
   for (const [root, compiled] of Object.entries(lowering.translated_roots)) {
     const marker = '#include <' + INCLUDES[root] + '>';
     if (result.split(marker).length !== 2) throw new Error('Missing Three shader marker: ' + marker);

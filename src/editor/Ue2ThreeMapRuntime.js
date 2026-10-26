@@ -4,6 +4,7 @@ import { forEachCollisionChunk } from './ue2three-collision.mjs';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { installMapOutputPass } from './ue2three-output.mjs';
 import { safeMapPath, mapAssetURL, applyMapPresentation } from '../../tools/ue2three/map-presentation.mjs';
+import { loadSourceSceneMaterials } from '../../tools/ue2three/material-scene-runtime.mjs';
 
 export class Ue2ThreeMapRuntime {
     constructor(world, mapPath) {
@@ -20,6 +21,7 @@ export class Ue2ThreeMapRuntime {
         report?.('Carico il livello Unreal esportato…');
         const assetURL = await mapAssetURL(this.mapPath);
         const gltf = await new GLTFLoader().loadAsync(assetURL);
+        this.sourceMaterials = await loadSourceSceneMaterials(gltf, assetURL);
         this.assetURL = assetURL;
         // Keep KHR_lights_punctual lights from the source map. The UE exporter
         // has already flattened these to portable light nodes; removing them

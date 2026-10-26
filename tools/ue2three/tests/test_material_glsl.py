@@ -85,10 +85,46 @@ class SourceMaterialShaderTests(unittest.TestCase):
         self.assertIn('Non-finite', result['blocked_roots']['Roughness'])
         self.assertIn('Unsafe material root', result['blocked_roots']['Opacity'])
 
-    def test_missing_native_input_cannot_be_guessed(self):
+    def test_unconnected_native_optional_pins_use_verified_cpp_defaults(self):
         nodes = [node(1, 'Multiply', inputs={'A': link(0), 'B': link(0)})]
         result = compile_graph(graph(nodes, {'Roughness': link(1)}))
-        self.assertIn('Unconnected input', result['blocked_roots']['Roughness'])
+        self.assertEqual(result['translated_roots']['Roughness']['glsl'], '(0.0 * 1.0)')
+
+    def test_native_optional_defaults_and_connected_errors(self):
+        for kind, expected in (('Add', '(0.0 + 1.0)'), ('Subtract', '(1.0 - 1.0)'),
+                               ('Divide', '(1.0 / 2.0)'), ('LinearInterpolate', 'mix(0.0, 1.0, 0.5)')):
+            result = compile_graph(graph([node(1, kind)], {'Roughness': link(1)}))
+            self.assertEqual(result['translated_roots']['Roughness']['glsl'], expected)
+        source = graph([node(1, 'Multiply', {'A': link(2)}, {'ConstA': 0.7}),
+                        node(2, 'SceneColor')], {'Roughness': link(1)})
+        self.assertIn('SceneColor', compile_graph(source)['blocked_roots']['Roughness'])
+
+    def test_native_period_and_nonpositive_period_semantics(self):
+        value = node(1, 'Constant', props={'R': 0.25})
+        for kind, period, expected in (('Sine', 1, '6.28318531'), ('Cosine', 2, '3.14159265'),
+                                        ('Sine', 0, '1.0'), ('Cosine', 0, '0.0')):
+            source = graph([value, node(2, kind, {'Input': link(1)}, {'Period': period})],
+                           {'Roughness': link(2)})
+            self.assertIn(expected, compile_graph(source)['translated_roots']['Roughness']['glsl'])
+
+    def test_append_power_and_static_source_default(self):
+        nodes = [node(1, 'Constant', props={'R': 0.5}),
+                 node(2, 'AppendVector', {'A': link(1), 'B': link(1)}),
+                 node(3, 'Power', {'Base': link(1)}),
+                 node(4, 'StaticSwitchParameter', {'A': link(999), 'B': link(3)},
+                      {'ParameterName': 'OriginalSwitch'})]
+        result = compile_graph(graph(nodes, {'Roughness': link(4)}))
+        self.assertEqual(result['translated_roots']['Roughness']['glsl'], 'uePositiveClampedPow(0.5, 2.0)')
+        self.assertEqual(Compiler(graph(nodes, {})).node(2).width, 2)
+        nodes[-1]['properties']['DefaultValue'] = True
+        self.assertIn('non-expression', compile_graph(graph(nodes, {'Roughness': link(4)}))['blocked_roots']['Roughness'])
+
+    def test_failed_root_does_not_cache_uniform_without_binding(self):
+        nodes = [node(1, 'ScalarParameter', props={'ParameterName': 'Original', 'DefaultValue': 0.4}),
+                 node(2, 'Multiply', {'A': link(1), 'B': link(999)})]
+        result = compile_graph(graph(nodes, {'BaseColor': link(2), 'Roughness': link(1)}))
+        self.assertIn('BaseColor', result['blocked_roots'])
+        self.assertIn('uep_1', result['uniforms'])
 
     def test_connected_unimplemented_vertex_root_is_explicitly_blocked(self):
         result = compile_graph(graph([node(1, 'Constant', props={'R': 1})],

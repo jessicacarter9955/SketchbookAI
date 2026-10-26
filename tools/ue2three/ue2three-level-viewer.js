@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { mapAssetURL, applyMapPresentation, mapValidationSummary } from './map-presentation.mjs';
+import { loadSourceSceneMaterials } from './material-scene-runtime.mjs';
 
 const params = new URLSearchParams(location.search);
 const model = params.get('model') || '';
@@ -48,6 +49,7 @@ async function openModel() {
   // publication. Version the asset request itself, not only the HTML page URL.
   const assetUrl=await mapAssetURL(model,{revision:params.get('v')});
   const gltf = await new GLTFLoader().loadAsync(assetUrl);
+  window.__ue2threeAudit.materials = await loadSourceSceneMaterials(gltf, assetUrl);
   importedScene = gltf.scene;
   scene.add(gltf.scene);
   // glTF does not carry Unreal SkyLight capture/Lumen. Keep this modest ambient
