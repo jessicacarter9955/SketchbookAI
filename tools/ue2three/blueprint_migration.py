@@ -66,6 +66,7 @@ MATH_CALLS.update({'Divide_DoubleDouble': (2, 'DoubleDouble'),
                    'MakeTransform': (3, 'transform'),
                    'BreakVector': (4, 'break_vector'),
                    'BreakRotator': (4, 'break_rotator'),
+                   'BreakTransform': (4, 'break_transform'),
                    'Min': (2, 'IntInt'), 'Max': (2, 'IntInt'),
                    'Conv_IntToDouble': (1, 'IntInt'), 'SelectInt': (3, 'int_select'), 'SelectFloat': (3, 'double_select'),
                    'EqualEqual_BoolBool': (2, 'bool'), 'NotEqual_BoolBool': (2, 'bool'),
@@ -76,6 +77,7 @@ MATH_CALLS.update({'Divide_DoubleDouble': (2, 'DoubleDouble'),
                    'Abs': (1, 'DoubleDouble'), 'VSize': (1, 'vector'), 'VSizeXY': (1, 'vector'),
                    'Conv_IntToInt64': (1, 'IntInt'),
                    'Vector_Distance': (2, 'VectorVector'),
+                   'Vector_DistanceSquared': (2, 'VectorVector'),
                    'Conv_LinearColorToVector': (1, 'LinearColor')})
 
 NATIVE_MATH_INPUT_TYPES = {
@@ -88,6 +90,7 @@ NATIVE_MATH_INPUT_TYPES = {
     'MakeTransform': ('Vector', 'Rotator', 'Vector'),
     'BreakVector': ('Vector',),
     'BreakRotator': ('Rotator',),
+    'BreakTransform': ('Transform',),
     'Abs': ('DoubleProperty',), 'VSize': ('Vector',), 'VSizeXY': ('Vector',),
     'FInterpTo': ('DoubleProperty', 'DoubleProperty', 'DoubleProperty', 'DoubleProperty'),
     'Conv_IntToInt64': ('IntProperty',),
@@ -96,6 +99,7 @@ NATIVE_MATH_INPUT_TYPES = {
     'Conv_BoolToDouble': ('BoolProperty',),
     'Multiply_LinearColorLinearColor': ('LinearColor', 'LinearColor'),
     'Vector_Distance': ('Vector', 'Vector'),
+    'Vector_DistanceSquared': ('Vector', 'Vector'),
 }
 
 
@@ -116,7 +120,7 @@ def native_math_result_type(name):
         return {'ByteByte':'ByteProperty','IntInt':'IntProperty','DoubleDouble':'DoubleProperty'}[suffix]
     if name in ('Min', 'Max', 'Clamp', 'SelectInt'): return 'IntProperty'
     if name in ('Conv_IntToDouble', 'Conv_BoolToDouble', 'Square', 'Lerp', 'FMin', 'FMax', 'FClamp', 'SelectFloat',
-                'Abs', 'VSize', 'VSizeXY', 'Vector_Distance', 'FInterpTo'):
+                'Abs', 'VSize', 'VSizeXY', 'Vector_Distance', 'Vector_DistanceSquared', 'FInterpTo'):
         return 'DoubleProperty'
     if name == 'InRange_FloatFloat': return 'BoolProperty'
     if name in ('Round', 'FFloor'): return 'IntProperty'
@@ -454,17 +458,23 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         for index, expected_type in enumerate(NATIVE_MATH_INPUT_TYPES.get(name, ())):
             if native_math_source_type(args[index], package, owner) != expected_type:
                 raise BlueprintTranslationError('Original native math parameter type differs')
-        if name in ('BreakVector', 'BreakRotator'):
-            component_names = ('X', 'Y', 'Z') if name == 'BreakVector' else ('Roll', 'Pitch', 'Yaw')
+        if name in ('BreakVector', 'BreakRotator', 'BreakTransform'):
+            components = (('X','Y','Z') if name == 'BreakVector' else
+                          ('Roll','Pitch','Yaw') if name == 'BreakRotator' else
+                          ('Location','Rotation','Scale'))
+            natives = ('Vector','Rotator','Vector') if name == 'BreakTransform' else (None,)*3
             targets = []
-            for argument in args[1:]:
-                target, prop = native_math_output_target(argument, package, owner, 'FloatProperty')
+            for argument, native in zip(args[1:], natives):
+                typ = 'StructProperty' if native else 'FloatProperty'
+                target, prop = native_math_output_target(argument, package, owner, typ)
+                if native and property_schema(package, prop).get('native') != native:
+                    raise BlueprintTranslationError('BreakTransform original native output differs')
                 if target['scope'] == 'local' and 'CPF_OutParm' in str(prop.get('PropertyFlags')):
                     outputs.add(target['field'])
-                targets.append({**target, 'type': 'FloatProperty'})
-            return {'op': 'math_outputs', 'name': name,
-                    'args': [expression(args[0], reads, outputs, depth+1, package, owner)],
-                    'components': list(component_names), 'targets': targets}
+                targets.append({**target,'type':typ,**({'native':native} if native else {})})
+            return {'op':'math_outputs','name':name,
+                    'args':[expression(args[0], reads, outputs, depth+1, package, owner)],
+                    'components':list(components),'targets':targets}
         if name == 'Round': validate_round_input(args[0], package, owner)
         if name in ('EqualEqual_NameName', 'NotEqual_NameName'):
             for arg in args:
