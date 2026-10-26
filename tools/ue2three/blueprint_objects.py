@@ -5,6 +5,18 @@ from core import digest
 
 ACTOR_BASES = {('/Script/Engine', name) for name in ('Actor', 'Pawn', 'Character')}
 NATIVE_OBJECT_CALLS = {
+    ('/Script/Engine', 'KismetTextLibrary', 'Conv_StringToText'): {
+        'parameter_types': ('StrProperty',), 'return_type': 'TextProperty',
+        'argument_tokens': (('EX_StringConst', 'EX_UnicodeStringConst'),),
+    },
+    ('/Script/Engine', 'KismetTextLibrary', 'Conv_NameToText'): {
+        'parameter_types': ('NameProperty',), 'return_type': 'TextProperty',
+        'argument_tokens': (('EX_NameConst',),),
+    },
+    ('/Script/Engine', 'KismetTextLibrary', 'Conv_TextToString'): {
+        'parameter_types': ('TextProperty',), 'return_type': 'StrProperty',
+        'argument_tokens': (('EX_TextConst',),),
+    },
     ('/Script/Engine', 'KismetStringLibrary', 'Concat_StrStr'): {
         'parameter_types': ('StrProperty', 'StrProperty'), 'return_type': 'StrProperty',
         'argument_tokens': (('EX_StringConst', 'EX_UnicodeStringConst'),
@@ -55,6 +67,13 @@ def native_object_call(value, package, owner, reads, outputs, depth):
             result, schema = variable(arg, package, owner, reads, outputs, depth)
             if schema.get('type') != expected:
                 raise Error('Original native object parameter type differs')
+        elif token == 'EX_CallMath' and import_path(package, arg.get('StackNode')) in NATIVE_OBJECT_CALLS:
+            nested = NATIVE_OBJECT_CALLS[import_path(package, arg.get('StackNode'))]
+            if nested['return_type'] != expected:
+                raise Error('Original native object nested return type differs')
+            result = expression(arg, reads, outputs, depth+1, package, owner)
+        elif token == 'EX_TextConst' and token in literal_tokens and expected == 'TextProperty':
+            result = expression(arg, reads, outputs, depth+1, package, owner)
         elif token in literal_tokens and expected in ('StrProperty', 'NameProperty', 'IntProperty', 'BoolProperty'):
             memory_size(arg, package=package)
             result = expression(arg, reads, outputs, depth+1, package, owner)

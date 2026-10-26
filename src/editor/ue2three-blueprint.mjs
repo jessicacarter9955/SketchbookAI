@@ -70,7 +70,8 @@ function validateSchema(schema, value, depth = 0) {
     } else if (schema.type === 'TextProperty') {
         if (!value || typeof value.text !== 'string' || !Number.isInteger(value.flags) || value.flags < 0 || value.flags > 4294967295
             || !(value.history === 'empty' && value.text === '' || value.history === 'base' && typeof value.namespace === 'string'
-                && typeof value.key === 'string')) throw new Error('Unsupported original FText');
+                && typeof value.key === 'string' || value.history === 'invariant' && value.flags === 2))
+            throw new Error('Unsupported original FText');
     } else if (!validPrimitive(schema.type, value)) throw new Error('Invalid typed source member: ' + schema.type);
 }
 
@@ -292,6 +293,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             || type === 'Int64Property' && Number.isSafeInteger(value)
             || ['FloatProperty', 'DoubleProperty'].includes(type) && typeof value === 'number' && Number.isFinite(value)
             || ['StrProperty', 'NameProperty'].includes(type) && typeof value === 'string'
+            || type === 'TextProperty' && value !== null && typeof value === 'object' && !Array.isArray(value)
             || type === 'ArrayProperty' && Array.isArray(value)
             || type === 'ObjectProperty' && (value === null || typeof value === 'object')
             || type === 'StructProperty' && value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -579,6 +581,26 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             // Spawn functions return native object pointers. Without a bound
             // native adapter, keep the ordered request but never invent a handle.
             return contract.result ? undefined : null;
+        }
+        if (expression.op === 'primitive_cast') {
+            const types = expression.conversion === 3 ? ['DoubleProperty', 'FloatProperty']
+                : expression.conversion === 4 ? ['FloatProperty', 'DoubleProperty'] : null;
+            if (!types || expression.source_type !== types[0] || expression.return_type !== types[1])
+                throw new Error('Unsupported original primitive cast contract');
+            const source = expression.value;
+            const declared = source?.op === 'get'
+                ? (source.scope === 'persistent' ? program.persistent_types?.[source.frame]?.[source.field]
+                    : program.field_types?.[source.scope]?.[source.field])
+                : source?.op === 'typed_literal' ? source.schema?.type : null;
+            if (declared && declared !== types[0]) throw new Error('Original primitive cast source type differs');
+            const value = evaluate(expression.value, depth+1);
+            if (typeof value !== 'number' || !Number.isFinite(value))
+                throw new Error('Invalid original primitive cast input');
+            // Stored UE FloatProperties are IEEE754 float32, even though the
+            // host represents them with JavaScript Number.
+            const result = Math.fround(value);
+            if (!Number.isFinite(result)) throw new Error('Non-finite original primitive cast result');
+            return result;
         }
         if (expression.op === 'typed_literal') {
             validateSchema(expression.schema, expression.value);
@@ -925,12 +947,15 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 Conv_NameToString: {args: ['NameProperty'], result: 'StrProperty'},
                 Conv_IntToString: {args: ['IntProperty'], result: 'StrProperty'},
                 Len: {args: ['StrProperty'], result: 'IntProperty'},
-                Contains: {args: ['StrProperty', 'StrProperty', 'BoolProperty', 'BoolProperty'], result: 'BoolProperty'}
+                Contains: {args: ['StrProperty', 'StrProperty', 'BoolProperty', 'BoolProperty'], result: 'BoolProperty'},
+                Conv_StringToText: {args:['StrProperty'], result:'TextProperty', library:'KismetTextLibrary'},
+                Conv_NameToText: {args:['NameProperty'], result:'TextProperty', library:'KismetTextLibrary'},
+                Conv_TextToString: {args:['TextProperty'], result:'StrProperty', library:'KismetTextLibrary'}
             };
             const name = expression.identity?.[2];
             const contract = Object.hasOwn(contracts, name) ? contracts[name] : null;
             if (!contract
-                || JSON.stringify(expression.identity) !== JSON.stringify(['/Script/Engine', 'KismetStringLibrary', name])
+                || JSON.stringify(expression.identity) !== JSON.stringify(['/Script/Engine', contract.library || 'KismetStringLibrary', name])
                 || JSON.stringify(expression.parameter_types) !== JSON.stringify(contract.args)
                 || expression.return_type !== contract.result || !Array.isArray(expression.args)
                 || expression.args.length !== contract.args.length)
@@ -938,6 +963,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             const values = expression.args.map((argument, index) => {
                 let sourceType = null;
                 if (argument?.op === 'typed_literal') sourceType = argument.schema?.type;
+                else if (argument?.op === 'native_call') sourceType = argument.return_type;
                 else if (argument?.op === 'get') {
                     const schemaType = schemaFor(argument)?.type;
                     const declaredType = argument.scope === 'persistent' ? program.persistent_types?.[argument.frame]?.[argument.field]
@@ -955,6 +981,8 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 } else if (sourceType === 'BoolProperty') {
                     if (typeof value !== 'boolean')
                         throw new Error('Invalid original native object bool parameter');
+                } else if (sourceType === 'TextProperty') {
+                    validateSchema({type:'TextProperty'},value);
                 } else if (typeof value !== 'string') {
                     throw new Error('Invalid original native object string parameter');
                 }
@@ -972,6 +1000,9 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             }
             if (name === 'Concat_StrStr') return values[0] + values[1];
             if (name === 'Conv_IntToString') return String(values[0]);
+            if (name === 'Conv_StringToText' || name === 'Conv_NameToText')
+                return {history:values[0] === '' ? 'empty' : 'invariant', text:values[0], flags:2};
+            if (name === 'Conv_TextToString') return values[0].text;
             return values[0]; // Original FName spelling preserved by the source value.
         }
         if (expression.op === 'constant') {
