@@ -504,6 +504,10 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 && expression.parameter?.schema?.class?.[0] === '/Script/Engine'
                 && ['Material','MaterialInstance','MaterialInstanceConstant','MaterialInterface']
                     .includes(expression.parameter?.schema?.class?.[1])
+                || method === 'SetPercent'
+                && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','ProgressBar','SetPercent'])
+                && expression.dispatch === 'EX_FinalFunction'
+                && expression.parameter?.schema?.type === 'FloatProperty'
                 || method === 'SetText'
                 && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','TextBlock','SetText'])
                 && ['EX_FinalFunction','EX_VirtualFunction'].includes(expression.dispatch)

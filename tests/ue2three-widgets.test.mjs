@@ -131,3 +131,29 @@ test('native Border material brush emits the exact source material reference',()
   assert.throws(()=>executeBlueprint(program(bad),{Border_Selection:border},{},{native:bindings}),
     /Unsupported or unbound original UMG context contract/);
 });
+
+test('native ProgressBar SetPercent preserves a source float effect and binding',()=>{
+  const progressClass=['/Script/UMG','ProgressBar'];
+  const progress={kind:'source_native_widget',source_package:pkg,source_owner_index:1,
+    source_field:'Progress',widget_id:'progress-original-1',declared_class:progressClass};
+  const schema={type:'FloatProperty',default:0};
+  const operation={op:'native_widget_effect',source_owner_index:1,source_binding_required:true,
+    visual_1to1_certified:false,identity:['/Script/UMG','ProgressBar','SetPercent'],
+    dispatch:'EX_FinalFunction',method:'SetPercent',
+    receiver:{op:'get',scope:'self',field:'Progress'},receiver_field:'Progress',
+    receiver_schema:{type:'ObjectProperty',class:progressClass,reference_kind:'runtime_native_widget',default:null},
+    parameter:{schema,value:{op:'constant',value:0.5}}};
+  const p=program(operation);
+  p.self_reads=['Progress'];
+  p.field_types.self={Progress:'ObjectProperty'};
+  p.schemas.self={Progress:{type:'ObjectProperty',class:progressClass,reference_kind:'runtime_native_widget'}};
+  const bindings={source_package:pkg,source_owner_index:1,widgets:{Progress:{reference:progress,
+    source_field:'Progress',source_owner_index:1,declared_class:progressClass,binding_complete:true}}};
+  const result=executeBlueprint(p,{Progress:progress},{},{native:bindings});
+  assert.deepEqual(result.effects[0].identity,['/Script/UMG','ProgressBar','SetPercent']);
+  assert.equal(result.effects[0].parameter,0.5);
+  const bad=structuredClone(operation);
+  bad.parameter.schema.type='DoubleProperty';
+  assert.throws(()=>executeBlueprint(program(bad),{Progress:progress},{},{native:bindings}),
+    /Unsupported or unbound original UMG context contract/);
+});

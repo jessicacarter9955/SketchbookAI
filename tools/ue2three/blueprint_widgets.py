@@ -27,6 +27,8 @@ OPERATIONS = {
                                                   'material_classes': frozenset((
                                                       'Material', 'MaterialInstance',
                                                       'MaterialInstanceConstant', 'MaterialInterface'))},
+    ('EX_FinalFunction', 'SetPercent'): {'type': 'FloatProperty',
+                                        'classes': frozenset(('ProgressBar',))},
 }
 
 
@@ -40,7 +42,8 @@ def widget_context(value, package, owner, reads, outputs, depth):
     contract = OPERATIONS.get((dispatch, name))
     if contract is None:
         return None
-    native_class = 'Border' if name == 'SetBrushFromMaterial' else 'TextBlock'
+    native_class = ('Widget' if name == 'SetVisibility' else
+                    identity[1] if identity else 'TextBlock')
     if (dispatch == 'EX_FinalFunction' and identity != ('/Script/UMG', native_class, name)):
         return None
     obj = value.get('ObjectExpression', {})
@@ -82,6 +85,9 @@ def widget_context(value, package, owner, reads, outputs, depth):
                 or material_class[0] != '/Script/Engine'
                 or material_class[1] not in contract['material_classes']):
             raise Error('Original UMG brush input is not a typed source material asset')
+    elif name == 'SetPercent' and token == 'EX_FloatConst':
+        arg = expression(argument, reads, outputs, depth + 1, package, owner)
+        arg_schema = {'type': 'FloatProperty', 'default': 0}
     else:
         raise Error('Original UMG call requires source-typed parameter')
     if (arg_schema.get('type') != contract['type']

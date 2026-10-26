@@ -110,6 +110,24 @@ class NativeWidgetContextTests(unittest.TestCase):
         with self.assertRaisesRegex(BlueprintTranslationError, 'Unsupported source property type: ObjectProperty'):
             property_type({'SerializedType': 'ObjectProperty', 'PropertyClass': -6}, p)
 
+    def test_progress_bar_set_percent_preserves_float_pin_and_original_widget_class(self):
+        p = source_package('ProgressBar')
+        p.imports[0]['ObjectName'] = 'SetPercent'
+        p.imports[1]['ObjectName'] = 'ProgressBar'
+        p.exports[0]['LoadedProperties'][0]['Name'] = 'Progress'
+        call = node('EX_FinalFunction', StackNode=-1, Parameters=[node('EX_FloatConst', Value='+0.5')])
+        value = node('EX_Context', ObjectExpression=receiver('Progress'), ContextExpression=call,
+                     Offset=memory_size(call, package=p), PropertyType=0,
+                     RValuePointer={'New': {'Path': [], 'ResolvedOwner': 0}})
+        result = expression(value, set(), set(), package=p, owner=1)
+        self.assertEqual(result['identity'], ['/Script/UMG', 'ProgressBar', 'SetPercent'])
+        self.assertEqual(result['receiver_schema']['class'], ['/Script/UMG', 'ProgressBar'])
+        self.assertEqual(result['parameter']['schema']['type'], 'FloatProperty')
+        self.assertEqual(result['parameter']['value']['value'], 0.5)
+        p.imports[1]['ObjectName'] = 'TextBlock'
+        with self.assertRaisesRegex(BlueprintTranslationError, 'receiver class differs'):
+            expression(value, set(), set(), package=p, owner=1)
+
     def test_original_umg_visibility_preserves_source_enum_byte(self):
         p = source_package()
         for value in range(5):
@@ -134,7 +152,7 @@ class NativeWidgetContextTests(unittest.TestCase):
             expression(original, set(), set(), package=p, owner=1)
         p = source_package()
         p.imports[1]['ObjectName'] = 'NotTextBlock'
-        with self.assertRaisesRegex(BlueprintTranslationError, 'Unsupported opcode: EX_Context'):
+        with self.assertRaisesRegex(BlueprintTranslationError, 'receiver class differs'):
             expression(context(original=p), set(), set(), package=p, owner=1)
 
     def test_widget_call_requires_matching_source_parameter_types(self):
