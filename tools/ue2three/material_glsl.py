@@ -193,16 +193,41 @@ class Compiler:
                 operator = {'MaterialExpressionAdd': '+', 'MaterialExpressionSubtract': '-',
                             'MaterialExpressionMultiply': '*', 'MaterialExpressionDivide': '/'}[cls]
                 expr = binary(self.required(node, 'A'), self.required(node, 'B'), operator)
+            elif cls == 'MaterialExpressionPower':
+                # Source-native Base/Exponent links are both required. GLSL
+                # will reject undefined domains at shader validation time;
+                # this lowering alone never establishes Unreal visual parity.
+                base = self.required(node, 'Base')
+                exponent = self.required(node, 'Exponent')
+                width = max(base.width, exponent.width)
+                expr = Expr(f'pow({promote(base, width)}, {promote(exponent, width)})', width)
+            elif cls == 'MaterialExpressionSmoothStep':
+                lo, hi, x = (self.required(node, key) for key in ('Min', 'Max', 'Value'))
+                width = max(lo.width, hi.width, x.width)
+                expr = Expr(f'smoothstep({promote(lo, width)}, {promote(hi, width)}, {promote(x, width)})', width)
+            elif cls == 'MaterialExpressionConstantBiasScale':
+                if 'Bias' not in props or 'Scale' not in props:
+                    raise MaterialGLSLError('Original bias/scale properties unavailable')
+                x = self.required(node, 'Input')
+                bias, scale = number(props['Bias']), number(props['Scale'])
+                expr = Expr(f'(({x.code} + {promote(Expr(bias, 1), x.width)}) * {promote(Expr(scale, 1), x.width)})', x.width)
+            elif cls == 'MaterialExpressionNormalize':
+                x = self.required(node, 'VectorInput')
+                if x.width not in (2, 3, 4):
+                    raise MaterialGLSLError('Normalize requires witnessed vector width')
+                expr = Expr(f'normalize({x.code})', x.width)
             elif cls == 'MaterialExpressionOneMinus':
                 expr = binary(vector([1]), self.required(node, 'Input'), '-')
             elif cls == 'MaterialExpressionSaturate':
                 x = self.required(node, 'Input')
                 expr = Expr(f'clamp({x.code}, {promote(vector([0]), x.width)}, {promote(vector([1]), x.width)})', x.width)
             elif cls in ('MaterialExpressionAbs', 'MaterialExpressionFloor',
-                         'MaterialExpressionSine', 'MaterialExpressionCosine', 'MaterialExpressionFrac'):
+                         'MaterialExpressionSine', 'MaterialExpressionCosine', 'MaterialExpressionFrac',
+                         'MaterialExpressionCeil', 'MaterialExpressionRound'):
                 name = {'MaterialExpressionAbs': 'abs', 'MaterialExpressionFloor': 'floor',
                         'MaterialExpressionSine': 'sin', 'MaterialExpressionCosine': 'cos',
-                        'MaterialExpressionFrac': 'fract'}[cls]
+                        'MaterialExpressionFrac': 'fract', 'MaterialExpressionCeil': 'ceil',
+                        'MaterialExpressionRound': 'round'}[cls]
                 value = self.required(node, 'Input')
                 expr = Expr(f'{name}({value.code})', value.width)
             elif cls == 'MaterialExpressionLinearInterpolate':
