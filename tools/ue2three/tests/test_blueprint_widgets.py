@@ -1,7 +1,7 @@
 """Source-witnessed native UMG widget context translation contracts."""
 import unittest
 
-from blueprint_migration import expression, memory_size, BlueprintTranslationError
+from blueprint_migration import expression, memory_size, property_type, BlueprintTranslationError
 from umg_migration import Package
 from test_blueprint_migration import node
 
@@ -76,6 +76,39 @@ class NativeWidgetContextTests(unittest.TestCase):
             set(), set(), package=p, owner=1)
         self.assertEqual(result['identity'], ['/Script/UMG','TextBlock','SetColorAndOpacity'])
         self.assertEqual(result['parameter']['schema']['native'], 'LinearColor')
+
+    def test_border_material_brush_keeps_original_typed_material_identity(self):
+        p = Package({'Imports': [
+            {'ObjectName': 'SetBrushFromMaterial', 'ClassName': 'Function', 'OuterIndex': -2},
+            {'ObjectName': 'Border', 'ClassName': 'Class', 'OuterIndex': -3},
+            {'ObjectName': '/Script/UMG', 'ClassName': 'Package'},
+            {'ObjectName': '/Game/Materials', 'ClassName': 'Package'},
+            {'ObjectName': 'M_UI_Border', 'ClassName': 'MaterialInstanceConstant',
+             'ClassPackage': '/Script/Engine', 'OuterIndex': -4}],
+            'Exports': [{'ObjectName': 'Source_WBP_C', 'LoadedProperties': [
+                {'Name': 'Border_Selection', 'SerializedType': 'ObjectProperty', 'PropertyClass': -2}]}]})
+        call = node('EX_FinalFunction', StackNode=-1,
+                    Parameters=[node('EX_ObjectConst', Value=-5)])
+        value = node('EX_Context', ObjectExpression=receiver('Border_Selection'),
+                     ContextExpression=call, Offset=memory_size(call, package=p), PropertyType=0,
+                     RValuePointer={'New': {'Path': [], 'ResolvedOwner': 0}})
+        result = expression(value, set(), set(), package=p, owner=1)
+        self.assertEqual(property_type(p.exports[0]['LoadedProperties'][0], p), 'ObjectProperty')
+        self.assertEqual(result['identity'], ['/Script/UMG', 'Border', 'SetBrushFromMaterial'])
+        self.assertEqual(result['parameter']['schema'], {
+            'type': 'ObjectProperty', 'class': ['/Script/Engine', 'MaterialInstanceConstant'], 'default': None})
+        self.assertEqual(result['parameter']['value']['value'], {
+            'asset': '/Game/Materials.M_UI_Border',
+            'declared_class': ['/Script/Engine', 'MaterialInstanceConstant']})
+
+        p.imports[4]['ClassName'] = 'SoundWave'
+        with self.assertRaisesRegex(BlueprintTranslationError, 'source material asset'):
+            expression(value, set(), set(), package=p, owner=1)
+        p.imports.extend([
+            {'ObjectName': 'Object', 'ClassName': 'Class', 'OuterIndex': -7},
+            {'ObjectName': '/Script/CoreUObject', 'ClassName': 'Package'}])
+        with self.assertRaisesRegex(BlueprintTranslationError, 'Unsupported source property type: ObjectProperty'):
+            property_type({'SerializedType': 'ObjectProperty', 'PropertyClass': -6}, p)
 
     def test_original_umg_visibility_preserves_source_enum_byte(self):
         p = source_package()

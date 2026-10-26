@@ -22,6 +22,11 @@ OPERATIONS = {
     ('EX_VirtualFunction', 'SetText'): {'type': 'TextProperty', 'classes': frozenset(('TextBlock',))},
     ('EX_FinalFunction', 'SetColorAndOpacity'): {'type': 'StructProperty', 'native': 'LinearColor',
                                                 'classes': frozenset(('TextBlock',))},
+    ('EX_FinalFunction', 'SetBrushFromMaterial'): {'type': 'ObjectProperty',
+                                                  'classes': frozenset(('Border',)),
+                                                  'material_classes': frozenset((
+                                                      'Material', 'MaterialInstance',
+                                                      'MaterialInstanceConstant', 'MaterialInterface'))},
 }
 
 
@@ -35,7 +40,8 @@ def widget_context(value, package, owner, reads, outputs, depth):
     contract = OPERATIONS.get((dispatch, name))
     if contract is None:
         return None
-    if (dispatch == 'EX_FinalFunction' and identity != ('/Script/UMG', 'TextBlock', name)):
+    native_class = 'Border' if name == 'SetBrushFromMaterial' else 'TextBlock'
+    if (dispatch == 'EX_FinalFunction' and identity != ('/Script/UMG', native_class, name)):
         return None
     obj = value.get('ObjectExpression', {})
     if kind(obj) != 'EX_InstanceVariable':
@@ -66,6 +72,16 @@ def widget_context(value, package, owner, reads, outputs, depth):
     elif name == 'SetText' and token == 'EX_TextConst':
         arg = expression(argument, reads, outputs, depth + 1, package, owner)
         arg_schema = {'type': 'TextProperty', 'default': {'history': 'empty', 'text': '', 'flags': 0}}
+    elif name == 'SetBrushFromMaterial' and token == 'EX_ObjectConst':
+        arg = expression(argument, reads, outputs, depth + 1, package, owner)
+        arg_schema = arg.get('schema') if isinstance(arg, dict) else None
+        material_class = arg_schema.get('class') if isinstance(arg_schema, dict) else None
+        if (not isinstance(arg, dict) or arg.get('op') != 'typed_literal'
+                or not isinstance(arg_schema, dict) or arg_schema.get('type') != 'ObjectProperty'
+                or not isinstance(material_class, list) or len(material_class) != 2
+                or material_class[0] != '/Script/Engine'
+                or material_class[1] not in contract['material_classes']):
+            raise Error('Original UMG brush input is not a typed source material asset')
     else:
         raise Error('Original UMG call requires source-typed parameter')
     if (arg_schema.get('type') != contract['type']

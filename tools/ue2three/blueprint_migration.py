@@ -35,7 +35,8 @@ def property_type(prop, package=None):
         identity = schema.get('class') if schema else None
         if schema and (identity and identity[1] in STATIC_ASSET_MODULES.get(identity[0], set())
                        or schema.get('reference_kind') in
-                       ('runtime_actor', 'runtime_component', 'runtime_native_component', 'runtime_native_object')): return result
+                       ('runtime_actor', 'runtime_component', 'runtime_native_component',
+                        'runtime_native_object', 'runtime_native_widget')): return result
     if result == 'EnumProperty':
         result = prop.get('UnderlyingProp', {}).get('SerializedType')
     if result not in ('BoolProperty', 'ByteProperty', 'IntProperty', 'Int64Property', 'FloatProperty',
@@ -340,6 +341,19 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         return array_literal(value, package, owner, reads, outputs, depth)
     if token == 'EX_Context' and package:
         obj, call = value.get('ObjectExpression', {}), value.get('ContextExpression', {})
+        math_identity = import_path(package, call.get('StackNode')) if kind(call) == 'EX_FinalFunction' else None
+        if math_identity and math_identity[:2] == ('/Script/Engine', 'KismetMathLibrary'):
+            if (kind(obj) != 'EX_ObjectConst'
+                    or import_path(package, obj.get('Value')) != ('/Script/Engine', 'Default__KismetMathLibrary')
+                    or value.get('Offset') != memory_size(call, package=package)):
+                raise BlueprintTranslationError('Original KismetMathLibrary context receiver or offset differs')
+            # Some UE5.7 packages serialize a static math library call as a
+            # context-bound final call instead of EX_CallMath. Preserve the
+            # exact imported function, parameters and existing math signature
+            # checks; only normalize the opcode after validating its CDO and
+            # Kismet bytecode offset.
+            promoted = {**call, '$type': 'UAssetAPI.Kismet.Bytecode.Expressions.EX_CallMath, UAssetAPI'}
+            return expression(promoted, reads, outputs, depth+1, package, owner)
         if (kind(obj) == 'EX_ObjectConst' and import_path(package, obj.get('Value')) == ('/Script/Engine', 'Default__DataTableFunctionLibrary')
                 and kind(call) == 'EX_CallMath'
                 and import_path(package, call.get('StackNode')) == ('/Script/Engine', 'DataTableFunctionLibrary', 'GetDataTableRowNames')):
@@ -1236,6 +1250,7 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
                           'cache_implementation': file_hash(Path(__file__).with_name('blueprint_cache.py')),
                           'events_implementation': file_hash(Path(__file__).with_name('blueprint_events.py')),
                           'effects_implementation': file_hash(Path(__file__).with_name('blueprint_effects.py')),
+                          'widgets_implementation': file_hash(Path(__file__).with_name('blueprint_widgets.py')),
                           'objects_implementation': file_hash(Path(__file__).with_name('blueprint_objects.py')),
                           'queries_implementation': file_hash(Path(__file__).with_name('blueprint_queries.py')),
                           'values_implementation': file_hash(Path(__file__).with_name('blueprint_values.py')),

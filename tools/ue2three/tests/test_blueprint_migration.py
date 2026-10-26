@@ -222,6 +222,32 @@ class BlueprintMigrationTests(unittest.TestCase):
             function = self.function(); function['ScriptBytecode'].insert(1, node(token))
             with self.assertRaises(BlueprintTranslationError): translate_function(function)
 
+    def test_static_kismet_math_context_normalizes_only_with_exact_cdo_and_offset(self):
+        from blueprint_migration import expression
+        imports = [
+            {'ObjectName': 'NotEqual_NameName', 'ClassName': 'Function', 'OuterIndex': -2},
+            {'ObjectName': 'KismetMathLibrary', 'OuterIndex': -3},
+            {'ObjectName': '/Script/Engine', 'ClassName': 'Package'},
+            {'ObjectName': 'Default__KismetMathLibrary', 'OuterIndex': -3},
+        ]
+        call = node('EX_FinalFunction', StackNode=-1,
+                    Parameters=[node('EX_NameConst', Value='None'), node('EX_NameConst', Value='Muzzle')])
+        context = node('EX_Context', ObjectExpression=node('EX_ObjectConst', Value=-4),
+                       ContextExpression=call, Offset=memory_size(call))
+        package = Package({'Imports': imports, 'Exports': []})
+        translated = expression(context, set(), set(), package=package, owner=None)
+        self.assertEqual(translated['op'], 'math')
+        self.assertEqual(translated['name'], 'NotEqual_NameName')
+        self.assertEqual([arg['value'] for arg in translated['args']], ['None', 'Muzzle'])
+
+        context['Offset'] += 1
+        with self.assertRaisesRegex(BlueprintTranslationError, 'offset'):
+            expression(context, set(), set(), package=package, owner=None)
+        context['Offset'] -= 1
+        context['ObjectExpression']['Value'] = -3
+        with self.assertRaisesRegex(BlueprintTranslationError, 'receiver'):
+            expression(context, set(), set(), package=package, owner=None)
+
     def test_instance_assignment_preserves_scope(self):
         function = self.function(); function['ScriptBytecode'][1]['Variable'] = variable('EX_InstanceVariable', 'State')
         function['ScriptBytecode'][2] = node('EX_Return', ReturnExpression=node('EX_Nothing'))

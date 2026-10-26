@@ -497,6 +497,13 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','Widget','SetVisibility'])
                 && expression.dispatch === 'EX_VirtualFunction'
                 && expression.parameter?.schema?.type === 'ByteProperty'
+                || method === 'SetBrushFromMaterial'
+                && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','Border','SetBrushFromMaterial'])
+                && expression.dispatch === 'EX_FinalFunction'
+                && expression.parameter?.schema?.type === 'ObjectProperty'
+                && expression.parameter?.schema?.class?.[0] === '/Script/Engine'
+                && ['Material','MaterialInstance','MaterialInstanceConstant','MaterialInterface']
+                    .includes(expression.parameter?.schema?.class?.[1])
                 || method === 'SetText'
                 && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','TextBlock','SetText'])
                 && ['EX_FinalFunction','EX_VirtualFunction'].includes(expression.dispatch)

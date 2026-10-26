@@ -78,6 +78,13 @@ class BlueprintCompileCacheTests(unittest.TestCase):
                 changed = migration.migrate_blueprints(project, workspace, published)
             self.assertEqual(translate.call_count, 1)
             self.assertNotEqual(before['compiler_fingerprint'], changed['compiler_fingerprint'])
+            def changed_widget_adapter(path):
+                return 'e'*64 if str(path).endswith('blueprint_widgets.py') else file_hash(path)
+            with patch.object(migration, 'file_hash', side_effect=changed_widget_adapter), patch.object(
+                    migration, 'translate_package', wraps=migration.translate_package) as translate:
+                changed_widgets = migration.migrate_blueprints(project, workspace, published)
+            self.assertEqual(translate.call_count, 1)
+            self.assertNotEqual(changed['compiler_fingerprint'], changed_widgets['compiler_fingerprint'])
 
     def test_cache_identity_project_payload_and_source_directory_guards(self):
         with tempfile.TemporaryDirectory() as directory:

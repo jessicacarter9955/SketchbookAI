@@ -101,3 +101,33 @@ test('native text color requires original LinearColor struct type and four finit
   assert.throws(()=>executeBlueprint(program(bad),{Txt_Label:ref},{},{native:native()}),
     /Invalid typed source member/);
 });
+
+test('native Border material brush emits the exact source material reference',()=>{
+  const borderClass=['/Script/UMG','Border'];
+  const border={kind:'source_native_widget',source_package:pkg,source_owner_index:1,
+    source_field:'Border_Selection',widget_id:'border-original-1',declared_class:borderClass};
+  const schema={type:'ObjectProperty',class:['/Script/Engine','MaterialInstanceConstant'],default:null};
+  const material={asset:'/Game/Materials.M_UI_Border',declared_class:['/Script/Engine','MaterialInstanceConstant']};
+  const command={op:'native_widget_effect',source_owner_index:1,source_binding_required:true,
+    visual_1to1_certified:false,identity:['/Script/UMG','Border','SetBrushFromMaterial'],
+    dispatch:'EX_FinalFunction',method:'SetBrushFromMaterial',
+    receiver:{op:'get',scope:'self',field:'Border_Selection'},receiver_field:'Border_Selection',
+    receiver_schema:{type:'ObjectProperty',class:borderClass,reference_kind:'runtime_native_widget',default:null},
+    parameter:{schema,value:{op:'typed_literal',schema,value:material}}};
+  const p=program(command);
+  p.self_reads=['Border_Selection'];
+  p.field_types.self={Border_Selection:'ObjectProperty'};
+  p.schemas.self={Border_Selection:{type:'ObjectProperty',class:borderClass,reference_kind:'runtime_native_widget'}};
+  const bindings={source_package:pkg,source_owner_index:1,widgets:{Border_Selection:{
+    reference:border,source_field:'Border_Selection',source_owner_index:1,
+    declared_class:borderClass,binding_complete:true}}};
+  const result=executeBlueprint(p,{Border_Selection:border},{},{native:bindings});
+  assert.deepEqual(result.effects[0].identity,['/Script/UMG','Border','SetBrushFromMaterial']);
+  assert.deepEqual(result.effects[0].parameter,material);
+  const bad=structuredClone(command);
+  bad.parameter.schema.class=['/Script/Engine','SoundWave'];
+  bad.parameter.value.schema.class=['/Script/Engine','SoundWave'];
+  bad.parameter.value.value.declared_class=['/Script/Engine','SoundWave'];
+  assert.throws(()=>executeBlueprint(program(bad),{Border_Selection:border},{},{native:bindings}),
+    /Unsupported or unbound original UMG context contract/);
+});
