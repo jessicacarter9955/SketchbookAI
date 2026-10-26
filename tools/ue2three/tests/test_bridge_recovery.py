@@ -1,5 +1,6 @@
 import json
 from http.client import IncompleteRead
+from urllib.error import HTTPError
 from pathlib import Path
 from types import SimpleNamespace
 import tempfile
@@ -81,6 +82,55 @@ class Tests(unittest.TestCase):
         list(self.client.comments('private/relay', 1))
         list(self.client.comments('private/relay', 1))
         self.assertIn('since=2026-10-21T15%3A59%3A59Z', self.routes[-1])
+
+    def test_secondary_channel_keeps_job_registry_and_separates_health_cursor_outbox(self):
+        channel = Path(self.temp.name) / 'issue2'
+        recovery = Recovery(self.bridge, state_dir=channel)
+        recovery.note('connected')
+        self.assertEqual(self.bridge.CONFIG_DIR, Path(self.temp.name))
+        self.assertEqual(recovery.outbox, channel / 'pending-results')
+        self.assertEqual(recovery.cursor, channel / 'relay-cursor.json')
+        self.assertTrue((channel / 'connection-health.json').is_file())
+
+    def test_rate_limit_reset_is_durable_and_waits_before_any_request(self):
+        now = [1000.0]
+        slept = []
+        def sleep(seconds):
+            slept.append(seconds)
+            now[0] += seconds
+        recovery = Recovery(self.bridge, sleep=sleep, clock=lambda: now[0])
+        failure = self.bridge.BridgeError('GitHub HTTP 403: API rate limit exceeded')
+        failure.__cause__ = HTTPError('https://api.github.com/example', 403, 'limited',
+                                      {'X-RateLimit-Remaining': '0', 'X-RateLimit-Reset': '1130'}, None)
+        recovery.original_call = lambda *args: (_ for _ in ()).throw(failure)
+        with self.assertRaises(self.bridge.BridgeError):
+            recovery.call(self.client, 'GET', '/example')
+        self.assertEqual(recovery.not_before, 1132)
+        self.assertFalse(slept)
+        restarted = Recovery(self.bridge, sleep=sleep, clock=lambda: now[0])
+        restarted.original_call = lambda *args: {'ok': True}
+        self.assertEqual(restarted.call(self.client, 'GET', '/example'), {'ok': True})
+        self.assertEqual(slept, [60, 60, 12])
+
+    def test_retry_after_precedes_primary_limit_reset(self):
+        recovery = Recovery(self.bridge, clock=lambda: 1000)
+        failure = self.bridge.BridgeError('GitHub HTTP 429')
+        failure.__cause__ = HTTPError('https://api.github.com/example', 429, 'limited',
+                                      {'Retry-After': '90', 'X-RateLimit-Reset': '9999'}, None)
+        recovery.original_call = lambda *args: (_ for _ in ()).throw(failure)
+        with self.assertRaises(self.bridge.BridgeError):
+            recovery.call(self.client, 'POST', '/example', {'body': 'result'})
+        self.assertEqual(recovery.not_before, 1090)
+
+    def test_forbidden_request_without_rate_limit_does_not_back_off(self):
+        recovery = Recovery(self.bridge, clock=lambda: 1000)
+        failure = self.bridge.BridgeError('GitHub HTTP 403: resource not accessible')
+        failure.__cause__ = HTTPError('https://api.github.com/example', 403, 'forbidden', {}, None)
+        recovery.original_call = lambda *args: (_ for _ in ()).throw(failure)
+        with self.assertRaises(self.bridge.BridgeError):
+            recovery.call(self.client, 'GET', '/example')
+        self.assertEqual(recovery.not_before, 0)
+        self.assertFalse(recovery.cooldown.exists())
 
 
 if __name__ == '__main__':

@@ -15,6 +15,7 @@ from pathlib import Path
 import sys
 import time
 from urllib.parse import quote
+from email.utils import parsedate_to_datetime
 
 
 def atomic(path, value):
@@ -28,12 +29,18 @@ def atomic(path, value):
 
 
 class Recovery:
-    def __init__(self, bridge, sleep=time.sleep):
+    def __init__(self, bridge, sleep=time.sleep, clock=time.time, state_dir=None):
         self.bridge = bridge
         self.sleep = sleep
-        self.outbox = bridge.CONFIG_DIR / 'pending-results'
-        self.health = bridge.CONFIG_DIR / 'connection-health.json'
-        self.cursor = bridge.CONFIG_DIR / 'relay-cursor.json'
+        self.clock = clock
+        self.state_dir = Path(state_dir) if state_dir is not None else bridge.CONFIG_DIR
+        self.outbox = self.state_dir / 'pending-results'
+        self.health = self.state_dir / 'connection-health.json'
+        self.cursor = self.state_dir / 'relay-cursor.json'
+        self.cooldown = self.state_dir / 'rate-limit.json'
+        self.not_before = 0
+        if self.cooldown.exists():
+            self.not_before = float(json.loads(self.cooldown.read_text(encoding='utf-8')).get('not_before', 0))
         self.original_call = bridge.GitHub.call
         self.original_comments = bridge.GitHub.comments
         self.original_comment = bridge.GitHub.comment
@@ -48,6 +55,9 @@ class Recovery:
         # durable result outbox before a second send, never blindly repeated.
         attempts = 3 if method == 'GET' else 1
         for attempt in range(attempts):
+            while self.not_before > self.clock():
+                self.note('rate_limited', retry_at=datetime.fromtimestamp(self.not_before, timezone.utc).isoformat())
+                self.sleep(min(60, self.not_before - self.clock()))
             try:
                 return self.original_call(client, method, route, payload)
             except (OSError, HTTPException, json.JSONDecodeError) as error:
@@ -55,8 +65,37 @@ class Recovery:
                 if attempt + 1 == attempts:
                     raise self.bridge.BridgeError('Relay transport interrupted; result/checkpoint retained') from None
                 self.sleep(2 ** attempt)
-            except self.bridge.BridgeError:
-                self.note('relay_error', operation=method)
+            except self.bridge.BridgeError as error:
+                response = error.__cause__
+                headers = getattr(response, 'headers', None) or {}
+                status = getattr(response, 'code', None)
+                limited = status == 429 or (status == 403 and (
+                    headers.get('X-RateLimit-Remaining') == '0' or
+                    headers.get('Retry-After') or 'rate limit' in str(error).lower()))
+                if not limited and ('http 429' in str(error).lower() or
+                                    ('http 403' in str(error).lower() and 'rate limit' in str(error).lower())):
+                    limited = True
+                if limited:
+                    deadline = self.clock() + 60
+                    retry = headers.get('Retry-After')
+                    if retry:
+                        try:
+                            deadline = self.clock() + float(retry)
+                        except ValueError:
+                            try:
+                                deadline = parsedate_to_datetime(retry).timestamp()
+                            except (TypeError, ValueError, OverflowError):
+                                pass
+                    elif headers.get('X-RateLimit-Reset'):
+                        try:
+                            deadline = float(headers['X-RateLimit-Reset']) + 2
+                        except (TypeError, ValueError, OverflowError):
+                            pass
+                    self.not_before = min(self.clock() + 86400, max(self.clock() + 1, deadline))
+                    atomic(self.cooldown, {'not_before': self.not_before})
+                    self.note('rate_limited', retry_at=datetime.fromtimestamp(self.not_before, timezone.utc).isoformat())
+                else:
+                    self.note('relay_error', operation=method)
                 raise
 
     def queue_result(self, client, repo, issue, body):
@@ -144,6 +183,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--bridge-dir', type=Path, required=True)
     parser.add_argument('--once', action='store_true')
+    parser.add_argument('--channel-dir', type=Path,
+                        help='Existing channel config and processed IDs; shared job registry stays unchanged')
+    parser.add_argument('--primary-issue', type=int,
+                        help='Stop this sidecar if the primary relay changes away from this issue')
     args = parser.parse_args()
     directory = args.bridge_dir.resolve(strict=True)
     if not (directory / 'bridge_pro.py').is_file():
@@ -151,10 +194,25 @@ def main():
     sys.path.insert(0, str(directory))
     pro = importlib.import_module('bridge_pro')
     bridge = pro.bridge
-    recovery = Recovery(bridge)
+    primary_config = bridge.CONFIG_FILE
+    channel = args.channel_dir.resolve(strict=True) if args.channel_dir else bridge.CONFIG_DIR
+    if args.channel_dir:
+        if not (channel / 'config.json').is_file():
+            parser.error('An existing channel config.json is required; permissions are never copied or expanded')
+        bridge.CONFIG_FILE = channel / 'config.json'
+        bridge.STATE_FILE = channel / 'processed.json'
+    recovery = Recovery(bridge, state_dir=channel)
     recovery.install()
+    if args.primary_issue is not None:
+        comments = bridge.GitHub.comments
+        def guarded(client, repo, issue):
+            current = json.loads(primary_config.read_text(encoding='utf-8'))
+            if current.get('issue') != args.primary_issue:
+                raise ValueError('Primary relay changed channel; stop sidecar to avoid duplicate execution')
+            yield from comments(client, repo, issue)
+        bridge.GitHub.comments = guarded
     try:
-        with singleton(bridge.CONFIG_DIR):
+        with singleton(channel):
             bridge.run(once=args.once)
     except (bridge.BridgeError, OSError, ValueError) as error:
         recovery.note('disconnected', error_type=type(error).__name__)
