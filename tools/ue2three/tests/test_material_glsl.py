@@ -85,10 +85,25 @@ class SourceMaterialShaderTests(unittest.TestCase):
         self.assertIn('Non-finite', result['blocked_roots']['Roughness'])
         self.assertIn('Unsafe material root', result['blocked_roots']['Opacity'])
 
-    def test_missing_native_input_cannot_be_guessed(self):
+    def test_missing_native_inputs_use_original_cpp_const_defaults(self):
         nodes = [node(1, 'Multiply', inputs={'A': link(0), 'B': link(0)})]
         result = compile_graph(graph(nodes, {'Roughness': link(1)}))
-        self.assertIn('Unconnected input', result['blocked_roots']['Roughness'])
+        self.assertEqual(result['translated_roots']['Roughness']['glsl'], '(0.0 * 1.0)')
+        self.assertEqual(result['blocked_roots'], {})
+
+    def test_optional_math_const_defaults_and_connected_fail_closed(self):
+        for kind, expected in (('Add', '(0.0 + 1.0)'),
+                               ('Subtract', '(1.0 - 1.0)'),
+                               ('Divide', '(1.0 / 2.0)'),
+                               ('LinearInterpolate', 'mix(0.0, 1.0, 0.5)')):
+            source = graph([node(1, kind)], {'Roughness': link(1)})
+            self.assertEqual(compile_graph(source)['translated_roots']['Roughness']['glsl'], expected)
+        source = graph([node(1, 'Multiply', {'A': link(2)}, {'ConstA': 0.7}),
+                        node(2, 'SceneColor')], {'Roughness': link(1)})
+        self.assertIn('SceneColor', compile_graph(source)['blocked_roots']['Roughness'])
+        broken = graph([node(1, 'Power', {'Base': link(2)}, {'ConstExponent': 3}),
+                        node(2, 'Constant', props={'R': 0.5})], {'Roughness': link(1)})
+        self.assertIn('3.0', compile_graph(broken)['translated_roots']['Roughness']['glsl'])
 
     def test_connected_unimplemented_vertex_root_is_explicitly_blocked(self):
         result = compile_graph(graph([node(1, 'Constant', props={'R': 1})],
