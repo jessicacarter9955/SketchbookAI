@@ -43,6 +43,29 @@ def entries(data):
     return out
 
 
+def compare_shared_packages(before, after):
+    """Certify only packages present in both snapshots; report excluded coverage.
+
+    Never interpret absent baseline packages as regressions or claim a full-project
+    monotonic result. Source hash mismatches inside the common scope still fail.
+    """
+    baseline = set(before["packages"])
+    current = set(after["packages"])
+    common = baseline & current
+    if not common:
+        raise ValueError("No overlapping Blueprint packages to compare")
+    scoped_before = dict(before, packages={p: before["packages"][p] for p in sorted(common)})
+    scoped_after = dict(after, packages={p: after["packages"][p] for p in sorted(common)})
+    result = compare(scoped_before, scoped_after)
+    result["comparison_scope"] = "shared_packages_only"
+    result["shared_package_count"] = len(common)
+    result["baseline_only_packages"] = sorted(baseline - current)
+    result["current_only_packages"] = sorted(current - baseline)
+    result["full_project_certified"] = not (baseline ^ current) and result["monotonic_source_compilation"]
+    result["scoped_monotonic_source_compilation"] = result["monotonic_source_compilation"]
+    return result
+
+
 def compare(before, after):
     a, b = entries(before), entries(after)
     sources_a = {p: r.get("source", {}).get("source_sha256") for p, r in before["packages"].items()}
