@@ -148,5 +148,47 @@ class SourceMaterialShaderTests(unittest.TestCase):
         self.assertIn('0.2', compile_graph(source)['translated_roots']['Roughness']['glsl'])
 
 
+    def test_witnessed_power_smoothstep_and_bias_scale(self):
+        inputs = [node(1, 'Constant', props={'R': 0.5}),
+                  node(2, 'Constant', props={'R': 2.0}),
+                  node(3, 'Power', inputs={'Base': link(1), 'Exponent': link(2)}),
+                  node(4, 'SmoothStep', inputs={'Min': link(1), 'Max': link(2), 'Value': link(3)}),
+                  node(5, 'ConstantBiasScale', inputs={'Input': link(4)},
+                       props={'Bias': -0.7, 'Scale': 2})]
+        result = compile_graph(graph(inputs, {'Roughness': link(5)}))
+        code = result['translated_roots']['Roughness']['glsl']
+        self.assertIn('pow(0.5, 2.0)', code)
+        self.assertIn('smoothstep(', code)
+        self.assertIn('-0.7', code)
+        self.assertEqual(result['blocked_roots'], {})
+
+    def test_original_ceil_round_and_vector_normalize(self):
+        nodes = [node(1, 'Constant', props={'R': 0.52}),
+                 node(2, 'Ceil', inputs={'Input': link(1)}),
+                 node(3, 'Round', inputs={'Input': link(1)}),
+                 node(4, 'Constant3Vector', props={'Constant': {
+                     'Constant': {'R': 0.2, 'G': 0.4, 'B': 0.6, 'A': 1}}}),
+                 node(5, 'Normalize', inputs={'VectorInput': link(4)})]
+        result = compile_graph(graph(nodes, {
+            'Roughness': link(2), 'Metallic': link(3), 'BaseColor': link(5)}))
+        self.assertEqual(result['translated_roots']['Roughness']['glsl'], 'ceil(0.52)')
+        self.assertEqual(result['translated_roots']['Metallic']['glsl'], 'round(0.52)')
+        self.assertIn('normalize(vec3', result['translated_roots']['BaseColor']['glsl'])
+        self.assertEqual(result['blocked_roots'], {})
+
+    def test_new_ops_fail_closed_for_unwitnessed_inputs_and_types(self):
+        cases = [
+            node(1, 'Power', inputs={'Base': link(2)}),
+            node(1, 'SmoothStep', inputs={'Min': link(2), 'Max': link(2)}),
+            node(1, 'Normalize', inputs={'VectorInput': link(2)}),
+            node(1, 'ConstantBiasScale', inputs={'Input': link(2)}, props={'Bias': 0}),
+            node(1, 'ConstantBiasScale', inputs={'Input': link(2)}, props={'Bias': 0, 'Scale': 'NaN'})]
+        for tested in cases:
+            with self.subTest(kind=tested['class'], props=tested['properties']):
+                result = compile_graph(graph([tested, node(2, 'Constant', props={'R': 0.5})],
+                                             {'Roughness': link(1)}))
+                self.assertIn('Roughness', result['blocked_roots'])
+
+
 if __name__ == '__main__':
     unittest.main()
