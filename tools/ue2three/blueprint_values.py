@@ -53,6 +53,37 @@ def native_schema(identity):
                             'Scale3D': {'X': 1, 'Y': 1, 'Z': 1}}, 'member_order': list(fields)}
 
 
+def witnessed_complete_default(schema, value):
+    """Accept only fully serialized original CDO values, never guessed struct zeros.
+
+    Sparse Unreal tagged properties require a witnessed constructor to fill
+    absent members. When no constructor is available, a *complete* CDO struct
+    can still safely initialize the instance if every field is type checked.
+    """
+    kind = schema.get('type') if isinstance(schema, dict) else None
+    if kind == 'StructProperty':
+        fields = schema.get('fields')
+        if not isinstance(fields, dict) or not fields or not isinstance(value, dict) or value.keys() != fields.keys():
+            raise ValueError('Complete original CDO struct members are unavailable')
+        return {field: witnessed_complete_default(child, value[field]) for field, child in fields.items()}
+    if kind == 'ArrayProperty':
+        if not isinstance(value, list) or len(value) > 100000: raise ValueError('Invalid original CDO array')
+        return [witnessed_complete_default(schema.get('element'), item) for item in value]
+    if kind == 'BoolProperty' and type(value) is bool: return value
+    if kind in ('IntProperty', 'ByteProperty', 'Int64Property') and type(value) is int:
+        lower, upper = {'IntProperty': (-2**31, 2**31 - 1), 'ByteProperty': (0, 255),
+                        'Int64Property': (-2**53 + 1, 2**53 - 1)}[kind]
+        if lower <= value <= upper: return value
+    if kind in ('FloatProperty', 'DoubleProperty') and type(value) in (int, float, str):
+        try: number = float(value)
+        except ValueError: pass
+        else:
+            if math.isfinite(number): return number
+    if kind in ('StrProperty', 'NameProperty') and isinstance(value, str): return value
+    if kind in ('ObjectProperty', 'ClassProperty') and value is None: return None
+    raise ValueError('Invalid or unsupported original CDO struct field: ' + str(kind))
+
+
 def asset_reference(package, value, declared_class):
     from blueprint_types import import_path
     if value == 0 and type(value) is int: return None
@@ -144,6 +175,33 @@ def serialized_value(package, prop, schema, value):
 def source_enums(documents):
     return {(name, export['ObjectName']): {v['Item1']: v['Item2'] for v in export['Enum'].get('Names', [])}
              for name, doc in documents.items() for export in doc.get('Exports', []) if 'Enum' in export}
+
+
+def witnessed_enum_tag_default(value, enums):
+    """Resolve a CDO enum inherited from a parent class using its own tag.
+
+    UAssetAPI preserves the full enum package path on the original ByteProperty
+    tag even when the generated child's LoadedProperties omits an inherited
+    declaration. Require the exact source enum table; never parse an ordinal
+    out of a display name or silently assume zero.
+    """
+    nodes = value.get('PropertyTypeName')
+    if (value.get('ByteType') != 'FName' or not isinstance(nodes, list) or len(nodes) != 3
+            or [n.get('InnerCount') for n in nodes if isinstance(n, dict)] != [1, 1, 0]
+            or not all(isinstance(n, dict) and isinstance(n.get('Name'), str) for n in nodes)
+            or nodes[0]['Name'] != 'ByteProperty' or nodes[1]['Name'] != value.get('EnumType')
+            or not nodes[1]['Name'] or not nodes[2]['Name'].startswith('/Game/')
+            or not isinstance(value.get('EnumValue'), str)
+            or not value['EnumValue'].startswith(nodes[1]['Name'] + '::')):
+        raise ValueError('Original inherited enum identity is incomplete')
+    enum_key = (nodes[2]['Name'], nodes[1]['Name'])
+    mapping = enums.get(enum_key)
+    if not isinstance(mapping, dict) or value['EnumValue'] not in mapping:
+        raise ValueError('Original enum value mapping not cached: ' + '/'.join(enum_key))
+    ordinal = mapping[value['EnumValue']]
+    if type(ordinal) is not int or not 0 <= ordinal <= 255:
+        raise ValueError('Original enum value outside byte range')
+    return ordinal
 
 
 def construct_source_structs(documents):

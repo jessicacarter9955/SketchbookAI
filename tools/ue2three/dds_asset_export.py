@@ -356,6 +356,20 @@ class ExportSupervisor:
             self._update_job("character", total=total)
             fingerprint, _source_files = character_fingerprint(self.project, recipe)
             self._fingerprint = fingerprint
+            # Repeated --loop ticks must not re-export the same 48 original
+            # assets when the prior GLBs and source fingerprint still match.
+            # Validate every output again rather than trusting the old status.
+            try:
+                cached = _verified_character_files(
+                    self.character_output, self.project, fingerprint, total,
+                    set(recipe["clips"]), set(recipe["attachment_assets"]))
+            except (OSError, ValueError, KeyError):
+                cached = []
+            if len(cached) == total:
+                self._update_job("character", status="completed", completed=total,
+                                 converted=total, failed=0, outputs=cached,
+                                 reused_verified_outputs=True, error=None)
+                return False
             return True
         except (OSError, ValueError) as exc:
             self._update_job("character", status="blocked", running=False,
@@ -498,6 +512,17 @@ class ExportSupervisor:
             return 0 if self.progress["status"] == "completed" else 3
 
 
+def stalled_retry_delay(base_seconds: int, unchanged_rounds: int, cap_seconds: int = 3600) -> int:
+    """Retry unchanged partial exports without exhausting disk with identical runs.
+
+    This never disables explicit --run or the long-running --loop scheduler.
+    New verified outputs reset the delay to the caller's configured interval.
+    """
+    if not 30 <= base_seconds <= cap_seconds or unchanged_rounds < 0:
+        raise ValueError("Invalid retry delay or unchanged-round count")
+    return min(cap_seconds, base_seconds * (2 ** min(unchanged_rounds, 16)))
+
+
 def parser():
     p = argparse.ArgumentParser(description="Run resumable DDS Unreal-to-GLB exports beside the four Blueprint workers")
     actions = p.add_mutually_exclusive_group(required=True)
@@ -516,6 +541,8 @@ def parser():
     p.add_argument("--no-scan", action="store_true", help="Block maps when the verified inventory is unavailable")
     p.add_argument("--interval-seconds", type=int, default=300,
                    help="Scheduler interval in --loop mode; default 300 seconds")
+    p.add_argument("--max-stalled-delay-seconds", type=int, default=3600,
+                   help="Maximum retry interval after unchanged partial results; default one hour")
     return p
 
 
@@ -532,9 +559,13 @@ def main(argv=None):
         return 0
     if args.interval_seconds < 30:
         parser().error("--interval-seconds must be at least 30")
+    if args.max_stalled_delay_seconds < args.interval_seconds:
+        parser().error("--max-stalled-delay-seconds must be >= --interval-seconds")
     for field in ("project", "map_workspace", "publish_dir"):
         if getattr(args, field) is None:
             parser().error(f"--run/--loop requires --{field.replace('_', '-')}")
+    last_signature = None
+    unchanged_rounds = 0
     try:
         while True:
             runner = ExportSupervisor(args.project, args.map_workspace, args.publish_dir, args.state_dir,
@@ -542,7 +573,20 @@ def main(argv=None):
             result = runner.run()
             if not args.loop:
                 return result
-            time.sleep(args.interval_seconds)
+            # A deterministic native crash should not create thousands of
+            # identical directories every five minutes. Keep retrying but
+            # exponentially back off until output or source evidence changes.
+            signature = (runner._source_snapshot_hash, runner._fingerprint,
+                         tuple((job['id'], job['completed'], job['failed'], job['skipped'])
+                               for job in runner.progress['jobs']))
+            unchanged_rounds = unchanged_rounds + 1 if result and signature == last_signature else 0
+            last_signature = signature
+            wait_seconds = stalled_retry_delay(args.interval_seconds, unchanged_rounds,
+                                               args.max_stalled_delay_seconds)
+            if unchanged_rounds:
+                print(f"DDS_EXPORT_UNCHANGED {unchanged_rounds} retries; next attempt in {wait_seconds}s",
+                      flush=True)
+            time.sleep(wait_seconds)
     except KeyboardInterrupt:
         return 130
     except (OSError, ValueError, RuntimeError) as exc:

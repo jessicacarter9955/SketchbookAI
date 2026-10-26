@@ -69,6 +69,7 @@ def export_implementation_hash():
     # Offline processing and orchestration edits must not invalidate UE exports.
     return digest({'contract': EXPORT_CACHE_VERSION,
                    'exporter': file_hash(root / 'unreal_world_export.py'),
+                   'actor_selection': file_hash(root / 'map_actor_selection.py'),
                    'scratch': file_hash(root / 'engine_runner.py')})
 
 

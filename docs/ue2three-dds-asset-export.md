@@ -99,3 +99,48 @@ already processes map packages individually with source-aware, resumable
 checkpoints. The additional four Codex workers handle Blueprint functions.
 The all-green condition still requires integration into Three.js, runtime
 collision and animation checks, scene Play and user acceptance after conversion.
+
+## Source plugin fidelity in isolated map exports
+
+Unreal world exports run in a temporary Content-only mirror. Unlike the registry
+inspector, that map mirror now loads **installed stock engine plugins explicitly
+enabled by the source `.uproject`**, plus the built-in `EnhancedInput` and
+`Niagara` serializers unless explicitly disabled by the original project.
+This matters for Blueprint input structs and Niagara scene objects: omitting
+these plugins can deserialize valid original assets as unknown types, resulting
+in lost data and compiler errors. The source project and packages are never
+edited. The exporter continues to disable other default plugins and refuses
+project-native, Marketplace, network, and assistant integrations.
+
+`engine/<map-export-scratch>/.ue2three-engine-plugin-provenance.json` lists
+the exact stock modules enabled and any omitted or invalid source plugin
+descriptors (for example an unavailable plugin). An omission is **not** proof
+that the corresponding logic has been translated. Adding serializers also does
+not by itself establish a valid `GalleryLevel` GLB or 1:1 runtime behavior;
+the next targeted Unreal export, geometry/material checks, and Play remain
+required. Existing exports are invalidated by the changed exporter fingerprint
+when reprocessed.
+
+The first PC trial found an independent Unreal 5.7 startup failure inside the
+stock `MetaHumanCharacter` plugin: its own
+`/MetaHumanCharacter/Face/ARKit/AS_MetaHuman_ARKit_Mapping` sequence has no
+usable animation data model. That plugin and the unrelated movie-render and
+modeling-editor interfaces are omitted from the **map export mirror only**,
+with their names and exact reasons retained in the provenance report. This
+preserves the source and avoids treating an unrelated editor-plugin crash as
+proof that the DDS level cannot be migrated. MetaHuman-specific content, if
+referenced by a DDS scene, still requires its own compatible export path.
+
+If Unreal crashes inside `InterchangeEngine`/`GLTFExporter` while exporting a
+loaded world, each attempt now writes an isolated `actor-census.json` **before**
+the native export. Its actor names, classes, source snapshot hash and world
+identity support a targeted crash-bisection diagnostic. The same exporter
+supports an explicit `selected_actor_names` list in an internal map request:
+it rejects missing or duplicate identities and passes the exact actors to
+Unreal's documented selected-actor glTF API. An empty requested list is an
+error (Unreal would otherwise interpret it as the complete world).
+
+This diagnostic preserves the original `use_mesh_data` baking mode; an exported
+actor fragment is **not a converted level**. Actor subsets are only for
+identifying native exporter failures, followed by complete source coverage,
+geometry/material reconstruction and Play verification before any green state.

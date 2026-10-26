@@ -1,12 +1,100 @@
 import unittest
 from blueprint_types import source_structs, property_schema
 from blueprint_migration import BlueprintTranslationError, translate_package, memory_size, property_type
-from blueprint_values import serialized_value, native_schema
+from blueprint_values import serialized_value, native_schema, witnessed_complete_default, witnessed_enum_tag_default
 from umg_migration import Package
 from test_blueprint_migration import node
 
 
 class SourceTypesTests(unittest.TestCase):
+    def test_inherited_original_enum_tag_is_resolved_without_guessing(self):
+        identity = '/Game/Fixers/Core/Blueprints/Components/Identity/Enum/E_Faction'
+        tag = {'Name': 'Faction', 'ByteType': 'FName', 'EnumType': 'E_Faction',
+               'EnumValue': 'E_Faction::NewEnumerator2',
+               'PropertyTypeName': [{'Name': 'ByteProperty', 'InnerCount': 1},
+                                    {'Name': 'E_Faction', 'InnerCount': 1},
+                                    {'Name': identity, 'InnerCount': 0}]}
+        enums = {(identity, 'E_Faction'): {'E_Faction::NewEnumerator2': 5}}
+        self.assertEqual(witnessed_enum_tag_default(tag, enums), 5)
+        package = Package({'Exports': [
+            {'ObjectName': 'ReadFaction', 'OuterIndex': 2, 'ScriptBytecode': [
+                node('EX_Return', ReturnExpression=node('EX_InstanceVariable',
+                     Variable={'New': {'Path': ['Faction'], 'ResolvedOwner': 2}})),
+                node('EX_EndOfScript')]},
+            {'ObjectName': 'Child_C', 'LoadedProperties': []},
+            {'ObjectName': 'Default__Child_C', 'Data': [tag]}]})
+        package.source_enums = enums
+        report = translate_package(package)
+        self.assertEqual(report['default_state']['Faction'], 5)
+        self.assertEqual(report['functions']['ReadFaction']['source_defaults']['Faction'], 5)
+        self.assertEqual(report['functions']['ReadFaction']['field_types']['self']['Faction'], 'ByteProperty')
+        self.assertNotIn('Faction', report['unavailable_default_fields'])
+        for bad in ({}, {(identity, 'E_Faction'): {'E_Faction::Other': 5}}):
+            with self.subTest(bad=bad):
+                package.source_enums = bad
+                report = translate_package(package)
+                self.assertNotIn('ReadFaction', report['functions'])
+        for changed in ('path', 'value', 'type'):
+            other = dict(tag)
+            other['PropertyTypeName'] = [dict(x) for x in tag['PropertyTypeName']]
+            if changed == 'path': other['PropertyTypeName'][2]['Name'] = '/Game/Fake/E_Faction'
+            elif changed == 'value': other['EnumValue'] = 'E_Faction::MadeUp'
+            else: other['PropertyTypeName'][0]['Name'] = 'IntProperty'
+            with self.subTest(changed=changed), self.assertRaises(ValueError):
+                witnessed_enum_tag_default(other, enums)
+
+    def test_struct_without_source_constructor_is_blocked_without_crashing_replay(self):
+        package = Package({'Exports': [
+            {'ObjectName': 'ReadMissing', 'OuterIndex': 2, 'ScriptBytecode': [
+                node('EX_Return', ReturnExpression=node('EX_InstanceVariable',
+                     Variable={'New': {'Path': ['State'], 'ResolvedOwner': 2}})),
+                node('EX_EndOfScript')]},
+            {'ObjectName': 'Test_C', 'LoadedProperties': [
+                {'Name': 'State', 'SerializedType': 'StructProperty', 'Struct': -1}]}],
+            'Imports': [{'ObjectName': 'Unknown', 'OuterIndex': -2},
+                        {'ObjectName': '/Game/Original', 'ClassName': 'Package'}]})
+        schema = {'type': 'StructProperty', 'fields': {'Value': {'type': 'IntProperty'}}}
+        result = translate_package(package, {('/Game/Original', 'Unknown'): schema})
+        self.assertNotIn('State', result['default_state'])
+        self.assertIn('State', result['unavailable_default_fields'])
+        self.assertEqual(result['unavailable_default_evidence']['State']['source_struct'], ['/Game/Original', 'Unknown'])
+        self.assertFalse(result['unavailable_default_evidence']['State']['source_cdo_present'])
+        self.assertNotIn('ReadMissing', result['functions'])
+
+    def test_complete_original_cdo_struct_unblocks_without_constructor_guessing(self):
+        document = {'Exports': [
+            {'ObjectName': 'ReadOriginal', 'OuterIndex': 2, 'ScriptBytecode': [
+                node('EX_Return', ReturnExpression=node('EX_InstanceVariable',
+                     Variable={'New': {'Path': ['State'], 'ResolvedOwner': 2}})),
+                node('EX_EndOfScript')]},
+            {'ObjectName': 'Test_C', 'LoadedProperties': [
+                {'Name': 'State', 'SerializedType': 'StructProperty', 'Struct': -1}]},
+            {'ObjectName': 'Default__Test_C', 'Data': [{'Name': 'State', 'Value': [
+                {'Name': 'Amount', 'Value': 7}, {'Name': 'Enabled', 'Value': True}]}]}],
+            'Imports': [{'ObjectName': 'Unknown', 'OuterIndex': -2},
+                        {'ObjectName': '/Game/Original', 'ClassName': 'Package'}]}
+        schema = {'type': 'StructProperty', 'fields': {
+            'Amount': {'type': 'IntProperty'}, 'Enabled': {'type': 'BoolProperty'}}}
+        result = translate_package(Package(document), {('/Game/Original', 'Unknown'): schema})
+        self.assertEqual(result['default_state']['State'], {'Amount': 7, 'Enabled': True})
+        self.assertIn('ReadOriginal', result['functions'])
+        self.assertNotIn('State', result['unavailable_default_fields'])
+        document['Exports'][2]['Data'][0]['Value'].pop()
+        result = translate_package(Package(document), {('/Game/Original', 'Unknown'): schema})
+        self.assertNotIn('ReadOriginal', result['functions'])
+        self.assertEqual(result['unavailable_default_evidence']['State']['source_cdo_fields'], ['Amount'])
+
+    def test_complete_struct_witness_rejects_invalid_or_partial_fields(self):
+        schema = {'type': 'StructProperty', 'fields': {
+            'Offset': {'type': 'StructProperty', 'fields': {'X': {'type': 'DoubleProperty'}, 'Y': {'type': 'DoubleProperty'}}},
+            'Count': {'type': 'ByteProperty'}}}
+        self.assertEqual(witnessed_complete_default(schema, {'Offset': {'X': '3.5', 'Y': 0}, 'Count': 3}),
+                         {'Offset': {'X': 3.5, 'Y': 0.0}, 'Count': 3})
+        for value in ({'Offset': {'X': 1}, 'Count': 3}, {'Offset': {'X': float('nan'), 'Y': 0}, 'Count': 3},
+                      {'Offset': {'X': 1, 'Y': 0}, 'Count': 300}, {'Offset': {'X': 1, 'Y': 0}, 'Count': 3, 'Extra': 1}):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                witnessed_complete_default(schema, value)
+
     def test_native_transform_schema_preserves_quaternion_translation_and_scale_types(self):
         quaternion = native_schema(('/Script/CoreUObject', 'Quat'))
         transform = native_schema(('/Script/CoreUObject', 'Transform'))

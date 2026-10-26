@@ -14,6 +14,66 @@ class EngineError(RuntimeError):
         super().__init__(f"[{code}] {message}")
 
 
+# Only built-in Unreal engine plugins are permitted in the isolated map exporter.
+# Never load original project-native modules or network/assistant integrations.
+_MAP_DEFAULT_ENGINE_PLUGINS = frozenset(("EnhancedInput", "Niagara"))
+_MAP_EXCLUDED_ENGINE_PLUGINS = {
+    "AIAssistant": "AI assistant native code is excluded from offline export",
+    "OnlineSubsystemSteam": "network subsystem excluded from offline export",
+    "SteamSockets": "network subsystem excluded from offline export",
+    "MetaHumanCharacter": ("isolated UE 5.7 commandlet crashes loading the engine plugin's own "
+                           "AS_MetaHuman_ARKit_Mapping animation (AnimSequenceBase without data model)"),
+    "ModelingToolsEditorMode": "editor modeling interface not needed to deserialize world geometry",
+    "MovieRenderPipeline": "editor movie-render interface not needed for static map conversion",
+}
+
+
+def source_engine_plugins(project, executable):
+    """Identify source-enabled, installed engine plugins without running project code.
+
+    The original .uproject is read-only.  Engine plugins are resolved under the
+    installed engine tree; project and Marketplace plugin executables stay off.
+    A manifest records omissions instead of pretending missing types are loaded.
+    """
+    descriptor = read_json(project)
+    if not isinstance(descriptor, dict) or not isinstance(descriptor.get("Plugins", []), list):
+        raise EngineError("SOURCE_PLUGINS_INVALID", "The source .uproject has no valid plugin declaration list")
+    source_entries = descriptor.get("Plugins", [])
+    explicit = {item["Name"]: item["Enabled"] for item in source_entries
+                if isinstance(item, dict) and isinstance(item.get("Name"), str)
+                and isinstance(item.get("Enabled"), bool)}
+    requested = ({name for name, enabled in explicit.items() if enabled} |
+                 {name for name in _MAP_DEFAULT_ENGINE_PLUGINS if explicit.get(name, True)})
+    engine_binary = Path(executable)
+    plugin_root = engine_binary.parent.parent.parent / "Plugins"
+    available = {}
+    if plugin_root.is_dir():
+        for path in plugin_root.rglob("*.uplugin"):
+            if path.stem in requested and path.stem not in available:
+                available[path.stem] = path
+    included, omitted = [], {}
+    for name in sorted(requested):
+        path = available.get(name)
+        if name in _MAP_EXCLUDED_ENGINE_PLUGINS:
+            omitted[name] = _MAP_EXCLUDED_ENGINE_PLUGINS[name]
+        elif not path:
+            omitted[name] = "not installed as an Unreal engine plugin"
+        elif "Marketplace" in path.relative_to(plugin_root).parts:
+            omitted[name] = "third-party Marketplace plugin excluded from native execution"
+        elif not path.resolve().is_relative_to(plugin_root.resolve()):
+            omitted[name] = "plugin descriptor resolves outside the installed engine"
+        else:
+            try:
+                settings = read_json(path)
+                if not isinstance(settings, dict) or not isinstance(settings.get("Modules", []), list):
+                    raise ValueError("invalid module declaration")
+            except (OSError, ValueError) as error:
+                omitted[name] = f"invalid engine plugin descriptor: {type(error).__name__}"
+                continue
+            included.append(name)
+    return included, omitted
+
+
 def mount_content(source, destination):
     source, destination = Path(source).resolve(), Path(destination)
     if destination.exists():
@@ -53,7 +113,7 @@ def _link_tree(source, destination, excluded_packages=(), root_mount="/Game", in
             raise EngineError("MIRROR_LINK_FAILED", f"Cannot mirror source asset without copying it: {item} ({exc})") from exc
 
 
-def prepare_project(directory, snapshot, scratch_name="inspection-project", mirror_assets=False, excluded_packages=(), limit_shader_workers=False, included_packages=None):
+def prepare_project(directory, snapshot, scratch_name="inspection-project", mirror_assets=False, excluded_packages=(), limit_shader_workers=False, included_packages=None, restore_source_engine_plugins=False):
     engine = snapshot["engine"]
     if engine.get("status") != "detected" or not engine.get("executable"):
         raise EngineError("ENGINE_MISSING", "Install the matching Unreal editor or provide --engine.")
@@ -90,6 +150,14 @@ def prepare_project(directory, snapshot, scratch_name="inspection-project", mirr
     # AI assistants, online services, or source-project startup Python scripts.
     plugins = [{"Name": "PythonScriptPlugin", "Enabled": True},
                {"Name": "GLTFExporter", "Enabled": True}]
+    if restore_source_engine_plugins:
+        enabled, omitted = source_engine_plugins(Path(snapshot["project"]), engine["executable"])
+        plugins.extend({"Name": name, "Enabled": True} for name in enabled
+                       if name not in {"PythonScriptPlugin", "GLTFExporter"})
+        atomic_json(scratch / ".ue2three-engine-plugin-provenance.json", {
+            "schema_version": 1, "source_project": str(Path(snapshot["project"]).resolve()),
+            "enabled_stock_engine_plugins": enabled, "omitted_source_plugins": omitted,
+            "policy": "isolated map export: no original project-native or network/assistant plugin code"})
     mirrors = []
     for item in snapshot["files"]:
         if not item["path"].lower().endswith(".uplugin"):

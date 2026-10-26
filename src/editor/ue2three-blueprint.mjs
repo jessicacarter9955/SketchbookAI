@@ -38,6 +38,17 @@ function validateSchema(schema, value, depth = 0) {
                 || JSON.stringify(value.declared_class) !== JSON.stringify(schema.class))) throw new Error('Invalid original component reference');
             return;
         }
+        if (schema.reference_kind === 'runtime_native_widget') {
+            if (value !== null && (value?.kind !== 'source_native_widget'
+                || typeof value.source_package !== 'string'
+                || !/^\/Game\/[A-Za-z0-9_/.]+$/.test(value.source_package)
+                || !Number.isSafeInteger(value.source_owner_index) || value.source_owner_index < 1
+                || !safeField(value.source_field)
+                || typeof value.widget_id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(value.widget_id)
+                || JSON.stringify(value.declared_class) !== JSON.stringify(schema.class)))
+                throw new Error('Unverified original native UMG widget reference');
+            return;
+        }
         if (schema.reference_kind === 'runtime_native_component' || schema.reference_kind === 'runtime_native_object') {
             const expectedKind = schema.reference_kind === 'runtime_native_component'
                 ? 'source_native_component' : 'source_native_object';
@@ -307,6 +318,29 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
     };
     const evaluate = (expression, depth = 0) => {
         if (!expression || depth > 48) throw new Error('Invalid Blueprint expression');
+        if (expression.op === 'switch_value') {
+            const cases = expression.cases;
+            if (expression.index_type !== 'ByteProperty' || !Array.isArray(cases)
+                || cases.length < 1 || cases.length > 64
+                || !Number.isSafeInteger(expression.source_end_offset) || expression.source_end_offset <= 0)
+                throw new Error('Unverified original switch-value bytecode');
+            const labels = new Set();
+            let previousOffset = 0;
+            for (const candidate of cases) {
+                if (!Number.isInteger(candidate?.match) || candidate.match < 0 || candidate.match > 255
+                    || labels.has(candidate.match) || !Number.isSafeInteger(candidate.next_offset)
+                    || candidate.next_offset <= previousOffset
+                    || candidate.next_offset >= expression.source_end_offset || !candidate.value)
+                    throw new Error('Unverified original switch-value case or VM offset');
+                labels.add(candidate.match);
+                previousOffset = candidate.next_offset;
+            }
+            const index = evaluate(expression.index, depth+1);
+            if (!Number.isInteger(index) || index < 0 || index > 255)
+                throw new Error('Original switch-value index is not a source byte');
+            const selected = cases.find(candidate => candidate.match === index);
+            return evaluate(selected ? selected.value : expression.default, depth+1);
+        }
         if (expression.op === 'native_game_time') {
             const context = notifications.native;
             if (!context || context.mode !== 'standalone' || context.net_drivers !== 0
@@ -453,6 +487,60 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 || typeof context.source_package !== 'string') throw new Error('Original Blueprint self reference is unavailable');
             return {kind:'source_self',source_package:context.source_package,
                 source_owner_index:program.source_owner_index,declared_class:expression.class || null};
+        }
+        if (expression.op === 'native_widget_effect') {
+            const identity=expression.identity;
+            const method=expression.method;
+            const supported=method === 'SetVisibility'
+                && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','Widget','SetVisibility'])
+                && expression.dispatch === 'EX_VirtualFunction'
+                && expression.parameter?.schema?.type === 'ByteProperty'
+                || method === 'SetText'
+                && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','TextBlock','SetText'])
+                && ['EX_FinalFunction','EX_VirtualFunction'].includes(expression.dispatch)
+                && expression.parameter?.schema?.type === 'TextProperty'
+                || method === 'SetColorAndOpacity'
+                && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','TextBlock','SetColorAndOpacity'])
+                && expression.dispatch === 'EX_FinalFunction'
+                && expression.parameter?.schema?.type === 'StructProperty'
+                && expression.parameter?.schema?.native === 'LinearColor';
+            if (!supported || expression.source_owner_index !== program.source_owner_index
+                || expression.source_binding_required !== true
+                || expression.visual_1to1_certified !== false || !expression.receiver_schema
+                || expression.receiver_schema.reference_kind !== 'runtime_native_widget'
+                || !safeField(expression.receiver_field) || expression.receiver?.op !== 'get'
+                || expression.receiver.scope !== 'self'
+                || expression.receiver.field !== expression.receiver_field)
+                throw new Error('Unsupported or unbound original UMG context contract');
+            const reference=evaluate(expression.receiver,depth+1);
+            if (reference === null) {
+                trace.push({source_index:sourceIndex,op:'warning',message:'Accessed None: UMG widget call skipped'});
+                return null;
+            }
+            validateSchema(expression.receiver_schema,reference);
+            const widgets=notifications.native?.widgets;
+            const descriptor=widgets && Object.hasOwn(widgets,expression.receiver_field)
+                ? widgets[expression.receiver_field] : null;
+            if (!descriptor || descriptor.binding_complete !== true
+                || descriptor.source_owner_index !== expression.source_owner_index
+                || descriptor.source_field !== expression.receiver_field
+                || JSON.stringify(descriptor.declared_class) !== JSON.stringify(expression.receiver_schema.class)
+                || JSON.stringify(descriptor.reference) !== JSON.stringify(reference)
+                || reference.source_package !== notifications.native.source_package
+                || reference.source_field !== expression.receiver_field
+                || reference.source_owner_index !== expression.source_owner_index)
+                throw new Error('Original widget source binding is unavailable or foreign');
+            const value=evaluate(expression.parameter.value,depth+1);
+            validateSchema(expression.parameter.schema,value);
+            if (method === 'SetVisibility' && (!Number.isInteger(value) || value < 0 || value > 4))
+                throw new Error('Unverified original ESlateVisibility value');
+            const effect={op:'native_widget_effect',identity:[...identity],dispatch:expression.dispatch,
+                widget_id:reference.widget_id,source_field:expression.receiver_field,
+                source_package:reference.source_package,source_owner_index:reference.source_owner_index,
+                method,parameter:structuredClone(value)};
+            emit(effect);
+            trace.push({source_index:sourceIndex,...structuredClone(effect)});
+            return null;
         }
         if (expression.op === 'native_audio_vfx') {
             const contract=nativeAudioVfxContracts.get(JSON.stringify(expression.identity));
@@ -829,12 +917,23 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             return value;
         }
         if (expression.op === 'native_call') {
-            const identity = ['/Script/Engine', 'KismetStringLibrary', 'Concat_StrStr'];
-            const parameterTypes = ['StrProperty', 'StrProperty'];
-            if (JSON.stringify(expression.identity) !== JSON.stringify(identity)
-                || JSON.stringify(expression.parameter_types) !== JSON.stringify(parameterTypes)
-                || expression.return_type !== 'StrProperty' || !Array.isArray(expression.args)
-                || expression.args.length !== parameterTypes.length)
+            // Only source-witnessed pure Kismet string conversions are valid.
+            // No generic method dispatch, JS coercion, locale-dependent text or
+            // guessed native API fallbacks.
+            const contracts = {
+                Concat_StrStr: {args: ['StrProperty', 'StrProperty'], result: 'StrProperty'},
+                Conv_NameToString: {args: ['NameProperty'], result: 'StrProperty'},
+                Conv_IntToString: {args: ['IntProperty'], result: 'StrProperty'},
+                Len: {args: ['StrProperty'], result: 'IntProperty'},
+                Contains: {args: ['StrProperty', 'StrProperty', 'BoolProperty', 'BoolProperty'], result: 'BoolProperty'}
+            };
+            const name = expression.identity?.[2];
+            const contract = Object.hasOwn(contracts, name) ? contracts[name] : null;
+            if (!contract
+                || JSON.stringify(expression.identity) !== JSON.stringify(['/Script/Engine', 'KismetStringLibrary', name])
+                || JSON.stringify(expression.parameter_types) !== JSON.stringify(contract.args)
+                || expression.return_type !== contract.result || !Array.isArray(expression.args)
+                || expression.args.length !== contract.args.length)
                 throw new Error('Unsupported original native object call');
             const values = expression.args.map((argument, index) => {
                 let sourceType = null;
@@ -847,12 +946,33 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                         throw new Error('Original native object parameter schema differs');
                     sourceType = schemaType || declaredType || null;
                 }
-                if (sourceType !== parameterTypes[index]) throw new Error('Original native object parameter type differs');
+                if (sourceType !== contract.args[index])
+                    throw new Error('Original native object parameter type differs');
                 const value = evaluate(argument, depth+1);
-                if (typeof value !== 'string') throw new Error('Invalid original native object string parameter');
+                if (sourceType === 'IntProperty') {
+                    if (!Number.isInteger(value) || value < -2147483648 || value > 2147483647)
+                        throw new Error('Invalid original native object int32 parameter');
+                } else if (sourceType === 'BoolProperty') {
+                    if (typeof value !== 'boolean')
+                        throw new Error('Invalid original native object bool parameter');
+                } else if (typeof value !== 'string') {
+                    throw new Error('Invalid original native object string parameter');
+                }
                 return value;
             });
-            return values[0] + values[1];
+            if (name === 'Len') return values[0].length; // Unreal FString.Len counts UTF-16 TCHAR units.
+            if (name === 'Contains') {
+                if (values[2] !== false || values[3] !== false)
+                    throw new Error('Original FString.Contains search mode is not supported');
+                // Fail closed for Unicode case folds that do not necessarily
+                // match Unreal FChar::ToLower; ASCII bone names are source-backed.
+                if (!/^[\x00-\x7f]*$/.test(values[0]) || !/^[\x00-\x7f]*$/.test(values[1]))
+                    throw new Error('Original Unicode FString.Contains case folding requires Unreal parity');
+                return values[0].toLowerCase().includes(values[1].toLowerCase());
+            }
+            if (name === 'Concat_StrStr') return values[0] + values[1];
+            if (name === 'Conv_IntToString') return String(values[0]);
+            return values[0]; // Original FName spelling preserved by the source value.
         }
         if (expression.op === 'constant') {
             const value = expression.value;
@@ -911,6 +1031,28 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 pc = jumpTarget(flow.pop());
             }
             trace.push({source_index: sourceIndex, op: step.op, taken: take, target: take ? pc : null});
+            continue;
+        }
+        if (step.op === 'jump_dynamic') {
+            const vmOffset = evaluate(step.value);
+            const targets = program.source_offset_targets;
+            if (!Number.isInteger(vmOffset) || vmOffset < 0 || vmOffset > 2147483647 || !Array.isArray(targets))
+                throw new Error('Invalid original Blueprint computed jump offset');
+            // Source-authored VM offsets, not array indices: a binary search
+            // matches the compiler's exact verified instruction boundaries.
+            let low = 0, high = targets.length - 1, targetIndex = null;
+            while (low <= high) {
+                const mid = (low + high) >>> 1, row = targets[mid];
+                if (!Array.isArray(row) || row.length !== 2 || !Number.isInteger(row[0]))
+                    throw new Error('Invalid original Blueprint boundary table');
+                if (row[0] === vmOffset) { targetIndex = row[1]; break; }
+                if (row[0] < vmOffset) low = mid + 1;
+                else high = mid - 1;
+            }
+            if (targetIndex === null)
+                throw new Error('Computed Blueprint jump misses an original instruction boundary');
+            pc = jumpTarget(targetIndex);
+            trace.push({source_index: sourceIndex, op: 'jump_dynamic', target_offset: vmOffset, target: pc});
             continue;
         }
         if (step.op === 'jump' || step.op === 'branch') {

@@ -141,6 +141,35 @@ class Supervisor:
             raise RuntimeError('Unable to compare both Git revisions; push left pending') from None
         return {os.fsdecode(item) for item in result.stdout.split(b'\0') if item}
 
+    def _remote_contains_local(self, branch: str) -> bool:
+        """Recover a stale push blocker only if Git proves the work is published.
+
+        Another trusted checkout may have integrated this exact commit while
+        the Windows runner was paused. Never infer inclusion from file content,
+        a matching message, or a cherry-pick with a different commit identity.
+        """
+        local = agent._require_clean_repo(self.root)
+        self.command('git-fetch', ['git', 'fetch', '--no-tags', 'origin',
+                                   f'refs/heads/{branch}'], timeout=120)
+        remote = agent._git(self.root, 'rev-parse', 'FETCH_HEAD')
+        try:
+            probe = subprocess.run(['git', '-C', str(self.root), 'merge-base',
+                                    '--is-ancestor', local, remote],
+                                   capture_output=True, timeout=60)
+        except (OSError, subprocess.TimeoutExpired):
+            raise PushReconciliationBlocked('Unable to verify whether the remote includes local work') from None
+        if probe.returncode == 1:
+            return False
+        if probe.returncode != 0:
+            raise PushReconciliationBlocked('Git ancestry check failed; patches retained')
+        self.save('git_remote_recovering', local_commit=local, remote_commit=remote)
+        if local != remote:
+            agent._git(self.root, 'merge', '--ff-only', remote, timeout=120)
+        self.save('remote_integrated', pushed_commit=remote, pending_push=False,
+                  push_validation_required=False, reconciled_commit=None,
+                  push_blocker=None, compiled_fingerprint=None)
+        return True
+
     def _reconcile_remote_for_push(self, branch: str):
         local = agent._require_clean_repo(self.root)
         git_dir = Path(agent._git(self.root, 'rev-parse', '--absolute-git-dir'))
@@ -154,7 +183,7 @@ class Supervisor:
         remote = agent._git(self.root, 'rev-parse', 'FETCH_HEAD')
         self.save('git_remote_checked', local_commit=local, remote_commit=remote)
         if remote == local:
-            return
+            return True
         try:
             bases = agent._git(self.root, 'merge-base', '--all', local, remote).splitlines()
         except agent.RunnerError:
@@ -163,9 +192,16 @@ class Supervisor:
             raise PushReconciliationBlocked('Remote and local Git histories have no unique common base; '
                                             'push requires manual review')
         base = bases[0]
+        if base == local:
+            # The exact local history is already on the remote. Fast-forward,
+            # force a cached-source replay on the next tick, and do not push an
+            # unnecessary merge commit or overwrite someone else's work.
+            agent._git(self.root, 'merge', '--ff-only', remote, timeout=120)
+            self.save('git_remote_fast_forwarded', compiled_fingerprint=None)
+            return True
         if base == remote:
             # Remote is an ancestor: the existing verified commit can be pushed.
-            return
+            return False
 
         local_paths = self._changed_paths(base, local)
         remote_paths = self._changed_paths(base, remote)
@@ -202,6 +238,7 @@ class Supervisor:
             raise PushReconciliationBlocked('Git refused disjoint-path merge; review working tree and '
                                             'MERGE_HEAD before further automation') from None
         self.save('git_reconciled', reconciled_commit=agent._git(self.root, 'rev-parse', 'HEAD'))
+        return False
 
     def _validate_reconciled_push(self):
         self.command('git-reconcile-python-tests',
@@ -224,10 +261,16 @@ class Supervisor:
             return
         if not self.config.get('push', False):
             return
-        if self.state.get('push_blocker'):
-            raise PushReconciliationBlocked(self.state['push_blocker'])
         branch = self.config['branch']
-        self._reconcile_remote_for_push(branch)
+        if self.state.get('push_blocker'):
+            if self._remote_contains_local(branch):
+                return
+            raise PushReconciliationBlocked(self.state['push_blocker'])
+        if self._reconcile_remote_for_push(branch):
+            self.save('remote_integrated', pushed_commit=agent._git(self.root, 'rev-parse', 'HEAD'),
+                      pending_push=False, push_validation_required=False,
+                      reconciled_commit=None, push_blocker=None, compiled_fingerprint=None)
+            return
         if (self.state.get('push_validation_required')
                 or (self.state.get('reconciled_commit')
                     and self.state.get('validated_push_head') != agent._git(self.root, 'rev-parse', 'HEAD'))):
@@ -364,7 +407,19 @@ class Supervisor:
                 self.save('paused', active_job=None)
                 return self.state
             if time.time() < self.state.get('retry_after', 0):
-                return {'phase': 'retry_wait', 'retry_after': self.state['retry_after']}
+                # An account/connection backoff must not stall independent export
+                # and deploy stages. Verified input fingerprints prevent repeats.
+                if self.state.get('phase') in ('waiting_account', 'waiting_connection'):
+                    try:
+                        self.additional_stages()
+                        self.save(self.state['phase'], independent_stage_error=None)
+                    except Exception as error:
+                        # Preserve the underlying account wait and record the
+                        # independent stage failure without dropping checkpoints.
+                        self.save(self.state['phase'], independent_stage_error=str(error)[:600])
+                return {'phase': 'retry_wait', 'retry_after': self.state['retry_after'],
+                        'additional_stages': self.state.get('additional_stages', {}),
+                        'independent_stage_error': self.state.get('independent_stage_error')}
             try:
                 self.recover_promotion()
                 self.pending_push()
@@ -397,6 +452,9 @@ class Supervisor:
                     account_errors = {'usage_limit', 'authentication_required', 'connection_interrupted'}
                     errors = {row.get('result') for row in result.get('results', [])}
                     if errors and errors.issubset(account_errors):
+                        # Run configured source-verified stages before backing off
+                        # Codex authentication/usage. These stages do not use Codex.
+                        self.additional_stages()
                         reason = 'usage_limit' if 'usage_limit' in errors else next(iter(errors))
                         delay = 1800 if reason == 'usage_limit' else 600
                         self.save('waiting_account' if reason == 'usage_limit' else 'waiting_connection',

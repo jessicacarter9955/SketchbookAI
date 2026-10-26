@@ -10,6 +10,25 @@ NATIVE_OBJECT_CALLS = {
         'argument_tokens': (('EX_StringConst', 'EX_UnicodeStringConst'),
                             ('EX_StringConst', 'EX_UnicodeStringConst')),
     },
+    ('/Script/Engine', 'KismetStringLibrary', 'Conv_NameToString'): {
+        'parameter_types': ('NameProperty',), 'return_type': 'StrProperty',
+        'argument_tokens': (('EX_NameConst',),),
+    },
+    ('/Script/Engine', 'KismetStringLibrary', 'Conv_IntToString'): {
+        'parameter_types': ('IntProperty',), 'return_type': 'StrProperty',
+        'argument_tokens': (('EX_IntConst', 'EX_IntZero', 'EX_IntOne'),),
+    },
+    ('/Script/Engine', 'KismetStringLibrary', 'Len'): {
+        'parameter_types': ('StrProperty',), 'return_type': 'IntProperty',
+        'argument_tokens': (('EX_StringConst', 'EX_UnicodeStringConst'),),
+    },
+    ('/Script/Engine', 'KismetStringLibrary', 'Contains'): {
+        'parameter_types': ('StrProperty', 'StrProperty', 'BoolProperty', 'BoolProperty'),
+        'return_type': 'BoolProperty',
+        'argument_tokens': (('EX_StringConst', 'EX_UnicodeStringConst'),
+                            ('EX_StringConst', 'EX_UnicodeStringConst'),
+                            ('EX_False',), ('EX_False',)),
+    },
 }
 
 
@@ -36,15 +55,20 @@ def native_object_call(value, package, owner, reads, outputs, depth):
             result, schema = variable(arg, package, owner, reads, outputs, depth)
             if schema.get('type') != expected:
                 raise Error('Original native object parameter type differs')
-        elif expected == 'StrProperty' and token in literal_tokens:
+        elif token in literal_tokens and expected in ('StrProperty', 'NameProperty', 'IntProperty', 'BoolProperty'):
             memory_size(arg, package=package)
             result = expression(arg, reads, outputs, depth+1, package, owner)
-            if result.get('op') != 'constant' or not isinstance(result.get('value'), str):
-                raise Error('Original native object string literal differs')
+            literal = result.get('value')
+            valid = (result.get('op') == 'constant'
+                     and (type(literal) is bool if expected == 'BoolProperty'
+                          else isinstance(literal, str) if expected != 'IntProperty'
+                          else type(literal) is int and -(2**31) <= literal < 2**31))
+            if not valid:
+                raise Error('Original native object literal type differs')
             result = {'op': 'typed_literal', 'schema': property_schema(package, {'SerializedType': expected}),
-                      'value': result['value']}
+                      'value': literal}
         else:
-            raise Error('Original native object argument requires a typed source property or string literal')
+            raise Error('Original native object argument requires a typed source property or matching literal')
         translated.append(result)
     return {'op': 'native_call', 'identity': list(identity), 'parameter_types': list(parameter_types),
             'return_type': signature['return_type'], 'args': translated}

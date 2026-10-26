@@ -52,6 +52,13 @@ def parser():
     ui.add_argument("--workspace", type=Path, required=True, help="Verified ue2three scan and Asset Registry workspace")
     ui.add_argument("--publish-dir", type=Path, required=True, help="Local output directory, outside the source project")
     ui.add_argument("--force", action="store_true", help="Re-read source Widget Blueprints instead of reusing cached JSON")
+    sounds = commands.add_parser("migrate-sounds", help="Export source SoundWave WAV into the Three.js audio manifest")
+    sounds.add_argument("project", type=Path)
+    sounds.add_argument("--workspace", type=Path, required=True)
+    sounds.add_argument("--publish-dir", type=Path, required=True)
+    sounds.add_argument("--package", action="append", default=[])
+    sounds.add_argument("--limit", type=int, default=4)
+    sounds.add_argument("--timeout", type=int, default=600)
     controls = commands.add_parser("migrate-controls", help="Extract original Enhanced Input mappings and Blueprint event entries")
     controls.add_argument("project", type=Path, help="Editable Unreal .uproject")
     controls.add_argument("--workspace", type=Path, required=True, help="Verified ue2three scan workspace")
@@ -67,6 +74,8 @@ def parser():
     blueprints.add_argument('--publish-dir', type=Path, required=True)
     blueprints.add_argument('--package', help='Optional inventoried Blueprint package; otherwise inspect available caches')
     blueprints.add_argument('--read-package', action='append', default=[], help='Read this inventoried package into the parser cache without starting Unreal; repeat for a bounded batch')
+    blueprints.add_argument('--baseline-report', type=Path,
+                            help='Require source-matched, non-regressing results versus this previous Blueprint report')
     plan = commands.add_parser('plan-blueprints', help='Rank shared cached Blueprint blockers and prepare local work packets')
     plan.add_argument('--workspace', type=Path, required=True)
     plan.add_argument('--publish-dir', type=Path, required=True)
@@ -78,10 +87,26 @@ def default_workspace(project):
 
 
 def execute(args):
+    if args.command == 'migrate-sounds':
+        from sound_migration import migrate_sounds
+        report = migrate_sounds(args.project, args.workspace, args.publish_dir,
+                                args.package, args.limit, args.timeout)
+        print('SoundWave source export: ' + json.dumps(report, ensure_ascii=False), flush=True)
+        return 0
     if args.command == 'migrate-blueprints':
         from blueprint_migration import migrate_blueprints
         report = migrate_blueprints(args.project, args.workspace, args.publish_dir, args.package, args.read_package)
         print(f"Blueprint functions: {report['counts']}; uncached packages: {len(report['missing_cached_packages'])}")
+        if args.baseline_report:
+            from compare_blueprint_reports import compare, load
+            gate = compare(load(args.baseline_report), report)
+            atomic_json(args.publish_dir / 'blueprint-regression-gate.json', gate)
+            if not gate['monotonic_source_compilation']:
+                print(f"BLUEPRINT_REGRESSION_GATE FAILED: {gate['regression_count']} regressed, "
+                      f"{gate['disappeared_count']} disappeared, "
+                      f"{len(gate['source_mismatches'])} source mismatches. "
+                      f"Diagnostic: {args.publish_dir / 'blueprint-regression-gate.json'}", flush=True)
+                return 3
         from blueprint_planning import build_blueprint_plan
         build_blueprint_plan(args.workspace, args.publish_dir)
         print(f"Shared blocker plan: {args.publish_dir / 'blueprint-plan.html'}")

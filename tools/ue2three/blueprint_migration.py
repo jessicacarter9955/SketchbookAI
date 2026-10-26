@@ -52,6 +52,9 @@ for _type in ('IntInt', 'DoubleDouble'):
     for _operation in ('Add', 'Subtract', 'Multiply'):
         MATH_CALLS[_operation + '_' + _type] = (2, _type)
 MATH_CALLS.update({'Divide_DoubleDouble': (2, 'DoubleDouble'),
+                   'Square': (1, 'DoubleDouble'), 'FFloor': (1, 'DoubleDouble'),
+                   'Conv_BoolToDouble': (1, 'bool'),
+                   'Multiply_LinearColorLinearColor': (2, 'LinearColor'),
                    'Lerp': (3, 'DoubleDouble'), 'FMin': (2, 'DoubleDouble'), 'FMax': (2, 'DoubleDouble'),
                    'InRange_FloatFloat': (5, 'double_range'),
                    'MakeVector': (3, 'vector'),
@@ -69,8 +72,11 @@ MATH_CALLS.update({'Divide_DoubleDouble': (2, 'DoubleDouble'),
                    'EqualEqual_NameName': (2, 'name'), 'NotEqual_NameName': (2, 'name'),
                    'FClamp': (3, 'DoubleDouble'), 'Clamp': (3, 'IntInt'),
                    'Round': (1, 'DoubleDouble'),
-                   'Abs': (1, 'DoubleDouble'), 'VSize': (1, 'vector'),
-                   'Vector_Distance': (2, 'VectorVector')})
+                   'FInterpTo': (4, 'DoubleDouble'),
+                   'Abs': (1, 'DoubleDouble'), 'VSize': (1, 'vector'), 'VSizeXY': (1, 'vector'),
+                   'Conv_IntToInt64': (1, 'IntInt'),
+                   'Vector_Distance': (2, 'VectorVector'),
+                   'Conv_LinearColorToVector': (1, 'LinearColor')})
 
 NATIVE_MATH_INPUT_TYPES = {
     'MakeVector': ('DoubleProperty', 'DoubleProperty', 'DoubleProperty'),
@@ -82,16 +88,24 @@ NATIVE_MATH_INPUT_TYPES = {
     'MakeTransform': ('Vector', 'Rotator', 'Vector'),
     'BreakVector': ('Vector',),
     'BreakRotator': ('Rotator',),
-    'Abs': ('DoubleProperty',), 'VSize': ('Vector',),
+    'Abs': ('DoubleProperty',), 'VSize': ('Vector',), 'VSizeXY': ('Vector',),
+    'FInterpTo': ('DoubleProperty', 'DoubleProperty', 'DoubleProperty', 'DoubleProperty'),
+    'Conv_IntToInt64': ('IntProperty',),
+    'Conv_LinearColorToVector': ('LinearColor',),
+    'Square': ('DoubleProperty',), 'FFloor': ('DoubleProperty',),
+    'Conv_BoolToDouble': ('BoolProperty',),
+    'Multiply_LinearColorLinearColor': ('LinearColor', 'LinearColor'),
     'Vector_Distance': ('Vector', 'Vector'),
 }
 
 
 def native_math_result_type(name):
     if name in ('MakeVector', 'Add_VectorVector', 'Subtract_VectorVector', 'Multiply_VectorVector',
-                'Conv_DoubleToVector'): return 'Vector'
+                'Conv_DoubleToVector', 'Conv_LinearColorToVector'): return 'Vector'
+    if name == 'Multiply_LinearColorLinearColor': return 'LinearColor'
     if name == 'MakeRotator': return 'Rotator'
     if name == 'MakeTransform': return 'Transform'
+    if name == 'Conv_IntToInt64': return 'Int64Property'
     if name.startswith(('Boolean', 'Not_PreBool', 'EqualEqual_BoolBool', 'NotEqual_BoolBool')):
         return 'BoolProperty'
     suffix = name.rsplit('_', 1)[-1]
@@ -101,11 +115,11 @@ def native_math_result_type(name):
             return 'BoolProperty'
         return {'ByteByte':'ByteProperty','IntInt':'IntProperty','DoubleDouble':'DoubleProperty'}[suffix]
     if name in ('Min', 'Max', 'Clamp', 'SelectInt'): return 'IntProperty'
-    if name in ('Conv_IntToDouble', 'Lerp', 'FMin', 'FMax', 'FClamp', 'SelectFloat',
-                'Abs', 'VSize', 'Vector_Distance'):
+    if name in ('Conv_IntToDouble', 'Conv_BoolToDouble', 'Square', 'Lerp', 'FMin', 'FMax', 'FClamp', 'SelectFloat',
+                'Abs', 'VSize', 'VSizeXY', 'Vector_Distance', 'FInterpTo'):
         return 'DoubleProperty'
     if name == 'InRange_FloatFloat': return 'BoolProperty'
-    if name == 'Round': return 'IntProperty'
+    if name in ('Round', 'FFloor'): return 'IntProperty'
     return None
 
 
@@ -138,7 +152,9 @@ def native_math_source_type(value, package, owner):
         schema = property_schema(package, properties[0])
         return schema.get('native') if schema and schema.get('type') == 'StructProperty' else property_type(properties[0], package)
     if token == 'EX_StructConst' and package:
-        identity = import_path(package, value.get('StructType'))
+        # UAssetAPI EX_StructConst records the reflected UScriptStruct in `Struct`;
+        # `StructType` is not its serialized field (unlike some property tags).
+        identity = import_path(package, value.get('Struct'))
         schema = native_schema(identity) or getattr(package, 'source_structs', {}).get(identity)
         return schema.get('native') if schema else None
     return None
@@ -268,6 +284,28 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
     if not isinstance(value, dict) or depth > 48:
         raise BlueprintTranslationError('Invalid or deeply nested Kismet expression')
     token = kind(value)
+    if token == 'EX_SwitchValue':
+        # UE's select node stores absolute VM offsets for every next-case
+        # boundary. memory_size verifies all of them against the serialized
+        # expression before admitting source-authored selection.
+        memory_size(value, package=package)
+        if native_math_source_type(value.get('IndexTerm'), package, owner) != 'ByteProperty':
+            raise BlueprintTranslationError('Source switch index is not a verified byte property')
+        cases = value['Cases']
+        if any(kind(row['CaseIndexValueTerm']) != 'EX_ByteConst' for row in cases):
+            raise BlueprintTranslationError('Source switch requires constant byte case values')
+        labels = [row['CaseIndexValueTerm'].get('Value') for row in cases]
+        if (any(type(label) is not int or not 0 <= label <= 255 for label in labels)
+                or len(labels) != len(set(labels))):
+            raise BlueprintTranslationError('Source switch labels are invalid or duplicated')
+        return {'op': 'switch_value', 'index_type': 'ByteProperty',
+                'index': expression(value['IndexTerm'], reads, outputs, depth+1, package, owner),
+                'cases': [{'match': label,
+                           'value': expression(row['CaseTerm'], reads, outputs, depth+1, package, owner),
+                           'next_offset': row['NextOffset']}
+                          for label, row in zip(labels, cases)],
+                'default': expression(value['DefaultTerm'], reads, outputs, depth+1, package, owner),
+                'source_end_offset': value['EndGotoOffset']}
     if token == 'EX_ObjectConst' and package:
         from blueprint_values import asset_constant
         try: return asset_constant(package, value.get('Value'))
@@ -337,8 +375,14 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         from blueprint_queries import component_query
         adapted = component_query(value, package, owner, reads, outputs, depth)
         if adapted is not None: return adapted
+        from blueprint_widgets import widget_context
+        adapted = widget_context(value, package, owner, reads, outputs, depth)
+        if adapted is not None: return adapted
         raise BlueprintTranslationError('Unsupported opcode: EX_Context')
-    if token in ('EX_LocalVirtualFunction', 'EX_LocalFinalFunction', 'EX_FinalFunction'):
+    if token in ('EX_VirtualFunction', 'EX_LocalVirtualFunction', 'EX_LocalFinalFunction', 'EX_FinalFunction'):
+        # A source-owned EX_VirtualFunction can use the existing original
+        # method-dispatch/arity checks. Native/foreign methods remain blocked:
+        # local_call resolves only a unique function on this exact source class.
         if token == 'EX_FinalFunction' and package:
             from blueprint_objects import native_owner
             adapted = native_owner(value, package, owner)
@@ -394,7 +438,6 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
             targets = []
             for argument in args[1:]:
                 target, prop = native_math_output_target(argument, package, owner, 'FloatProperty')
-                if target['scope'] == 'self': writes.add(target['field'])
                 if target['scope'] == 'local' and 'CPF_OutParm' in str(prop.get('PropertyFlags')):
                     outputs.add(target['field'])
                 targets.append({**target, 'type': 'FloatProperty'})
@@ -416,6 +459,12 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         if token != 'EX_InstanceVariable' and frame and str(frame.get('ObjectName', '')).startswith('ExecuteUbergraph_'):
             if frame.get('OuterIndex') != owner:
                 raise BlueprintTranslationError('Persistent read belongs to a different source class')
+            if frame is getattr(package, '_active_function', None) and name == 'EntryPoint':
+                props = [prop for prop in frame.get('LoadedProperties', []) if prop.get('Name') == name]
+                if (len(props) == 1 and property_type(props[0], package) == 'IntProperty'
+                        and 'CPF_Parm' in str(props[0].get('PropertyFlags'))
+                        and 'CPF_OutParm' not in str(props[0].get('PropertyFlags'))):
+                    return {'op': 'get', 'scope': 'local', 'field': name}
             return {'op': 'get', 'scope': 'persistent', 'frame': reference, 'field': name}
         if token == 'EX_InstanceVariable': reads.add(name)
         if token == 'EX_LocalOutVariable': outputs.add(name)
@@ -479,6 +528,29 @@ def memory_size(value, depth=0, package=None):
         raise BlueprintTranslationError('Invalid bytecode size expression')
     token = kind(value)
     size = lambda child: memory_size(child, depth+1, package)
+    if token == 'EX_SwitchValue':
+        cases, end = value.get('Cases'), value.get('EndGotoOffset')
+        if (not isinstance(cases, list) or not 1 <= len(cases) <= 64
+                or type(end) is not int or end <= 0):
+            raise BlueprintTranslationError('Invalid original switch case count or final offset')
+        index_size = size(value.get('IndexTerm'))
+        default_size = size(value.get('DefaultTerm'))
+        widths = []
+        for row in cases:
+            if not isinstance(row, dict) or type(row.get('NextOffset')) is not int:
+                raise BlueprintTranslationError('Invalid original switch case offset')
+            widths.append(size(row.get('CaseIndexValueTerm')) + 4 + size(row.get('CaseTerm')))
+        total = 7 + index_size + sum(widths) + default_size
+        start, cursor = end - total, end - total + 7 + index_size
+        if start < 0:
+            raise BlueprintTranslationError('Original switch extends before function bytecode')
+        for row, width in zip(cases, widths):
+            cursor += width
+            if row['NextOffset'] != cursor:
+                raise BlueprintTranslationError('Original switch next-case VM offset is inconsistent')
+        if cursor + default_size != end:
+            raise BlueprintTranslationError('Original switch final VM offset is inconsistent')
+        return total
     if token == 'EX_SetArray':
         if value.get('ArrayInnerProp') is not None or not isinstance(value.get('Elements'), list):
             raise BlueprintTranslationError('Unverified SetArray memory layout')
@@ -584,10 +656,29 @@ def translate_function(export, package=None, entry_offset=None):
                 steps.append({'op': 'jump', 'target': boundaries[entry_offset],
                               'target_offset': entry_offset, 'source_index': index})
             else:
-                # Preserve only bytecode-authored, immutable absolute offsets.
-                # EntryPoint and other data-dependent jumps need source control
-                # flow / lifecycle analysis; never guess their destinations.
                 operand = instruction.get('CodeOffsetExpression')
+                # The UE Kismet ExecuteUbergraph entry dispatcher reads an
+                # original Int32 EntryPoint parameter containing a *bytecode*
+                # offset. Retain that dynamic target, but only at the witnessed
+                # prologue and only with a complete source boundary table.
+                if (package and str(export.get('ObjectName', '')).startswith('ExecuteUbergraph_')
+                        and all(kind(prior) in ('EX_Tracepoint', 'EX_WireTracepoint', 'EX_Nothing',
+                                                'EX_PushExecutionFlow')
+                                for prior in bytecode[:index])
+                        and kind(operand) == 'EX_LocalVariable'
+                        and field(operand.get('Variable')) == 'EntryPoint'
+                        and native_math_source_type(operand, package, export.get('OuterIndex')) == 'IntProperty'):
+                    pointer = operand['Variable'].get('New', {})
+                    props = [prop for prop in export.get('LoadedProperties', []) if prop.get('Name') == 'EntryPoint']
+                    if (package.export(pointer.get('ResolvedOwner')) is not export or len(props) != 1
+                            or 'CPF_Parm' not in str(props[0].get('PropertyFlags'))
+                            or 'CPF_OutParm' in str(props[0].get('PropertyFlags'))):
+                        raise BlueprintTranslationError('Unverified original event EntryPoint parameter')
+                    steps.append({'op': 'jump_dynamic', 'value': expression(operand, reads, outputs,
+                                   package=package, owner=export.get('OuterIndex')), 'source_index': index})
+                    continue
+                # All other data-dependent computed jumps remain unsupported.
+                # A runtime target is never guessed from parsed disk offsets.
                 if not isinstance(operand, dict) or kind(operand) not in ('EX_IntConst', 'EX_IntZero', 'EX_IntOne'):
                     raise BlueprintTranslationError('Dynamic computed jump has no verified original constant target')
                 literal = expression(operand, reads, outputs, package=package, owner=export.get('OuterIndex'))
@@ -659,7 +750,7 @@ def translate_function(export, package=None, entry_offset=None):
             steps.append({'op': 'return', 'value': expression(instruction.get('ReturnExpression'), reads, outputs, package=package, owner=export.get('OuterIndex')),
                           'source_index': index})
             returned = True
-        elif token in ('EX_LocalVirtualFunction', 'EX_LocalFinalFunction', 'EX_FinalFunction', 'EX_CallMath', 'EX_Context', 'EX_CallMulticastDelegate', 'EX_SetArray'):
+        elif token in ('EX_VirtualFunction', 'EX_LocalVirtualFunction', 'EX_LocalFinalFunction', 'EX_FinalFunction', 'EX_CallMath', 'EX_Context', 'EX_CallMulticastDelegate', 'EX_SetArray'):
             steps.append({'op': 'evaluate', 'value': expression(instruction, reads, outputs, package=package, owner=export.get('OuterIndex')),
                           'source_index': index})
         else:
@@ -687,6 +778,8 @@ def translate_function(export, package=None, entry_offset=None):
     return {'schema_version': 1, 'name': export['ObjectName'] + ('@' + str(entry_offset) if entry_offset is not None else ''), 'status': 'translated_control_flow' if branching else 'translated_straight_line',
             'internal_event_entry': entry_offset is not None, 'event_entry_offset': entry_offset,
             'memory_size_verified': offset if branching else None,
+            **({'source_offset_targets': [[vm_offset, source_index] for vm_offset, source_index in sorted(boundaries.items())]}
+               if any(step['op'] == 'jump_dynamic' for step in steps) else {}),
             'source_bytecode_sha256': digest(bytecode), 'self_reads': sorted(reads),
             'source_owner_index': export.get('OuterIndex'),
             'self_writes': sorted(writes),
@@ -701,7 +794,7 @@ def translate_package(package, structs=None, tables=None):
     class_properties = {prop['Name']: prop for export in package.exports
                         if str(export.get('ObjectName', '')).endswith('_C')
                         for prop in export.get('LoadedProperties', []) if prop.get('Name')}
-    defaults, unavailable_defaults = {}, {}
+    defaults, unavailable_defaults, inherited_enums = {}, {}, {}
     for export in package.exports:
         if str(export.get('ObjectName', '')).startswith('Default__'):
             defaults.update(package.props(export))
@@ -710,9 +803,18 @@ def translate_package(package, structs=None, tables=None):
                 name = value.get('Name'); prop = class_properties.get(name)
                 schema = property_schema(package, prop) if prop else None
                 try:
-                    from blueprint_values import serialized_value
-                    if not schema: raise ValueError('Original enum property schema is unavailable')
-                    defaults[name] = serialized_value(package, prop, schema, value)
+                    from blueprint_values import serialized_value, witnessed_enum_tag_default
+                    if schema:
+                        defaults[name] = serialized_value(package, prop, schema, value)
+                    elif prop is None:
+                        # Inherited FName-backed enums are absent from the
+                        # child's LoadedProperties, but the CDO retains their
+                        # complete enum identity and original tagged value.
+                        defaults[name] = witnessed_enum_tag_default(
+                            value, getattr(package, 'source_enums', {}))
+                        inherited_enums[name] = 'ByteProperty'
+                    else:
+                        raise ValueError('Original enum property schema is unavailable')
                 except ValueError as error:
                     defaults.pop(name, None); unavailable_defaults[name] = str(error)
     package.source_defaults = defaults
@@ -745,6 +847,10 @@ def translate_package(package, structs=None, tables=None):
                         if value.get('op') == 'math_outputs' and any(target.get('scope') == 'local'
                                 and target.get('field') in const_inputs for target in value.get('targets', [])):
                             raise BlueprintTranslationError('Native math output writes original const input')
+                        if value.get('op') == 'math_outputs':
+                            program['self_writes'] = sorted(set(program['self_writes']) | {
+                                target['field'] for target in value.get('targets', [])
+                                if target.get('scope') == 'self'})
                         if value.get('op') == 'array_mutate' and target.get('scope') == 'self':
                             program['self_writes'] = sorted(set(program['self_writes']) | {target['field']})
                         if value.get('op') in ('call', 'component_query') and any(binding.get('mode') == 'output'
@@ -779,7 +885,8 @@ def translate_package(package, structs=None, tables=None):
                         for child in value: local_reads(child)
                 local_reads(step)
             program['field_types'] = {
-                'self': {name: property_type(class_properties[name], package) for name in program['self_reads'] if name in class_properties},
+                'self': {name: property_type(class_properties[name], package) if name in class_properties else inherited_enums[name]
+                         for name in program['self_reads'] if name in class_properties or name in inherited_enums},
                 'local': {prop['Name']: property_type(prop, package) for prop in export.get('LoadedProperties', []) if prop.get('Name') in used_locals}}
             program['source_property_types'] = {prop['Name']: prop for prop in export.get('LoadedProperties', []) if prop.get('Name') in used_locals}
             program['schemas'] = {'local': {name: schema for name, prop in program['source_property_types'].items()
@@ -848,10 +955,15 @@ def translate_package(package, structs=None, tables=None):
                         writes.add(binding['target']['field'])
             if reads != set(program['self_reads']) or writes != set(program['self_writes']): changed = True
             program['self_reads'], program['self_writes'] = sorted(reads), sorted(writes)
-            program['field_types']['self'] = {name: property_type(class_properties[name], package) for name in reads | writes if name in class_properties}
+            program['field_types']['self'] = {
+                name: property_type(class_properties[name], package) if name in class_properties else inherited_enums[name]
+                for name in reads | writes if name in class_properties or name in inherited_enums}
             program['source_defaults'] = {name: defaults[name] for name in reads | writes if name in defaults}
         if not changed: break
     default_state = {}
+    for name in inherited_enums:
+        if name in defaults and name not in unavailable_defaults and name not in class_properties:
+            default_state[name] = defaults[name]
     for name, prop in class_properties.items():
         if name in unavailable_defaults: continue
         try: type_name = property_type(prop, package)
@@ -863,13 +975,51 @@ def translate_package(package, structs=None, tables=None):
                     raise BlueprintTranslationError('Source actor defaults require an original world-object binding: ' + name)
                 default_state[name] = None
             else: default_state[name] = asset_reference(package, defaults.get(name, 0), schema['class'])
-        elif schema and schema['type'] == 'StructProperty' and (name not in defaults or isinstance(defaults[name], dict)):
+        elif schema and schema['type'] == 'StructProperty':
+            # A source struct may deserialize with known field types but no
+            # witnessed constructor (for example, a native plugin struct).
+            # Do not invent an empty constructor, and never abort the entire
+            # multi-package replay with KeyError: 'default'.
+            if not isinstance(schema.get('default'), dict):
+                from blueprint_values import witnessed_complete_default
+                try:
+                    default_state[name] = witnessed_complete_default(schema, defaults.get(name))
+                except ValueError as error:
+                    identity = import_path(package, prop.get('Struct'))
+                    unavailable_defaults[name] = ('Original struct constructor unavailable for '
+                                                  + '/'.join(identity or ('unknown',)) + ': ' + str(error))
+                continue
+            if name in defaults and not isinstance(defaults[name], dict):
+                unavailable_defaults[name] = 'Original CDO struct override is not a field map'
+                continue
             default_state[name] = {**schema['default'], **defaults.get(name, {})}
         elif name in defaults: default_state[name] = defaults[name]
         elif schema and schema['type'] == 'ArrayProperty': default_state[name] = []
         elif type_name in ('BoolProperty', 'ByteProperty', 'IntProperty', 'Int64Property', 'FloatProperty', 'DoubleProperty', 'StrProperty', 'NameProperty'):
             default_state[name] = {'BoolProperty': False, 'StrProperty': '', 'NameProperty': 'None'}.get(type_name, 0)
-    no_ops = sum(not program.get('internal_event_entry') and not program['self_reads'] and not program['output_fields'] and not program['self_writes']
+    # These programs cannot be instantiated faithfully; also remove their
+    # transitive callers. A missing original default is never a translated
+    # gameplay path just because the bytecode itself parsed successfully.
+    while True:
+        to_remove = []
+        for name, program in functions.items():
+            unresolved = (set(program['self_reads']) | set(program['self_writes'])) & set(unavailable_defaults)
+            missing_callee = next((call['function'] for call in calls(program['steps'])
+                                   if call['function'] not in functions), None)
+            if unresolved or missing_callee:
+                reason = ('Unresolved original source default: ' + ', '.join(sorted(unresolved))
+                          if unresolved else 'Untranslated function dependency: ' + missing_callee)
+                (event_blocked if program.get('internal_event_entry') else blocked).append({
+                    'function': name, 'source_export_index': program['source_export_index'], 'reason': reason})
+                to_remove.append(name)
+        if not to_remove:
+            break
+        for name in to_remove:
+            del functions[name]
+    # Recalculate the counts after fail-closed pruning rather than treating
+    # rejected functions as translated.
+    no_ops = sum(not program.get('internal_event_entry') and not program['self_reads']
+                 and not program['output_fields'] and not program['self_writes']
                  and all(step['op'] == 'return' and step['value'] == {'op': 'constant', 'value': None}
                          for step in program['steps']) for program in functions.values())
     events = {name: program for name, program in functions.items() if program.get('internal_event_entry')}
@@ -893,7 +1043,14 @@ def translate_package(package, structs=None, tables=None):
             'blocked': blocked, 'declarations': declarations, 'default_state': default_state,
             'field_schemas': {name: schema for name, prop in class_properties.items()
                               if (schema := property_schema(package, prop)) is not None},
-            'unavailable_default_fields': unavailable_defaults, 'counts': counts}
+            'unavailable_default_fields': unavailable_defaults,
+            'unavailable_default_evidence': {
+                name: {'source_struct': list(import_path(package, class_properties[name].get('Struct')) or []),
+                       'source_cdo_present': name in defaults,
+                       'source_cdo_fields': sorted(defaults[name]) if isinstance(defaults.get(name), dict) else [],
+                       'source_schema_fields': sorted((property_schema(package, class_properties[name]) or {}).get('fields', {}))}
+                for name in unavailable_defaults if name in class_properties},
+            'counts': counts}
 
 
 def character_guards(controls, packages, source_package):

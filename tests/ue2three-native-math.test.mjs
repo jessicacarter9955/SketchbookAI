@@ -23,6 +23,18 @@ test('UE 5.7 Round uses FMath half-toward-positive-infinity rounding within int3
     assert.throws(() => evaluateNativeMath('Floor', [1.5]), /Unsupported native math/);
 });
 
+test('UE 5.7 FInterpTo preserves source speed, small-distance and clamping branches', () => {
+    assert.equal(evaluateNativeMath('FInterpTo', [0, 10, 0.1, 2]), 2);
+    assert.equal(evaluateNativeMath('FInterpTo', [0, 10, 1, 2]), 10);
+    assert.equal(evaluateNativeMath('FInterpTo', [0, 10, -1, 2]), 0);
+    assert.equal(evaluateNativeMath('FInterpTo', [0, 10, 0.1, 0]), 10);
+    assert.equal(evaluateNativeMath('FInterpTo', [0, 10, 0.1, -2]), 10);
+    assert.equal(evaluateNativeMath('FInterpTo', [1, 1 + 0.00001, 0, 5]), 1.00001);
+    assert.equal(evaluateNativeMath('FInterpTo', [10, -10, 0.25, 1]), 5);
+    for (const args of [[], [1,2,3], [1,2,3,4,5], [NaN,1,1,1], [1,Infinity,1,1], [1,'2',1,1]])
+        assert.throws(() => evaluateNativeMath('FInterpTo', args), /Invalid native FInterpTo parameters/);
+});
+
 test('source double arithmetic and divide-by-zero behavior match Kismet', () => {
     assert.equal(evaluateNativeMath('Add_DoubleDouble', [1.25, 2.5]), 3.75);
     assert.equal(evaluateNativeMath('Subtract_DoubleDouble', [10, 3]), 7);
@@ -127,14 +139,43 @@ test('UE 5.7 Abs, VSize and Vector_Distance retain source numeric/vector contrac
     assert.equal(evaluateNativeMath('Abs', [-3.25]), 3.25);
     assert.equal(evaluateNativeMath('Abs', [2]), 2);
     assert.equal(evaluateNativeMath('VSize', [{X:3,Y:4,Z:12}]), 13);
+    assert.equal(evaluateNativeMath('VSizeXY', [{X:3,Y:4,Z:12}]), 5);
+    assert.equal(evaluateNativeMath('VSizeXY', [{X:0,Y:0,Z:9000}]), 0);
+    assert.equal(evaluateNativeMath('Conv_IntToInt64', [-2147483648]), -2147483648);
+    assert.equal(evaluateNativeMath('Conv_IntToInt64', [2147483647]), 2147483647);
+    assert.deepEqual(evaluateNativeMath('Conv_LinearColorToVector', [{R:0.25,G:0.5,B:0.75,A:0.125}]),
+        {X:0.25,Y:0.5,Z:0.75});
     assert.equal(evaluateNativeMath('Vector_Distance', [{X:3,Y:4,Z:12},{X:0,Y:0,Z:0}]), 13);
     assert.equal(evaluateNativeMath('Vector_Distance', [{X:-2,Y:3,Z:1},{X:1,Y:-1,Z:13}]), 13);
     assert.equal(evaluateNativeMath('VSize', [{X:0,Y:0,Z:0}]), 0);
     for (const [name, args] of [
         ['Abs', []], ['Abs', [NaN]], ['Abs', ['3']], ['Abs', [3,4]],
         ['VSize', []], ['VSize', [{X:1,Y:2}]], ['VSize', [{X:1,Y:2,Z:Infinity}]],
+        ['VSizeXY', []], ['VSizeXY', [{X:1,Y:2}]],
+        ['Conv_IntToInt64', [2147483648]], ['Conv_IntToInt64', [-2147483649]],
+        ['Conv_IntToInt64', [1.5]],
+        ['Conv_LinearColorToVector', []],
+        ['Conv_LinearColorToVector', [{R:1,G:0,B:0}]],
+        ['Conv_LinearColorToVector', [{R:1,G:0,B:0,A:NaN}]],
         ['Vector_Distance', [{X:1,Y:2,Z:3}]],
         ['Vector_Distance', [{X:1,Y:2,Z:3},{X:1,Y:2,Z:NaN}]],
         ['Vector_Distance', [{X:1e308,Y:0,Z:0},{X:-1e308,Y:0,Z:0}]],
     ]) assert.throws(() => evaluateNativeMath(name, args), /Invalid native|Non-finite native/);
+});
+
+test('witnessed DDS scalar conversions, comparisons and componentwise color products remain source-typed', () => {
+    assert.equal(evaluateNativeMath('Square', [-3]), 9);
+    assert.equal(evaluateNativeMath('FFloor', [-2.01]), -3);
+    assert.equal(evaluateNativeMath('FFloor', [2147483647.5]), 2147483647);
+    assert.equal(evaluateNativeMath('Conv_BoolToDouble', [true]), 1);
+    assert.equal(evaluateNativeMath('Conv_BoolToDouble', [false]), 0);
+    assert.deepEqual(evaluateNativeMath('Multiply_LinearColorLinearColor', [
+        {R:0.5,G:0.25,B:0.75,A:1},{R:0.2,G:4,B:0,A:0.5},
+    ]),{R:0.1,G:1,B:0,A:0.5});
+    for (const [name,args] of [
+        ['Square', [NaN]], ['Square', [1e308]], ['Square', [2,3]],
+        ['FFloor', [2147483648]], ['FFloor', [-2147483649]],
+        ['Conv_BoolToDouble', [1]],
+        ['Multiply_LinearColorLinearColor', [{R:1,G:1,B:1,A:1},{R:1,G:1,B:1}]],
+    ]) assert.throws(()=>evaluateNativeMath(name,args), /Invalid native|Out-of-range|Non-finite/);
 });

@@ -7,7 +7,8 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from core import SCHEMA, atomic_json, digest, file_hash, read_json
-from map_migration import (_material_baking_crash, _material_fidelity, migrate_maps,
+from map_migration import (_material_baking_crash, _native_gltf_exporter_crash,
+                           _material_fidelity, migrate_maps,
                            MapMigrationError)
 from test_map_processing import model
 
@@ -69,6 +70,11 @@ class MaterialBakeRecoveryTests(unittest.TestCase):
             if outcome == 'native-crash':
                 log.write_text(CRASH, encoding='utf-8')
                 exit_code = 3
+            elif outcome == 'gallery-gltf-crash':
+                log.write_text('LogGLTFExporter: Warning: Non-uniform parent scale (X=2 Y=0 Z=2)\\n'
+                               'Fatal error: Unhandled Exception: EXCEPTION_ACCESS_VIOLATION\\n'
+                               '[Callstack] UnrealEditor-GLTFExporter.dll!ExportWorld()\\n', encoding='utf-8')
+                exit_code = 3
             elif outcome == 'other-crash':
                 log.write_text('Fatal error: Unhandled Exception: EXCEPTION_ACCESS_VIOLATION\n'
                                '[Callstack] UnrealEditor-GLTFExporter.dll!ExportWorld()\n', encoding='utf-8')
@@ -94,6 +100,34 @@ class MaterialBakeRecoveryTests(unittest.TestCase):
                                     'UnrealEditor-RenderingCore.dll'), encoding='utf-8')
         self.assertFalse(_material_baking_crash(log))
         self.assertFalse(_material_baking_crash(log.parent / 'missing.log'))
+
+    def test_gallery_gltf_only_crash_is_not_misclassified_as_material_baking(self):
+        log = self.root / 'gallery.log'
+        log.write_text('LogGLTFExporter: Warning: Non-uniform parent scale (X=2 Y=0 Z=2)\\n'
+                       'Fatal error: Unhandled Exception: EXCEPTION_ACCESS_VIOLATION\\n'
+                       '[Callstack] UnrealEditor-GLTFExporter.dll!ExportWorld()\\n',
+                       encoding='utf-8')
+        self.assertTrue(_native_gltf_exporter_crash(log))
+        self.assertFalse(_material_baking_crash(log))
+        log.write_text('LogGLTFExporter: Warning: Non-uniform scale only\\n',
+                       encoding='utf-8')
+        self.assertFalse(_native_gltf_exporter_crash(log))
+
+    def test_gallery_gltf_crash_bounded_retry_preserves_fidelity_warning(self):
+        modes = []
+        with patch('map_migration.prepare_project', return_value=(self.project, [])):
+            report = migrate_maps(self.project, self.workspace, self.publish, Logger(),
+                                  popen=self.engine({'use_mesh_data': 'gallery-gltf-crash',
+                                                     'simple': 'success'}, modes))
+        self.assertEqual(modes, ['use_mesh_data', 'simple'])
+        self.assertEqual(report['counts']['exported'], 1)
+        row = report['maps'][0]
+        self.assertFalse(row['bake_attempts'][0]['crashed_in_material_baking'])
+        self.assertTrue(row['bake_attempts'][0]['crashed_in_gltf_exporter'])
+        self.assertEqual(row['material_fidelity']['bake_mode'], 'simple')
+        self.assertTrue(row['material_fidelity']['degraded'])
+        self.assertFalse(row['material_fidelity']['verified_1to1'])
+        self.assertEqual(file_hash(self.map_file), self.source_hash)
 
     def test_crash_retries_in_isolated_modes_and_marks_materials_unverified(self):
         modes = []

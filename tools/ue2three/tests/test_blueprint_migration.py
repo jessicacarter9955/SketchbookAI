@@ -13,10 +13,74 @@ def variable(token, name): return node(token, Variable={'New': {'Path': [name], 
 
 
 class BlueprintMigrationTests(unittest.TestCase):
+    def test_source_event_entrypoint_dispatch_retains_vm_offset_and_type(self):
+        dispatcher = {'ObjectName': 'ExecuteUbergraph_Original', 'OuterIndex': 2,
+                      'LoadedProperties': [{'Name': 'EntryPoint', 'SerializedType': 'IntProperty',
+                                            'PropertyFlags': 'CPF_Parm'}],
+                      'ScriptBytecode': [node('EX_ComputedJump', CodeOffsetExpression=variable('EX_LocalVariable', 'EntryPoint')),
+                                         node('EX_Tracepoint'), node('EX_Return', ReturnExpression=node('EX_IntOne')),
+                                         node('EX_EndOfScript')], 'ScriptBytecodeSize': 14}
+        package = Package({'Exports': [dispatcher, {'ObjectName': 'Original_C'}]})
+        translated = translate_function(dispatcher, package)
+        self.assertEqual([step['op'] for step in translated['steps']], ['jump_dynamic', 'nop', 'return', 'end'])
+        self.assertEqual(translated['steps'][0]['value'], {'op': 'get', 'scope': 'local', 'field': 'EntryPoint'})
+        self.assertEqual(translated['source_offset_targets'], [[0, 0], [10, 1], [11, 2], [13, 3]])
+        self.assertEqual(translated['memory_size_verified'], 14)
+        dispatcher['ObjectName'] = 'UnrelatedFunction'
+        with self.assertRaisesRegex(BlueprintTranslationError, 'Dynamic computed jump'):
+            translate_function(dispatcher, package)
+        dispatcher['ObjectName'] = 'ExecuteUbergraph_Original'
+        dispatcher['LoadedProperties'][0]['SerializedType'] = 'DoubleProperty'
+        with self.assertRaises(BlueprintTranslationError):
+            translate_function(dispatcher, package)
+        # 61 original UE5.7 ExecuteUbergraph packages have an authored flow
+        # stack push before the EntryPoint jump; retain its exact VM boundary.
+        dispatcher['LoadedProperties'][0]['SerializedType'] = 'IntProperty'
+        dispatcher['ScriptBytecode'].insert(0, node('EX_PushExecutionFlow', PushingAddress=16))
+        dispatcher['ScriptBytecodeSize'] = 19
+        with_flow = translate_function(dispatcher, package)
+        self.assertEqual([step['op'] for step in with_flow['steps']],
+                         ['push_flow', 'jump_dynamic', 'nop', 'return', 'end'])
+        self.assertEqual(with_flow['steps'][0]['target'], 3)
+        self.assertEqual(with_flow['source_offset_targets'], [[0, 0], [5, 1], [15, 2], [16, 3], [18, 4]])
+        dispatcher['ScriptBytecode'][0]['PushingAddress'] = 17
+        with self.assertRaisesRegex(BlueprintTranslationError, 'flow stack target'):
+            translate_function(dispatcher, package)
+
+    def test_source_byte_switch_checks_original_vm_case_boundaries(self):
+        cases = [{'CaseIndexValueTerm': node('EX_ByteConst', Value=i),
+                  'NextOffset': 19 + 7 + 9 + (i + 1) * 8,
+                  'CaseTerm': node('EX_ByteConst', Value=i + 10)} for i in range(3)]
+        switch = node('EX_SwitchValue', EndGotoOffset=19 + 7 + 9 + 3*8 + 2,
+                      IndexTerm=variable('EX_LocalVariable', 'Choice'),
+                      Cases=cases, DefaultTerm=node('EX_ByteConst', Value=99))
+        function = self.function()
+        function['LoadedProperties'] = [{'Name': 'Choice', 'SerializedType': 'ByteProperty',
+                                          'PropertyFlags': 'CPF_Parm'}]
+        function['ScriptBytecode'][1]['Expression'] = switch
+        package = Package({'Exports': [function]})
+        result = translate_function(function, package)
+        self.assertEqual(memory_size(switch, package=package), 42)
+        self.assertEqual(result['steps'][0]['value']['op'], 'switch_value')
+        self.assertEqual([row['match'] for row in result['steps'][0]['value']['cases']], [0, 1, 2])
+        cases[1]['NextOffset'] += 1
+        with self.assertRaisesRegex(BlueprintTranslationError, 'next-case VM offset'):
+            translate_function(function, package)
+        cases[1]['NextOffset'] -= 1
+        cases[1]['CaseIndexValueTerm']['Value'] = 0
+        with self.assertRaisesRegex(BlueprintTranslationError, 'duplicated'):
+            translate_function(function, package)
+
     def test_ue57_math_source_calls_translate_typed_literals(self):
         for name, parameters in (
             ('Abs', [node('EX_DoubleConst', Value='-2.5')]),
+            ('FInterpTo', [node('EX_DoubleConst', Value=x) for x in (-2.5, 5.0, 0.1, 2.0)]),
             ('VSize', [node('EX_VectorConst', Value={'X':3,'Y':4,'Z':12})]),
+            ('VSizeXY', [node('EX_VectorConst', Value={'X':3,'Y':4,'Z':12})]),
+            ('Conv_IntToInt64', [node('EX_IntConst', Value=-2147483648)]),
+            ('Square', [node('EX_DoubleConst', Value='-2.5')]),
+            ('FFloor', [node('EX_DoubleConst', Value='-2.5')]),
+            ('Conv_BoolToDouble', [node('EX_True')]),
             ('Vector_Distance', [node('EX_VectorConst', Value={'X':3,'Y':4,'Z':12}),
                                  node('EX_VectorConst', Value={'X':0,'Y':0,'Z':0})]),
         ):
@@ -32,16 +96,36 @@ class BlueprintMigrationTests(unittest.TestCase):
                 self.assertEqual(value['op'],'math')
                 self.assertEqual(value['name'],name)
                 self.assertEqual(len(value['args']),len(parameters))
-                if name != 'Abs':
+                if name in ('VSize', 'VSizeXY', 'Vector_Distance'):
                     self.assertEqual(value['args'][0]['value'],{'X':3.0,'Y':4.0,'Z':12.0})
+                elif name == 'Conv_IntToInt64':
+                    self.assertEqual(value['args'][0],{'op':'constant','value':-2147483648})
+                elif name == 'Conv_BoolToDouble':
+                    self.assertEqual(value['args'][0],{'op':'constant','value':True})
                 else:
                     self.assertEqual(value['args'][0],{'op':'constant','value':-2.5})
+
+    def test_new_native_math_signature_contracts(self):
+        from blueprint_migration import MATH_CALLS, NATIVE_MATH_INPUT_TYPES, native_math_result_type
+        signatures = {
+            'Square': (1, ('DoubleProperty',), 'DoubleProperty'),
+            'FFloor': (1, ('DoubleProperty',), 'IntProperty'),
+            'Conv_BoolToDouble': (1, ('BoolProperty',), 'DoubleProperty'),
+            'Multiply_LinearColorLinearColor': (2, ('LinearColor', 'LinearColor'), 'LinearColor'),
+        }
+        for name, (arity, source_types, result_type) in signatures.items():
+            with self.subTest(name=name):
+                self.assertEqual(MATH_CALLS[name][0], arity)
+                self.assertEqual(NATIVE_MATH_INPUT_TYPES[name], source_types)
+                self.assertEqual(native_math_result_type(name), result_type)
 
     def test_ue57_source_witnessed_abs_and_vector_length_native_signatures(self):
         from blueprint_migration import MATH_CALLS, NATIVE_MATH_INPUT_TYPES, native_math_result_type
         expected = {
             'Abs': (1, ('DoubleProperty',)),
+            'FInterpTo': (4, ('DoubleProperty',) * 4),
             'VSize': (1, ('Vector',)),
+            'VSizeXY': (1, ('Vector',)),
             'Vector_Distance': (2, ('Vector', 'Vector')),
         }
         for name, (arity, types) in expected.items():
@@ -49,6 +133,21 @@ class BlueprintMigrationTests(unittest.TestCase):
                 self.assertEqual(MATH_CALLS[name][0], arity)
                 self.assertEqual(NATIVE_MATH_INPUT_TYPES[name], types)
                 self.assertEqual(native_math_result_type(name), 'DoubleProperty')
+        self.assertEqual(MATH_CALLS['Conv_IntToInt64'][0], 1)
+        self.assertEqual(NATIVE_MATH_INPUT_TYPES['Conv_IntToInt64'], ('IntProperty',))
+        self.assertEqual(native_math_result_type('Conv_IntToInt64'), 'Int64Property')
+
+    def test_native_linear_color_to_vector_uses_original_struct_identity(self):
+        from blueprint_migration import MATH_CALLS, NATIVE_MATH_INPUT_TYPES, native_math_result_type, native_math_source_type
+        imports = [{'ObjectName': 'LinearColor', 'ClassName': 'ScriptStruct', 'OuterIndex': -2},
+                   {'ObjectName': '/Script/CoreUObject', 'ClassName': 'Package'}]
+        package = Package({'Imports': imports})
+        struct = node('EX_StructConst', Struct=-1, StructSize=16,
+                      Value=[node('EX_FloatConst', Value=x) for x in (0.25, 0.5, 0.75, 0.125)])
+        self.assertEqual(native_math_source_type(struct, package, None), 'LinearColor')
+        self.assertEqual(MATH_CALLS['Conv_LinearColorToVector'][0], 1)
+        self.assertEqual(NATIVE_MATH_INPUT_TYPES['Conv_LinearColorToVector'], ('LinearColor',))
+        self.assertEqual(native_math_result_type('Conv_LinearColorToVector'), 'Vector')
 
     def test_cached_ue57_int64_source_witness_preserves_value_and_vm_offsets(self):
         witness = json.loads((Path(__file__).parent / 'fixtures' / 'dds-int64-source-witness.json').read_text(encoding='utf-8'))
@@ -500,6 +599,26 @@ class BlueprintMigrationTests(unittest.TestCase):
                                     AssignmentExpression=variable('EX_LocalVariable', 'Input')),
                                node('EX_Return', ReturnExpression=node('EX_Nothing')), node('EX_EndOfScript')]}
         return Package({'Exports': [caller, callee, {'ObjectName': 'Test_C', 'LoadedProperties': []}]})
+
+    def test_original_source_owned_virtual_call_uses_exact_source_method(self):
+        package = self.call_package()
+        package.exports[0]['ScriptBytecode'][0]['$type'] = (
+            'UAssetAPI.Kismet.Bytecode.Expressions.EX_VirtualFunction, UAssetAPI')
+        report = translate_package(package)
+        self.assertEqual(report['counts']['translated'], 2)
+        callee = report['functions']['Caller']['steps'][0]['value']
+        self.assertEqual(callee['op'], 'call')
+        self.assertEqual(callee['function'], 'Predicate')
+        self.assertEqual(callee['export_index'], 2)
+        package.exports[1]['OuterIndex'] = 4
+        report = translate_package(package)
+        self.assertNotIn('Caller', report['functions'])
+        package = self.call_package()
+        package.exports[0]['ScriptBytecode'][0]['$type'] = (
+            'UAssetAPI.Kismet.Bytecode.Expressions.EX_VirtualFunction, UAssetAPI')
+        package.exports[0]['ScriptBytecode'][0]['VirtualFunctionName'] = 'NativeNotInSource'
+        report = translate_package(package)
+        self.assertNotIn('Caller', report['functions'])
 
     def test_local_call_preserves_signature_and_output_reference(self):
         result = translate_package(self.call_package())

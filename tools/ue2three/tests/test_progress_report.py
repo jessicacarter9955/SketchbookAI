@@ -54,6 +54,45 @@ class ProgressReportTests(unittest.TestCase):
         self.assertEqual(report['source_classes']['AnimSequence'], 10)
         self.assertEqual(report, project_progress(self.workspace, self.published, self.character))
 
+    def test_audio_progress_only_counts_source_witnessed_intact_wav(self):
+        inventory = {'files': [{'path': 'Content/Map.umap', 'sha256': 'source'}], 'maps': ['/Game/A', '/Game/B'],
+                     'assets': [{'package': '/Game/Audio/Birds', 'sha256': 'original-asset-hash'}]}
+        registry = {'project': self.project, 'complete': True,
+                    'source_snapshot_hash': digest(inventory['files']),
+                    'assets': [{'class': 'SoundWave', 'package': '/Game/Audio/Birds'}]}
+        atomic_json(self.workspace / 'artifacts/inventory.json', inventory)
+        atomic_json(self.workspace / 'artifacts/engine_metadata.json', registry)
+        name = 'audio/' + 'a' * 64 + '.wav'
+        source = self.published / name
+        source.parent.mkdir(parents=True, exist_ok=True)
+        source.write_bytes(b'RIFF' + (36).to_bytes(4, 'little') + b'WAVE' + b'\x00' * 32)
+        item = {'package': '/Game/Audio/Birds', 'kind': 'SoundWave', 'source_sha256': 'original-asset-hash',
+                'filename': name, 'output_sha256': file_hash(source)}
+        manifest = {'schema_version': 1, 'project': self.project,
+                    'source_snapshot_hash': registry['source_snapshot_hash'], 'sounds': [item]}
+        atomic_json(self.published / 'audio-manifest.json', manifest)
+        report = project_progress(self.workspace, self.published, self.character)
+        audio = next(row for row in report['rows'] if row['id'] == 'audio')
+        self.assertEqual(audio['status'], 'yellow')
+        self.assertIn('1/1 SoundWave WAV', audio['evidence'])
+        self.assertFalse(audio['fidelity_1_to_1'])
+        source.write_bytes(b'not-an-original-wav')
+        changed = project_progress(self.workspace, self.published, self.character)
+        audio = next(row for row in changed['rows'] if row['id'] == 'audio')
+        self.assertNotEqual(changed['fingerprint'], report['fingerprint'])
+        self.assertEqual(audio['status'], 'red')
+        self.assertIn('0/1 SoundWave WAV', audio['evidence'])
+        source.write_bytes(b'RIFF' + (36).to_bytes(4, 'little') + b'WAVE' + b'\x00' * 32)
+        manifest['sounds'][0]['source_sha256'] = 'wrong-original'
+        atomic_json(self.published / 'audio-manifest.json', manifest)
+        forged = project_progress(self.workspace, self.published, self.character)
+        self.assertEqual(next(row for row in forged['rows'] if row['id'] == 'audio')['status'], 'red')
+        manifest['sounds'][0]['source_sha256'] = 'original-asset-hash'
+        manifest['source_snapshot_hash'] = 'stale'
+        atomic_json(self.published / 'audio-manifest.json', manifest)
+        stale = project_progress(self.workspace, self.published, self.character)
+        self.assertEqual(next(row for row in stale['rows'] if row['id'] == 'audio')['status'], 'red')
+
     def test_offline_inventory_proof_is_partial_and_never_a_visual_green(self):
         program={'project':self.project,'packages':{'/Game/A':{'functions':{'Write':{'source_bytecode_sha256':'source'}}}}}
         program['content_sha256']=digest(program);atomic_json(self.published/'blueprint-programs.json',program)

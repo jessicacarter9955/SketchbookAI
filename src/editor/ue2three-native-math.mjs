@@ -3,6 +3,8 @@ const isVector = value => value && typeof value === 'object' && !Array.isArray(v
     && ['X','Y','Z'].every(field => typeof value[field] === 'number' && Number.isFinite(value[field]));
 const isRotator = value => value && typeof value === 'object' && !Array.isArray(value)
     && ['Pitch','Yaw','Roll'].every(field => typeof value[field] === 'number' && Number.isFinite(value[field]));
+const isLinearColor = value => value && typeof value === 'object' && !Array.isArray(value)
+    && ['R','G','B','A'].every(field => typeof value[field] === 'number' && Number.isFinite(value[field]));
 const makeQuaternion = rotation => {
     const pitch=rotation.Pitch*Math.PI/360, yaw=rotation.Yaw*Math.PI/360, roll=rotation.Roll*Math.PI/360;
     const sp=Math.sin(pitch), cp=Math.cos(pitch), sy=Math.sin(yaw), cy=Math.cos(yaw),
@@ -24,6 +26,20 @@ export function evaluateNativeMath(name, args, warning = () => {}) {
         if (!Array.isArray(args) || args.length !== 1 || typeof args[0] !== 'number' || !Number.isFinite(args[0]))
             throw new Error('Invalid native Conv_DoubleToVector parameters');
         return {X:args[0],Y:args[0],Z:args[0]};
+    }
+    if (name === 'Conv_LinearColorToVector') {
+        if (!Array.isArray(args) || args.length !== 1 || !isLinearColor(args[0]))
+            throw new Error('Invalid native Conv_LinearColorToVector parameters');
+        // Original Kismet conversion copies linear R/G/B as X/Y/Z; alpha is not converted.
+        return {X:args[0].R,Y:args[0].G,Z:args[0].B};
+    }
+    if (name === 'Multiply_LinearColorLinearColor') {
+        if (!Array.isArray(args) || args.length !== 2 || !args.every(isLinearColor))
+            throw new Error('Invalid native Multiply_LinearColorLinearColor parameters');
+        const result={R:args[0].R*args[1].R,G:args[0].G*args[1].G,
+            B:args[0].B*args[1].B,A:args[0].A*args[1].A};
+        if (!isLinearColor(result)) throw new Error('Non-finite native Multiply_LinearColorLinearColor result');
+        return result;
     }
     if (['Add_VectorVector','Subtract_VectorVector','Multiply_VectorVector'].includes(name)) {
         if (!Array.isArray(args) || args.length !== 2 || !args.every(isVector))
@@ -63,14 +79,49 @@ export function evaluateNativeMath(name, args, warning = () => {}) {
             throw new Error('Invalid native Abs parameters');
         return Math.abs(args[0]);
     }
-    if (name === 'VSize' || name === 'Vector_Distance') {
-        const count = name === 'VSize' ? 1 : 2;
+    if (name === 'Square' || name === 'FFloor') {
+        if (!Array.isArray(args) || args.length !== 1 || typeof args[0] !== 'number' || !Number.isFinite(args[0]))
+            throw new Error(`Invalid native ${name} parameters`);
+        const result = name === 'Square' ? args[0] * args[0] : Math.floor(args[0]);
+        if (!Number.isFinite(result) || name === 'FFloor' && (result < -2147483648 || result > 2147483647))
+            throw new Error(`Out-of-range native ${name} result`);
+        return result;
+    }
+    if (name === 'Conv_BoolToDouble') {
+        if (!Array.isArray(args) || args.length !== 1 || typeof args[0] !== 'boolean')
+            throw new Error('Invalid native Conv_BoolToDouble parameters');
+        return args[0] ? 1 : 0;
+    }
+    if (name === 'Conv_IntToInt64') {
+        if (!Array.isArray(args) || args.length !== 1 || !Number.isInteger(args[0]) ||
+            args[0] < -2147483648 || args[0] > 2147483647)
+            throw new Error('Invalid native Conv_IntToInt64 parameters');
+        // Signed int32 always converts exactly to the supported JS int64 range.
+        return args[0];
+    }
+    if (name === 'FInterpTo') {
+        if (!Array.isArray(args) || args.length !== 4 || args.some(x => typeof x !== 'number' || !Number.isFinite(x)))
+            throw new Error('Invalid native FInterpTo parameters');
+        const [current, target, deltaTime, speed] = args;
+        // UE 5.7 UnrealMathUtility.h FMath::FInterpTo: stop at the source
+        // small-number threshold and clamp DeltaTime * InterpSpeed to [0,1].
+        if (speed <= 0) return target;
+        const distance = target - current;
+        if (!Number.isFinite(distance)) throw new Error('Invalid native FInterpTo distance');
+        if (distance * distance < Math.fround(1e-8)) return target;
+        const alpha = Math.max(0, Math.min(1, deltaTime * speed));
+        const result = current + distance * alpha;
+        if (!Number.isFinite(result)) throw new Error('Non-finite native FInterpTo result');
+        return result;
+    }
+    if (name === 'VSize' || name === 'VSizeXY' || name === 'Vector_Distance') {
+        const count = name === 'Vector_Distance' ? 2 : 1;
         if (!Array.isArray(args) || args.length !== count || !args.every(isVector))
             throw new Error('Invalid native ' + name + ' parameters');
-        const a = args[0], b = name === 'VSize' ? {X:0,Y:0,Z:0} : args[1];
-        const x = a.X - b.X, y = a.Y - b.Y, z = a.Z - b.Z;
+        const a = args[0], sourceB = name === 'Vector_Distance' ? args[1] : {X:0,Y:0,Z:0};
+        const x = a.X - sourceB.X, y = a.Y - sourceB.Y, z = a.Z - sourceB.Z;
         // UE FVector::Size / FVector::Dist: sqrt of the three squared double components.
-        const distance = Math.sqrt(x*x + y*y + z*z);
+        const distance = Math.sqrt(x*x + y*y + (name === 'VSizeXY' ? 0 : z*z));
         if (!Number.isFinite(distance)) throw new Error('Non-finite native ' + name + ' result');
         return distance;
     }
