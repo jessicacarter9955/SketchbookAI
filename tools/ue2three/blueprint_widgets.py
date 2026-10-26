@@ -105,6 +105,8 @@ def widget_context(value, package, owner, reads, outputs, depth):
             arg = expression(argument, reads, outputs, depth + 1, package, owner)
     else:
         raise Error('Original UMG call requires source-typed parameter')
+    if not isinstance(arg_schema, dict) or not isinstance(arg, dict):
+        raise Error('Original UMG parameter schema is unavailable')
     if (arg_schema.get('type') != contract['type']
             or contract.get('native') and arg_schema.get('native') != contract['native']):
         raise Error('Original UMG argument schema differs')
