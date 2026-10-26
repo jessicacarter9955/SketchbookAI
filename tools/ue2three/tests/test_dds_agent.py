@@ -121,6 +121,7 @@ class DdsAgentTests(unittest.TestCase):
         self.assertEqual(len(status), 1)
         self.assertEqual(status[0][1]['timeout'], dds_agent.GIT_STATUS_TIMEOUT_SECONDS)
         self.assertGreater(dds_agent.GIT_STATUS_TIMEOUT_SECONDS, dds_agent.GIT_TIMEOUT_SECONDS)
+        self.assertGreater(dds_agent.GIT_CHECKOUT_TIMEOUT_SECONDS, dds_agent.GIT_STATUS_TIMEOUT_SECONDS)
 
     def _make_four_verified_families(self):
         plan_path = self.published / 'blueprint-plan.json'

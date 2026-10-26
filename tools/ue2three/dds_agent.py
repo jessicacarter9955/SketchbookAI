@@ -52,6 +52,10 @@ JAVASCRIPT_VERIFY_SECONDS = 120
 # a source-witnessed Blueprint family; keep the short status-specific bound
 # below, but give ordinary Git operations enough time to finish.
 GIT_TIMEOUT_SECONDS = 30
+# A fresh detached sparse worktree still materializes hundreds of runner and
+# test files on Windows. Allow Defender/OneDrive contention without treating a
+# slow checkout as a failed conversion batch.
+GIT_CHECKOUT_TIMEOUT_SECONDS = 300
 # A full porcelain status on Windows must scan the integrated checkout and
 # normal untracked files. It is markedly slower than rev-parse or branch
 # operations, especially during simultaneous Unreal exports. Keep the clean
@@ -671,7 +675,7 @@ def _worktree_for(repo_root: Path, state_root: Path, candidate: FamilyCandidate,
                        check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                        timeout=_bounded_timeout(GIT_TIMEOUT_SECONDS))
         _git(worker, 'sparse-checkout', 'set', '--skip-checks', 'tools/ue2three', 'src', 'tests', 'docs', '.github')
-        _git(worker, 'checkout', '--detach', head)
+        _git(worker, 'checkout', '--detach', head, timeout=GIT_CHECKOUT_TIMEOUT_SECONDS)
     except (OSError, subprocess.SubprocessError):
         raise RunnerError('Isolated Git worktree could not be created.', 'worktree_create') from None
     top = _normal_path(_git(worker, 'rev-parse', '--show-toplevel'))
