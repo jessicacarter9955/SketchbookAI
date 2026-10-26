@@ -115,10 +115,10 @@ class Compiler:
         return self.input(node['inputs'][key])
 
     def optional(self, node, key, property_name, native_default):
-        """UE 5.7 MaterialExpressions.cpp uses Const* when the pin is absent.
+        """Use UE 5.7 C++ Const* initializers when a pin is unconnected.
 
-        Missing serialized properties retain the C++ class initializer. A
-        connected pin must still compile; it must never fall back on failure.
+        Missing serialized properties retain the class initializer. Connected
+        expressions must compile successfully and never fall back on failure.
         """
         link = node['inputs'].get(key)
         if link is not None:
@@ -231,6 +231,21 @@ class Compiler:
                 if type(value) is not bool:
                     raise MaterialGLSLError('Invalid original static switch value')
                 expr = self.required(node, 'A' if value else 'B')
+            elif cls == 'MaterialExpressionSmoothStep':
+                lo, hi, x = (self.required(node, key) for key in ('Min', 'Max', 'Value'))
+                width = max(lo.width, hi.width, x.width)
+                expr = Expr(f'smoothstep({promote(lo, width)}, {promote(hi, width)}, {promote(x, width)})', width)
+            elif cls == 'MaterialExpressionConstantBiasScale':
+                if 'Bias' not in props or 'Scale' not in props:
+                    raise MaterialGLSLError('Original bias/scale properties unavailable')
+                x = self.required(node, 'Input')
+                bias, scale = number(props['Bias']), number(props['Scale'])
+                expr = Expr(f'(({x.code} + {promote(Expr(bias, 1), x.width)}) * {promote(Expr(scale, 1), x.width)})', x.width)
+            elif cls == 'MaterialExpressionNormalize':
+                x = self.required(node, 'VectorInput')
+                if x.width not in (2, 3, 4):
+                    raise MaterialGLSLError('Normalize requires witnessed vector width')
+                expr = Expr(f'normalize({x.code})', x.width)
             elif cls == 'MaterialExpressionOneMinus':
                 expr = binary(vector([1]), self.required(node, 'Input'), '-')
             elif cls == 'MaterialExpressionSaturate':
@@ -246,10 +261,10 @@ class Compiler:
                 name = 'sin' if cls.endswith('Sine') else 'cos'
                 expr = Expr(f'{name}({argument.code})', value.width)
             elif cls in ('MaterialExpressionAbs', 'MaterialExpressionFloor', 'MaterialExpressionCeil',
-                         'MaterialExpressionFrac', 'MaterialExpressionSquareRoot'):
+                         'MaterialExpressionFrac', 'MaterialExpressionSquareRoot', 'MaterialExpressionRound'):
                 name = {'MaterialExpressionAbs': 'abs', 'MaterialExpressionFloor': 'floor',
                         'MaterialExpressionCeil': 'ceil', 'MaterialExpressionSquareRoot': 'sqrt',
-                        'MaterialExpressionFrac': 'fract'}[cls]
+                        'MaterialExpressionFrac': 'fract', 'MaterialExpressionRound': 'round'}[cls]
                 value = self.required(node, 'Input')
                 expr = Expr(f'{name}({value.code})', value.width)
             elif cls == 'MaterialExpressionLinearInterpolate':

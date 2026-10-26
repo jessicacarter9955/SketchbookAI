@@ -126,6 +126,30 @@ class SourceMaterialShaderTests(unittest.TestCase):
         self.assertIn('BaseColor', result['blocked_roots'])
         self.assertIn('uep_1', result['uniforms'])
 
+    def test_smoothstep_bias_scale_normalize_and_round_are_lowered(self):
+        nodes = [node(1, 'Constant', props={'R': 0.25}),
+                 node(2, 'SmoothStep', {'Min': link(1), 'Max': link(1), 'Value': link(1)}),
+                 node(3, 'ConstantBiasScale', {'Input': link(1)}, {'Bias': 0.5, 'Scale': 2}),
+                 node(4, 'Constant3Vector', props={'Constant': {'R': 1, 'G': 2, 'B': 3, 'A': 1}}),
+                 node(5, 'Normalize', {'VectorInput': link(4)}),
+                 node(6, 'Round', {'Input': link(1)})]
+        result = compile_graph(graph(nodes, {'Roughness': link(2), 'Metallic': link(3),
+                                             'EmissiveColor': link(5), 'Opacity': link(6)}))
+        roots = result['translated_roots']
+        self.assertEqual(roots['Roughness']['glsl'], 'smoothstep(0.25, 0.25, 0.25)')
+        self.assertEqual(roots['Metallic']['glsl'], '((0.25 + 0.5) * 2.0)')
+        self.assertEqual(roots['EmissiveColor']['glsl'], 'normalize(vec3(1.0, 2.0, 3.0))')
+        self.assertEqual(roots['Opacity']['glsl'], 'round(0.25)')
+        self.assertEqual(result['blocked_roots'], {})
+
+    def test_power_witnesses_optional_exponent_and_retains_ue_domain_guard(self):
+        source = graph([node(1, 'Power', {'Base': link(2)}, {'ConstExponent': 3}),
+                        node(2, 'Constant', props={'R': 0.5})], {'Roughness': link(1)})
+        lowered = compile_graph(source)['translated_roots']['Roughness']['glsl']
+        self.assertIn('3.0', lowered)
+        self.assertIn('uePositiveClampedPow', lowered)
+        self.assertNotIn('pow(', lowered)
+
     def test_connected_unimplemented_vertex_root_is_explicitly_blocked(self):
         result = compile_graph(graph([node(1, 'Constant', props={'R': 1})],
                                      {'WorldPositionOffset': link(1)}))
@@ -182,6 +206,48 @@ class SourceMaterialShaderTests(unittest.TestCase):
         cl['properties']['ClampMode'] = 0
         cl['properties']['MinDefault'] = 0.2
         self.assertIn('0.2', compile_graph(source)['translated_roots']['Roughness']['glsl'])
+
+
+    def test_witnessed_power_smoothstep_and_bias_scale(self):
+        inputs = [node(1, 'Constant', props={'R': 0.5}),
+                  node(2, 'Constant', props={'R': 2.0}),
+                  node(3, 'Power', inputs={'Base': link(1), 'Exponent': link(2)}),
+                  node(4, 'SmoothStep', inputs={'Min': link(1), 'Max': link(2), 'Value': link(3)}),
+                  node(5, 'ConstantBiasScale', inputs={'Input': link(4)},
+                       props={'Bias': -0.7, 'Scale': 2})]
+        result = compile_graph(graph(inputs, {'Roughness': link(5)}))
+        code = result['translated_roots']['Roughness']['glsl']
+        self.assertIn('uePositiveClampedPow(0.5, 2.0)', code)
+        self.assertIn('smoothstep(', code)
+        self.assertIn('-0.7', code)
+        self.assertEqual(result['blocked_roots'], {})
+
+    def test_original_ceil_round_and_vector_normalize(self):
+        nodes = [node(1, 'Constant', props={'R': 0.52}),
+                 node(2, 'Ceil', inputs={'Input': link(1)}),
+                 node(3, 'Round', inputs={'Input': link(1)}),
+                 node(4, 'Constant3Vector', props={'Constant': {
+                     'Constant': {'R': 0.2, 'G': 0.4, 'B': 0.6, 'A': 1}}}),
+                 node(5, 'Normalize', inputs={'VectorInput': link(4)})]
+        result = compile_graph(graph(nodes, {
+            'Roughness': link(2), 'Metallic': link(3), 'BaseColor': link(5)}))
+        self.assertEqual(result['translated_roots']['Roughness']['glsl'], 'ceil(0.52)')
+        self.assertEqual(result['translated_roots']['Metallic']['glsl'], 'round(0.52)')
+        self.assertIn('normalize(vec3', result['translated_roots']['BaseColor']['glsl'])
+        self.assertEqual(result['blocked_roots'], {})
+
+    def test_new_ops_fail_closed_for_unwitnessed_inputs_and_types(self):
+        cases = [
+            node(1, 'Power', inputs={'Exponent': link(2)}),
+            node(1, 'SmoothStep', inputs={'Min': link(2), 'Max': link(2)}),
+            node(1, 'Normalize', inputs={'VectorInput': link(2)}),
+            node(1, 'ConstantBiasScale', inputs={'Input': link(2)}, props={'Bias': 0}),
+            node(1, 'ConstantBiasScale', inputs={'Input': link(2)}, props={'Bias': 0, 'Scale': 'NaN'})]
+        for tested in cases:
+            with self.subTest(kind=tested['class'], props=tested['properties']):
+                result = compile_graph(graph([tested, node(2, 'Constant', props={'R': 0.5})],
+                                             {'Roughness': link(1)}))
+                self.assertIn('Roughness', result['blocked_roots'])
 
 
 if __name__ == '__main__':

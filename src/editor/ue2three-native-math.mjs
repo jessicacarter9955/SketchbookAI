@@ -5,6 +5,25 @@ const isRotator = value => value && typeof value === 'object' && !Array.isArray(
     && ['Pitch','Yaw','Roll'].every(field => typeof value[field] === 'number' && Number.isFinite(value[field]));
 const isLinearColor = value => value && typeof value === 'object' && !Array.isArray(value)
     && ['R','G','B','A'].every(field => typeof value[field] === 'number' && Number.isFinite(value[field]));
+const isQuaternion = value => value && typeof value === 'object' && !Array.isArray(value)
+    && ['X','Y','Z','W'].every(field => typeof value[field] === 'number' && Number.isFinite(value[field]));
+const isTransform = value => value && typeof value === 'object' && !Array.isArray(value)
+    && isQuaternion(value.Rotation) && isVector(value.Translation) && isVector(value.Scale3D);
+const normalizeDegrees = angle => ((angle + 180) % 360 + 360) % 360 - 180;
+const quatToRotator = q => {
+    const singularity = q.Z*q.X - q.W*q.Y;
+    const yaw = Math.atan2(2*(q.W*q.Z+q.X*q.Y), 1-2*(q.Y*q.Y+q.Z*q.Z))*180/Math.PI;
+    let pitch, roll;
+    if (singularity < -0.4999995) {
+        pitch = -90; roll = normalizeDegrees(-yaw - 2*Math.atan2(q.X,q.W)*180/Math.PI);
+    } else if (singularity > 0.4999995) {
+        pitch = 90; roll = normalizeDegrees(yaw - 2*Math.atan2(q.X,q.W)*180/Math.PI);
+    } else {
+        pitch = Math.asin(Math.max(-1,Math.min(1,2*singularity)))*180/Math.PI;
+        roll = Math.atan2(-2*(q.W*q.X+q.Y*q.Z), 1-2*(q.X*q.X+q.Y*q.Y))*180/Math.PI;
+    }
+    return {Pitch:normalizeDegrees(pitch),Yaw:normalizeDegrees(yaw),Roll:normalizeDegrees(roll)};
+};
 const makeQuaternion = rotation => {
     const pitch=rotation.Pitch*Math.PI/360, yaw=rotation.Yaw*Math.PI/360, roll=rotation.Roll*Math.PI/360;
     const sp=Math.sin(pitch), cp=Math.cos(pitch), sy=Math.sin(yaw), cy=Math.cos(yaw),
@@ -68,6 +87,12 @@ export function evaluateNativeMath(name, args, warning = () => {}) {
             throw new Error('Invalid native BreakRotator parameters');
         return {Roll:Math.fround(args[0].Roll),Pitch:Math.fround(args[0].Pitch),Yaw:Math.fround(args[0].Yaw)};
     }
+    if (name === 'BreakTransform') {
+        if (!Array.isArray(args) || args.length !== 1 || !isTransform(args[0]))
+            throw new Error('Invalid native BreakTransform parameters');
+        const value = args[0];
+        return {Location:{...value.Translation}, Rotation:quatToRotator(value.Rotation), Scale:{...value.Scale3D}};
+    }
     if (name === 'MakeTransform') {
         if (!Array.isArray(args) || args.length !== 3 || !isVector(args[0]) || !isRotator(args[1]) || !isVector(args[2]))
             throw new Error('Invalid native MakeTransform parameters');
@@ -114,14 +139,15 @@ export function evaluateNativeMath(name, args, warning = () => {}) {
         if (!Number.isFinite(result)) throw new Error('Non-finite native FInterpTo result');
         return result;
     }
-    if (name === 'VSize' || name === 'VSizeXY' || name === 'Vector_Distance') {
-        const count = name === 'Vector_Distance' ? 2 : 1;
+    if (name === 'VSize' || name === 'VSizeXY' || name === 'Vector_Distance' || name === 'Vector_DistanceSquared') {
+        const count = name === 'Vector_Distance' || name === 'Vector_DistanceSquared' ? 2 : 1;
         if (!Array.isArray(args) || args.length !== count || !args.every(isVector))
             throw new Error('Invalid native ' + name + ' parameters');
-        const a = args[0], sourceB = name === 'Vector_Distance' ? args[1] : {X:0,Y:0,Z:0};
+        const a = args[0], sourceB = count === 2 ? args[1] : {X:0,Y:0,Z:0};
         const x = a.X - sourceB.X, y = a.Y - sourceB.Y, z = a.Z - sourceB.Z;
         // UE FVector::Size / FVector::Dist: sqrt of the three squared double components.
-        const distance = Math.sqrt(x*x + y*y + (name === 'VSizeXY' ? 0 : z*z));
+        const squared = x*x + y*y + (name === 'VSizeXY' ? 0 : z*z);
+        const distance = name === 'Vector_DistanceSquared' ? squared : Math.sqrt(squared);
         if (!Number.isFinite(distance)) throw new Error('Non-finite native ' + name + ' result');
         return distance;
     }

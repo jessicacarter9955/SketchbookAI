@@ -76,6 +76,8 @@ def parser():
     blueprints.add_argument('--read-package', action='append', default=[], help='Read this inventoried package into the parser cache without starting Unreal; repeat for a bounded batch')
     blueprints.add_argument('--baseline-report', type=Path,
                             help='Require source-matched, non-regressing results versus this previous Blueprint report')
+    blueprints.add_argument('--baseline-scope', choices=('strict', 'shared'), default='strict',
+                            help='strict: require matching package coverage; shared: certify only common packages and disclose exclusions')
     plan = commands.add_parser('plan-blueprints', help='Rank shared cached Blueprint blockers and prepare local work packets')
     plan.add_argument('--workspace', type=Path, required=True)
     plan.add_argument('--publish-dir', type=Path, required=True)
@@ -98,9 +100,14 @@ def execute(args):
         report = migrate_blueprints(args.project, args.workspace, args.publish_dir, args.package, args.read_package)
         print(f"Blueprint functions: {report['counts']}; uncached packages: {len(report['missing_cached_packages'])}")
         if args.baseline_report:
-            from compare_blueprint_reports import compare, load
-            gate = compare(load(args.baseline_report), report)
+            from compare_blueprint_reports import compare, compare_shared_packages, load
+            gate = (compare_shared_packages if args.baseline_scope == 'shared' else compare)(load(args.baseline_report), report)
             atomic_json(args.publish_dir / 'blueprint-regression-gate.json', gate)
+            if args.baseline_scope == 'shared' and (gate['baseline_only_packages'] or gate['current_only_packages']):
+                print(f"BLUEPRINT_BASELINE PARTIAL: {gate['shared_package_count']} common packages; "
+                      f"{len(gate['baseline_only_packages'])} baseline-only; "
+                      f"{len(gate['current_only_packages'])} current-only. "
+                      "Full-project monotonicity NOT certified.", flush=True)
             if not gate['monotonic_source_compilation']:
                 print(f"BLUEPRINT_REGRESSION_GATE FAILED: {gate['regression_count']} regressed, "
                       f"{gate['disappeared_count']} disappeared, "

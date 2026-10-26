@@ -896,23 +896,30 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
         }
         if (expression.op === 'math_outputs') {
             const outputNames=expression.name === 'BreakVector' ? ['X','Y','Z']
-                : expression.name === 'BreakRotator' ? ['Roll','Pitch','Yaw'] : null;
+                : expression.name === 'BreakRotator' ? ['Roll','Pitch','Yaw']
+                : expression.name === 'BreakTransform' ? ['Location','Rotation','Scale'] : null;
+            const nativeOutputs=expression.name === 'BreakTransform' ? ['Vector','Rotator','Vector'] : null;
             if (!outputNames || JSON.stringify(expression.components) !== JSON.stringify(outputNames)
                 || !Array.isArray(expression.args) || expression.args.length !== 1
                 || !Array.isArray(expression.targets) || expression.targets.length !== outputNames.length)
                 throw new Error('Unsupported original native math output call');
-            requireNativeMathStruct(expression.args[0],expression.name === 'BreakVector' ? 'Vector' : 'Rotator');
+            requireNativeMathStruct(expression.args[0],expression.name === 'BreakVector' ? 'Vector'
+                : expression.name === 'BreakRotator' ? 'Rotator' : 'Transform');
             const values=expression.args.map(argument=>evaluate(argument,depth+1));
             const components=evaluateNativeMath(expression.name,values);
             const writes=expression.targets.map((target,index)=>{
-                if (target?.op !== 'get' || !safeField(target.field) || target.type !== 'FloatProperty'
+                const expectedType=nativeOutputs ? 'StructProperty' : 'FloatProperty';
+                if (target?.op !== 'get' || !safeField(target.field) || target.type !== expectedType
                     || !['local','self','persistent'].includes(target.scope)
                     || target.scope === 'persistent' && !Number.isSafeInteger(target.frame))
                     throw new Error('Invalid original native math output target');
                 const declaredType=target.scope === 'persistent'
                     ? program.persistent_types?.[target.frame]?.[target.field]
                     : program.field_types?.[target.scope]?.[target.field];
-                if (declaredType !== 'FloatProperty') throw new Error('Original native math output type differs');
+                if (declaredType !== expectedType) throw new Error('Original native math output type differs');
+                if (nativeOutputs && (target.native !== nativeOutputs[index]
+                    || JSON.stringify(schemaFor(target)) !== JSON.stringify(nativeStruct(nativeOutputs[index]))))
+                    throw new Error('Original BreakTransform output struct differs');
                 const value=components[outputNames[index]];
                 checkType(target.scope,target.field,value,target.frame);
                 return {target,value};
@@ -926,7 +933,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
         if (expression.op === 'math' && Array.isArray(expression.args)) {
             const structContracts={
                 Add_VectorVector:['Vector','Vector'],Subtract_VectorVector:['Vector','Vector'],
-                Multiply_VectorVector:['Vector','Vector'],BreakVector:['Vector'],
+                Multiply_VectorVector:['Vector','Vector'],Vector_DistanceSquared:['Vector','Vector'],BreakVector:['Vector'],
                 BreakRotator:['Rotator'],MakeTransform:['Vector','Rotator','Vector']};
             const expected=structContracts[expression.name];
             if (expected) {

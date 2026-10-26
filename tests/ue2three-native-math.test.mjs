@@ -179,3 +179,26 @@ test('witnessed DDS scalar conversions, comparisons and componentwise color prod
         ['Multiply_LinearColorLinearColor', [{R:1,G:1,B:1,A:1},{R:1,G:1,B:1}]],
     ]) assert.throws(()=>evaluateNativeMath(name,args), /Invalid native|Out-of-range|Non-finite/);
 });
+
+test('BreakTransform preserves translation/scale and original quaternion axes', () => {
+    const t=evaluateNativeMath('MakeTransform',[
+        {X:3,Y:-2,Z:8},{Pitch:0,Yaw:0,Roll:0},{X:1,Y:2,Z:3}]);
+    assert.deepEqual(evaluateNativeMath('BreakTransform',[t]),{
+        Location:{X:3,Y:-2,Z:8},Rotation:{Pitch:0,Yaw:0,Roll:0},Scale:{X:1,Y:2,Z:3}});
+    for(const rot of [{Pitch:0,Yaw:45,Roll:0},{Pitch:0,Yaw:0,Roll:30},{Pitch:25,Yaw:0,Roll:0}]){
+        const t=evaluateNativeMath('MakeTransform',[{X:0,Y:0,Z:0},rot,{X:1,Y:1,Z:1}]);
+        const back=evaluateNativeMath('BreakTransform',[t]).Rotation;
+        for(const field of ['Pitch','Yaw','Roll'])
+            assert.ok(Math.abs(back[field]-rot[field])<1e-6,field+' '+JSON.stringify({rot,back}));
+    }
+    assert.throws(()=>evaluateNativeMath('BreakTransform',[{}]),/Invalid native BreakTransform/);
+    assert.throws(()=>evaluateNativeMath('BreakTransform',[]),/Invalid native BreakTransform/);
+});
+
+test('Vector_DistanceSquared uses original FVector squared distance',()=>{
+    assert.equal(evaluateNativeMath('Vector_DistanceSquared',[
+        {X:1,Y:2,Z:3},{X:4,Y:6,Z:15}]),169);
+    assert.equal(evaluateNativeMath('Vector_DistanceSquared',[
+        {X:1,Y:2,Z:3},{X:1,Y:2,Z:3}]),0);
+    assert.throws(()=>evaluateNativeMath('Vector_DistanceSquared',[{X:0,Y:0,Z:0}]),/Invalid native/);
+});
