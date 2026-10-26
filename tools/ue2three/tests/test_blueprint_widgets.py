@@ -128,6 +128,37 @@ class NativeWidgetContextTests(unittest.TestCase):
         with self.assertRaisesRegex(BlueprintTranslationError, 'receiver class differs'):
             expression(value, set(), set(), package=p, owner=1)
 
+    def test_image_brush_texture_preserves_original_asset_and_match_size(self):
+        p = source_package('Image')
+        p.imports[1]['ObjectName'] = 'Image'
+        p.imports.extend([
+            {'ObjectName': 'Texture2D', 'ClassName': 'Class', 'OuterIndex': -6},
+            {'ObjectName': '/Script/Engine', 'ClassName': 'Package'}])
+        p.exports[0]['LoadedProperties'].extend([
+            {'Name': 'IconImage', 'SerializedType': 'ObjectProperty', 'PropertyClass': -2},
+            {'Name': 'OriginalTexture', 'SerializedType': 'ObjectProperty', 'PropertyClass': -5},
+            {'Name': 'MatchSize', 'SerializedType': 'BoolProperty'}])
+        call = node('EX_VirtualFunction', VirtualFunctionName='SetBrushFromTexture',
+                    Parameters=[receiver('OriginalTexture'), node('EX_False')])
+        original = node('EX_Context', ObjectExpression=receiver('IconImage'), ContextExpression=call,
+                        Offset=memory_size(call, package=p), PropertyType=0,
+                        RValuePointer={'New': {'Path': [], 'ResolvedOwner': 0}})
+        result = expression(original, set(), set(), package=p, owner=1)
+        self.assertEqual(result['identity'], ['/Script/UMG', 'Image', 'SetBrushFromTexture'])
+        self.assertEqual(result['parameter']['schema']['class'], ['/Script/Engine', 'Texture2D'])
+        self.assertEqual(result['options']['bMatchSize']['value']['value'], False)
+        self.assertFalse(result['visual_1to1_certified'])
+        call['Parameters'][1] = receiver('MatchSize')
+        result = expression(original, set(), set(), package=p, owner=1)
+        self.assertEqual(result['options']['bMatchSize']['value']['field'], 'MatchSize')
+        call['Parameters'][1] = node('EX_IntConst', Value=1)
+        with self.assertRaisesRegex(BlueprintTranslationError, 'bMatchSize'):
+            expression(original, set(), set(), package=p, owner=1)
+        call['Parameters'][1] = node('EX_False')
+        p.exports[0]['LoadedProperties'][-2]['PropertyClass'] = -2
+        with self.assertRaisesRegex(BlueprintTranslationError, 'Texture2D'):
+            expression(original, set(), set(), package=p, owner=1)
+
     def test_original_umg_visibility_preserves_source_enum_byte(self):
         p = source_package()
         for value in range(5):
