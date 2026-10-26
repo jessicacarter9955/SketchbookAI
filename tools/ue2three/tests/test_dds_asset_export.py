@@ -398,6 +398,25 @@ class AssetSupervisorTests(unittest.TestCase):
             second.run()
             launched.assert_called_once()
 
+    def test_twenty_independent_scheduled_ticks_avoid_sixteen_duplicate_exports(self):
+        self._assets()
+        self._inventory()
+        now = [1000]
+        launches = 0
+        deferred = 0
+        for tick in range(20):
+            now[0] = 1000 + tick * 120
+            runner = self._partial_retry(now)
+            with patch.object(runner, '_convert_maps', wraps=runner._convert_maps) as launch:
+                runner.run()
+                launches += launch.call_count
+            job = runner.progress['jobs'][1]
+            deferred += int(bool(job.get('retry_deferred')))
+            self.assertEqual(job['completed'], 1)
+            self.assertEqual(job['outputs'][0]['sha256'], file_hash(self.publish/'partial.glb'))
+        self.assertEqual(launches, 4)
+        self.assertEqual(deferred, 16)
+
 
 if __name__ == "__main__":
     unittest.main()
