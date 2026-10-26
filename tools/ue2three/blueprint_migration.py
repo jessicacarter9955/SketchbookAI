@@ -39,7 +39,7 @@ def property_type(prop, package=None):
     if result == 'EnumProperty':
         result = prop.get('UnderlyingProp', {}).get('SerializedType')
     if result not in ('BoolProperty', 'ByteProperty', 'IntProperty', 'Int64Property', 'FloatProperty',
-                      'DoubleProperty', 'StrProperty', 'NameProperty', 'StructProperty', 'ArrayProperty'):
+                      'DoubleProperty', 'StrProperty', 'NameProperty', 'TextProperty', 'StructProperty', 'ArrayProperty'):
         raise BlueprintTranslationError(f'Unsupported source property type: {result}')
     return result
 
@@ -132,8 +132,20 @@ def native_math_source_type(value, package, owner):
     if token in constants: return constants[token]
     if token == 'EX_VectorConst': return 'Vector'
     if token == 'EX_RotationConst': return 'Rotator'
+    if token == 'EX_PrimitiveCast':
+        conversion = value.get('ConversionType')
+        types = {3: ('DoubleProperty', 'FloatProperty'), 4: ('FloatProperty', 'DoubleProperty')}
+        if type(conversion) is not int or conversion not in types:
+            raise BlueprintTranslationError('Unsupported original primitive cast conversion')
+        source, result = types[conversion]
+        if native_math_source_type(value.get('Target'), package, owner) != source:
+            raise BlueprintTranslationError('Original primitive cast source type differs')
+        return result
     if token == 'EX_Context': return native_math_source_type(value.get('ContextExpression'), package, owner)
     if token == 'EX_CallMath':
+        from blueprint_objects import NATIVE_OBJECT_CALLS
+        native = NATIVE_OBJECT_CALLS.get(import_path(package, value.get('StackNode')))
+        if native is not None: return native['return_type']
         return native_math_result_type(math_call(package, value.get('StackNode')))
     if token in ('EX_InstanceVariable','EX_LocalVariable','EX_LocalOutVariable') and package:
         pointer = value.get('Variable', {})
@@ -284,6 +296,15 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
     if not isinstance(value, dict) or depth > 48:
         raise BlueprintTranslationError('Invalid or deeply nested Kismet expression')
     token = kind(value)
+    if token == 'EX_PrimitiveCast':
+        # UE5.7 ScriptCore.cpp execDoubleToFloatCast/execFloatToDoubleCast:
+        # preserve the explicit float32 rounding at the cast boundary.
+        result_type = native_math_source_type(value, package, owner)
+        conversion = value['ConversionType']
+        return {'op': 'primitive_cast', 'conversion': conversion,
+                'source_type': 'DoubleProperty' if conversion == 3 else 'FloatProperty',
+                'return_type': result_type,
+                'value': expression(value['Target'], reads, outputs, depth+1, package, owner)}
     if token == 'EX_SwitchValue':
         # UE's select node stores absolute VM offsets for every next-case
         # boundary. memory_size verifies all of them against the serialized
@@ -472,6 +493,12 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
     if token == 'EX_TextConst':
         text = value.get('Value', {}); literal = text.get('TextLiteralType')
         if literal == 'Empty': result = {'history': 'empty', 'text': '', 'flags': 0}
+        elif literal == 'InvariantText':
+            part = text.get('InvariantLiteralString', {})
+            if kind(part) not in ('EX_StringConst', 'EX_UnicodeStringConst') or not isinstance(part.get('Value'), str):
+                raise BlueprintTranslationError('Invariant FText requires an original constant string')
+            memory_size(part, package=package)
+            result = {'history': 'invariant' if part['Value'] else 'empty', 'text': part['Value'], 'flags': 2}
         elif literal == 'LocalizedText':
             parts = [text.get(key, {}) for key in ('LocalizedSource', 'LocalizedKey', 'LocalizedNamespace')]
             if any(kind(part) not in ('EX_StringConst', 'EX_UnicodeStringConst') or not isinstance(part.get('Value'), str) for part in parts):
@@ -871,7 +898,7 @@ def translate_package(package, structs=None, tables=None):
                             if len(props) != 1: raise BlueprintTranslationError('Unresolved persistent source property: ' + field_name)
                             type_name = property_type(props[0], package)
                             persistent.setdefault(str(frame_index), {})[field_name] = type_name
-                            if type_name in ('StructProperty', 'ArrayProperty', 'ObjectProperty'):
+                            if type_name in ('StructProperty', 'ArrayProperty', 'ObjectProperty', 'TextProperty'):
                                 schema = property_schema(package, props[0])
                                 if not schema: raise BlueprintTranslationError('Unresolved persistent source schema: ' + field_name)
                                 persistent_schemas.setdefault(str(frame_index), {})[field_name] = schema
@@ -890,9 +917,9 @@ def translate_package(package, structs=None, tables=None):
                 'local': {prop['Name']: property_type(prop, package) for prop in export.get('LoadedProperties', []) if prop.get('Name') in used_locals}}
             program['source_property_types'] = {prop['Name']: prop for prop in export.get('LoadedProperties', []) if prop.get('Name') in used_locals}
             program['schemas'] = {'local': {name: schema for name, prop in program['source_property_types'].items()
-                                           if (schema := property_schema(package, prop)) and schema['type'] in ('StructProperty', 'ArrayProperty', 'ObjectProperty')},
+                                           if (schema := property_schema(package, prop)) and schema['type'] in ('StructProperty', 'ArrayProperty', 'ObjectProperty', 'TextProperty')},
                                   'self': {name: schema for name in program['self_reads'] if name in class_properties
-                                           and (schema := property_schema(package, class_properties[name])) and schema['type'] in ('StructProperty', 'ArrayProperty', 'ObjectProperty')}}
+                                           and (schema := property_schema(package, class_properties[name])) and schema['type'] in ('StructProperty', 'ArrayProperty', 'ObjectProperty', 'TextProperty')}}
             for scope, types in program['field_types'].items():
                 if any(type_name in ('ArrayProperty', 'StructProperty') and name not in program['schemas'][scope] for name, type_name in types.items()):
                     raise BlueprintTranslationError('Unresolved source array or struct schema')
@@ -993,6 +1020,15 @@ def translate_package(package, structs=None, tables=None):
                 unavailable_defaults[name] = 'Original CDO struct override is not a field map'
                 continue
             default_state[name] = {**schema['default'], **defaults.get(name, {})}
+        elif type_name == 'TextProperty':
+            from blueprint_values import text_value
+            tagged = [tag for export in package.exports
+                      if str(export.get('ObjectName', '')).startswith('Default__')
+                      for tag in export.get('Data', []) if tag.get('Name') == name]
+            try:
+                if len(tagged) > 1: raise ValueError('Duplicate original FText default')
+                default_state[name] = text_value(tagged[0]) if tagged else schema['default']
+            except ValueError as error: unavailable_defaults[name] = str(error)
         elif name in defaults: default_state[name] = defaults[name]
         elif schema and schema['type'] == 'ArrayProperty': default_state[name] = []
         elif type_name in ('BoolProperty', 'ByteProperty', 'IntProperty', 'Int64Property', 'FloatProperty', 'DoubleProperty', 'StrProperty', 'NameProperty'):

@@ -101,6 +101,10 @@ def text_value(value):
     if type(flags) is not int: raise ValueError('Unsupported source text flags')
     if history == 'None' and value.get('Value') is None and value.get('CultureInvariantString') is None:
         return {'history': 'empty', 'text': '', 'flags': flags}
+    if (history == 'None' and flags == 2 and value.get('Value') is None
+            and isinstance(value.get('CultureInvariantString'), str)):
+        text = value['CultureInvariantString']
+        return {'history': 'invariant' if text else 'empty', 'text': text, 'flags': flags}
     if history == 'Base' and all(isinstance(value.get(key), str) for key in ('Namespace', 'Value', 'CultureInvariantString')):
         return {'history': 'base', 'text': value['CultureInvariantString'], 'namespace': value['Namespace'],
                 'key': value['Value'], 'flags': flags}
