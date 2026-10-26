@@ -193,7 +193,7 @@ class SourceMaterialShaderTests(unittest.TestCase):
 
     def test_new_ops_fail_closed_for_unwitnessed_inputs_and_types(self):
         cases = [
-            node(1, 'Power', inputs={'Base': link(2)}),
+            node(1, 'Power', inputs={'Exponent': link(2)}),
             node(1, 'SmoothStep', inputs={'Min': link(2), 'Max': link(2)}),
             node(1, 'Normalize', inputs={'VectorInput': link(2)}),
             node(1, 'ConstantBiasScale', inputs={'Input': link(2)}, props={'Bias': 0}),
