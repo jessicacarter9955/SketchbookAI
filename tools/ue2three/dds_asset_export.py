@@ -628,8 +628,9 @@ class ExportSupervisor:
 def stalled_retry_delay(base_seconds: int, unchanged_rounds: int, cap_seconds: int = 3600) -> int:
     """Retry unchanged partial exports without exhausting disk with identical runs.
 
-    This never disables explicit --run or the long-running --loop scheduler.
-    New verified outputs reset the delay to the caller's configured interval.
+    Both scheduled --once and --loop use this bounded delay. A deferred tick
+    keeps verified outputs visible. Changed sources, exporter code or outputs
+    invalidate the persisted wait on the next tick.
     """
     if not 30 <= base_seconds <= cap_seconds or unchanged_rounds < 0:
         raise ValueError("Invalid retry delay or unchanged-round count")
@@ -653,7 +654,7 @@ def parser():
                    help="One or two concurrent Unreal conversion lanes; default two")
     p.add_argument("--no-scan", action="store_true", help="Block maps when the verified inventory is unavailable")
     p.add_argument("--interval-seconds", type=int, default=300,
-                   help="Scheduler interval in --loop mode; default 300 seconds")
+                   help="Base durable retry interval, also the --loop interval; default 300 seconds")
     p.add_argument("--max-stalled-delay-seconds", type=int, default=3600,
                    help="Maximum retry interval after unchanged partial results; default one hour")
     return p
