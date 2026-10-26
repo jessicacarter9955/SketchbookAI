@@ -154,6 +154,56 @@ class Recovery:
         self.bridge.GitHub.comments = lambda client, repo, issue: recovery.comments(client, repo, issue)
 
 
+def install_job_listing(bridge, engine):
+    """Expose existing allowlisted job metadata without starting or cancelling work."""
+    execute = bridge.execute
+
+    def wrapped(config, command):
+        if command.get('action') != 'job_list':
+            result = execute(config, command)
+            if command.get('action') == 'ping' and config.get('enable_jobs'):
+                result['capabilities'] = sorted(set(result.get('capabilities', [])) | {'job_list'})
+            return result
+        if not config.get('enable_jobs'):
+            raise bridge.BridgeError('Jobs are disabled in the existing relay configuration.')
+        workspaces = config.get('workspaces', {'main': config['root']})
+        selected = command.get('workspace')
+        if selected is not None and selected not in workspaces:
+            raise bridge.BridgeError('Unknown configured workspace.')
+        try:
+            limit = min(max(int(command.get('limit', 100)), 1), 500)
+        except (ValueError, TypeError):
+            raise bridge.BridgeError('Job list limit must be an integer.') from None
+        allowed = set(config.get('allowed_programs', []))
+        rows = []
+        for path in (bridge.CONFIG_DIR / 'jobs').glob('*.json'):
+            try:
+                record = json.loads(path.read_text(encoding='utf-8'))
+            except (OSError, ValueError):
+                continue
+            if (record.get('workspace', 'main') not in workspaces or
+                    record.get('program') not in allowed or
+                    (selected is not None and record.get('workspace', 'main') != selected)):
+                continue
+            row = {key: record[key] for key in (
+                'program', 'workspace', 'pid', 'started', 'ended', 'status', 'exit_code') if key in record}
+            row['job_id'] = path.stem
+            process = engine.JOBS.get(path.stem)
+            if row.get('status') == 'running':
+                if process is None:
+                    row.update(status='unknown_after_restart', note='Original process handle unavailable.')
+                else:
+                    code = process.poll()
+                    if code is not None:
+                        row.update(status='success' if code == 0 else 'failed', exit_code=code)
+            rows.append(row)
+        rows.sort(key=lambda row: (row.get('started') or 0, row['job_id']), reverse=True)
+        return {'jobs': rows[:limit], 'count': min(len(rows), limit),
+                'total_visible': len(rows), 'truncated': len(rows) > limit}
+
+    bridge.execute = wrapped
+
+
 @contextmanager
 def singleton(directory):
     directory.mkdir(parents=True, exist_ok=True)
@@ -194,6 +244,7 @@ def main():
     sys.path.insert(0, str(directory))
     pro = importlib.import_module('bridge_pro')
     bridge = pro.bridge
+    install_job_listing(bridge, pro.pro_engine)
     primary_config = bridge.CONFIG_FILE
     channel = args.channel_dir.resolve(strict=True) if args.channel_dir else bridge.CONFIG_DIR
     if args.channel_dir:

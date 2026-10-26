@@ -8,7 +8,7 @@ import unittest
 
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from bridge_recovery import Recovery
+from bridge_recovery import Recovery, install_job_listing
 
 
 class Tests(unittest.TestCase):
@@ -131,6 +131,52 @@ class Tests(unittest.TestCase):
             recovery.call(self.client, 'GET', '/example')
         self.assertEqual(recovery.not_before, 0)
         self.assertFalse(recovery.cooldown.exists())
+
+    def install_listing(self):
+        self.bridge.execute = lambda config, command: {'capabilities': ['ping']}
+        self.engine = SimpleNamespace(JOBS={})
+        install_job_listing(self.bridge, self.engine)
+        self.config = {'enable_jobs': True, 'root': self.temp.name,
+                       'workspaces': {'main': self.temp.name}, 'allowed_programs': ['python']}
+
+    def write_job(self, name, **fields):
+        folder = self.bridge.CONFIG_DIR / 'jobs'
+        folder.mkdir(exist_ok=True)
+        path = folder / (name + '.json')
+        path.write_text(json.dumps({'program': 'python', 'workspace': 'main', **fields}))
+        return path
+
+    def test_job_list_respects_allowlists_and_does_not_expose_args_or_mark_orphans_running(self):
+        self.install_listing()
+        path = self.write_job('visible', status='running', pid=123, args=['secret-argument'])
+        original = path.read_bytes()
+        self.write_job('hidden-program', program='not-allowed', status='success')
+        self.write_job('hidden-workspace', workspace='not-allowed', status='success')
+        result = self.bridge.execute(self.config, {'action': 'job_list'})
+        self.assertEqual(result['count'], 1)
+        self.assertEqual(result['jobs'][0]['job_id'], 'visible')
+        self.assertEqual(result['jobs'][0]['status'], 'unknown_after_restart')
+        self.assertNotIn('args', result['jobs'][0])
+        self.assertEqual(path.read_bytes(), original)
+
+    def test_job_list_requires_existing_jobs_permission_and_valid_workspace(self):
+        self.install_listing()
+        with self.assertRaises(self.bridge.BridgeError):
+            self.bridge.execute({**self.config, 'enable_jobs': False}, {'action': 'job_list'})
+        with self.assertRaises(self.bridge.BridgeError):
+            self.bridge.execute(self.config, {'action': 'job_list', 'workspace': 'outside'})
+
+    def test_job_list_limits_results_and_advertises_capability(self):
+        self.install_listing()
+        self.write_job('older', status='success', started=10)
+        self.write_job('newer', status='running', started=20)
+        self.engine.JOBS['newer'] = SimpleNamespace(poll=lambda: 0)
+        result = self.bridge.execute(self.config, {'action': 'job_list', 'limit': 1})
+        self.assertEqual(result['jobs'][0]['job_id'], 'newer')
+        self.assertEqual(result['jobs'][0]['status'], 'success')
+        self.assertEqual(result['total_visible'], 2)
+        self.assertTrue(result['truncated'])
+        self.assertIn('job_list', self.bridge.execute(self.config, {'action': 'ping'})['capabilities'])
 
 
 if __name__ == '__main__':
