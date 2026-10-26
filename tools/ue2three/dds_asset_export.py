@@ -210,6 +210,7 @@ class ExportSupervisor:
         self.manifest_path = self.state_dir / "manifest.json"
         self.retry_path = self.state_dir / "retry.json"
         self._retry_records = {}
+        self._attempt_signatures = {}
         self._source_metadata_guard = None
         self.guard = threading.RLock()
         self.progress = new_progress(self.project, self.publish_dir)
@@ -504,9 +505,11 @@ class ExportSupervisor:
                        "snapshot": self._source_snapshot_hash, "source_metadata": self._source_metadata_guard,
                        "character_fingerprint": self._fingerprint if job_id == "character" else None,
                        "recipe": file_hash(self.recipe_path) if self.recipe_path.is_file() else None,
-                       "map_manifest": file_hash(self.map_output / "map-manifest.json")
-                       if job_id == "maps" and (self.map_output / "map-manifest.json").is_file() else None,
                        "engine": self.engine, "implementation": implementation})
+
+    def _map_manifest_guard(self):
+        path = self.map_output / 'map-manifest.json'
+        return file_hash(path) if path.is_file() else None
 
     def _output_guards(self, outputs):
         guards = []
@@ -522,6 +525,8 @@ class ExportSupervisor:
     def _defer_retry(self, job_id):
         prior = self._retry_records.get(job_id)
         if not isinstance(prior, dict) or prior.get("signature") != self._retry_signature(job_id):
+            return False
+        if job_id == 'maps' and prior.get('map_manifest_guard') != self._map_manifest_guard():
             return False
         if prior.get("retry_after", 0) <= self.clock() and prior.get("job", {}).get("status") != "completed":
             return False
@@ -543,7 +548,9 @@ class ExportSupervisor:
 
     def _record_retry(self, job_id):
         job = next(item for item in self.progress["jobs"] if item["id"] == job_id)
-        signature = self._retry_signature(job_id)
+        # A different worker may edit exporter sources while this attempt is
+        # running. Never stamp an old failure with code that was not executed.
+        signature = self._attempt_signatures.get(job_id) or self._retry_signature(job_id)
         result = digest({key: job[key] for key in ("completed", "failed", "skipped", "outputs", "issues")})
         prior = self._retry_records.get(job_id, {})
         unchanged = (int(prior.get("unchanged_rounds", 0)) + 1
@@ -555,6 +562,7 @@ class ExportSupervisor:
             "signature": signature, "result": result, "unchanged_rounds": unchanged,
             "retry_after": retry_after, "last_attempt_at": self.clock(), "job": copy.deepcopy(job),
             "output_guards": self._output_guards(job["outputs"]),
+            "map_manifest_guard": self._map_manifest_guard() if job_id == 'maps' else None,
             "skipped_duplicate_launches": prior.get("skipped_duplicate_launches", 0)}
         atomic_json(self.retry_path, {"schema_version": 1, "project": str(self.project), "jobs": self._retry_records})
 
@@ -578,6 +586,7 @@ class ExportSupervisor:
                 targets.append(("character", self._convert_character))
             if maps_ready and not self._defer_retry("maps"):
                 targets.append(("maps", self._convert_maps))
+            self._attempt_signatures = {name: self._retry_signature(name) for name, _operation in targets}
             with ThreadPoolExecutor(max_workers=self.max_parallel, thread_name_prefix="dds-assets") as pool:
                 futures = {pool.submit(operation): name for name, operation in targets}
                 for future in as_completed(futures):

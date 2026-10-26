@@ -356,6 +356,48 @@ class AssetSupervisorTests(unittest.TestCase):
         changed._retry_records = read_json(changed.retry_path)['jobs']
         self.assertFalse(changed._defer_retry('maps'))
 
+    def test_written_manifest_does_not_invalidate_own_backoff_but_external_change_does(self):
+        self._assets()
+        self._inventory()
+        now = [1000]
+        first = self._partial_retry(now)
+        operation = first._convert_maps
+        def writes_manifest():
+            operation()
+            atomic_json(first.map_output/'map-manifest.json', {'attempt': 'original'})
+        first._convert_maps = writes_manifest
+        first.run()
+        second = self._partial_retry(now)
+        with patch.object(second, '_convert_maps', side_effect=AssertionError('redundant export')):
+            second.run()
+        atomic_json(first.map_output/'map-manifest.json', {'attempt': 'external-progress'})
+        third = self._partial_retry(now)
+        with patch.object(third, '_convert_maps', wraps=third._convert_maps) as launched:
+            third.run()
+            launched.assert_called_once()
+
+    def test_exporter_edit_during_attempt_does_not_stamp_failure_with_new_code(self):
+        self._assets()
+        self._inventory()
+        now = [1000]
+        compiler = self.root/'custom-cli'
+        compiler.mkdir()
+        target = compiler/'unreal_world_export.py'
+        target.write_text('original')
+        first = self._partial_retry(now)
+        first.cli_path = compiler/'ue2three.py'
+        operation = first._convert_maps
+        def concurrent_edit():
+            operation()
+            target.write_text('new code not used by this attempt')
+        first._convert_maps = concurrent_edit
+        first.run()
+        second = self._partial_retry(now)
+        second.cli_path = compiler/'ue2three.py'
+        with patch.object(second, '_convert_maps', wraps=second._convert_maps) as launched:
+            second.run()
+            launched.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()
