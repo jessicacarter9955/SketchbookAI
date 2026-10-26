@@ -1,6 +1,6 @@
 // Audio adapter for source-witnessed Blueprint calls. It is deliberately strict:
 // a missing Unreal SoundWave export must never become a generated/replacement SFX.
-const PROJECT_PATH = /^build\/local-scenes\/ue2three\/projects\/([A-Za-z0-9_-]+)\/maps\/[A-Za-z0-9_.-]+\.glb$/;
+const PROJECT_PATH = /^build\/local-scenes\/ue2three\/projects\/([A-Za-z0-9_-]+)\/(?:[A-Za-z0-9_-]+\/)*maps\/[A-Za-z0-9_-][A-Za-z0-9_.-]*\.glb$/;
 const SHA = /^[a-f0-9]{64}$/i;
 const SOURCE_SOUND = /^\/Game\/[A-Za-z0-9_/-]+\.[A-Za-z0-9_]+$/;
 
@@ -37,6 +37,7 @@ export class SourceAudioPlayback {
     }
 
     handle(request) {
+        if (this.disposed) return {status:'unsupported',reason:'Original audio runtime disposed'};
         const signature = request?.identity?.join(':');
         if (signature !== '/Script/Engine:GameplayStatics:PlaySound2D') {
             this.counts.unsupported++;
@@ -80,6 +81,11 @@ export class SourceAudioPlayback {
             const status = this.handle(request);
             this.onStatus(status);
         }
+    }
+    dispose() {
+        this.disposed = true;
+        for (const audio of this.playing) {audio.pause?.();audio.removeAttribute?.('src');audio.load?.();}
+        this.playing.clear();
     }
 }
 

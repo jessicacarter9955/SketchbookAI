@@ -7,6 +7,7 @@ export async function verifyLiveBlueprintInputs(player, runtime, fixture) {
     const ownerResults = new Map();
     const priorActions = Object.fromEntries([...Object.keys(guards), 'up'].map(action => [action, !!player.actions[action]?.isPressed]));
     let movementDistance = null;
+    const releaseEffects = runtime.suppressExternalEffects();
     try {
         for (const test of fixture.cases) {
             const matching = Object.entries(guards).find(([, guard]) => guard.package === test.package && guard.function === test.function);
@@ -97,7 +98,9 @@ export async function verifyLiveBlueprintInputs(player, runtime, fixture) {
                 owners_checked:ownerResults.size,owner_results:[...ownerResults.values()],
                 scope: 'Original sprint/jump prerequisites applied to the real scene input; excludes complete Mover, timers, stamina consumption and replication'};
     } finally {
-        runtime.restore(snapshot);
-        for (const [action, pressed] of Object.entries(priorActions)) player.triggerAction(action, pressed);
+        try {
+            runtime.restore(snapshot);
+            for (const [action, pressed] of Object.entries(priorActions)) player.triggerAction(action, pressed);
+        } finally { releaseEffects(); }
     }
 }

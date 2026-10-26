@@ -416,6 +416,12 @@ def snapshot(root, config_path):
 def handler(root, config_path, port, state_root=None):
     state_root = state_root or root
     class Handler(SimpleHTTPRequestHandler):
+        # Windows registry MIME associations can label .js/.mjs text/plain.
+        # ES module loading is strict; use portable explicit types here.
+        extensions_map = {**SimpleHTTPRequestHandler.extensions_map,
+                          '.js': 'text/javascript', '.mjs': 'text/javascript',
+                          '.wasm': 'application/wasm', '.glb': 'model/gltf-binary',
+                          '.wav': 'audio/wav'}
         def __init__(self, *args, **kwargs):
             super().__init__(*args, directory=str(root), **kwargs)
 

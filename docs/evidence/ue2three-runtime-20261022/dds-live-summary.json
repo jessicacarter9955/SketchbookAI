@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "project": "VIPExtractionKitDDS.uproject",
+  "programs_content_sha256": "0ffa8da249e9b6e5a914fa15534b98978db03c3e63ba9fe0ad50d8e2ca84f1cd",
+  "status": "passed",
+  "checked": 24,
+  "metrics_checked": 35,
+  "events_checked": 4,
+  "inventory_checked": 506,
+  "calculations_checked": 31,
+  "owners_checked": 1,
+  "movement_distance": 0.9974872893239981,
+  "movement_axis": "horizontal_xz",
+  "scope": "Original sprint/jump prerequisites applied to the real scene input; excludes complete Mover, timers, stamina consumption and replication"
+}

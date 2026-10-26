@@ -43,6 +43,17 @@ class WebTests(unittest.TestCase):
         connection.close()
         return result
 
+    def test_browser_modules_override_windows_plain_text_mime(self):
+        for suffix in ('js', 'mjs'):
+            (self.root / ('module.' + suffix)).write_text('export const value = 1;', encoding='utf-8')
+            connection = http.client.HTTPConnection('127.0.0.1', self.port, timeout=2)
+            connection.request('GET', '/module.' + suffix)
+            response = connection.getresponse()
+            self.assertEqual(response.status, 200)
+            self.assertEqual(response.getheader('Content-Type'), 'text/javascript')
+            self.assertIn(b'export const', response.read())
+            connection.close()
+
     def test_separate_state_root_preserves_live_agent_telemetry(self):
         state_root = self.root / 'other-checkout'
         state_path = state_root / '.local/ue2three/asset-export/progress.json'

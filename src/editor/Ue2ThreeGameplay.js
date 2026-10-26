@@ -4,6 +4,7 @@ import { applyAttachmentSocket } from './ue2three-attachment.mjs';
 import { bindBlueprintInputs, BlueprintActorRuntime } from './ue2three-blueprint-runtime.mjs';
 import { renderSourceMetricHud } from './ue2three-source-hud.mjs';
 import { loadSourceAudioPlayback } from './ue2three-source-audio.mjs';
+import { NativeEffectBridge, SourceComponentEffects, EffectUnavailable, attachNativeEffects } from './ue2three-native-effects.mjs';
 
 // Source: CBP_Fixers_Mover_ABP's "Weapon Poses" LayeredBoneBlend branches.
 const WEAPON_POSE_BRANCHES = ['spine_01', 'clavicle_l', 'clavicle_r'];
@@ -18,6 +19,17 @@ export class Ue2ThreeGameplay {
     constructor(world, {blueprints = null} = {}) {
         this.world = world;
         this.blueprints = blueprints;
+        this.nativeEffects = new NativeEffectBridge();
+        this.sourceComponentEffects = new SourceComponentEffects();
+        this.sourceComponentEffects.install(this.nativeEffects);
+        this.audioReady = Promise.resolve(null);
+        this.nativeEffects.register(['/Script/Engine','GameplayStatics','PlaySound2D'], async request => {
+            const player = await this.audioReady;
+            if (this.disposed || !player) throw new EffectUnavailable('audio_unavailable','Original audio runtime is unavailable');
+            const result = player.handle(request);
+            player.onStatus(result);
+            return result;
+        });
         this.weapon = 'rifle';
         this.aiming = false;
         this.player = null;
@@ -38,7 +50,7 @@ export class Ue2ThreeGameplay {
             this.audioStatus.style.cssText = 'position:fixed;left:18px;bottom:42px;z-index:1000;background:#101923e8;color:#dce9ef;padding:5px 9px;border-radius:5px;font:11px system-ui';
             this.audioStatus.textContent = 'Audio originale DDS: verifico gli export…';
             document.body.append(this.audioStatus);
-            loadSourceAudioPlayback(world.levelRuntime.mapPath, fetch, {
+            this.audioReady = loadSourceAudioPlayback(world.levelRuntime.mapPath, fetch, {
                 onStatus:result => {
                     if (!this.audioStatus) return;
                     this.audioStatus.textContent = result.status === 'played' ? 'Audio originale DDS · riproduzione sorgente' :
@@ -48,10 +60,12 @@ export class Ue2ThreeGameplay {
                         'Audio originale DDS · ' + (result.reason || 'errore');
                 }
             }).then(player => {
+                if (this.disposed) {player.dispose(); return null;}
                 this.sourceAudio = player;
                 if (!player.sounds.size) this.audioStatus.textContent = 'Audio DDS · 0 SoundWave originali pubblicati';
                 else this.audioStatus.textContent = `Audio DDS · ${player.sounds.size} SoundWave originali disponibili`;
-            }).catch(error => {this.audioStatus.textContent = 'Audio DDS: ' + error.message;});
+                return player;
+            }).catch(error => {this.audioStatus.textContent = 'Audio DDS: ' + error.message; return null;});
         }
         this.syncPlayer();
         world.registerUpdatable(this);
@@ -83,6 +97,7 @@ export class Ue2ThreeGameplay {
         if (this.player === active) return;
         this.cancelAction();
         this.blueprintInputs?.dispose();
+        this.detachNativeEffects?.();
         if (this.player && this.originalSetAnimation) this.player.setAnimation = this.originalSetAnimation;
         this.weaponRoot?.removeFromParent();
         this.weaponMixer?.stopAllAction();
@@ -102,6 +117,7 @@ export class Ue2ThreeGameplay {
             const sourceActor = this.blueprints.report.character_source;
             if (sourceActor) this.blueprints.bindSourceActor(sourceActor.package, active);
             active.userData.ue2threeBlueprintRuntime = this.blueprints;
+            this.detachNativeEffects = attachNativeEffects(this.blueprints,this.nativeEffects);
             this.blueprintInputs = bindBlueprintInputs(active, this.blueprints, result => {
                 if (this.sourceStatus) this.sourceStatus.textContent = result.error
                     ? 'Regola sorgente non disponibile: ' + result.error
@@ -139,7 +155,8 @@ export class Ue2ThreeGameplay {
         this.blueprints?.advanceWorldTime(timeStep);
         this.blueprintInputs?.enforceHeld();
         this.refreshSourceMetrics();
-        this.sourceAudio?.update(this.blueprints);
+        // The old diagnostic history is not a playback queue. Source effects
+        // are delivered only after commit, and are suppressed during QA replay.
         this.weaponMixer?.update(timeStep);
     }
 
@@ -318,5 +335,20 @@ export class Ue2ThreeGameplay {
         trace.frustumCulled = false;
         this.world.graphicsWorld.add(trace);
         window.setTimeout(() => { trace.removeFromParent(); trace.geometry.dispose(); trace.material.dispose(); }, 90);
+    }
+
+    dispose() {
+        this.disposed = true;
+        this.cancelAction(); this.blueprintInputs?.dispose(); this.detachNativeEffects?.();
+        this.nativeEffects.dispose(); this.sourceAudio?.dispose();
+        window.removeEventListener('keydown',this.keydown);
+        this.canvas.removeEventListener('pointerdown',this.pointerDown);
+        window.removeEventListener('pointerup',this.pointerUp);
+        this.canvas.removeEventListener('contextmenu',this.contextMenu);
+        if (this.player && this.originalSetAnimation) this.player.setAnimation = this.originalSetAnimation;
+        this.weaponRoot?.removeFromParent(); this.weaponMixer?.stopAllAction();
+        if (this.weaponMixerRoot) this.weaponMixer?.uncacheRoot(this.weaponMixerRoot);
+        this.hint?.remove(); this.sourceStatus?.remove(); this.sourceMetrics?.remove(); this.audioStatus?.remove();
+        this.world.unregisterUpdatable(this);
     }
 }
