@@ -47,7 +47,11 @@ MAX_RUN_SECONDS = 0
 MAX_CODEX_SECONDS = 0
 PYTHON_VERIFY_SECONDS = 120
 JAVASCRIPT_VERIFY_SECONDS = 120
-GIT_TIMEOUT_SECONDS = 5
+# Local Git invocations can compete with Unreal export and Windows antivirus
+# scans. Five seconds caused false timeouts before the runner could checkpoint
+# a source-witnessed Blueprint family; keep the short status-specific bound
+# below, but give ordinary Git operations enough time to finish.
+GIT_TIMEOUT_SECONDS = 30
 # A full porcelain status on Windows must scan the integrated checkout and
 # normal untracked files. It is markedly slower than rev-parse or branch
 # operations, especially during simultaneous Unreal exports. Keep the clean
