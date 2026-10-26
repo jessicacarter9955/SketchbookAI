@@ -516,7 +516,14 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','TextBlock','SetColorAndOpacity'])
                 && expression.dispatch === 'EX_FinalFunction'
                 && expression.parameter?.schema?.type === 'StructProperty'
-                && expression.parameter?.schema?.native === 'LinearColor';
+                && expression.parameter?.schema?.native === 'LinearColor'
+                || method === 'SetBrushFromTexture'
+                && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','Image','SetBrushFromTexture'])
+                && expression.dispatch === 'EX_VirtualFunction'
+                && expression.receiver_schema?.class?.[1] === 'Image'
+                && expression.parameter?.schema?.type === 'ObjectProperty'
+                && JSON.stringify(expression.parameter?.schema?.class) === JSON.stringify(['/Script/Engine','Texture2D'])
+                && expression.options?.bMatchSize?.schema?.type === 'BoolProperty';
             if (!supported || expression.source_owner_index !== program.source_owner_index
                 || expression.source_binding_required !== true
                 || expression.visual_1to1_certified !== false || !expression.receiver_schema
@@ -547,10 +554,18 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             validateSchema(expression.parameter.schema,value);
             if (method === 'SetVisibility' && (!Number.isInteger(value) || value < 0 || value > 4))
                 throw new Error('Unverified original ESlateVisibility value');
+            // bMatchSize is a distinct original UImage parameter, not a
+            // brush fallback. Require its source-typed value at execution.
+            let matchSize;
+            if (method === 'SetBrushFromTexture') {
+                matchSize=evaluate(expression.options.bMatchSize.value,depth+1);
+                validateSchema(expression.options.bMatchSize.schema,matchSize);
+            }
             const effect={op:'native_widget_effect',identity:[...identity],dispatch:expression.dispatch,
                 widget_id:reference.widget_id,source_field:expression.receiver_field,
                 source_package:reference.source_package,source_owner_index:reference.source_owner_index,
-                method,parameter:structuredClone(value)};
+                method,parameter:structuredClone(value),
+                ...(method === 'SetBrushFromTexture' ? {match_size:matchSize} : {})};
             emit(effect);
             trace.push({source_index:sourceIndex,...structuredClone(effect)});
             return null;
