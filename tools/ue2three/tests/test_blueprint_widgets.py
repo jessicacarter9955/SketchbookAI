@@ -149,12 +149,15 @@ class NativeWidgetContextTests(unittest.TestCase):
         self.assertEqual(result['options']['bMatchSize']['value']['value'], False)
         self.assertFalse(result['visual_1to1_certified'])
         call['Parameters'][1] = receiver('MatchSize')
+        original['Offset'] = memory_size(call, package=p)
         result = expression(original, set(), set(), package=p, owner=1)
         self.assertEqual(result['options']['bMatchSize']['value']['field'], 'MatchSize')
         call['Parameters'][1] = node('EX_IntConst', Value=1)
+        original['Offset'] = memory_size(call, package=p)
         with self.assertRaisesRegex(BlueprintTranslationError, 'bMatchSize'):
             expression(original, set(), set(), package=p, owner=1)
         call['Parameters'][1] = node('EX_False')
+        original['Offset'] = memory_size(call, package=p)
         p.exports[0]['LoadedProperties'][-2]['PropertyClass'] = -2
         with self.assertRaisesRegex(BlueprintTranslationError, 'Texture2D'):
             expression(original, set(), set(), package=p, owner=1)
