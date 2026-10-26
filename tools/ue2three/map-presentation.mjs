@@ -23,7 +23,8 @@ export function mapValidationSummary(validation) {
 
 export function safeMapPath(value) {
   const path = String(value || '').replace(/\\/g, '/');
-  if (!path.startsWith('build/local-scenes/ue2three/projects/') || !path.includes('/maps/') ||
+  const recovered = /^build\/local-scenes\/ue2three\/projects\/[A-Za-z0-9_-]+\/recovered-maps\/[a-f0-9]{20}\/model\.glb$/.test(path);
+  if (!path.startsWith('build/local-scenes/ue2three/projects/') || !(path.includes('/maps/') || recovered) ||
       /\.\.|[?#%]/.test(path) || !path.toLowerCase().endsWith('.glb')) {
     throw new Error('Percorso mappa Unreal non valido. Riapri il livello dal Migration Manager.');
   }
@@ -36,10 +37,14 @@ export async function mapAssetURL(value, {revision, fetchManifest = globalThis.f
   let hash = /^[a-f0-9]{64}$/i.test(revision || '') ? revision : null;
   if (!hash) {
     try {
-      const response = await fetchManifest('/' + path.slice(0,path.lastIndexOf('/maps/')) + '/map-manifest.json', {cache: 'no-store'});
+      const recovered = path.includes('/recovered-maps/');
+      const base = recovered ? path.split('/recovered-maps/')[0] : path.slice(0,path.lastIndexOf('/maps/'));
+      const response = await fetchManifest('/' + base + (recovered ? '/recovered-map-catalog.json' : '/map-manifest.json'), {cache: 'no-store'});
       if (response.ok) {
         const manifest = await response.json();
-        const candidate = manifest.maps?.find(row => row.filename === path.split('/').pop())?.output_sha256;
+        const candidate = recovered
+          ? manifest.maps?.find(row => row.model === path.slice(base.length + 1))?.sha256
+          : manifest.maps?.find(row => row.filename === path.split('/').pop())?.output_sha256;
         if (/^[a-f0-9]{64}$/i.test(candidate || '')) hash = candidate;
       }
     } catch { /* Older exports remain loadable when their manifest is unavailable. */ }

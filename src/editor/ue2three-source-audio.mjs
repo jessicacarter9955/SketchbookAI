@@ -1,11 +1,12 @@
 // Audio adapter for source-witnessed Blueprint calls. It is deliberately strict:
 // a missing Unreal SoundWave export must never become a generated/replacement SFX.
 const PROJECT_PATH = /^build\/local-scenes\/ue2three\/projects\/([A-Za-z0-9_-]+)\/(?:[A-Za-z0-9_-]+\/)*maps\/[A-Za-z0-9_-][A-Za-z0-9_.-]*\.glb$/;
+const RECOVERED_PATH = /^build\/local-scenes\/ue2three\/projects\/([A-Za-z0-9_-]+)\/recovered-maps\/[a-f0-9]{20}\/model\.glb$/;
 const SHA = /^[a-f0-9]{64}$/i;
 const SOURCE_SOUND = /^\/Game\/[A-Za-z0-9_/-]+\.[A-Za-z0-9_]+$/;
 
 export function sourceAudioManifestPath(mapPath) {
-    const match = PROJECT_PATH.exec(mapPath || '');
+    const match = PROJECT_PATH.exec(mapPath || '') || RECOVERED_PATH.exec(mapPath || '');
     if (!match) throw new Error('Invalid source map path for audio');
     return `build/local-scenes/ue2three/projects/${match[1]}/audio-manifest.json`;
 }

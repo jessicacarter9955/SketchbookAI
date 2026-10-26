@@ -53,3 +53,28 @@ test('missing manifest means zero original sounds, not generated fallback',async
     assert.equal(player.handle({identity:['/Script/Engine','GameplayStatics','PlaySound2D'],
         arguments:[null,{asset:entry.asset},1,1,0,null,null,false]}).status,'missing');
 });
+
+test('nested and content-addressed recovered maps share only their own project audio',()=>{
+    const base='build/local-scenes/ue2three/projects/VIPExtractionKitDDS-23a280ac11/';
+    for(const suffix of ['dds-assets/maps/maps/GalleryLevel.glb',
+        'recovered-maps/'+'a'.repeat(20)+'/model.glb'])
+        assert.equal(sourceAudioManifestPath(base+suffix),base+'audio-manifest.json');
+    for(const suffix of ['recovered-maps/arbitrary/model.glb',
+        'recovered-maps/'+'a'.repeat(20)+'/../model.glb'])
+        assert.throws(()=>sourceAudioManifestPath(base+suffix),/Invalid source map path/);
+});
+
+test('disposing original audio releases active media and rejects subsequent effects',()=>{
+    let paused=0,removed=0,loaded=0,created=0;
+    const player=new SourceAudioPlayback({sounds:verifiedSourceSounds(manifest,map),createAudio:()=>{
+        created++;return {play(){},pause(){paused++;},removeAttribute(name){
+            assert.equal(name,'src');removed++;},load(){loaded++;}};
+    }});
+    const request={identity:['/Script/Engine','GameplayStatics','PlaySound2D'],
+        arguments:[null,{asset:entry.asset},1,1,0,null,null,false]};
+    assert.equal(player.handle(request).status,'requested');
+    player.dispose();player.dispose();
+    assert.equal(paused,1);assert.equal(removed,1);assert.equal(loaded,1);
+    assert.equal(player.playing.size,0);
+    assert.equal(player.handle(request).status,'unsupported');assert.equal(created,1);
+});

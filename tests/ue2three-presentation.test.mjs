@@ -73,6 +73,17 @@ test('nested asset export maps reuse the manifest located alongside their maps f
   }});
 });
 
+test('recovered original map assemblies use exact content-addressed catalog identity without certifying the map',async()=>{
+  const recovered='build/local-scenes/ue2three/projects/example/recovered-maps/'+'b'.repeat(20)+'/model.glb';
+  assert.equal(safeMapPath(recovered),recovered);
+  const url=await mapAssetURL(recovered,{fetchManifest:async url=>{
+    assert.equal(url,'/build/local-scenes/ue2three/projects/example/recovered-map-catalog.json');
+    return {ok:true,json:async()=>({maps:[{model:'recovered-maps/'+'b'.repeat(20)+'/model.glb',sha256:hash,complete_level:false}]})};
+  }});
+  assert.equal(url,'/'+recovered+'?revision='+hash);
+  assert.throws(()=>safeMapPath(recovered.replace('b'.repeat(20),'invalid')),/Percorso/);
+});
+
 test('old exports remain loadable without a manifest and never reuse an unversioned URL', async () => {
   for (const fetchManifest of [async () => {throw Error('offline');},
     async () => ({ok: false}), async () => ({ok: true, json: async () => ({maps: []})})]) {
