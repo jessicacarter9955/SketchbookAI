@@ -117,7 +117,7 @@ const nativeStruct = name => {
             default:{Rotation:rotation.default,Translation:vector.default,Scale3D:{X:1,Y:1,Z:1}},
             member_order:['Rotation','Translation','Scale3D']};
     }
-    const fields = name === 'Vector' ? ['X','Y','Z'] : name === 'Rotator' ? ['Pitch','Yaw','Roll'] : ['R','G','B','A'];
+    const fields = name === 'Vector' ? ['X','Y','Z'] : name === 'Vector2D' ? ['X','Y'] : name === 'Rotator' ? ['Pitch','Yaw','Roll'] : ['R','G','B','A'];
     const fieldType = name === 'LinearColor' ? 'FloatProperty' : 'DoubleProperty';
     return {type:'StructProperty',source:'/Script/CoreUObject',native:name,
         fields:Object.fromEntries(fields.map(field=>[field,{type:fieldType}])),
@@ -306,7 +306,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
     const nativeMathStructType = value => {
         if (value?.op === 'typed_literal' || value?.op === 'get') {
             const schema=value.op === 'typed_literal' ? value.schema : schemaFor(value);
-            if (!['Vector','Rotator','Quat','Transform'].includes(schema?.native)
+            if (!['Vector','Vector2D','Rotator','Quat','Transform'].includes(schema?.native)
                 || JSON.stringify(schema) !== JSON.stringify(nativeStruct(schema.native))) return null;
             return schema.native;
         }
@@ -921,7 +921,8 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             return nested.value;
         }
         if (expression.op === 'math_outputs') {
-            const outputNames=expression.name === 'BreakVector' ? ['X','Y','Z']
+            const outputNames=expression.name === 'BreakVector2D' ? ['X','Y']
+                : expression.name === 'BreakVector' ? ['X','Y','Z']
                 : expression.name === 'BreakRotator' ? ['Roll','Pitch','Yaw']
                 : expression.name === 'BreakTransform' ? ['Location','Rotation','Scale'] : null;
             const nativeOutputs=expression.name === 'BreakTransform' ? ['Vector','Rotator','Vector'] : null;
@@ -929,12 +930,13 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 || !Array.isArray(expression.args) || expression.args.length !== 1
                 || !Array.isArray(expression.targets) || expression.targets.length !== outputNames.length)
                 throw new Error('Unsupported original native math output call');
-            requireNativeMathStruct(expression.args[0],expression.name === 'BreakVector' ? 'Vector'
+            requireNativeMathStruct(expression.args[0],expression.name === 'BreakVector2D' ? 'Vector2D'
+                : expression.name === 'BreakVector' ? 'Vector'
                 : expression.name === 'BreakRotator' ? 'Rotator' : 'Transform');
             const values=expression.args.map(argument=>evaluate(argument,depth+1));
             const components=evaluateNativeMath(expression.name,values);
             const writes=expression.targets.map((target,index)=>{
-                const expectedType=nativeOutputs ? 'StructProperty' : 'FloatProperty';
+                const expectedType=nativeOutputs ? 'StructProperty' : expression.name === 'BreakVector2D' ? 'DoubleProperty' : 'FloatProperty';
                 if (target?.op !== 'get' || !safeField(target.field) || target.type !== expectedType
                     || !['local','self','persistent'].includes(target.scope)
                     || target.scope === 'persistent' && !Number.isSafeInteger(target.frame))

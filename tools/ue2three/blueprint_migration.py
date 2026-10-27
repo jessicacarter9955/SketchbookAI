@@ -66,6 +66,7 @@ MATH_CALLS.update({'Divide_DoubleDouble': (2, 'DoubleDouble'), 'Divide_IntInt': 
                    'MakeRotator': (3, 'rotator'),
                    'MakeTransform': (3, 'transform'),
                    'BreakVector': (4, 'break_vector'),
+                   'BreakVector2D': (3, 'break_vector2d'),
                    'BreakRotator': (4, 'break_rotator'),
                    'BreakTransform': (4, 'break_transform'),
                    'Min': (2, 'IntInt'), 'Max': (2, 'IntInt'),
@@ -91,6 +92,7 @@ NATIVE_MATH_INPUT_TYPES = {
     'MakeRotator': ('FloatProperty', 'FloatProperty', 'FloatProperty'),
     'MakeTransform': ('Vector', 'Rotator', 'Vector'),
     'BreakVector': ('Vector',),
+    'BreakVector2D': ('Vector2D',),
     'BreakRotator': ('Rotator',),
     'BreakTransform': ('Transform',),
     'Abs': ('DoubleProperty',), 'VSize': ('Vector',), 'VSizeXY': ('Vector',),
@@ -473,14 +475,15 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         for index, expected_type in enumerate(NATIVE_MATH_INPUT_TYPES.get(name, ())):
             if native_math_source_type(args[index], package, owner) != expected_type:
                 raise BlueprintTranslationError('Original native math parameter type differs')
-        if name in ('BreakVector', 'BreakRotator', 'BreakTransform'):
+        if name in ('BreakVector', 'BreakVector2D', 'BreakRotator', 'BreakTransform'):
             components = (('X','Y','Z') if name == 'BreakVector' else
+                          ('X','Y') if name == 'BreakVector2D' else
                           ('Roll','Pitch','Yaw') if name == 'BreakRotator' else
                           ('Location','Rotation','Scale'))
-            natives = ('Vector','Rotator','Vector') if name == 'BreakTransform' else (None,)*3
+            natives = ('Vector','Rotator','Vector') if name == 'BreakTransform' else (None,)*(len(args)-1)
             targets = []
             for argument, native in zip(args[1:], natives):
-                typ = 'StructProperty' if native else 'FloatProperty'
+                typ = 'StructProperty' if native else 'DoubleProperty' if name == 'BreakVector2D' else 'FloatProperty'
                 target, prop = native_math_output_target(argument, package, owner, typ)
                 if native and property_schema(package, prop).get('native') != native:
                     raise BlueprintTranslationError('BreakTransform original native output differs')

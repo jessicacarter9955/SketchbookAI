@@ -30,6 +30,7 @@ def asset_constant(package, reference):
 
 def native_schema(identity):
     fields = {('/Script/CoreUObject', 'Vector'): ('X', 'Y', 'Z'),
+              ('/Script/CoreUObject', 'Vector2D'): ('X', 'Y'),
               ('/Script/CoreUObject', 'Rotator'): ('Pitch', 'Yaw', 'Roll')}.get(identity)
     if fields:
         return {'type': 'StructProperty', 'source': identity[0], 'native': identity[1],

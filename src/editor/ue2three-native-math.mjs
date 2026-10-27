@@ -77,6 +77,13 @@ export function evaluateNativeMath(name, args, warning = () => {}) {
         if (![roll,pitch,yaw].every(Number.isFinite)) throw new Error('Invalid native MakeRotator parameters');
         return {Pitch:pitch,Yaw:yaw,Roll:roll};
     }
+    if (name === 'BreakVector2D') {
+        if (!Array.isArray(args) || args.length !== 1 || !args[0] || typeof args[0] !== 'object'
+            || Object.keys(args[0]).sort().join(',') !== 'X,Y'
+            || !['X','Y'].every(key => typeof args[0][key] === 'number' && Number.isFinite(args[0][key])))
+            throw new Error('Invalid original BreakVector2D parameters');
+        return {X: args[0].X, Y: args[0].Y};
+    }
     if (name === 'BreakVector') {
         if (!Array.isArray(args) || args.length !== 1 || !isVector(args[0]))
             throw new Error('Invalid native BreakVector parameters');

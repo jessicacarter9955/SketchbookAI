@@ -209,3 +209,10 @@ test('source-witnessed IntInt halving truncates toward zero', () => {
     for (const args of [[7,0],[7,-2],[7,3],[1.5,2],[2147483648,2],['7',2],[7]])
         assert.throws(()=>evaluateNativeMath('Divide_IntInt',args),/Invalid|Unwitnessed/);
 });
+
+test('source Vector2D Break outputs remain double precision and reject malformed input', () => {
+    const input={X:1.23456789012345,Y:-2.34567890123456};
+    assert.deepEqual(evaluateNativeMath('BreakVector2D',[input]),input);
+    for (const bad of [[],[input,input],[{X:1}],[{X:1,Y:NaN}],[{X:1,Y:2,Z:3}],[[1,2]],[null]])
+        assert.throws(()=>evaluateNativeMath('BreakVector2D',bad),/Invalid original BreakVector2D/);
+});
