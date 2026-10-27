@@ -1,10 +1,15 @@
 """Source-witnessed component ownership; no construction script or network execution."""
+import math
 from blueprint_types import import_path, property_schema, NATIVE_COMPONENT_REFERENCES
 from blueprint_values import serialized_value
 from core import digest
 
 ACTOR_BASES = {('/Script/Engine', name) for name in ('Actor', 'Pawn', 'Character')}
 NATIVE_OBJECT_CALLS = {
+    ('/Script/Engine', 'KismetSystemLibrary', 'MakeLiteralDouble'): {
+        'parameter_types': ('DoubleProperty',), 'return_type': 'DoubleProperty',
+        'argument_tokens': (('EX_DoubleConst',),),
+    },
     ('/Script/Engine', 'KismetTextLibrary', 'Conv_StringToText'): {
         'parameter_types': ('StrProperty',), 'return_type': 'TextProperty',
         'argument_tokens': (('EX_StringConst', 'EX_UnicodeStringConst'),),
@@ -74,12 +79,13 @@ def native_object_call(value, package, owner, reads, outputs, depth):
             result = expression(arg, reads, outputs, depth+1, package, owner)
         elif token == 'EX_TextConst' and token in literal_tokens and expected == 'TextProperty':
             result = expression(arg, reads, outputs, depth+1, package, owner)
-        elif token in literal_tokens and expected in ('StrProperty', 'NameProperty', 'IntProperty', 'BoolProperty'):
+        elif token in literal_tokens and expected in ('StrProperty', 'NameProperty', 'IntProperty', 'BoolProperty', 'DoubleProperty'):
             memory_size(arg, package=package)
             result = expression(arg, reads, outputs, depth+1, package, owner)
             literal = result.get('value')
             valid = (result.get('op') == 'constant'
                      and (type(literal) is bool if expected == 'BoolProperty'
+                          else (type(literal) in (int, float) and math.isfinite(literal)) if expected == 'DoubleProperty'
                           else isinstance(literal, str) if expected != 'IntProperty'
                           else type(literal) is int and -(2**31) <= literal < 2**31))
             if not valid:
