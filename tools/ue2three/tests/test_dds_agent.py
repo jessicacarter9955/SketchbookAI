@@ -156,10 +156,10 @@ class DdsAgentTests(unittest.TestCase):
                    'modules': ['casts']}
         packet_example = {**witness, 'source_package_sha256': self.source_hash,
                           'bytecode': bytecode}
-        packet = ('# ue2three collaboration task: Source Casts\\n\\nProgram version: '
-                  + plan['programs_content_sha256'] + '.\\n\\n'
-                  'Original full source examples\\n'
-                  '```json\\n' + json.dumps([packet_example]) + '\\n```\\n')
+        packet = ('# ue2three collaboration task: Source Casts\n\nProgram version: '
+                  + plan['programs_content_sha256'] + '.\n\n'
+                  'Original full source examples\n'
+                  '```json\n' + json.dumps([packet_example]) + '\n```\n')
         path = self.published / 'work-packets' / 'casts.md'
         path.write_text(packet, encoding='utf-8')
         plan['functions'].append(witness)
@@ -182,7 +182,7 @@ class DdsAgentTests(unittest.TestCase):
             self.assertTrue((worker / '.local/dds-agent/source-witness.json').is_file())
             self.assertIn('CastOriginal', prompt)
             return 0
-        with patch.object(dds_agent, 'run_codex', side_effect=fake_codex), \\
+        with patch.object(dds_agent, 'run_codex', side_effect=fake_codex), \
                 patch.object(dds_agent, 'verify_worker'):
             run = dds_agent.run_once(self.repo, self.state_root, 'codex-test-double')
         self.assertEqual(run['status'], 'patch_ready_for_review')
