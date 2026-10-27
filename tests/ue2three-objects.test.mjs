@@ -28,11 +28,15 @@ function queryFixture() {
     const {report,player}=fixture();
     const child=report.packages['/Game/Component'];
     child.functions.Read={schema_version:1,name:'Read',status:'translated_straight_line',source_owner_index:2,source_export_index:4,
-        input_fields:[],output_fields:['Value'],self_reads:['Count'],self_writes:[],field_types:{self:{Count:'IntProperty'},local:{Value:'IntProperty'}},schemas:{},steps:[
+        input_fields:[],output_fields:['Value'],self_reads:['Count'],self_writes:[],parameters:[],
+        source_parameters:[{name:'Value',mode:'output',schema:{type:'IntProperty',default:0}}],
+        field_types:{self:{Count:'IntProperty'},local:{Value:'IntProperty'}},schemas:{},steps:[
             {op:'set',scope:'local',field:'Value',value:{op:'get',scope:'self',field:'Count'}},end]};
     const schema={type:'ObjectProperty',class:['/Game/Component','Component_C'],reference_kind:'runtime_component',default:null};
     const call={op:'component_query',target:{op:'get',scope:'self',field:'Inventory'},package:'/Game/Component',class_object:'Component_C',function:'Read',export_index:4,
-        bindings:[{mode:'output',parameter:'Value',target:{op:'get',scope:'local',field:'Result'}}]};
+        receiver_schema:schema,class_export_index:2,dispatch:'EX_LocalVirtualFunction',context_offset:23,
+        transactional_outputs_safe:true,
+        bindings:[{mode:'output',parameter:'Value',schema:{type:'IntProperty',default:0},target:{op:'get',scope:'local',field:'Result'}}]};
     const program={schema_version:1,name:'Query',status:'translated_straight_line',source_owner_index:2,source_export_index:3,
         input_fields:[],output_fields:['Result'],self_reads:['Inventory'],self_writes:[],field_types:{self:{Inventory:'ObjectProperty'},local:{Result:'IntProperty'}},
         schemas:{self:{Inventory:schema}},steps:[{op:'evaluate',value:call},end]};
@@ -48,9 +52,10 @@ function queryFixture() {
 function mutationFixture() {
     const f=queryFixture(),{report,child,runtime,program,call}=f;
     const write=structuredClone(child.functions.Write);
-    write.value_parameters_only=true;write.parameters=[];write.name='Write';
+    write.value_parameters_only=true;write.parameters=[];write.source_parameters=[];write.name='Write';
     child.functions.Write=write;
-    Object.assign(call,{op:'component_call',function:'Write',export_index:3,bindings:[],value_parameters_only:true});
+    Object.assign(call,{op:'component_call',function:'Write',export_index:3,bindings:[],value_parameters_only:true,
+        transactional_outputs_safe:true});
     program.steps.push(end);
     return f;
 }
@@ -91,13 +96,41 @@ test('mutable component calls commit original state, persistent frames and effec
     assert.ok(result.trace.some(row=>row.op==='component_call' && row.function==='Write'));
 });
 
+test('transactional component calls preserve typed out values and roll back state when a later step fails',()=>{
+    const f=mutationFixture(),outputSchema={type:'IntProperty',default:0};
+    const caller=f.program,callee=f.child.functions.Write;
+    caller.field_types.local.Result='IntProperty';
+    callee.output_fields=['Value'];callee.source_parameters=[{name:'Value',mode:'output',schema:outputSchema}];
+    callee.field_types.local ||= {};
+    callee.field_types.local.Value='IntProperty';
+    callee.steps=[{op:'set',scope:'self',field:'Count',value:c(17)},
+        {op:'set',scope:'local',field:'Value',value:c(42)},end];
+    Object.assign(f.call,{bindings:[{mode:'output',parameter:'Value',schema:outputSchema,
+        target:{op:'get',scope:'local',field:'Result'}}],transactional_outputs_safe:true});
+    const result=f.runtime.call('/Game/Combat','Query');
+    assert.equal(result.outputs.Result,42);assert.equal(f.runtime.states['/Game/Component'].Count,17);
+
+    const failed=mutationFixture(),failedCallee=failed.child.functions.Write;
+    failed.program.field_types.local.Result='IntProperty';
+    failedCallee.output_fields=['Value'];failedCallee.source_parameters=[{name:'Value',mode:'output',schema:outputSchema}];
+    failedCallee.field_types.local ||= {};
+    failedCallee.field_types.local.Value='IntProperty';
+    failedCallee.steps=[{op:'set',scope:'self',field:'Count',value:c(17)},
+        {op:'set',scope:'local',field:'Value',value:c(42)},{op:'evaluate',value:{op:'unsupported'}},end];
+    Object.assign(failed.call,{bindings:[{mode:'output',parameter:'Value',schema:outputSchema,
+        target:{op:'get',scope:'local',field:'Result'}}],transactional_outputs_safe:true});
+    const before=failed.runtime.snapshot();
+    assert.throws(()=>failed.runtime.call('/Game/Combat','Query'),/Unsupported Blueprint expression/);
+    assert.deepEqual(failed.runtime.snapshot(),before);
+});
+
 test('any failure after a nested component mutation rolls back both components, frames, bindings and effects',()=>{
     for (const corrupt of [
         f=>f.program.steps.splice(1,0,{op:'evaluate',value:{op:'unknown_operation'}}),
         f=>f.child.functions.Write.steps.splice(2,0,{op:'evaluate',value:{op:'unknown_operation'}}),
         f=>f.call.export_index=999,
-        f=>f.call.value_parameters_only=false,
-        f=>f.child.functions.Write.value_parameters_only=false,
+        f=>f.call.transactional_outputs_safe=false,
+        f=>f.child.functions.Write.source_parameters=null,
         f=>f.runtime.states['/Game/Combat'].Inventory.realm='other',
         f=>f.runtime.states['/Game/Combat'].Inventory.actor_id='other',
         f=>f.report.packages['/Game/Component'].source.source_sha256='changed',
@@ -121,11 +154,15 @@ test('cross-component callbacks see active caller writes and their changes survi
     runtime.states['/Game/Component'].Combat=combatReference;
     const get=(scope,field)=>({op:'get',scope,field});
     const member={op:'component_member',target:get('self','Combat'),package:'/Game/Combat',class_object:'Combat_C',class_export_index:2,field:'Count',schema:countSchema};
+    const combatReferenceSchema={type:'ObjectProperty',class:['/Game/Combat','Combat_C'],reference_kind:'runtime_component',default:null};
+    child.field_schemas.Combat=combatReferenceSchema;
     const callback=structuredClone(child.functions.Write);
     callback.source_export_index=8;callback.source_owner_index=2;callback.steps=[{op:'set',scope:'self',field:'Count',value:c(88)},end];
     combat.functions.Callback=callback;
     child.functions.Write.steps=[{op:'set',scope:'self',field:'Count',value:member},
-        {op:'evaluate',value:{op:'component_call',target:get('self','Combat'),package:'/Game/Combat',class_object:'Combat_C',function:'Callback',export_index:8,bindings:[],value_parameters_only:true}},end];
+        {op:'evaluate',value:{op:'component_call',target:get('self','Combat'),package:'/Game/Combat',class_object:'Combat_C',
+            receiver_schema:combatReferenceSchema,class_export_index:2,function:'Callback',export_index:8,
+            bindings:[],transactional_outputs_safe:true}},end];
     child.functions.Impl={...child.functions.Write,source_export_index:9};
     child.functions.Write.steps=[{op:'evaluate',value:{op:'call',function:'Impl',export_index:9,bindings:[]}},end];
     program.field_types.self.Count='IntProperty';
@@ -151,7 +188,8 @@ test('mutable calls share the original instruction budget and depth limit across
 test('read-only queries after mutations read staged peer state and preserve original out-parameter copying',()=>{
     const f=mutationFixture();
     f.program.steps.splice(1,0,{op:'evaluate',value:{...f.call,op:'component_query',function:'Read',export_index:4,
-        bindings:[{mode:'output',parameter:'Value',target:{op:'get',scope:'local',field:'Result'}}]}});
+        bindings:[{mode:'output',parameter:'Value',schema:{type:'IntProperty',default:0},
+            target:{op:'get',scope:'local',field:'Result'}}]}});
     assert.equal(f.runtime.call('/Game/Combat','Query').outputs.Result,7);
 });
 
@@ -160,6 +198,7 @@ test('mutating component input signatures reject type, order and reference misma
         f=>f.call.bindings[0].value=c('bad'),f=>f.call.bindings[0].mode='output']) {
         const f=mutationFixture(),schema={type:'IntProperty',default:0};
         f.child.functions.Write.parameters=[{name:'Value',schema}];
+        f.child.functions.Write.source_parameters=[{name:'Value',mode:'input',schema}];
         f.child.functions.Write.input_fields=['Value'];f.child.functions.Write.field_types.local={Value:'IntProperty'};
         f.child.functions.Write.steps[0].value={op:'get',scope:'local',field:'Value'};
         f.call.bindings=[{mode:'input',parameter:'Value',schema,value:c(32)}];
@@ -315,6 +354,61 @@ test('original IsValid binds only native components present in the source SCS gr
         input_fields:[],output_fields:[],self_reads:['Beard'],self_writes:[],field_types:{self:{Beard:'ObjectProperty'}},
         schemas:{self:{Beard:schema}},steps:[{op:'return',value:{op:'native_object_valid',target:{op:'get',scope:'self',field:'Beard'},schema}}]};
     assert.equal(executeBlueprint(program,runtime.states['/Game/Pawn'],{},{native:context}).value,true);
+});
+
+test('skeletal mesh contexts emit typed native requests, short-circuit null and roll requests back on failure',()=>{
+    const report=fixture().report,root=report.packages['/Game/Pawn'];
+    const receiverSchema={type:'ObjectProperty',class:['/Script/Engine','SkeletalMeshComponent'],
+        reference_kind:'runtime_native_component',default:null};
+    const materialSchema={type:'ObjectProperty',class:['/Script/Engine','MaterialInterface'],default:null};
+    const meshAssetSchema={type:'ObjectProperty',class:['/Script/Engine','SkeletalMesh'],default:null};
+    root.default_state.SkeletalMesh=null;root.default_state.PlayerMaterial=null;root.default_state.WeaponMeshAsset=null;
+    root.field_schemas={SkeletalMesh:receiverSchema,PlayerMaterial:materialSchema,WeaponMeshAsset:meshAssetSchema};
+    const graph=report.actor_graph.roots['/Game/Pawn'];
+    graph.native_components=[{variable:'SkeletalMesh',package:'/Script/Engine',class_object:'SkeletalMeshComponent',
+        scs_node_export_index:8,template_export_index:9,template_sha256:'a'.repeat(64)}];
+    graph.native_component_bindings_complete=true;
+    const runtime=new BlueprintActorRuntime(report,report.project),player={actualPlayer:true};
+    runtime.bindSourceActor('/Game/Pawn',player);
+    const call={op:'native_context_call',identity:['/Script/Engine','SkeletalMeshComponent','SetMaterial'],
+        dispatch:'EX_VirtualFunction',context_offset:28,receiver:{op:'get',scope:'self',field:'SkeletalMesh'},
+        receiver_schema:receiverSchema,parameter_schemas:[{type:'IntProperty',default:0},materialSchema],
+        parameters:[c(0),{op:'get',scope:'self',field:'PlayerMaterial'}],adapter_family_present:false};
+    root.functions.OnRep_PlayerMaterial={schema_version:1,name:'OnRep_PlayerMaterial',status:'translated_straight_line',
+        source_owner_index:1,source_export_index:10,input_fields:[],output_fields:[],self_reads:['SkeletalMesh','PlayerMaterial'],
+        self_writes:[],field_types:{self:{SkeletalMesh:'ObjectProperty',PlayerMaterial:'ObjectProperty'}},
+        schemas:{self:{SkeletalMesh:receiverSchema,PlayerMaterial:materialSchema}},steps:[{op:'evaluate',value:call},end]};
+    const result=runtime.call('/Game/Pawn','OnRep_PlayerMaterial');
+    assert.equal(result.effects[0].op,'native_context_call');
+    assert.deepEqual(result.effects[0].identity,['/Script/Engine','SkeletalMeshComponent','SetMaterial']);
+    assert.deepEqual(result.effects[0].arguments,[0,null]);
+    assert.equal(result.effects[0].adapter_required,true);
+
+    const setAsset={...call,identity:['/Script/Engine','SkeletalMeshComponent','SetSkeletalMeshAsset'],
+        dispatch:'EX_FinalFunction',context_offset:19,parameter_schemas:[meshAssetSchema],
+        parameters:[{op:'get',scope:'self',field:'WeaponMeshAsset'}]};
+    root.functions.OnRep_WeaponMeshAsset={...root.functions.OnRep_PlayerMaterial,name:'OnRep_WeaponMeshAsset',
+        source_export_index:11,self_reads:['SkeletalMesh','WeaponMeshAsset'],
+        field_types:{self:{SkeletalMesh:'ObjectProperty',WeaponMeshAsset:'ObjectProperty'}},
+        schemas:{self:{SkeletalMesh:receiverSchema,WeaponMeshAsset:meshAssetSchema}},
+        steps:[{op:'evaluate',value:setAsset},end]};
+    const assetResult=runtime.call('/Game/Pawn','OnRep_WeaponMeshAsset');
+    assert.deepEqual(assetResult.effects[0].identity,['/Script/Engine','SkeletalMeshComponent','SetSkeletalMeshAsset']);
+    assert.equal(assetResult.effects[0].dispatch,'EX_FinalFunction');
+
+    const requestCount=runtime.nativeRequests.length;
+    runtime.states['/Game/Pawn'].SkeletalMesh=null;
+    call.parameters[1]={op:'unsupported'};
+    const skipped=runtime.call('/Game/Pawn','OnRep_PlayerMaterial');
+    assert.equal(runtime.nativeRequests.length,requestCount);
+    assert.ok(skipped.trace.some(entry=>entry.message?.includes('Accessed None')));
+
+    runtime.states['/Game/Pawn'].SkeletalMesh=runtime.actorBindings.nativeComponentReference('SkeletalMesh');
+    call.parameters[1]={op:'get',scope:'self',field:'PlayerMaterial'};
+    root.functions.OnRep_PlayerMaterial.steps.splice(-1,0,{op:'evaluate',value:{op:'unsupported'}});
+    const before=runtime.snapshot();
+    assert.throws(()=>runtime.call('/Game/Pawn','OnRep_PlayerMaterial'),/Unsupported Blueprint expression/);
+    assert.deepEqual(runtime.snapshot(),before);
 });
 
 test('original component graph binds the actual actor and applies source template overrides once',()=>{

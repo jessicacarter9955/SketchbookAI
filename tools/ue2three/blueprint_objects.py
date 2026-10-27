@@ -132,6 +132,95 @@ def native_actor_context(value, package, owner, reads, outputs, depth):
     return {'op': 'native_force_net_update', 'target': target}
 
 
+def native_component_context(value, package, owner, reads, outputs, depth):
+    """Retain the exact native setter dependency for the witnessed mesh contexts.
+
+    These calls are requests to a runtime adapter. This compiler does not
+    synthesize mesh/material behavior when no native adapter is installed.
+    """
+    from blueprint_migration import kind, expression, memory_size, BlueprintTranslationError as Error
+    from blueprint_effects import variable
+
+    call = value.get('ContextExpression', {})
+    receiver_expression = value.get('ObjectExpression', {})
+    if kind(receiver_expression) not in ('EX_InstanceVariable', 'EX_LocalVariable', 'EX_LocalOutVariable'):
+        return None
+    target, receiver_schema = variable(value.get('ObjectExpression', {}), package, owner,
+                                       reads, outputs, depth)
+    if receiver_schema.get('reference_kind') != 'runtime_native_component': return None
+    receiver_class = tuple(receiver_schema.get('class', ()))
+    dispatch = kind(call)
+    if dispatch == 'EX_VirtualFunction':
+        method = call.get('VirtualFunctionName')
+        identity = (*receiver_class, method) if isinstance(method, str) else None
+    elif dispatch == 'EX_FinalFunction':
+        identity = import_path(package, call.get('StackNode'))
+        reference = call.get('StackNode')
+        imported = package.imports[-reference-1] if type(reference) is int and reference < 0 and -reference <= len(package.imports) else {}
+        outer = imported.get('OuterIndex')
+        if (type(reference) is not int or reference >= 0 or -reference > len(package.imports)
+                or imported.get('ClassName') != 'Function' or type(outer) is not int or outer >= 0
+                or -outer > len(package.imports) or package.imports[-outer-1].get('ClassName') != 'Class'
+                or identity is None or len(identity) != 3):
+            raise Error('Original native context function import is unresolved')
+    else:
+        return None
+
+    # Only complete source-witnessed calls are admitted. The request records
+    # observed signatures and exact Unreal identity for a native adapter.
+    contracts = {
+        ('/Script/Engine', 'SkeletalMeshComponent', 'SetMaterial'): {
+            'dispatch': 'EX_VirtualFunction',
+            'parameters': [
+                {'type': 'IntProperty', 'default': 0},
+                {'type': 'ObjectProperty', 'class': ['/Script/Engine', 'MaterialInterface'], 'default': None},
+            ],
+        },
+        ('/Script/Engine', 'SkeletalMeshComponent', 'SetSkeletalMeshAsset'): {
+            'dispatch': 'EX_FinalFunction',
+            'parameters': [
+                {'type': 'ObjectProperty', 'class': ['/Script/Engine', 'SkeletalMesh'], 'default': None},
+            ],
+        },
+    }
+    contract = contracts.get(identity)
+    if contract is None: return None
+    if (contract['dispatch'] != dispatch or value.get('Offset') != memory_size(call, package=package)
+            or receiver_class != ('/Script/Engine', 'SkeletalMeshComponent')):
+        raise Error('Original native skeletal mesh context identity or layout differs')
+    rvalue = value.get('RValuePointer', {}).get('New', {})
+    if (value.get('PropertyType') != 0 or rvalue.get('Path') != []
+            or rvalue.get('ResolvedOwner') != 0):
+        raise Error('Original native skeletal mesh context return storage is unsupported')
+    args = call.get('Parameters')
+    if not isinstance(args, list) or len(args) != len(contract['parameters']):
+        raise Error('Original native skeletal mesh context arity differs')
+
+    translated, schemas = [], []
+    for argument, expected in zip(args, contract['parameters']):
+        token = kind(argument)
+        if token in ('EX_InstanceVariable', 'EX_LocalVariable', 'EX_LocalOutVariable'):
+            from blueprint_effects import variable as resolve_variable
+            _, schema = resolve_variable(argument, package, owner, reads, outputs, depth)
+        elif token == 'EX_ObjectConst':
+            literal = expression(argument, reads, outputs, depth+1, package, owner)
+            schema = literal.get('schema') if literal.get('op') == 'typed_literal' else None
+        else:
+            primitive = {
+                'EX_IntZero': 'IntProperty', 'EX_IntOne': 'IntProperty', 'EX_IntConst': 'IntProperty',
+            }.get(token)
+            schema = {'type': primitive, 'default': 0} if primitive else None
+        if schema != expected:
+            raise Error('Original native skeletal mesh parameter type differs')
+        schemas.append(schema)
+        translated.append(expression(argument, reads, outputs, depth+1, package, owner))
+    return {'op': 'native_context_call', 'identity': list(identity), 'dispatch': dispatch,
+            'receiver': target, 'receiver_schema': receiver_schema,
+            'context_offset': value.get('Offset'),
+            'parameter_schemas': schemas, 'parameters': translated,
+            'adapter_family_present': False}
+
+
 def actor_graph(packages, sources):
     """Validate reachable original SCS nodes, fields and templates before binding."""
     roots, blocked = {}, []

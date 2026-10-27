@@ -121,6 +121,46 @@ class SourceObjectTests(unittest.TestCase):
             if failure=='args':value['ContextExpression']['Parameters']=[node('EX_IntOne')]
             with self.subTest(failure=failure),self.assertRaises(BlueprintTranslationError):expression(value,set(),set(),package=p,owner=1)
 
+    def test_witnessed_skeletal_mesh_contexts_keep_typed_receiver_and_native_dependency(self):
+        package=Package({'Imports':[
+            {'ObjectName':'SkeletalMeshComponent','OuterIndex':-2,'ClassName':'Class'},
+            {'ObjectName':'/Script/Engine','ClassName':'Package'},
+            {'ObjectName':'MaterialInterface','OuterIndex':-2},
+            {'ObjectName':'SkeletalMesh','OuterIndex':-2},
+            {'ObjectName':'SetSkeletalMeshAsset','ClassName':'Function','OuterIndex':-1}],
+            'Exports':[{'ObjectName':'Mover_C','LoadedProperties':[
+                {'Name':'SkeletalMesh','SerializedType':'ObjectProperty','PropertyClass':-1},
+                {'Name':'PlayerMaterial','SerializedType':'ObjectProperty','PropertyClass':-3},
+                {'Name':'WeaponMesh','SerializedType':'ObjectProperty','PropertyClass':-1},
+                {'Name':'WeaponMeshAsset','SerializedType':'ObjectProperty','PropertyClass':-4}]}]})
+        package._active_function={'ObjectName':'OnRep','OuterIndex':1,'LoadedProperties':[]}
+        receiver=lambda name:node('EX_InstanceVariable',Variable={'New':{'Path':[name],'ResolvedOwner':1}})
+        material=node('EX_VirtualFunction',VirtualFunctionName='SetMaterial',Parameters=[
+            node('EX_IntConst',Value=0),receiver('PlayerMaterial')])
+        context=node('EX_Context',ObjectExpression=receiver('SkeletalMesh'),ContextExpression=material,
+                     Offset=memory_size(material,package=package),PropertyType=0,
+                     RValuePointer={'New':{'Path':[],'ResolvedOwner':0}})
+        translated=expression(context,set(),set(),package=package,owner=1)
+        self.assertEqual(translated['op'],'native_context_call')
+        self.assertEqual(translated['identity'],['/Script/Engine','SkeletalMeshComponent','SetMaterial'])
+        self.assertEqual(translated['receiver_schema'],property_schema(package,package.exports[0]['LoadedProperties'][0]))
+        self.assertEqual(translated['parameter_schemas'][1]['class'],['/Script/Engine','MaterialInterface'])
+        self.assertFalse(translated['adapter_family_present'])
+
+        direct=node('EX_FinalFunction',StackNode=-5,Parameters=[receiver('WeaponMeshAsset')])
+        direct_context=node('EX_Context',ObjectExpression=receiver('WeaponMesh'),ContextExpression=direct,
+                            Offset=memory_size(direct,package=package),PropertyType=0,
+                            RValuePointer={'New':{'Path':[],'ResolvedOwner':0}})
+        self.assertEqual(expression(direct_context,set(),set(),package=package,owner=1)['identity'],
+                         ['/Script/Engine','SkeletalMeshComponent','SetSkeletalMeshAsset'])
+        for index,broken in enumerate((deepcopy(context),deepcopy(context))):
+            if index == 0:
+                broken['Offset']+=1
+            else:
+                broken['ContextExpression']['Parameters'][1]=receiver('WeaponMeshAsset')
+            with self.assertRaises(BlueprintTranslationError):
+                expression(broken,set(),set(),package=package,owner=1)
+
     def test_native_concat_preserves_exact_identity_order_and_fstring_types(self):
         package=Package({'Imports':[{'ObjectName':'Concat_StrStr','ClassName':'Function','OuterIndex':-2},
             {'ObjectName':'KismetStringLibrary','OuterIndex':-3}, {'ObjectName':'/Script/Engine','ClassName':'Package'}],

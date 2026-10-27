@@ -40,7 +40,8 @@ export class BlueprintActorRuntime {
                 this.dirty[receiverName] ||= Object.create(null);
                 this.dirty[receiverName][effect.field] = effect.source_rep_index;
             } else if (effect.op === 'broadcast') this.notifications.push({package: receiverName, ...structuredClone(effect)});
-            else if (effect.op === 'force_net_update') this.nativeRequests.push({package:receiverName,...structuredClone(effect)});
+            else if (effect.op === 'force_net_update' || effect.op === 'native_context_call')
+                this.nativeRequests.push({package:receiverName,...structuredClone(effect)});
             else if (effect.op === 'native_audio_vfx') this.audioVfxRequests.push({package:receiverName,...structuredClone(effect)});
         }
         if (this.notifications.length > 1000) this.notifications.splice(0, this.notifications.length-1000);

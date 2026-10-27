@@ -64,7 +64,9 @@ def object_validity(value, package, owner, reads, outputs, depth):
 def component_query(value, package, owner, reads, outputs, depth):
     from blueprint_migration import kind, expression, memory_size, BlueprintTranslationError as Error
     call = value.get('ContextExpression', {})
-    if kind(call) not in ('EX_LocalVirtualFunction', 'EX_VirtualFunction'): return None
+    dispatch = kind(call)
+    if dispatch not in ('EX_LocalVirtualFunction', 'EX_VirtualFunction', 'EX_FinalFunction', 'EX_LocalFinalFunction'):
+        return None
     target, schema = variable(value.get('ObjectExpression', {}), package, owner, reads, outputs, depth)
     if schema.get('reference_kind') != 'runtime_component': return None
     identity = tuple(schema['class']); source = getattr(package, 'source_packages', {}).get(identity[0])
@@ -72,7 +74,21 @@ def component_query(value, package, owner, reads, outputs, depth):
     from blueprint_objects import class_metadata
     meta = class_metadata(source) if source else None
     if not meta or meta['object'] != identity[1]: raise Error('Original component class is unavailable')
-    candidates = [(i, e) for i, e in enumerate(source.exports, 1) if e.get('ObjectName') == call.get('VirtualFunctionName')
+    if dispatch in ('EX_FinalFunction', 'EX_LocalFinalFunction'):
+        reference = call.get('StackNode')
+        function_identity = import_path(package, reference)
+        imported = package.imports[-reference-1] if type(reference) is int and reference < 0 and -reference <= len(package.imports) else {}
+        outer = imported.get('OuterIndex')
+        if (type(reference) is not int or reference >= 0 or -reference > len(package.imports)
+                or imported.get('ClassName') != 'Function' or type(outer) is not int or outer >= 0
+                or -outer > len(package.imports) or package.imports[-outer-1].get('ClassName') != 'Class'
+                or not function_identity or function_identity[:2] != identity
+                or len(function_identity) != 3):
+            raise Error('Original component direct function import belongs to another package or class')
+        function_name = function_identity[2]
+    else:
+        function_name = call.get('VirtualFunctionName')
+    candidates = [(i, e) for i, e in enumerate(source.exports, 1) if e.get('ObjectName') == function_name
                   and e.get('OuterIndex') == meta['export_index'] and e.get('ScriptBytecode')]
     if len(candidates) != 1: raise Error('Original component query implementation is unresolved')
     index, function = candidates[0]
@@ -80,23 +96,38 @@ def component_query(value, package, owner, reads, outputs, depth):
     if any('CPF_ReturnParm' in str(p.get('PropertyFlags')) for p in props):
         raise Error('Component query return storage requires an explicit adapter')
     args = call.get('Parameters')
-    if not isinstance(args, list) or len(args) != len(props) or value.get('Offset') != memory_size(call, package=package):
+    if (not isinstance(args, list) or len(args) != len(props)
+            or value.get('Offset') != memory_size(call, package=package)):
         raise Error('Original component query signature or context offset differs')
-    bindings = []
+    bindings, output_targets = [], set()
     for prop, arg in zip(props, args):
         parameter_schema = property_schema(source, prop)
         if not parameter_schema: raise Error('Original component query parameter schema is unavailable')
         if 'CPF_OutParm' in str(prop.get('PropertyFlags')) and 'CPF_ConstParm' not in str(prop.get('PropertyFlags')):
             destination, output_schema = variable(arg, package, owner, reads, outputs, depth)
             if parameter_schema != output_schema: raise Error('Original component query output schema differs')
-            bindings.append({'mode': 'output', 'parameter': prop['Name'], 'target': destination})
+            if destination['scope'] == 'local':
+                active = getattr(package, '_active_function', None)
+                caller_prop = next((item for item in (active or {}).get('LoadedProperties', [])
+                                    if item.get('Name') == destination['field']), None)
+                if caller_prop and 'CPF_OutParm' in str(caller_prop.get('PropertyFlags')):
+                    outputs.add(destination['field'])
+            output_targets.add((destination.get('scope'), destination.get('frame'), destination['field']))
+            bindings.append({'mode': 'output', 'parameter': prop['Name'], 'target': destination,
+                             'schema': parameter_schema})
         else:
+            if 'CPF_ReferenceParm' in str(prop.get('PropertyFlags')):
+                raise Error('Original component reference parameter requires an explicit output contract')
             bindings.append({'mode': 'input', 'parameter': prop['Name'],
                              'value': expression(arg, reads, outputs, depth+1, package, owner), 'schema': parameter_schema})
+    if len(output_targets) != sum(binding['mode'] == 'output' for binding in bindings):
+        raise Error('Aliased original component output targets are unsupported')
+    output_safe = all('CPF_ReferenceParm' not in str(prop.get('PropertyFlags')) for prop in props)
     return {'op': 'component_query', 'target': target, 'package': identity[0], 'class_object': identity[1],
-            'function': function['ObjectName'], 'export_index': index, 'bindings': bindings,
-            # Mutable calls currently admit by-value inputs only. An out/ref
-            # alias must remain live through callbacks, not be copied back late.
+            'receiver_schema': schema, 'class_export_index': meta['export_index'], 'function': function['ObjectName'],
+            'export_index': index, 'dispatch': dispatch,
+            'context_offset': value.get('Offset'), 'bindings': bindings,
+            'transactional_outputs_safe': output_safe,
             'value_parameters_only': all('CPF_OutParm' not in str(prop.get('PropertyFlags'))
                                          and 'CPF_ReferenceParm' not in str(prop.get('PropertyFlags')) for prop in props)}
 
@@ -131,6 +162,31 @@ def query_safe(program, library, visited=None, packages=None, package_name=None,
     return True
 
 
+def component_call_safe(program, packages, package_name, receiver_chain, visited=None):
+    """Reject cross-component recursion before admitting copied out storage."""
+    visited = set() if visited is None else visited
+    identity = (package_name, program.get('name'), program.get('source_export_index'))
+    if identity in visited: return False
+    visited = visited | {identity}
+    library = packages.get(package_name, {})
+    functions = {**library.get('functions', {}), **library.get('event_programs', {})}
+    for node in expressions(program.get('steps', [])):
+        if node.get('op') == 'call':
+            child = functions.get(node.get('function'))
+            if (not child or child.get('source_export_index') != node.get('export_index')
+                    or not component_call_safe(child, packages, package_name, receiver_chain, visited)):
+                return False
+        elif node.get('op') in ('component_query', 'component_call'):
+            target_name = node.get('package')
+            if target_name in receiver_chain: return False
+            target = packages.get(target_name, {})
+            child = {**target.get('functions', {}), **target.get('event_programs', {})}.get(node.get('function'))
+            if (not child or child.get('source_export_index') != node.get('export_index')
+                    or not component_call_safe(child, packages, target_name, receiver_chain | {target_name}, visited)):
+                return False
+    return True
+
+
 def prune_queries(packages):
     """Never publish a caller whose required original receiver failed migration."""
     while True:
@@ -150,7 +206,10 @@ def prune_queries(packages):
                         reason = 'Untranslated component receiver: ' + node['package'] + ':' + node['function']; break
                     if not query_safe(callee, target_library, packages=packages, package_name=node['package'],
                                       receiver_chain={package_name, node['package']}):
-                        if node.get('value_parameters_only') is True and all(b['mode'] == 'input' for b in node['bindings']):
+                        if (node.get('transactional_outputs_safe') is True
+                                and all(b['mode'] in ('input', 'output') for b in node['bindings'])
+                                and component_call_safe(callee, packages, node['package'],
+                                                        {package_name, node['package']})):
                             node['op'] = 'component_call'
                         else:
                             reason = 'Effectful component call requires live out/reference storage: ' + node['package'] + ':' + node['function']; break
