@@ -59,6 +59,13 @@ def validate_config(config: dict, root: Path) -> dict:
             raise ValueError('Use an isolated checkout with its own local cache and outputs')
     if value.get('push', False) and not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9/_.-]*', value.get('branch', '')):
         raise ValueError('An explicit valid destination branch is required for push')
+    sync_branch = value.get('sync_remote_branch')
+    if sync_branch is not None:
+        if (not isinstance(sync_branch, str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9/_.-]*', sync_branch)
+                or sync_branch.startswith(('.', '/')) or '..' in sync_branch or '@{' in sync_branch):
+            raise ValueError('sync_remote_branch must be a valid explicit Git branch')
+        if value.get('push', False) and value.get('branch') != sync_branch:
+            raise ValueError('Remote sync and push must target the same branch')
     for name, path in [('project', project), ('workspace', workspace), ('publish_dir', publish), ('state_dir', state)]:
         value[name] = str(path)
     return value
@@ -168,6 +175,41 @@ class Supervisor:
         self.save('remote_integrated', pushed_commit=remote, pending_push=False,
                   push_validation_required=False, reconciled_commit=None,
                   push_blocker=None, compiled_fingerprint=None)
+        return True
+
+    def sync_remote(self):
+        """Opt-in source refresh; only fast-forward a clean isolated checkout.
+
+        Never overwrite local commits, replay unverified patches or force-push.
+        Ignore a remote revision if local work needs push/reconciliation.
+        """
+        branch = self.config.get('sync_remote_branch')
+        if not branch or self.state.get('pending_push') or self.state.get('push_blocker'):
+            return False
+        local = agent._require_clean_repo(self.root)
+        self.command('git-source-fetch', ['git', 'fetch', '--no-tags', 'origin',
+                                          f'refs/heads/{branch}'], timeout=120)
+        remote = agent._git(self.root, 'rev-parse', 'FETCH_HEAD')
+        if local == remote:
+            return False
+        try:
+            probe = subprocess.run(['git', '-C', str(self.root), 'merge-base',
+                                    '--is-ancestor', local, remote],
+                                   capture_output=True, timeout=60)
+        except (OSError, subprocess.TimeoutExpired):
+            raise PushReconciliationBlocked('Remote source ancestry could not be checked') from None
+        if probe.returncode == 1:
+            self.save('source_sync_needs_review', source_sync_blocker='Remote is not a fast-forward of this checkout',
+                      source_sync_local=local, source_sync_remote=remote)
+            return False
+        if probe.returncode:
+            raise PushReconciliationBlocked('Remote source ancestry check failed')
+        # Recheck clean state after a potentially long fetch, before any checkout mutation.
+        if agent._require_clean_repo(self.root) != local:
+            raise PushReconciliationBlocked('Local source revision changed during fetch')
+        agent._git(self.root, 'merge', '--ff-only', remote, timeout=120)
+        self.save('source_fast_forwarded', synced_remote_commit=remote,
+                  source_sync_blocker=None, compiled_fingerprint=None)
         return True
 
     def _reconcile_remote_for_push(self, branch: str):
@@ -423,6 +465,7 @@ class Supervisor:
             try:
                 self.recover_promotion()
                 self.pending_push()
+                self.sync_remote()
                 session_seconds = self.config.get('session_seconds', 0)
                 if session_seconds > 0 and time.time() - self.state['started_epoch'] >= session_seconds:
                     self.save('session_budget_reached', active_job=None)
