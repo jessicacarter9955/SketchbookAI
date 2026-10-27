@@ -104,6 +104,17 @@ class DdsAgentTests(unittest.TestCase):
         self.assertIn('Git merge failed (exit 128)', str(raised.exception))
         self.assertNotIn('secret.example', str(raised.exception))
 
+    def test_stalled_revision_read_retries_once_but_git_mutation_does_not(self):
+        timeout = subprocess.TimeoutExpired(['git', 'rev-parse'], 75)
+        completed = subprocess.CompletedProcess(['git', 'rev-parse'], 0, stdout='abc123\\n', stderr='')
+        with patch.object(dds_agent.subprocess, 'run', side_effect=[timeout, completed]) as run:
+            self.assertEqual(dds_agent._git(self.repo, 'rev-parse', 'HEAD'), 'abc123')
+        self.assertEqual(run.call_count, 2)
+        with patch.object(dds_agent.subprocess, 'run', side_effect=timeout) as run:
+            with self.assertRaisesRegex(dds_agent.RunnerError, 'timed out'):
+                dds_agent._git(self.repo, 'merge', '--ff-only', 'abc123')
+        run.assert_called_once()
+
     def test_clean_worktree_scan_has_separate_windows_timeout(self):
         calls = []
 
