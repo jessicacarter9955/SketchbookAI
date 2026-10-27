@@ -17,16 +17,20 @@ NATIVE_WIDGET_CLASSES = frozenset((
 ))
 # Native virtual widget calls are dispatched against UMG's native base.
 OPERATIONS = {
+    ('EX_FinalFunction', 'SetFocus'): {'type': None, 'classes': NATIVE_WIDGET_CLASSES},
     ('EX_VirtualFunction', 'SetVisibility'): {'type': 'ByteProperty', 'classes': NATIVE_WIDGET_CLASSES},
     ('EX_FinalFunction', 'SetText'): {'type': 'TextProperty', 'classes': frozenset(('TextBlock',))},
     ('EX_VirtualFunction', 'SetText'): {'type': 'TextProperty', 'classes': frozenset(('TextBlock',))},
-    ('EX_FinalFunction', 'SetColorAndOpacity'): {'type': 'StructProperty', 'native': 'LinearColor',
+    ('EX_FinalFunction', 'SetColorAndOpacity'): {'type': 'StructProperty', 'native': 'SlateColor',
                                                 'classes': frozenset(('TextBlock',))},
     ('EX_FinalFunction', 'SetBrushFromMaterial'): {'type': 'ObjectProperty',
                                                   'classes': frozenset(('Border',)),
                                                   'material_classes': frozenset((
                                                       'Material', 'MaterialInstance',
                                                       'MaterialInstanceConstant', 'MaterialInterface'))},
+    ('EX_VirtualFunction', 'SetBrushFromTexture'): {'types': ('ObjectProperty', 'BoolProperty'),
+                                                    'classes': frozenset(('Image',)),
+                                                    'texture_classes': frozenset(('Texture2D',))},
     ('EX_FinalFunction', 'SetPercent'): {'type': 'FloatProperty',
                                         'classes': frozenset(('ProgressBar',))},
 }
@@ -43,6 +47,7 @@ def widget_context(value, package, owner, reads, outputs, depth):
     if contract is None:
         return None
     native_class = ('Widget' if name == 'SetVisibility' else
+                    'Image' if name == 'SetBrushFromTexture' else
                     identity[1] if identity else 'TextBlock')
     if (dispatch == 'EX_FinalFunction' and identity != ('/Script/UMG', native_class, name)):
         return None
@@ -63,33 +68,80 @@ def widget_context(value, package, owner, reads, outputs, depth):
             or widget_class[1] not in contract['classes']):
         raise Error('Original native UMG widget receiver class differs')
     args = call.get('Parameters')
-    if not isinstance(args, list) or len(args) != 1:
+    expected_types = contract.get('types', () if contract.get('type') is None else (contract['type'],))
+    if not isinstance(args, list) or len(args) != len(expected_types):
         raise Error('Original UMG call parameter count differs')
+
+    if name == 'SetFocus':
+        if (identity != ('/Script/UMG', 'Widget', 'SetFocus')
+                or call.get('StackNode') >= 0 or call.get('StackNode') == 0
+                or package.imports[-call['StackNode']-1].get('ClassName') != 'Function'
+                or import_path(package, package.imports[-call['StackNode']-1].get('OuterIndex')) != identity[:-1]):
+            raise Error('Original Widget.SetFocus function identity differs')
+        return {'op':'native_widget_effect','identity':list(identity),'dispatch':dispatch,'method':name,
+                'source_owner_index':owner,'receiver':receiver,'receiver_field':field(obj.get('Variable')),
+                'receiver_schema':schema,'source_binding_required':True,'visual_1to1_certified':False}
+
+    def translate_argument(argument, expected_type, index):
+        token = kind(argument)
+        if token in ('EX_InstanceVariable', 'EX_LocalVariable', 'EX_LocalOutVariable'):
+            arg, arg_schema = variable(argument, package, owner, reads, outputs, depth)
+        elif token == 'EX_StructMemberContext':
+            from blueprint_effects import array_item_schema
+            arg_schema = array_item_schema(argument, package, owner, reads, outputs, depth)
+            arg = expression(argument, reads, outputs, depth + 1, package, owner)
+        elif name == 'SetBrushFromTexture' and index == 1 and token in ('EX_True', 'EX_False'):
+            arg = expression(argument, reads, outputs, depth + 1, package, owner)
+            arg_schema = {'type': 'BoolProperty', 'default': False}
+        elif name == 'SetVisibility' and token == 'EX_ByteConst':
+            arg = expression(argument, reads, outputs, depth + 1, package, owner)
+            arg_schema = {'type': 'ByteProperty', 'default': 0}
+        elif name == 'SetText' and token == 'EX_TextConst':
+            arg = expression(argument, reads, outputs, depth + 1, package, owner)
+            arg_schema = {'type': 'TextProperty', 'default': {'history': 'empty', 'text': '', 'flags': 0}}
+        elif name == 'SetBrushFromMaterial' and token == 'EX_ObjectConst':
+            arg = expression(argument, reads, outputs, depth + 1, package, owner)
+            arg_schema = arg.get('schema') if isinstance(arg, dict) else None
+            material_class = arg_schema.get('class') if isinstance(arg_schema, dict) else None
+            if (not isinstance(arg, dict) or arg.get('op') != 'typed_literal'
+                    or not isinstance(arg_schema, dict) or arg_schema.get('type') != 'ObjectProperty'
+                    or not isinstance(material_class, list) or len(material_class) != 2
+                    or material_class[0] != '/Script/Engine'
+                    or material_class[1] not in contract['material_classes']):
+                raise Error('Original UMG brush input is not a typed source material asset')
+        elif name == 'SetBrushFromTexture' and index == 0 and token == 'EX_ObjectConst':
+            arg = expression(argument, reads, outputs, depth + 1, package, owner)
+            arg_schema = arg.get('schema') if isinstance(arg, dict) else None
+        elif name == 'SetPercent' and token == 'EX_FloatConst':
+            arg = expression(argument, reads, outputs, depth + 1, package, owner)
+            arg_schema = {'type': 'FloatProperty', 'default': 0}
+        else:
+            raise Error('Original UMG call requires source-typed parameter')
+        if not isinstance(arg_schema, dict) or arg_schema.get('type') != expected_type:
+            raise Error('Original UMG argument schema differs')
+        if name == 'SetBrushFromTexture' and index == 0:
+            texture_class = arg_schema.get('class')
+            if (not isinstance(texture_class, list) or len(texture_class) != 2
+                    or texture_class[0] != '/Script/Engine'
+                    or texture_class[1] not in contract['texture_classes']):
+                raise Error('Original UMG brush input is not a typed source Texture2D')
+        return arg, arg_schema
+
+    if name == 'SetBrushFromTexture':
+        translated = [translate_argument(argument, expected_type, index)
+                      for index, (argument, expected_type) in enumerate(zip(args, expected_types))]
+        if (not translated[1][0].get('op') == 'constant'
+                or type(translated[1][0].get('value')) is not bool):
+            raise Error('Original UMG brush size flag is not a verified Boolean')
+        return {'op': 'native_widget_effect', 'identity': ['/Script/UMG', 'Image', name], 'dispatch': dispatch,
+                'method': name, 'source_owner_index': owner, 'receiver': receiver,
+                'receiver_field': field(obj.get('Variable')), 'receiver_schema': schema,
+                'parameters': [arg for arg, _ in translated],
+                'parameter_schemas': [arg_schema for _, arg_schema in translated],
+                'source_binding_required': True, 'visual_1to1_certified': False}
+
     argument = args[0]
-    token = kind(argument)
-    if token in ('EX_InstanceVariable', 'EX_LocalVariable', 'EX_LocalOutVariable'):
-        arg, arg_schema = variable(argument, package, owner, reads, outputs, depth)
-    elif name == 'SetVisibility' and token == 'EX_ByteConst':
-        arg = expression(argument, reads, outputs, depth + 1, package, owner)
-        arg_schema = {'type': 'ByteProperty', 'default': 0}
-    elif name == 'SetText' and token == 'EX_TextConst':
-        arg = expression(argument, reads, outputs, depth + 1, package, owner)
-        arg_schema = {'type': 'TextProperty', 'default': {'history': 'empty', 'text': '', 'flags': 0}}
-    elif name == 'SetBrushFromMaterial' and token == 'EX_ObjectConst':
-        arg = expression(argument, reads, outputs, depth + 1, package, owner)
-        arg_schema = arg.get('schema') if isinstance(arg, dict) else None
-        material_class = arg_schema.get('class') if isinstance(arg_schema, dict) else None
-        if (not isinstance(arg, dict) or arg.get('op') != 'typed_literal'
-                or not isinstance(arg_schema, dict) or arg_schema.get('type') != 'ObjectProperty'
-                or not isinstance(material_class, list) or len(material_class) != 2
-                or material_class[0] != '/Script/Engine'
-                or material_class[1] not in contract['material_classes']):
-            raise Error('Original UMG brush input is not a typed source material asset')
-    elif name == 'SetPercent' and token == 'EX_FloatConst':
-        arg = expression(argument, reads, outputs, depth + 1, package, owner)
-        arg_schema = {'type': 'FloatProperty', 'default': 0}
-    else:
-        raise Error('Original UMG call requires source-typed parameter')
+    arg, arg_schema = translate_argument(argument, expected_types[0], 0)
     if (arg_schema.get('type') != contract['type']
             or contract.get('native') and arg_schema.get('native') != contract['native']):
         raise Error('Original UMG argument schema differs')

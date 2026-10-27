@@ -77,7 +77,7 @@ export class BlueprintActorRuntime {
         const data=this.report.packages[packageName],library={...data.functions,...data.event_programs},visited=new Set();
         const requiresTransaction = value => {
             if (!value || typeof value !== 'object') return false;
-            if (value.op === 'component_call') return true;
+            if (value.op === 'component_call' || value.op === 'set_actor_member') return true;
             if (value.op === 'call' && !visited.has(value.function)) {
                 visited.add(value.function);
                 if (requiresTransaction(library[value.function]?.steps)) return true;
@@ -104,12 +104,21 @@ export class BlueprintActorRuntime {
         }));
     }
     componentQueries() {
-        return Object.fromEntries([...this.actorBindings.components].map(([name,component])=>{
+        const queries=Object.fromEntries([...this.actorBindings.components].map(([name,component])=>{
             const data=this.report.packages[name];
             return [name,{source_sha256:component.source.source_sha256,state:this.states[name],
                 functions:{...data.functions,...data.event_programs},signatures:data.delegate_signatures,field_schemas:data.field_schemas,
                 native:this.nativeContext(name)}];
         }));
+        const root=this.actorBindings.root;
+        if (root) {
+            const data=this.report.packages[root.source_class];
+            queries[root.source_class]={source_sha256:data.source.source_sha256,source_owner_index:root.source_owner_index,
+                state:this.states[root.source_class],field_schemas:data.field_schemas,
+                functions:{...data.functions,...data.event_programs},signatures:data.delegate_signatures,
+                native:this.nativeContext(root.source_class)};
+        }
+        return queries;
     }
     nativeContext(packageName) {
         const context = this.actorBindings.context(packageName);

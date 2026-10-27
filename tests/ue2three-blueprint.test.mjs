@@ -357,7 +357,8 @@ test('original comparison and Boolean math do not coerce their arguments', () =>
     assert.throws(() => evaluate('BooleanAND', [1, true]), /Invalid native math/);
     assert.throws(() => evaluate('Greater_DoubleDouble', ['1', 0]), /Invalid native math/);
     assert.equal(evaluate('Divide_DoubleDouble', [1, 0]), 0);
-    assert.throws(() => evaluate('Divide_IntInt', [1, 0]), /Unsupported native math/);
+    assert.equal(evaluate('Divide_IntInt', [1, 0]), 0);
+    assert.throws(() => evaluate('Divide_IntInt', ['1', 0]), /Invalid native Divide_IntInt parameters/);
 });
 test('Blueprint Round expressions execute with original tie behavior and reject overflow', () => {
     const round = input => executeBlueprint({...program, output_fields: [], steps: [
@@ -428,23 +429,23 @@ test('nested source struct reads require existing members and preserve caller da
     assert.throws(() => executeBlueprint(read, {}, input), /Unsupported/);
 });
 
-test('native math break calls write ordered FloatProperty outputs with source type checks', () => {
+test('native math break calls write ordered DoubleProperty outputs with source type checks', () => {
     const vector={type:'StructProperty',source:'/Script/CoreUObject',native:'Vector',fields:{
         X:{type:'DoubleProperty'},Y:{type:'DoubleProperty'},Z:{type:'DoubleProperty'}},
         default:{X:0,Y:0,Z:0},member_order:['X','Y','Z']};
     const call={op:'math_outputs',name:'BreakVector',components:['X','Y','Z'],
         args:[{op:'get',scope:'local',field:'Input'}],targets:['X','Y','Z'].map(field=>({
-            op:'get',scope:'local',field,type:'FloatProperty'}))};
+            op:'get',scope:'local',field,type:'DoubleProperty'}))};
     const program={schema_version:1,status:'translated_straight_line',input_fields:['Input'],output_fields:[],
-        field_types:{local:{Input:'StructProperty',X:'FloatProperty',Y:'FloatProperty',Z:'FloatProperty'}},
+        field_types:{local:{Input:'StructProperty',X:'DoubleProperty',Y:'DoubleProperty',Z:'DoubleProperty'}},
         schemas:{local:{Input:vector}},steps:[{op:'evaluate',source_index:22,value:call},
             {op:'return',value:{op:'get',scope:'local',field:'X'}}]};
     const result=executeBlueprint(program,{}, {Input:{X:1/3,Y:-2,Z:3}});
-    assert.equal(result.value,Math.fround(1/3));
+    assert.equal(result.value,1/3);
     assert.deepEqual(result.trace[0],{source_index:22,op:'math_outputs',name:'BreakVector',targets:[
-        {scope:'local',field:'X',value:Math.fround(1/3)},
+        {scope:'local',field:'X',value:1/3},
         {scope:'local',field:'Y',value:-2},{scope:'local',field:'Z',value:3}]});
-    assert.throws(()=>executeBlueprint({...program,field_types:{local:{Input:'StructProperty',X:'DoubleProperty',Y:'FloatProperty',Z:'FloatProperty'}}},
+    assert.throws(()=>executeBlueprint({...program,field_types:{local:{Input:'StructProperty',X:'FloatProperty',Y:'DoubleProperty',Z:'DoubleProperty'}}},
         {},{Input:{X:1,Y:2,Z:3}}),/output type differs/);
     assert.throws(()=>executeBlueprint({...program,schemas:{local:{Input:{...vector,native:'Rotator'}}},
         steps:[{op:'evaluate',value:call},{op:'return',value:{op:'constant',value:null}}]},

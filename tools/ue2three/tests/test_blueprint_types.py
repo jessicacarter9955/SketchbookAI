@@ -109,6 +109,51 @@ class SourceTypesTests(unittest.TestCase):
                                         {'ObjectName':'/Script/CoreUObject','ClassName':'Package'}]})
         self.assertEqual(property_schema(package, {'SerializedType':'StructProperty','Struct':-1}), transform)
 
+    def test_native_format_argument_schema_and_struct_member_write_use_reflected_types(self):
+        schema = native_schema(('/Script/Engine', 'FormatArgumentData'))
+        self.assertEqual(schema['member_order'], ['ArgumentName','ArgumentValue','ArgumentValueDouble',
+            'ArgumentValueFloat','ArgumentValueGender','ArgumentValueInt','ArgumentValueType'])
+        self.assertEqual(schema['fields']['ArgumentName']['type'], 'StrProperty')
+        self.assertEqual(schema['fields']['ArgumentValue']['type'], 'TextProperty')
+        self.assertEqual(schema['fields']['ArgumentValueGender']['enum'], ['/Script/Engine','ETextGender'])
+        package = Package({'Imports': [
+            {'ObjectName':'FormatArgumentData','ClassName':'ScriptStruct','OuterIndex':-2},
+            {'ObjectName':'/Script/Engine','ClassName':'Package'}],
+            'Exports': [
+                {'ObjectName':'WriteFormatArgumentName','OuterIndex':2,'LoadedProperties':[
+                    {'Name':'ArgumentData','SerializedType':'StructProperty','Struct':-1}],
+                 'ScriptBytecode': [
+                    node('EX_Let',Variable=node('EX_StructMemberContext',
+                        StructMemberExpression={'New':{'Path':['ArgumentName'],'ResolvedOwner':-1}},
+                        StructExpression=node('EX_LocalVariable',Variable={'New':{'Path':['ArgumentData'],'ResolvedOwner':1}})),
+                        Expression=node('EX_StringConst',Value='CarryWeight')),
+                    node('EX_Return',ReturnExpression=node('EX_Nothing')),node('EX_EndOfScript')]},
+                {'ObjectName':'Test_C','LoadedProperties':[]}]})
+        program = translate_package(package)['functions']['WriteFormatArgumentName']
+        write = program['steps'][0]
+        self.assertEqual(write['op'], 'set_member')
+        self.assertEqual(write['target'], {'op':'get','scope':'local','field':'ArgumentData'})
+        self.assertEqual(write['member_type'], 'StrProperty')
+        package.exports[0]['ScriptBytecode'][0]['Variable']['StructMemberExpression']['New']['Path'] = ['Unknown']
+        self.assertNotIn('WriteFormatArgumentName', translate_package(package)['functions'])
+
+    def test_slate_color_schema_preserves_specified_linear_color_and_original_style_enum(self):
+        schema=native_schema(('/Script/SlateCore','SlateColor'))
+        self.assertEqual(schema['member_order'],['SpecifiedColor','ColorUseRule'])
+        self.assertEqual(schema['fields']['SpecifiedColor']['native'],'LinearColor')
+        self.assertEqual(schema['fields']['ColorUseRule']['enum'],['/Script/SlateCore','ESlateColorStylingMode'])
+        package=Package({'Imports':[{'ObjectName':'SlateColor','ClassName':'ScriptStruct','OuterIndex':-2},
+            {'ObjectName':'/Script/SlateCore','ClassName':'Package'}]})
+        self.assertEqual(property_schema(package,{'SerializedType':'StructProperty','Struct':-1}),schema)
+        source={'Value':[
+            {'Name':'SpecifiedColor','Value':[{'Name':'SpecifiedColor','Value':{'R':1.0,'G':0.4,'B':0.2,'A':1.0}}]},
+            {'Name':'ColorUseRule','Value':'ESlateColorStylingMode::UseColor_Specified'}]}
+        self.assertEqual(serialized_value(package,{},schema,source),
+            {'SpecifiedColor':{'R':1.0,'G':0.4,'B':0.2,'A':1.0},'ColorUseRule':0})
+        invalid={'Value':[source['Value'][0],{'Name':'ColorUseRule','Value':'ESlateColorStylingMode::Unknown'}]}
+        with self.assertRaisesRegex(ValueError,'native enum mapping'):
+            serialized_value(package,{},schema,invalid)
+
     def test_int64_values_are_limited_to_exact_javascript_safe_integers(self):
         package = Package({})
         prop = {'Name': 'Counter', 'SerializedType': 'Int64Property'}

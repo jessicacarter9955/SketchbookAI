@@ -1,7 +1,9 @@
 // Executes normalized source-derived instructions; never evaluates generated JS.
 import { evaluateNativeMath } from './ue2three-native-math.mjs';
+import { sourceDynamicCast } from './ue2three-casts.mjs';
+import { readSourceActorMember, writeSourceActorMember } from './ue2three-source-objects.mjs';
 import { validActorReference, validComponentReference, sourceComponentOwner, sourceForceNetUpdate,
-    sourceQueryReceiver, sourceObjectValid, sourceFindComponent } from './ue2three-objects.mjs';
+    sourceQueryReceiver, sourceObjectValid, sourceFindComponent, sourceNativeComponentOwner, sourceActorRole } from './ue2three-objects.mjs';
 const owns = (object, key) => object != null && Object.hasOwn(object, key);
 const safeField = key => typeof key === 'string' && key.length > 0 && !['__proto__', 'constructor', 'prototype'].includes(key);
 const validPrimitive = (type, value) => type === 'BoolProperty' && typeof value === 'boolean'
@@ -75,6 +77,70 @@ function validateSchema(schema, value, depth = 0) {
     } else if (!validPrimitive(schema.type, value)) throw new Error('Invalid typed source member: ' + schema.type);
 }
 
+function sourceFormatText(pattern, arguments_) {
+    validateSchema({type:'TextProperty'},pattern);
+    if (!['base','invariant','empty'].includes(pattern.history) || !Array.isArray(arguments_) || arguments_.length > 256)
+        throw new Error('Unsupported original FText.Format source template or argument array');
+    const named=new Map();
+    const rendered=arguments_.map(argument=>{
+        if (!argument || typeof argument !== 'object' || Array.isArray(argument)
+            || typeof argument.ArgumentName !== 'string' || !argument.ArgumentName
+            || named.has(argument.ArgumentName)) throw new Error('Invalid or duplicate original FText.Format argument name');
+        let value;
+        switch (argument.ArgumentValueType) {
+        case 0:
+            if (!Number.isSafeInteger(argument.ArgumentValueInt)) throw new Error('Invalid original FText.Format Int argument');
+            value=String(argument.ArgumentValueInt); break;
+        case 2:
+            if (typeof argument.ArgumentValueFloat !== 'number' || !Number.isFinite(argument.ArgumentValueFloat))
+                throw new Error('Invalid original FText.Format Float argument');
+            value=String(argument.ArgumentValueFloat); break;
+        case 3:
+            if (typeof argument.ArgumentValueDouble !== 'number' || !Number.isFinite(argument.ArgumentValueDouble))
+                throw new Error('Invalid original FText.Format Double argument');
+            value=String(argument.ArgumentValueDouble); break;
+        case 4:
+            validateSchema({type:'TextProperty'},argument.ArgumentValue);
+            value=argument.ArgumentValue.text; break;
+        default: throw new Error('Unsupported original FText.Format argument kind');
+        }
+        named.set(argument.ArgumentName,value);
+        return value;
+    });
+    const text=pattern.text; let result='';
+    for (let index=0; index<text.length;) {
+        if (text[index] === '}') throw new Error('Unmatched brace in original FText.Format source');
+        if (text[index] !== '{') { result+=text[index++]; continue; }
+        const end=text.indexOf('}',index+1);
+        if (end < 0) throw new Error('Unmatched brace in original FText.Format source');
+        const key=text.slice(index+1,end);
+        if (!key || key.includes('{') || key.trim() !== key || !/^[A-Za-z0-9_ ]+$/.test(key))
+            throw new Error('Unsupported placeholder in original FText.Format source');
+        const value=named.get(key);
+        if (value === undefined) throw new Error('Unbound placeholder in original FText.Format source: ' + key);
+        result+=value; index=end+1;
+    }
+    return {history:'invariant',text:result,flags:2};
+}
+
+const nativeFormatArgumentSchema = () => ({type:'StructProperty',source:'/Script/Engine',native:'FormatArgumentData',
+    fields:{ArgumentName:{type:'StrProperty',default:''},ArgumentValue:{type:'TextProperty',default:{history:'empty',text:'',flags:0}},
+        ArgumentValueDouble:{type:'DoubleProperty',default:0},ArgumentValueFloat:{type:'FloatProperty',default:0},
+        ArgumentValueGender:{type:'ByteProperty',enum:['/Script/Engine','ETextGender'],default:0},
+        ArgumentValueInt:{type:'Int64Property',default:0},ArgumentValueType:{type:'ByteProperty',enum:['/Script/Engine','EFormatArgumentType'],default:0}},
+    default:{ArgumentName:'',ArgumentValue:{history:'empty',text:'',flags:0},ArgumentValueDouble:0,ArgumentValueFloat:0,
+        ArgumentValueGender:0,ArgumentValueInt:0,ArgumentValueType:0},
+    member_order:['ArgumentName','ArgumentValue','ArgumentValueDouble','ArgumentValueFloat','ArgumentValueGender','ArgumentValueInt','ArgumentValueType']});
+const nativeSlateColorSchema = () => ({type:'StructProperty',source:'/Script/SlateCore',native:'SlateColor',
+    fields:{SpecifiedColor:{type:'StructProperty',source:'/Script/CoreUObject',native:'LinearColor',
+        fields:{R:{type:'FloatProperty'},G:{type:'FloatProperty'},B:{type:'FloatProperty'},A:{type:'FloatProperty'}},
+        default:{R:0,G:0,B:0,A:0},member_order:['R','G','B','A']},
+        ColorUseRule:{type:'ByteProperty',enum:['/Script/SlateCore','ESlateColorStylingMode'],
+            enum_values:{'ESlateColorStylingMode::UseColor_Specified':0,'ESlateColorStylingMode::UseColor_ColorTable':1,
+                'ESlateColorStylingMode::UseColor_Foreground':2,'ESlateColorStylingMode::UseColor_Foreground_Subdued':3,
+                'ESlateColorStylingMode::UseColor_UseStyle':4},default:0}},
+    default:{SpecifiedColor:{R:1,G:0,B:1,A:1},ColorUseRule:0},member_order:['SpecifiedColor','ColorUseRule']});
+
 function requireArrayIdentity(expression, name, required = true) {
     const identity = ['/Script/Engine', 'KismetArrayLibrary', name];
     if (expression.identity === undefined && !required) return;
@@ -117,7 +183,7 @@ const nativeStruct = name => {
             default:{Rotation:rotation.default,Translation:vector.default,Scale3D:{X:1,Y:1,Z:1}},
             member_order:['Rotation','Translation','Scale3D']};
     }
-    const fields = name === 'Vector' ? ['X','Y','Z'] : name === 'Rotator' ? ['Pitch','Yaw','Roll'] : ['R','G','B','A'];
+    const fields = name === 'Vector2D' ? ['X','Y'] : name === 'Vector' ? ['X','Y','Z'] : name === 'Rotator' ? ['Pitch','Yaw','Roll'] : ['R','G','B','A'];
     const fieldType = name === 'LinearColor' ? 'FloatProperty' : 'DoubleProperty';
     return {type:'StructProperty',source:'/Script/CoreUObject',native:name,
         fields:Object.fromEntries(fields.map(field=>[field,{type:fieldType}])),
@@ -306,13 +372,15 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
     const nativeMathStructType = value => {
         if (value?.op === 'typed_literal' || value?.op === 'get') {
             const schema=value.op === 'typed_literal' ? value.schema : schemaFor(value);
-            if (!['Vector','Rotator','Quat','Transform'].includes(schema?.native)
+            if (!['Vector2D','Vector','Rotator','Quat','Transform'].includes(schema?.native)
                 || JSON.stringify(schema) !== JSON.stringify(nativeStruct(schema.native))) return null;
             return schema.native;
         }
         if (value?.op === 'math') return ({MakeVector:'Vector',Conv_DoubleToVector:'Vector',
             Add_VectorVector:'Vector',Subtract_VectorVector:'Vector',Multiply_VectorVector:'Vector',
-            MakeRotator:'Rotator',MakeTransform:'Transform'})[value.name] || null;
+            MakeRotator:'Rotator',MakeTransform:'Transform',MakeVector2D:'Vector2D',
+            Conv_RotatorToVector:'Vector',Conv_VectorToRotator:'Rotator',GreaterGreater_VectorRotator:'Vector',
+            GetUpVector:'Vector',ProjectPointOnToPlane:'Vector',SelectTransform:'Transform',RInterpTo:'Rotator'})[value.name] || null;
         return null;
     };
     const requireNativeMathStruct = (value, expected) => {
@@ -320,6 +388,23 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
     };
     const evaluate = (expression, depth = 0) => {
         if (!expression || depth > 48) throw new Error('Invalid Blueprint expression');
+        if (expression.op==='source_object_bool') {
+            if (expression.conversion!==1) throw new Error('Original ObjectToBool conversion differs');
+            const value=evaluate(expression.value,depth+1);
+            if (value===null) return false;
+            if (expression.schema?.type!=='ObjectProperty' || !['runtime_actor','runtime_component',
+                'runtime_native_component','runtime_native_widget'].includes(expression.schema.reference_kind))
+                throw new Error('Original ObjectToBool live-object schema is unavailable');
+            validateSchema(expression.schema,value);
+            return sourceObjectValid(notifications.native,value,expression.schema);
+        }
+        if (expression.op === 'source_dynamic_cast') {
+            const reference=evaluate(expression.value,depth+1);
+            if (expression.input_schema) validateSchema(expression.input_schema,reference);
+            const result=sourceDynamicCast(notifications.native,reference,expression);
+            validateSchema(expression.schema,result);
+            return result;
+        }
         if (expression.op === 'switch_value') {
             const cases = expression.cases;
             if (expression.index_type !== 'ByteProperty' || !Array.isArray(cases)
@@ -387,10 +472,41 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             validateSchema(expression.schema,storage[expression.field]);
             return structuredClone(storage[expression.field]);
         }
+        if (expression.op==='source_actor_member') {
+            const reference=evaluate(expression.target,depth+1);
+            validateSchema(expression.target_schema,reference);
+            if (reference===null) {
+                if (expression.schema?.type==='StructProperty')
+                    throw Error('Unverified original struct ClearValue for a null Actor context');
+                validateSchema(expression.schema,expression.schema?.default);
+                trace.push({source_index:sourceIndex,op:'warning',message:'Accessed None: original Actor property default'});
+                return structuredClone(expression.schema.default);
+            }
+            const value=readSourceActorMember(notifications.native,reference,expression,
+                {instance,queries:notifications.queries,world:notifications.readWorld});
+            validateSchema(expression.schema,value);
+            return value;
+        }
         if (expression.op === 'native_object_valid') {
             const reference=evaluate(expression.target,depth+1);
             validateSchema(expression.schema,reference);
             return sourceObjectValid(notifications.native,reference,expression.schema);
+        }
+        if (expression.op === 'native_text_format') {
+            const identity=['/Script/Engine','KismetTextLibrary','Format'];
+            const argumentSchema=nativeFormatArgumentSchema();
+            if (JSON.stringify(expression.identity)!==JSON.stringify(identity) || expression.dispatch!=='EX_CallMath'
+                || expression.source_text_locale_only!==true || expression.visual_1to1_certified!==false
+                || JSON.stringify(expression.argument_schema)!==JSON.stringify(argumentSchema)
+                || JSON.stringify(expression.pattern_schema)!==JSON.stringify({type:'TextProperty',default:{history:'empty',text:'',flags:0}}))
+                throw new Error('Unsupported original KismetTextLibrary.Format source contract');
+            const pattern=evaluate(expression.pattern,depth+1), arguments_=evaluate(expression.arguments,depth+1);
+            validateSchema(expression.pattern_schema,pattern);
+            validateSchema({type:'ArrayProperty',element:argumentSchema,default:[]},arguments_);
+            const value=sourceFormatText(pattern,arguments_);
+            trace.push({source_index:sourceIndex,op:'native_text_format',source_text_locale_only:true,
+                visual_1to1_certified:false,argument_count:arguments_.length});
+            return value;
         }
         if (expression.op === 'component_call') {
             const reference = evaluate(expression.target,depth+1);
@@ -473,6 +589,39 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             if (expression.source_owner_index !== program.source_owner_index) throw new Error('Original component class differs');
             return sourceComponentOwner(notifications.native, expression.source_owner_index);
         }
+        if (expression.op === 'native_actor_role') {
+            const method=expression.identity?.[2];
+            const expected=method==='HasAuthority' ? 'BoolProperty' : 'ByteProperty';
+            if (!['HasAuthority','GetLocalRole','GetRemoteRole'].includes(method)
+                || JSON.stringify(expression.identity)!==JSON.stringify(['/Script/Engine','Actor',method])
+                || expression.dispatch!=='EX_FinalFunction' || expression.return_type!==expected
+                || expression.actor_schema?.reference_kind!=='runtime_actor')
+                throw new Error('Unsupported original Actor role query contract');
+            const reference=evaluate(expression.target,depth+1);
+            validateSchema(expression.actor_schema,reference);
+            if (reference===null) {
+                trace.push({source_index:sourceIndex,op:'warning',message:'Accessed None: Actor role query context skipped'});
+                return method==='HasAuthority' ? false : 0;
+            }
+            return sourceActorRole(notifications.native,reference,expression.actor_schema,method);
+        }
+        if (expression.op === 'native_component_get_owner') {
+            const identity=['/Script/Engine','ActorComponent','GetOwner'];
+            if (JSON.stringify(expression.identity)!==JSON.stringify(identity) || expression.dispatch!=='EX_FinalFunction'
+                || expression.component_schema?.type!=='ObjectProperty'
+                || expression.component_schema?.reference_kind!=='runtime_native_component'
+                || !Array.isArray(expression.component_schema.class))
+                throw new Error('Unsupported original ActorComponent.GetOwner contract');
+            const reference=evaluate(expression.target,depth+1);
+            validateSchema(expression.component_schema,reference);
+            if (reference === null) {
+                trace.push({source_index:sourceIndex,op:'warning',message:'Accessed None: ActorComponent.GetOwner context skipped'});
+                return null;
+            }
+            const owner=sourceNativeComponentOwner(notifications.native,reference,expression.component_schema);
+            trace.push({source_index:sourceIndex,op:'native_component_get_owner',actor_id:owner.actor_id});
+            return owner;
+        }
         if (expression.op === 'native_force_net_update') {
             const reference = evaluate(expression.target, depth+1);
             if (reference === null) {
@@ -493,7 +642,10 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
         if (expression.op === 'native_widget_effect') {
             const identity=expression.identity;
             const method=expression.method;
-            const supported=method === 'SetVisibility'
+            const supported=method === 'SetFocus'
+                && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','Widget','SetFocus'])
+                && expression.dispatch === 'EX_FinalFunction'
+                || method === 'SetVisibility'
                 && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','Widget','SetVisibility'])
                 && expression.dispatch === 'EX_VirtualFunction'
                 && expression.parameter?.schema?.type === 'ByteProperty'
@@ -508,6 +660,14 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','ProgressBar','SetPercent'])
                 && expression.dispatch === 'EX_FinalFunction'
                 && expression.parameter?.schema?.type === 'FloatProperty'
+                || method === 'SetBrushFromTexture'
+                && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','Image','SetBrushFromTexture'])
+                && expression.dispatch === 'EX_VirtualFunction'
+                && Array.isArray(expression.parameters) && expression.parameters.length === 2
+                && Array.isArray(expression.parameter_schemas) && expression.parameter_schemas.length === 2
+                && expression.parameter_schemas[0]?.type === 'ObjectProperty'
+                && JSON.stringify(expression.parameter_schemas[0]?.class) === JSON.stringify(['/Script/Engine','Texture2D'])
+                && expression.parameter_schemas[1]?.type === 'BoolProperty'
                 || method === 'SetText'
                 && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','TextBlock','SetText'])
                 && ['EX_FinalFunction','EX_VirtualFunction'].includes(expression.dispatch)
@@ -516,7 +676,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','TextBlock','SetColorAndOpacity'])
                 && expression.dispatch === 'EX_FinalFunction'
                 && expression.parameter?.schema?.type === 'StructProperty'
-                && expression.parameter?.schema?.native === 'LinearColor';
+                && JSON.stringify(expression.parameter?.schema) === JSON.stringify(nativeSlateColorSchema());
             if (!supported || expression.source_owner_index !== program.source_owner_index
                 || expression.source_binding_required !== true
                 || expression.visual_1to1_certified !== false || !expression.receiver_schema
@@ -543,14 +703,28 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 || reference.source_field !== expression.receiver_field
                 || reference.source_owner_index !== expression.source_owner_index)
                 throw new Error('Original widget source binding is unavailable or foreign');
-            const value=evaluate(expression.parameter.value,depth+1);
-            validateSchema(expression.parameter.schema,value);
-            if (method === 'SetVisibility' && (!Number.isInteger(value) || value < 0 || value > 4))
+            const values=[];
+            if (method === 'SetBrushFromTexture') {
+                for (const [index,parameter] of expression.parameters.entries()) {
+                    const value=evaluate(parameter,depth+1);
+                    validateSchema(expression.parameter_schemas[index],value);
+                    values.push(structuredClone(value));
+                }
+                if (typeof values[1] !== 'boolean') throw new Error('Unverified original UMG brush size flag');
+            } else if (method !== 'SetFocus') {
+                const value=evaluate(expression.parameter.value,depth+1);
+                validateSchema(expression.parameter.schema,value);
+                values.push(structuredClone(value));
+            }
+            if (method === 'SetVisibility' && (!Number.isInteger(values[0]) || values[0] < 0 || values[0] > 4))
                 throw new Error('Unverified original ESlateVisibility value');
+            if (method === 'SetColorAndOpacity' && values[0]?.ColorUseRule !== 0)
+                throw new Error('Original FSlateColor style binding is unavailable outside UseColor_Specified');
             const effect={op:'native_widget_effect',identity:[...identity],dispatch:expression.dispatch,
                 widget_id:reference.widget_id,source_field:expression.receiver_field,
                 source_package:reference.source_package,source_owner_index:reference.source_owner_index,
-                method,parameter:structuredClone(value)};
+                method,...(method === 'SetBrushFromTexture' ? {parameters:values}
+                    : method === 'SetFocus' ? {} : {parameter:values[0]})};
             emit(effect);
             trace.push({source_index:sourceIndex,...structuredClone(effect)});
             return null;
@@ -907,6 +1081,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
         }
         if (expression.op === 'math_outputs') {
             const outputNames=expression.name === 'BreakVector' ? ['X','Y','Z']
+                : expression.name === 'BreakVector2D' ? ['X','Y']
                 : expression.name === 'BreakRotator' ? ['Roll','Pitch','Yaw']
                 : expression.name === 'BreakTransform' ? ['Location','Rotation','Scale'] : null;
             const nativeOutputs=expression.name === 'BreakTransform' ? ['Vector','Rotator','Vector'] : null;
@@ -915,11 +1090,13 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 || !Array.isArray(expression.targets) || expression.targets.length !== outputNames.length)
                 throw new Error('Unsupported original native math output call');
             requireNativeMathStruct(expression.args[0],expression.name === 'BreakVector' ? 'Vector'
+                : expression.name === 'BreakVector2D' ? 'Vector2D'
                 : expression.name === 'BreakRotator' ? 'Rotator' : 'Transform');
             const values=expression.args.map(argument=>evaluate(argument,depth+1));
             const components=evaluateNativeMath(expression.name,values);
             const writes=expression.targets.map((target,index)=>{
-                const expectedType=nativeOutputs ? 'StructProperty' : 'FloatProperty';
+                const expectedType=nativeOutputs ? 'StructProperty' : ['BreakVector','BreakVector2D'].includes(expression.name)
+                    ? 'DoubleProperty' : 'FloatProperty';
                 if (target?.op !== 'get' || !safeField(target.field) || target.type !== expectedType
                     || !['local','self','persistent'].includes(target.scope)
                     || target.scope === 'persistent' && !Number.isSafeInteger(target.frame))
@@ -945,11 +1122,15 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             const structContracts={
                 Add_VectorVector:['Vector','Vector'],Subtract_VectorVector:['Vector','Vector'],
                 Multiply_VectorVector:['Vector','Vector'],Vector_DistanceSquared:['Vector','Vector'],BreakVector:['Vector'],
-                BreakRotator:['Rotator'],MakeTransform:['Vector','Rotator','Vector']};
+                BreakRotator:['Rotator'],MakeTransform:['Vector','Rotator','Vector'],
+                Conv_RotatorToVector:['Rotator'],GetUpVector:['Rotator'],Conv_VectorToRotator:['Vector'],
+                GreaterGreater_VectorRotator:['Vector','Rotator'],ProjectPointOnToPlane:['Vector','Vector','Vector'],
+                NotEqual_VectorVector:['Vector','Vector',null],SelectTransform:['Transform','Transform',null],
+                BreakVector2D:['Vector2D'],RInterpTo:['Rotator','Rotator',null,null]};
             const expected=structContracts[expression.name];
             if (expected) {
                 if (expected.length !== expression.args.length) throw new Error('Invalid original native math parameter count');
-                expression.args.forEach((argument,index)=>requireNativeMathStruct(argument,expected[index]));
+                expression.args.forEach((argument,index)=>{if (expected[index]) requireNativeMathStruct(argument,expected[index]);});
             }
             const args = expression.args.map(arg => evaluate(arg, depth+1));
             const value = evaluateNativeMath(expression.name, args, message => trace.push({source_index: sourceIndex, op: 'warning', message}));
@@ -1119,6 +1300,29 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
         }
         if (step.op === 'end') throw new Error('Blueprint reached EndOfScript without return');
         if (step.op === 'evaluate') { evaluate(step.value); continue; }
+        if (step.op === 'set_actor_member') {
+            const target=step.target;
+            if (target?.op!=='source_actor_member') throw Error('Invalid original Actor property assignment');
+            const reference=evaluate(target.target);
+            validateSchema(target.target_schema,reference);
+            const value=evaluate(step.value);
+            if (step.member_field!==undefined && (target.schema?.type!=='StructProperty'
+                ||!safeField(step.member_field)||!owns(target.schema.fields,step.member_field)))
+                throw Error('Original Actor struct member assignment schema differs');
+            validateSchema(step.member_field===undefined ? target.schema : target.schema.fields[step.member_field],value);
+            if (reference===null) {
+                trace.push({source_index:sourceIndex,op:'warning',message:'Accessed None: original Actor property assignment skipped'});
+                continue;
+            }
+            const environment={instance,queries:notifications.queries,world:notifications.world};
+            const replacement=step.member_field===undefined ? value
+                : readSourceActorMember(notifications.native,reference,target,environment);
+            if (step.member_field!==undefined) replacement[step.member_field]=structuredClone(value);
+            validateSchema(target.schema,replacement);
+            writeSourceActorMember(notifications.native,reference,target,replacement,environment);
+            trace.push({source_index:sourceIndex,op:'set_actor_member',package:target.package,field:target.field,value:structuredClone(value)});
+            continue;
+        }
         if (step.op === 'set_member') {
             const target = step.target;
             if (target?.op !== 'get' || !safeField(step.field)) throw new Error('Invalid source struct assignment');

@@ -56,7 +56,8 @@ def object_validity(value, package, owner, reads, outputs, depth):
     args = value.get('Parameters')
     if not isinstance(args, list) or len(args) != 1: raise Error('Original IsValid arity differs')
     target, schema = variable(args[0], package, owner, reads, outputs, depth)
-    if schema.get('reference_kind') not in ('runtime_actor', 'runtime_component', 'runtime_native_component'):
+    if schema.get('reference_kind') not in ('runtime_actor', 'runtime_component', 'runtime_native_component',
+                                             'runtime_native_widget'):
         raise Error('IsValid requires an explicit original live-object binding; asset loading is not implied')
     return {'op': 'native_object_valid', 'target': target, 'schema': schema}
 
@@ -116,7 +117,7 @@ def query_safe(program, library, visited=None, packages=None, package_name=None,
     if program.get('self_writes') or program.get('persistent_types'): return False
     visited = visited | {name}
     for node in expressions(program.get('steps', [])):
-        if node['op'] in ('broadcast', 'mark_dirty', 'native_force_net_update', 'component_call'): return False
+        if node['op'] in ('broadcast', 'mark_dirty', 'native_force_net_update', 'component_call','set_actor_member'): return False
         if node['op'] == 'call':
             child = library.get(node.get('function'))
             if not child or child['source_export_index'] != node['export_index'] or not query_safe(

@@ -1,5 +1,18 @@
 # DDS migration checklist · 2026-10-13
 
+## Shared Blueprint batches · 2026-10-27
+
+**531/1,957 translated (27.1%), 1,426 blocked.** Cumulative change since
+`5fba7c0`: **+61 whole original functions**, zero regressions and zero missing
+cached packages. The latest continuation moved 518 → 531. Source actor access,
+typed casts/presence checks, 14 native math operations and inventory UI types
+now share reusable adapters. Full gameplay and Play 1:1 remain incomplete.
+435 Python tests in isolated files, 210 JavaScript tests and builds passed.
+The cached dependency census now covers every nested source operation instead
+of stopping at the first compiler error. See [batch evidence and remaining
+boundaries](ue2three-blueprint-batches.md). Other game areas retain their
+existing acceptance status.
+
 ## Verifica isolata del branch remoto · 2026-10-22
 
 Su `chatgpt/ue2three-dds` al commit `23a4888` in un checkout pulito sono

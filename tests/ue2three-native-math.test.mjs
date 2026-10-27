@@ -10,7 +10,7 @@ test('source MakeVector constructs an FVector from exactly three finite numeric 
         [NaN, 2, 3], [1, Infinity, 3]])
         assert.throws(() => evaluateNativeMath('MakeVector', args), /Invalid native MakeVector parameters/);
     assert.throws(() => evaluateNativeMath('MakeVector'), /Invalid native MakeVector parameters/);
-    assert.throws(() => evaluateNativeMath('MakeVector2D', [1, 2]), /Unsupported native math/);
+    assert.throws(() => evaluateNativeMath('MakeVector4D', [1, 2]), /Unsupported native math/);
 });
 
 test('UE 5.7 Round uses FMath half-toward-positive-infinity rounding within int32', () => {
@@ -88,7 +88,7 @@ test('Boolean equality is typed and unknown math is rejected', () => {
     assert.equal(evaluateNativeMath('EqualEqual_BoolBool', [true, true]), true);
     assert.throws(() => evaluateNativeMath('NotEqual_BoolBool', [0, 1]), /Invalid/);
     assert.throws(() => evaluateNativeMath('Add_IntInt', [0.5, 1]), /Invalid/);
-    assert.throws(() => evaluateNativeMath('Divide_IntInt', [2, 1]), /Unsupported/);
+    assert.throws(() => evaluateNativeMath('Divide_IntInt', [2.5, 1]), /Invalid/);
 });
 test('source FName comparisons preserve case-insensitivity and instance suffixes', () => {
     assert.equal(evaluateNativeMath('EqualEqual_NameName', ['Head', 'HEAD']), true);
@@ -115,7 +115,7 @@ test('witnessed rotator construction and breaks retain native argument and outpu
     const rotation=evaluateNativeMath('MakeRotator',[10,20,30]);
     assert.deepEqual(rotation,{Pitch:20,Yaw:30,Roll:10});
     assert.deepEqual(evaluateNativeMath('BreakVector',[{X:1/3,Y:-2,Z:3}]),
-        {X:Math.fround(1/3),Y:-2,Z:3});
+        {X:1/3,Y:-2,Z:3});
     assert.deepEqual(evaluateNativeMath('BreakRotator',[rotation]),{Roll:10,Pitch:20,Yaw:30});
     for (const [name,args] of [['MakeRotator',[1,2]],['BreakVector',[{X:1,Y:2,Z:NaN}]],
         ['BreakRotator',[{X:1,Y:2,Z:3}]]])

@@ -149,5 +149,58 @@ class SourceObjectTests(unittest.TestCase):
         with self.assertRaisesRegex(BlueprintTranslationError,'non-ASCII narrow string layout'):
             expression(node('EX_CallMath',StackNode=-1,Parameters=[narrow_unicode,right]),set(),set(),package=package,owner=1)
 
+    def test_component_get_owner_context_requires_a_typed_original_native_component(self):
+        package=Package({'Imports':[
+            {'ObjectName':'GetOwner','ClassName':'Function','OuterIndex':-2},
+            {'ObjectName':'ActorComponent','ClassName':'Class','OuterIndex':-3},
+            {'ObjectName':'/Script/Engine','ClassName':'Package'},
+            {'ObjectName':'SkeletalMeshComponent','ClassName':'Class','OuterIndex':-3}],
+            'Exports':[{'ObjectName':'Notify_C','LoadedProperties':[]},
+                {'ObjectName':'Received_Notify','OuterIndex':1,'LoadedProperties':[
+                    {'Name':'MeshComp','SerializedType':'ObjectProperty','PropertyClass':-4,'PropertyFlags':'CPF_Parm'}]}]})
+        package._active_function=package.exports[1]
+        target=node('EX_LocalVariable',Variable={'New':{'Path':['MeshComp'],'ResolvedOwner':2}})
+        call=node('EX_FinalFunction',StackNode=-1,Parameters=[])
+        context=node('EX_Context',ObjectExpression=target,ContextExpression=call,Offset=memory_size(call,package=package))
+        result=expression(context,set(),set(),package=package,owner=1)
+        self.assertEqual(result['op'],'native_component_get_owner')
+        self.assertEqual(result['identity'],['/Script/Engine','ActorComponent','GetOwner'])
+        self.assertEqual(result['component_schema']['class'],['/Script/Engine','SkeletalMeshComponent'])
+        self.assertEqual(result['target'],{'op':'get','scope':'local','field':'MeshComp'})
+        package.exports[1]['LoadedProperties'][0]['PropertyClass']=-1
+        with self.assertRaisesRegex(BlueprintTranslationError,'typed live original ActorComponent'):
+            expression(context,set(),set(),package=package,owner=1)
+
+    def test_native_format_uses_exact_function_and_reflected_argument_array(self):
+        package=Package({'Imports':[
+            {'ObjectName':'Format','ClassName':'Function','OuterIndex':-2},
+            {'ObjectName':'KismetTextLibrary','ClassName':'Class','OuterIndex':-3},
+            {'ObjectName':'/Script/Engine','ClassName':'Package'},
+            {'ObjectName':'FormatArgumentData','ClassName':'ScriptStruct','OuterIndex':-3}],
+            'Exports':[{'ObjectName':'FormatInventoryText','OuterIndex':2,'LoadedProperties':[
+                {'Name':'Pattern','SerializedType':'TextProperty','PropertyFlags':'CPF_Parm'},
+                {'Name':'Arguments','SerializedType':'ArrayProperty','Inner':{
+                    'SerializedType':'StructProperty','Struct':-4},'PropertyFlags':'CPF_Parm'}]},
+                {'ObjectName':'WBP_Inventory_C','LoadedProperties':[]}]})
+        package._active_function=package.exports[0]
+        variable=lambda name:node('EX_LocalVariable',Variable={'New':{'Path':[name],'ResolvedOwner':1}})
+        call=node('EX_CallMath',StackNode=-1,Parameters=[variable('Pattern'),variable('Arguments')])
+        result=expression(call,set(),set(),package=package,owner=1)
+        self.assertEqual(result['op'],'native_text_format')
+        self.assertEqual(result['identity'],['/Script/Engine','KismetTextLibrary','Format'])
+        self.assertEqual(result['argument_schema']['native'],'FormatArgumentData')
+        self.assertTrue(result['source_text_locale_only'])
+        self.assertFalse(result['visual_1to1_certified'])
+
+        foreign=deepcopy(package);foreign._active_function=foreign.exports[0]
+        foreign.imports[0]['ObjectName']='FakeFormat'
+        with self.assertRaises(BlueprintTranslationError):
+            expression(call,set(),set(),package=foreign,owner=1)
+
+        wrong_array=deepcopy(package);wrong_array._active_function=wrong_array.exports[0]
+        wrong_array.exports[0]['LoadedProperties'][1]['Inner']['Struct']=-5
+        with self.assertRaises(BlueprintTranslationError):
+            expression(call,set(),set(),package=wrong_array,owner=1)
+
 
 if __name__ == '__main__': unittest.main()

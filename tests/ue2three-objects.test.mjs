@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {SourceActorBindings, sourceComponentOwner, sourceForceNetUpdate, sourceObjectValid, sourceFindComponent} from '../src/editor/ue2three-objects.mjs';
+import {SourceActorBindings, sourceComponentOwner, sourceNativeComponentOwner, sourceForceNetUpdate, sourceObjectValid, sourceFindComponent} from '../src/editor/ue2three-objects.mjs';
 import {BlueprintActorRuntime} from '../src/editor/ue2three-blueprint-runtime.mjs';
 import {executeBlueprint} from '../src/editor/ue2three-blueprint.mjs';
 
@@ -291,6 +291,22 @@ test('original IsValid distinguishes null and explicit bound objects without acc
     assert.throws(()=>sourceObjectValid(context,context.actors['actor-1'].reference,{reference_kind:'runtime_actor',class:['/Script/Engine','Character']}),/class differs/);
 });
 
+test('original IsValid accepts only explicitly bound source UMG widgets',()=>{
+    const widgetClass=['/Script/UMG','Button'],sourcePackage='/Game/UI/WBP_Menu',reference={kind:'source_native_widget',
+        source_package:sourcePackage,source_owner_index:4,source_field:'Btn_Start',widget_id:'btn-start',declared_class:widgetClass};
+    const schema={type:'ObjectProperty',class:widgetClass,reference_kind:'runtime_native_widget',default:null};
+    const context={source_package:sourcePackage,source_owner_index:4,widgets:{Btn_Start:{reference,source_field:'Btn_Start',
+        source_owner_index:4,declared_class:widgetClass,binding_complete:true}}};
+    assert.equal(sourceObjectValid(context,null,schema),false);
+    assert.equal(sourceObjectValid(context,reference,schema),true);
+    assert.throws(()=>sourceObjectValid(context,{...reference,source_package:'/Game/Foreign/WBP_Menu'},schema),/foreign/);
+    const program={schema_version:1,status:'translated_straight_line',source_owner_index:4,source_export_index:5,
+        input_fields:[],output_fields:[],self_reads:['Btn_Start'],self_writes:[],field_types:{self:{Btn_Start:'ObjectProperty'}},
+        schemas:{self:{Btn_Start:schema}},steps:[{op:'return',value:{op:'native_object_valid',
+            target:{op:'get',scope:'self',field:'Btn_Start'},schema}}]};
+    assert.equal(executeBlueprint(program,{Btn_Start:reference},{},{native:context}).value,true);
+});
+
 test('original IsValid binds only native components present in the source SCS graph',()=>{
     const report=fixture().report;
     const schema={type:'ObjectProperty',class:['/Script/HairStrandsCore','GroomComponent'],
@@ -315,6 +331,28 @@ test('original IsValid binds only native components present in the source SCS gr
         input_fields:[],output_fields:[],self_reads:['Beard'],self_writes:[],field_types:{self:{Beard:'ObjectProperty'}},
         schemas:{self:{Beard:schema}},steps:[{op:'return',value:{op:'native_object_valid',target:{op:'get',scope:'self',field:'Beard'},schema}}]};
     assert.equal(executeBlueprint(program,runtime.states['/Game/Pawn'],{},{native:context}).value,true);
+});
+
+test('ActorComponent.GetOwner resolves only a bound source native component to its source actor',()=>{
+    const report=fixture().report,schema={type:'ObjectProperty',class:['/Script/Engine','SkeletalMeshComponent'],
+        reference_kind:'runtime_native_component',default:null};
+    report.packages['/Game/Pawn'].default_state.Mesh=null;
+    report.packages['/Game/Pawn'].field_schemas={Mesh:schema};
+    const graph=report.actor_graph.roots['/Game/Pawn'];
+    graph.native_components=[{variable:'Mesh',package:'/Script/Engine',class_object:'SkeletalMeshComponent',
+        scs_node_export_index:10,template_export_index:11,template_sha256:'b'.repeat(64)}];
+    graph.native_component_bindings_complete=true;
+    const runtime=new BlueprintActorRuntime(report,report.project),player={actualPlayer:true};
+    runtime.bindSourceActor('/Game/Pawn',player);
+    const context=runtime.nativeContext('/Game/Pawn'),reference=runtime.states['/Game/Pawn'].Mesh;
+    assert.deepEqual(sourceNativeComponentOwner(context,reference,schema),context.actors['actor-1'].reference);
+    const program={schema_version:1,status:'translated_straight_line',source_owner_index:1,source_export_index:12,
+        input_fields:[],output_fields:[],self_reads:['Mesh'],self_writes:[],field_types:{self:{Mesh:'ObjectProperty'}},
+        schemas:{self:{Mesh:schema}},steps:[{op:'return',value:{op:'native_component_get_owner',
+            identity:['/Script/Engine','ActorComponent','GetOwner'],dispatch:'EX_FinalFunction',
+            target:{op:'get',scope:'self',field:'Mesh'},component_schema:schema}}]};
+    assert.deepEqual(executeBlueprint(program,runtime.states['/Game/Pawn'],{},{native:context}).value,context.actors['actor-1'].reference);
+    assert.throws(()=>sourceNativeComponentOwner({...context,native_components:{}},reference,schema),/native component/);
 });
 
 test('original component graph binds the actual actor and applies source template overrides once',()=>{

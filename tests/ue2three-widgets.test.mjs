@@ -84,22 +84,30 @@ test('native virtual TextBlock text dispatch preserves authored FText data',()=>
   assert.equal(result.effects[0].method,'SetText');
 });
 
-test('native text color requires original LinearColor struct type and four finite channels',()=>{
+test('native text color preserves source FSlateColor and rejects unbound style rules or non-finite channels',()=>{
   const rgba={R:0.25,G:0.5,B:0.75,A:1};
-  const field=Object.fromEntries(['R','G','B','A'].map(name=>[name,{type:'FloatProperty'}]));
-  const schema={type:'StructProperty',source:'/Script/CoreUObject',native:'LinearColor',fields:field,
-    default:{R:0,G:0,B:0,A:1},member_order:['R','G','B','A']};
+  const linear={type:'StructProperty',source:'/Script/CoreUObject',native:'LinearColor',
+    fields:Object.fromEntries(['R','G','B','A'].map(name=>[name,{type:'FloatProperty'}])),
+    default:{R:0,G:0,B:0,A:0},member_order:['R','G','B','A']};
+  const schema={type:'StructProperty',source:'/Script/SlateCore',native:'SlateColor',
+    fields:{SpecifiedColor:linear,ColorUseRule:{type:'ByteProperty',enum:['/Script/SlateCore','ESlateColorStylingMode'],
+      enum_values:{'ESlateColorStylingMode::UseColor_Specified':0,'ESlateColorStylingMode::UseColor_ColorTable':1,
+        'ESlateColorStylingMode::UseColor_Foreground':2,'ESlateColorStylingMode::UseColor_Foreground_Subdued':3,
+        'ESlateColorStylingMode::UseColor_UseStyle':4},default:0}},
+    default:{SpecifiedColor:{R:1,G:0,B:1,A:1},ColorUseRule:0},member_order:['SpecifiedColor','ColorUseRule']};
   const operation=effect('SetText',textValue);
   operation.method='SetColorAndOpacity';
   operation.identity=['/Script/UMG','TextBlock','SetColorAndOpacity'];
-  operation.parameter={schema,value:{op:'typed_literal',schema,value:rgba}};
+  operation.parameter={schema,value:{op:'typed_literal',schema,value:{SpecifiedColor:rgba,ColorUseRule:0}}};
   const result=executeBlueprint(program(operation),{Txt_Label:ref},{},{native:native()});
   assert.equal(result.effects.length,1);
-  assert.deepEqual(result.effects[0].parameter,rgba);
+  assert.deepEqual(result.effects[0].parameter,{SpecifiedColor:rgba,ColorUseRule:0});
   const bad=structuredClone(operation);
-  bad.parameter.value.value.B=Infinity;
+  bad.parameter.value.value.SpecifiedColor.B=Infinity;
   assert.throws(()=>executeBlueprint(program(bad),{Txt_Label:ref},{},{native:native()}),
     /Invalid typed source member/);
+  const style=structuredClone(operation);style.parameter.value.value.ColorUseRule=2;
+  assert.throws(()=>executeBlueprint(program(style),{Txt_Label:ref},{},{native:native()}),/style binding/);
 });
 
 test('native Border material brush emits the exact source material reference',()=>{
@@ -155,5 +163,48 @@ test('native ProgressBar SetPercent preserves a source float effect and binding'
   const bad=structuredClone(operation);
   bad.parameter.schema.type='DoubleProperty';
   assert.throws(()=>executeBlueprint(program(bad),{Progress:progress},{},{native:bindings}),
+    /Unsupported or unbound original UMG context contract/);
+});
+
+test('native Image SetBrushFromTexture preserves the typed texture and match-size flag',()=>{
+  const imageClass=['/Script/UMG','Image'];
+  const image={kind:'source_native_widget',source_package:pkg,source_owner_index:1,
+    source_field:'Img_ItemIcon',widget_id:'img-original-1',declared_class:imageClass};
+  const textureSchema={type:'ObjectProperty',class:['/Script/Engine','Texture2D'],default:null};
+  const boolSchema={type:'BoolProperty',default:false};
+  const texture={asset:'/Game/UI/T_InventoryIcon',declared_class:['/Script/Engine','Texture2D']};
+  const operation={op:'native_widget_effect',source_owner_index:1,source_binding_required:true,
+    visual_1to1_certified:false,identity:['/Script/UMG','Image','SetBrushFromTexture'],
+    dispatch:'EX_VirtualFunction',method:'SetBrushFromTexture',
+    receiver:{op:'get',scope:'self',field:'Img_ItemIcon'},receiver_field:'Img_ItemIcon',
+    receiver_schema:{type:'ObjectProperty',class:imageClass,reference_kind:'runtime_native_widget',default:null},
+    parameter_schemas:[textureSchema,boolSchema],
+    parameters:[{op:'typed_literal',schema:textureSchema,value:texture},{op:'constant',value:false}]};
+  const p=program(operation);
+  p.self_reads=['Img_ItemIcon'];
+  p.field_types.self={Img_ItemIcon:'ObjectProperty'};
+  p.schemas.self={Img_ItemIcon:{type:'ObjectProperty',class:imageClass,reference_kind:'runtime_native_widget'}};
+  const bindings={source_package:pkg,source_owner_index:1,widgets:{Img_ItemIcon:{reference:image,
+    source_field:'Img_ItemIcon',source_owner_index:1,declared_class:imageClass,binding_complete:true}}};
+  const result=executeBlueprint(p,{Img_ItemIcon:image},{},{native:bindings});
+  assert.deepEqual(result.effects[0].identity,['/Script/UMG','Image','SetBrushFromTexture']);
+  assert.deepEqual(result.effects[0].parameters,[texture,false]);
+  const bad=structuredClone(operation);
+  bad.parameter_schemas[0].class=['/Script/Engine','SoundWave'];
+  assert.throws(()=>executeBlueprint(program(bad),{Img_ItemIcon:image},{},{native:bindings}),
+    /Unsupported or unbound original UMG context contract/);
+});
+
+test('native Widget.SetFocus emits a witnessed zero-argument source UI effect',()=>{
+  const focus=effect('SetVisibility',0);
+  focus.identity=['/Script/UMG','Widget','SetFocus'];focus.method='SetFocus';focus.dispatch='EX_FinalFunction';
+  delete focus.parameter;
+  const result=executeBlueprint(program(focus),{Txt_Label:ref},{},{native:native()});
+  assert.equal(result.effects.length,1);
+  assert.deepEqual(result.effects[0].identity,['/Script/UMG','Widget','SetFocus']);
+  assert.equal(result.effects[0].method,'SetFocus');
+  assert.equal(Object.hasOwn(result.effects[0],'parameter'),false);
+  const forged=structuredClone(focus);forged.identity[1]='UserWidget';
+  assert.throws(()=>executeBlueprint(program(forged),{Txt_Label:ref},{},{native:native()}),
     /Unsupported or unbound original UMG context contract/);
 });

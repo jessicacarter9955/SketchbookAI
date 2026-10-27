@@ -29,7 +29,35 @@ def asset_constant(package, reference):
 
 
 def native_schema(identity):
-    fields = {('/Script/CoreUObject', 'Vector'): ('X', 'Y', 'Z'),
+    if identity == ('/Script/SlateCore', 'SlateColor'):
+        linear_color=native_schema(('/Script/CoreUObject','LinearColor'))
+        color_rules={'ESlateColorStylingMode::UseColor_Specified':0,
+                     'ESlateColorStylingMode::UseColor_ColorTable':1,
+                     'ESlateColorStylingMode::UseColor_Foreground':2,
+                     'ESlateColorStylingMode::UseColor_Foreground_Subdued':3,
+                     'ESlateColorStylingMode::UseColor_UseStyle':4}
+        fields={'SpecifiedColor':linear_color,
+                'ColorUseRule':{'type':'ByteProperty','enum':['/Script/SlateCore','ESlateColorStylingMode'],
+                                'enum_values':color_rules,'default':0}}
+        return {'type':'StructProperty','source':identity[0],'native':identity[1],
+                'fields':fields,'default':{'SpecifiedColor':{'R':1,'G':0,'B':1,'A':1},'ColorUseRule':0},
+                'member_order':['SpecifiedColor','ColorUseRule']}
+    if identity == ('/Script/Engine', 'FormatArgumentData'):
+        empty_text = {'history': 'empty', 'text': '', 'flags': 0}
+        fields = {
+            'ArgumentName': {'type': 'StrProperty', 'default': ''},
+            'ArgumentValue': {'type': 'TextProperty', 'default': empty_text},
+            'ArgumentValueDouble': {'type': 'DoubleProperty', 'default': 0},
+            'ArgumentValueFloat': {'type': 'FloatProperty', 'default': 0},
+            'ArgumentValueGender': {'type': 'ByteProperty', 'enum': ['/Script/Engine', 'ETextGender'], 'default': 0},
+            'ArgumentValueInt': {'type': 'Int64Property', 'default': 0},
+            'ArgumentValueType': {'type': 'ByteProperty', 'enum': ['/Script/Engine', 'EFormatArgumentType'], 'default': 0},
+        }
+        return {'type': 'StructProperty', 'source': identity[0], 'native': identity[1],
+                'fields': fields, 'default': {name: schema['default'] for name, schema in fields.items()},
+                'member_order': list(fields)}
+    fields = {('/Script/CoreUObject', 'Vector2D'): ('X', 'Y'),
+              ('/Script/CoreUObject', 'Vector'): ('X', 'Y', 'Z'),
               ('/Script/CoreUObject', 'Rotator'): ('Pitch', 'Yaw', 'Roll')}.get(identity)
     if fields:
         return {'type': 'StructProperty', 'source': identity[0], 'native': identity[1],
@@ -138,6 +166,18 @@ def serialized_value(package, prop, schema, value):
     if type_name == 'StructProperty':
         values = value.get('Value')
         if schema.get('native'):
+            if schema.get('native') == 'SlateColor':
+                if not isinstance(values,list) or len(values)!=2:
+                    raise ValueError('Missing complete original FSlateColor fields')
+                result=copy.deepcopy(schema['default']);seen=set()
+                for child in values:
+                    name=child.get('Name')
+                    if name in seen or name not in schema['fields']:
+                        raise ValueError('Unknown or duplicate original FSlateColor field')
+                    seen.add(name)
+                    result[name]=serialized_value(package,{},schema['fields'][name],child)
+                if seen != set(schema['fields']): raise ValueError('Incomplete original FSlateColor fields')
+                return result
             if not isinstance(values, list) or len(values) != 1: raise ValueError('Missing native struct data')
             raw = values[0].get('Value', {})
             if any(isinstance(raw.get(key), bool) for key in schema['fields']): raise ValueError('Invalid native struct number')
@@ -153,7 +193,12 @@ def serialized_value(package, prop, schema, value):
             result[name] = serialized_value(package, schema['properties'][name], schema['fields'][name], child)
         return result
     if type_name not in PRIMITIVES: raise ValueError('Unsupported source value type')
-    if type_name == 'ByteProperty' and value.get('ByteType') == 'FName':
+    if type_name == 'ByteProperty' and isinstance(value.get('Value'),str) and schema.get('enum_values'):
+        enum_name=value['Value']
+        mapping=schema['enum_values']
+        if enum_name not in mapping: raise ValueError('Missing original native enum mapping')
+        raw=mapping[enum_name]
+    elif type_name == 'ByteProperty' and value.get('ByteType') == 'FName':
         mapping = schema.get('enum_values')
         if mapping is None:
             mapping = getattr(package, 'source_enums', {}).get(import_path(package, prop.get('Enum')), {})

@@ -23,7 +23,8 @@ class NativePlanningTests(unittest.TestCase):
         for name in ('Add_VectorVector','Multiply_VectorVector','MakeRotator','BreakVector','BreakRotator',
                      'Conv_DoubleToVector','MakeTransform','Subtract_VectorVector'):
             self.assertTrue(adapter_present(('/Script/Engine','KismetMathLibrary',name)), name)
-        self.assertFalse(adapter_present(('/Script/Engine','KismetMathLibrary','MakeVector2D')))
+        self.assertTrue(adapter_present(('/Script/Engine','KismetMathLibrary','MakeVector2D')))
+        self.assertFalse(adapter_present(('/Script/Engine','KismetMathLibrary','MakeVector4D')))
         for name in ('Array_AddUnique','Array_Contains','Array_IsNotEmpty','Array_LastIndex',
                      'Array_RemoveItem','Array_Find','Array_Insert','Array_Reverse'):
             self.assertTrue(adapter_present(('/Script/Engine','KismetArrayLibrary',name)), name)

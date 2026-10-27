@@ -44,12 +44,17 @@ class PrimitiveCastTests(unittest.TestCase):
             expression(node('EX_PrimitiveCast', ConversionType=3, Target=foreign),
                        set(), set(), package=self.source('DoubleProperty'), owner=1)
 
-    def test_object_cast_unknown_enum_and_boolean_enum_do_not_fall_back(self):
-        for conversion in [1, 2, 5, True, '3', 'ObjectToInterface', None]:
+    def test_unknown_enum_and_boolean_enum_do_not_fall_back(self):
+        for conversion in [2, 5, True, '3', 'ObjectToInterface', None]:
             with self.subTest(conversion=conversion):
                 with self.assertRaisesRegex(BlueprintTranslationError, 'primitive cast conversion'):
                     expression(node('EX_PrimitiveCast', ConversionType=conversion, Target=self.value()),
                                set(), set(), package=self.source('DoubleProperty'), owner=1)
+
+    def test_object_to_bool_rejects_numeric_source_properties(self):
+        with self.assertRaisesRegex(BlueprintTranslationError,'live-object binding'):
+            expression(node('EX_PrimitiveCast',ConversionType=1,Target=self.value()),
+                set(),set(),package=self.source('DoubleProperty'),owner=1)
 
 
 if __name__ == '__main__':

@@ -51,6 +51,10 @@ def property_schema(package, prop):
             return {'type': type_name, 'class': list(identity), 'reference_kind': 'runtime_native_component', 'default': None}
         if identity in NATIVE_OBJECT_REFERENCES:
             return {'type': type_name, 'class': list(identity), 'reference_kind': 'runtime_native_object', 'default': None}
+        if identity and identity[0].startswith('/Game/'):
+            from blueprint_source_objects import source_object_property_schema
+            inherited_schema=source_object_property_schema(package,identity)
+            if inherited_schema: return inherited_schema
         source = getattr(package, 'source_packages', {}).get((identity or (None,))[0])
         if source and identity:
             from blueprint_objects import class_metadata

@@ -93,6 +93,42 @@ def native_object_call(value, package, owner, reads, outputs, depth):
             'return_type': signature['return_type'], 'args': translated}
 
 
+def native_text_format_call(value, package, owner, reads, outputs, depth):
+    """Translate typed KismetTextLibrary.Format source inputs for the runtime formatter."""
+    from blueprint_migration import kind, expression, BlueprintTranslationError as Error
+    identity = import_path(package, value.get('StackNode'))
+    if identity != ('/Script/Engine', 'KismetTextLibrary', 'Format'): return None
+    reference = value.get('StackNode')
+    if (type(reference) is not int or reference >= 0 or -reference > len(package.imports)
+            or package.imports[-reference-1].get('ClassName') != 'Function'
+            or import_path(package, package.imports[-reference-1].get('OuterIndex')) != identity[:-1]):
+        raise Error('Original KismetTextLibrary.Format function identity differs')
+    args = value.get('Parameters')
+    if not isinstance(args, list) or len(args) != 2:
+        raise Error('Original KismetTextLibrary.Format parameter count differs')
+    from blueprint_effects import variable
+    if kind(args[0]) == 'EX_TextConst':
+        pattern = expression(args[0], reads, outputs, depth+1, package, owner)
+        pattern_schema = pattern.get('schema') if isinstance(pattern, dict) else None
+    elif kind(args[0]) in ('EX_InstanceVariable', 'EX_LocalVariable', 'EX_LocalOutVariable'):
+        pattern, pattern_schema = variable(args[0], package, owner, reads, outputs, depth)
+    else:
+        raise Error('Original KismetTextLibrary.Format template is not a typed source FText')
+    if not isinstance(pattern_schema, dict) or pattern_schema.get('type') != 'TextProperty':
+        raise Error('Original KismetTextLibrary.Format template type differs')
+    if kind(args[1]) not in ('EX_InstanceVariable', 'EX_LocalVariable', 'EX_LocalOutVariable'):
+        raise Error('Original KismetTextLibrary.Format arguments are not a typed source array')
+    arguments, array_schema = variable(args[1], package, owner, reads, outputs, depth)
+    from blueprint_values import native_schema
+    argument_schema = native_schema(('/Script/Engine', 'FormatArgumentData'))
+    if (not argument_schema or array_schema != {'type': 'ArrayProperty', 'element': argument_schema, 'default': []}):
+        raise Error('Original KismetTextLibrary.Format argument array is not FFormatArgumentData')
+    return {'op': 'native_text_format', 'identity': list(identity), 'dispatch': 'EX_CallMath',
+            'pattern': pattern, 'pattern_schema': pattern_schema, 'arguments': arguments,
+            'argument_schema': argument_schema, 'source_text_locale_only': True,
+            'visual_1to1_certified': False}
+
+
 def class_metadata(package):
     candidates = [(i, e) for i, e in enumerate(package.exports, 1)
                   if str(e.get('ObjectName', '')).endswith('_C') and not str(e.get('ObjectName', '')).startswith('Default__')]
@@ -124,6 +160,29 @@ def native_actor_context(value, package, owner, reads, outputs, depth):
             or call.get('Parameters') != [] or value.get('Offset') != memory_size(call, package=package)):
         raise Error('Unresolved source Actor.ForceNetUpdate receiver or context offset')
     return {'op': 'native_force_net_update', 'target': target}
+
+
+def native_component_owner_context(value, package, owner, reads, outputs, depth):
+    """Resolve ActorComponent.GetOwner only for an explicitly typed live component."""
+    from blueprint_migration import kind, memory_size, BlueprintTranslationError as Error
+    call=value.get('ContextExpression',{})
+    identity=import_path(package,call.get('StackNode')) if kind(call)=='EX_FinalFunction' else None
+    if identity != ('/Script/Engine','ActorComponent','GetOwner'): return None
+    reference=call.get('StackNode')
+    if (type(reference) is not int or reference >= 0 or -reference > len(package.imports)
+            or package.imports[-reference-1].get('ClassName') != 'Function'
+            or import_path(package,package.imports[-reference-1].get('OuterIndex')) != identity[:-1]):
+        raise Error('Original ActorComponent.GetOwner function identity differs')
+    from blueprint_effects import variable
+    target,schema=variable(value.get('ObjectExpression',{}),package,owner,reads,outputs,depth)
+    from blueprint_types import NATIVE_COMPONENT_REFERENCES
+    component_class=tuple(schema.get('class',()))
+    if (schema.get('type') != 'ObjectProperty' or schema.get('reference_kind') != 'runtime_native_component'
+            or component_class not in NATIVE_COMPONENT_REFERENCES
+            or call.get('Parameters') != [] or value.get('Offset') != memory_size(call,package=package)):
+        raise Error('GetOwner requires a typed live original ActorComponent and no arguments')
+    return {'op':'native_component_get_owner','identity':list(identity),'dispatch':'EX_FinalFunction',
+            'target':target,'component_schema':schema}
 
 
 def actor_graph(packages, sources):

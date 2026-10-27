@@ -62,6 +62,13 @@ export function sourceComponentOwner(context, ownerIndex) {
     if (context.owner !== null) actor(context, context.owner);
     return structuredClone(context.owner);
 }
+export function sourceNativeComponentOwner(context, reference, schema) {
+    sourceNativeComponent(context,reference,schema);
+    const owner=context.actors[reference.actor_id]?.reference;
+    if (!owner) throw new Error('Original native component owner binding is unavailable');
+    actor(context,owner);
+    return structuredClone(owner);
+}
 export function sourceForceNetUpdate(context, reference) {
     standalone(context);
     const descriptor = actor(context, reference);
@@ -86,6 +93,24 @@ export function sourceQueryReceiver(context, reference, packageName, classObject
 
 export function sourceObjectValid(context, reference, schema) {
     if (reference === null) return false;
+    if (schema?.reference_kind === 'runtime_native_widget') {
+        const widgetClass=schema.class;
+        if (!context || !Array.isArray(widgetClass) || widgetClass.length!==2 || widgetClass[0]!=='/Script/UMG'
+            || !safeName(widgetClass[1]) || reference?.kind!=='source_native_widget'
+            || !/^\/Game\/[A-Za-z0-9_/.]+$/.test(reference.source_package || '')
+            || !Number.isSafeInteger(reference.source_owner_index) || reference.source_owner_index<=0
+            || !safeName(reference.source_field) || !/^[A-Za-z0-9_-]{1,128}$/.test(reference.widget_id || '')
+            || JSON.stringify(reference.declared_class)!==JSON.stringify(widgetClass)
+            || reference.source_package!==context.source_package
+            || reference.source_owner_index!==context.source_owner_index)
+            throw new Error('Unbound or foreign original UMG widget reference');
+        const descriptor=context.widgets?.[reference.source_field];
+        if (!descriptor || descriptor.binding_complete!==true || descriptor.source_owner_index!==reference.source_owner_index
+            || descriptor.source_field!==reference.source_field || JSON.stringify(descriptor.declared_class)!==JSON.stringify(widgetClass)
+            || JSON.stringify(descriptor.reference)!==JSON.stringify(reference))
+            throw new Error('Original UMG widget source binding is unavailable');
+        return true;
+    }
     if (schema?.reference_kind === 'runtime_component') {
         sourceQueryReceiver(context, reference, schema.class[0], schema.class[1]);
         return true;
@@ -105,6 +130,17 @@ export function sourceObjectValid(context, reference, schema) {
     // Bound descriptors have no implemented destruction/GC lifecycle. Unknown
     // objects reject instead of being assumed alive from a non-null JS object.
     return true;
+}
+
+export function sourceActorRole(context, reference, schema, method) {
+    if (!['HasAuthority','GetLocalRole','GetRemoteRole'].includes(method))
+        throw new Error('Unsupported original Actor role query');
+    sourceObjectValid(context,reference,schema);
+    const descriptor=actor(context,reference);
+    const role=descriptor[method==='GetRemoteRole' ? 'remote_role' : 'local_role'];
+    if (!Number.isInteger(role) || role<0 || role>3)
+        throw new Error('Original live Actor network role binding is unavailable');
+    return method==='HasAuthority' ? role===3 : role;
 }
 
 export function sourceFindComponent(context, reference, actorSchema, packageName, classObject, classIndex) {
@@ -181,6 +217,11 @@ export class SourceActorBindings {
             nativeComponents.set(component.variable,structuredClone(component));
         }
         this.root = {reference:{realm:this.realm,actor_id:'actor-1',declared_class:['/Script/Engine','Actor']},
+            // SourceActorBindings creates a standalone actor with no drivers.
+            // AActor initializes Role=ROLE_Authority; remote roles require
+            // additional source replication settings and stay unbound here.
+            local_role:3,
+            source_sha256:graph.source.source_sha256,
             component_lookup_complete:graph.component_lookup_complete === true,
             unbound_component_classes:(graph.component_blocked || []).map(row=>[row.package,row.class_object]),
             source_class:sourceClass, source_owner_index:graph.export_index,

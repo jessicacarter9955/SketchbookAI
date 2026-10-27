@@ -9,6 +9,28 @@ const isQuaternion = value => value && typeof value === 'object' && !Array.isArr
     && ['X','Y','Z','W'].every(field => typeof value[field] === 'number' && Number.isFinite(value[field]));
 const isTransform = value => value && typeof value === 'object' && !Array.isArray(value)
     && isQuaternion(value.Rotation) && isVector(value.Translation) && isVector(value.Scale3D);
+const isVector2D = value => value && typeof value === 'object' && !Array.isArray(value)
+    && ['X','Y'].every(field => typeof value[field] === 'number' && Number.isFinite(value[field]));
+const isFiniteNumber = value => typeof value === 'number' && Number.isFinite(value);
+const isInt32 = value => Number.isInteger(value) && value >= -2147483648 && value <= 2147483647;
+const rotatorAxes = rotation => {
+    // FRotationTranslationMatrix<T> rows, in Unreal XYZ handedness.
+    const pitch=rotation.Pitch*Math.PI/180, yaw=rotation.Yaw*Math.PI/180, roll=rotation.Roll*Math.PI/180;
+    const sp=Math.sin(pitch),cp=Math.cos(pitch),sy=Math.sin(yaw),cy=Math.cos(yaw),sr=Math.sin(roll),cr=Math.cos(roll);
+    return [
+        {X:cp*cy,Y:cp*sy,Z:sp},
+        {X:sr*sp*cy-cr*sy,Y:sr*sp*sy+cr*cy,Z:-sr*cp},
+        {X:-(cr*sp*cy+sr*sy),Y:cy*sr-cr*sp*sy,Z:cr*cp},
+    ];
+};
+// FRotator::NormalizeAxis keeps +180 (the existing quaternion UI helper uses
+// the equivalent -180 representation). Native RInterpTo must retain +180.
+const sourceNormalizeAxis = angle => {
+    let result=angle%360;
+    if (result < 0) result+=360;
+    if (result > 180) result-=360;
+    return result;
+};
 const normalizeDegrees = angle => ((angle + 180) % 360 + 360) % 360 - 180;
 const quatToRotator = q => {
     const singularity = q.Z*q.X - q.W*q.Y;
@@ -35,6 +57,102 @@ const makeQuaternion = rotation => {
 };
 
 export function evaluateNativeMath(name, args, warning = () => {}) {
+    if (name === 'Divide_IntInt' || name === 'Percent_IntInt') {
+        if (!Array.isArray(args) || args.length !== 2 || !args.every(isInt32))
+            throw new Error(`Invalid native ${name} parameters`);
+        const [a,b]=args;
+        if (b === 0) {
+            warning(name === 'Divide_IntInt' ? 'Divide by zero: Divide_IntInt' : 'Modulo by zero: Percent_IntInt');
+            return 0;
+        }
+        // INT_MIN / -1 is undefined in native C++ and may trap on Windows;
+        // reject rather than inventing a portable integer result.
+        if (a === -2147483648 && b === -1) throw new Error(`Undefined native ${name} integer overflow`);
+        const result=name === 'Divide_IntInt' ? Math.trunc(a/b) : a%b;
+        return result === 0 ? 0 : result;
+    }
+    if (name === 'NearlyEqual_FloatFloat' || name === 'MapRangeClamped') {
+        const count=name === 'NearlyEqual_FloatFloat' ? 3 : 5;
+        if (!Array.isArray(args) || args.length !== count || !args.every(isFiniteNumber))
+            throw new Error(`Invalid native ${name} parameters`);
+        if (name === 'NearlyEqual_FloatFloat') return Math.abs(args[0]-args[1]) <= args[2];
+        const [value,inA,inB,outA,outB]=args, divisor=inB-inA;
+        // FMath::GetRangePct<double> treats a nearly-zero input span as a
+        // point, choosing the low or high output based on Value >= InRangeB.
+        const pct=Math.abs(divisor) <= 1e-8 ? (value >= inB ? 1 : 0) : (value-inA)/divisor;
+        const alpha=Math.max(0,Math.min(1,pct)),result=outA+(outB-outA)*alpha;
+        if (!isFiniteNumber(result)) throw new Error('Non-finite native MapRangeClamped result');
+        return result;
+    }
+    if (name === 'MakeVector2D' || name === 'BreakVector2D') {
+        if (!Array.isArray(args) || (name === 'MakeVector2D'
+            ? args.length !== 2 || !args.every(isFiniteNumber)
+            : args.length !== 1 || !isVector2D(args[0]))) throw new Error(`Invalid native ${name} parameters`);
+        return name === 'MakeVector2D' ? {X:args[0],Y:args[1]} : {X:args[0].X,Y:args[0].Y};
+    }
+    if (name === 'Conv_VectorToRotator') {
+        if (!Array.isArray(args) || args.length !== 1 || !isVector(args[0]))
+            throw new Error('Invalid native Conv_VectorToRotator parameters');
+        const {X,Y,Z}=args[0], lengthSquared=X*X+Y*Y;
+        if (!Number.isFinite(lengthSquared)) throw new Error('Non-finite native Conv_VectorToRotator result');
+        return {Pitch:Math.atan2(Z,Math.sqrt(lengthSquared))*180/Math.PI,Yaw:Math.atan2(Y,X)*180/Math.PI,Roll:0};
+    }
+    if (name === 'Conv_RotatorToVector' || name === 'GetUpVector' || name === 'GreaterGreater_VectorRotator') {
+        const rotate=name === 'GreaterGreater_VectorRotator',rotation=args?.[rotate ? 1 : 0];
+        if (!Array.isArray(args) || args.length !== (rotate ? 2 : 1) || !isRotator(rotation)
+            || rotate && !isVector(args[0])) throw new Error(`Invalid native ${name} parameters`);
+        let result;
+        if (name === 'Conv_RotatorToVector') {
+            // FRotator::Vector removes winding before evaluating sin/cos.
+            const pitch=(rotation.Pitch%360)*Math.PI/180,yaw=(rotation.Yaw%360)*Math.PI/180;
+            result={X:Math.cos(pitch)*Math.cos(yaw),Y:Math.cos(pitch)*Math.sin(yaw),Z:Math.sin(pitch)};
+        } else {
+            const axes=rotatorAxes(rotation);
+            result=rotate ? Object.fromEntries(['X','Y','Z'].map(field=>[field,
+                args[0].X*axes[0][field]+args[0].Y*axes[1][field]+args[0].Z*axes[2][field]])) : axes[2];
+        }
+        if (!isVector(result)) throw new Error(`Non-finite native ${name} result`);
+        return result;
+    }
+    if (name === 'NotEqual_VectorVector') {
+        if (!Array.isArray(args) || args.length !== 3 || !isVector(args[0]) || !isVector(args[1]) || !isFiniteNumber(args[2]))
+            throw new Error('Invalid native NotEqual_VectorVector parameters');
+        const tolerance=Math.fround(args[2]);
+        if (!Number.isFinite(tolerance)) throw new Error('Invalid native NotEqual_VectorVector tolerance');
+        return !['X','Y','Z'].every(field=>Math.abs(args[0][field]-args[1][field]) <= tolerance);
+    }
+    if (name === 'ProjectPointOnToPlane') {
+        if (!Array.isArray(args) || args.length !== 3 || !args.every(isVector))
+            throw new Error('Invalid native ProjectPointOnToPlane parameters');
+        const [point,base,normal]=args;
+        // FVector::PointPlaneProject assumes the supplied normal is unit;
+        // it does not normalize or divide by its squared magnitude.
+        const distance=(point.X-base.X)*normal.X+(point.Y-base.Y)*normal.Y+(point.Z-base.Z)*normal.Z;
+        const result=Object.fromEntries(['X','Y','Z'].map(field=>[field,point[field]-distance*normal[field]]));
+        if (!isVector(result)) throw new Error('Non-finite native ProjectPointOnToPlane result');
+        return result;
+    }
+    if (name === 'SelectTransform') {
+        if (!Array.isArray(args) || args.length !== 3 || !isTransform(args[0]) || !isTransform(args[1]) || typeof args[2] !== 'boolean')
+            throw new Error('Invalid native SelectTransform parameters');
+        const value=args[args[2] ? 0 : 1];
+        return {Rotation:{...value.Rotation},Translation:{...value.Translation},Scale3D:{...value.Scale3D}};
+    }
+    if (name === 'RInterpTo') {
+        if (!Array.isArray(args) || args.length !== 4 || !isRotator(args[0]) || !isRotator(args[1])
+            || !isFiniteNumber(args[2]) || !isFiniteNumber(args[3])) throw new Error('Invalid native RInterpTo parameters');
+        const [current,target]=args,dt=Math.fround(args[2]),speed=Math.fround(args[3]);
+        if (!Number.isFinite(dt) || !Number.isFinite(speed)) throw new Error('Invalid native RInterpTo parameters');
+        const fields=['Pitch','Yaw','Roll'];
+        if (dt === 0 || fields.every(field=>current[field] === target[field])) return {...current};
+        if (speed <= 0) return {...target};
+        const delta=Object.fromEntries(fields.map(field=>[field,sourceNormalizeAxis(target[field]-current[field])]));
+        if (fields.every(field=>Math.abs(delta[field]) <= Math.fround(1e-4))) return {...target};
+        const alpha=Math.max(0,Math.min(1,Math.fround(speed*dt)));
+        const result=Object.fromEntries(fields.map(field=>[field,sourceNormalizeAxis(current[field]+delta[field]*alpha)]));
+        if (!isRotator(result)) throw new Error('Non-finite native RInterpTo result');
+        return result;
+    }
     if (name === 'MakeVector') {
         if (!Array.isArray(args) || args.length !== 3 || args.some(value => typeof value !== 'number' || !Number.isFinite(value)))
             throw new Error('Invalid native MakeVector parameters');
@@ -80,7 +198,8 @@ export function evaluateNativeMath(name, args, warning = () => {}) {
     if (name === 'BreakVector') {
         if (!Array.isArray(args) || args.length !== 1 || !isVector(args[0]))
             throw new Error('Invalid native BreakVector parameters');
-        return {X:Math.fround(args[0].X),Y:Math.fround(args[0].Y),Z:Math.fround(args[0].Z)};
+        // UE 5.7 signature exposes double& components (BreakRotator is float&).
+        return {X:args[0].X,Y:args[0].Y,Z:args[0].Z};
     }
     if (name === 'BreakRotator') {
         if (!Array.isArray(args) || args.length !== 1 || !isRotator(args[0]))

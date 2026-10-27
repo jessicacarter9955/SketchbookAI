@@ -9,6 +9,7 @@ from umg_migration import Package, _tool, _asset_document
 from blueprint_events import reachable_event
 from blueprint_types import source_structs, property_schema, import_path
 from blueprint_values import asset_reference, native_schema, source_tables
+from blueprint_math import MATH_CALLS as EXTRA_MATH_CALLS, INPUT_TYPES as EXTRA_MATH_INPUTS, RESULT_TYPES as EXTRA_MATH_RESULTS
 
 
 class BlueprintTranslationError(ValueError):
@@ -81,6 +82,8 @@ MATH_CALLS.update({'Divide_DoubleDouble': (2, 'DoubleDouble'),
                    'Vector_DistanceSquared': (2, 'VectorVector'),
                    'Conv_LinearColorToVector': (1, 'LinearColor')})
 
+MATH_CALLS.update(EXTRA_MATH_CALLS)
+
 NATIVE_MATH_INPUT_TYPES = {
     'MakeVector': ('DoubleProperty', 'DoubleProperty', 'DoubleProperty'),
     'Add_VectorVector': ('Vector', 'Vector'),
@@ -102,9 +105,11 @@ NATIVE_MATH_INPUT_TYPES = {
     'Vector_Distance': ('Vector', 'Vector'),
     'Vector_DistanceSquared': ('Vector', 'Vector'),
 }
+NATIVE_MATH_INPUT_TYPES.update(EXTRA_MATH_INPUTS)
 
 
 def native_math_result_type(name):
+    if name in EXTRA_MATH_RESULTS: return EXTRA_MATH_RESULTS[name]
     if name in ('MakeVector', 'Add_VectorVector', 'Subtract_VectorVector', 'Multiply_VectorVector',
                 'Conv_DoubleToVector', 'Conv_LinearColorToVector'): return 'Vector'
     if name == 'Multiply_LinearColorLinearColor': return 'LinearColor'
@@ -139,6 +144,10 @@ def native_math_source_type(value, package, owner):
     if token == 'EX_RotationConst': return 'Rotator'
     if token == 'EX_PrimitiveCast':
         conversion = value.get('ConversionType')
+        if type(conversion) is int and conversion==1 and package:
+            from blueprint_casts import object_bool_cast
+            object_bool_cast(value,package,owner,set(),set())
+            return 'BoolProperty'
         types = {3: ('DoubleProperty', 'FloatProperty'), 4: ('FloatProperty', 'DoubleProperty')}
         if type(conversion) is not int or conversion not in types:
             raise BlueprintTranslationError('Unsupported original primitive cast conversion')
@@ -301,9 +310,15 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
     if not isinstance(value, dict) or depth > 48:
         raise BlueprintTranslationError('Invalid or deeply nested Kismet expression')
     token = kind(value)
+    if token == 'EX_DynamicCast' and package:
+        from blueprint_casts import dynamic_cast
+        return dynamic_cast(value, package, owner, reads, outputs, depth)
     if token == 'EX_PrimitiveCast':
         # UE5.7 ScriptCore.cpp execDoubleToFloatCast/execFloatToDoubleCast:
         # preserve the explicit float32 rounding at the cast boundary.
+        if type(value.get('ConversionType')) is int and value['ConversionType']==1 and package:
+            from blueprint_casts import object_bool_cast
+            return object_bool_cast(value,package,owner,reads,outputs,depth)
         result_type = native_math_source_type(value, package, owner)
         conversion = value['ConversionType']
         return {'op': 'primitive_cast', 'conversion': conversion,
@@ -408,7 +423,16 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         from blueprint_objects import native_actor_context
         adapted = native_actor_context(value, package, owner, reads, outputs, depth)
         if adapted is not None: return adapted
+        from blueprint_actor_queries import actor_role_query
+        adapted = actor_role_query(value, package, owner, reads, outputs, depth)
+        if adapted is not None: return adapted
+        from blueprint_objects import native_component_owner_context
+        adapted = native_component_owner_context(value, package, owner, reads, outputs, depth)
+        if adapted is not None: return adapted
         from blueprint_queries import component_access
+        from blueprint_source_objects import source_actor_member
+        adapted = source_actor_member(value, package, owner, reads, outputs, depth)
+        if adapted is not None: return adapted
         adapted = component_access(value, package, owner, reads, outputs, depth)
         if adapted is not None: return adapted
         from blueprint_queries import component_query
@@ -462,6 +486,9 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
             from blueprint_queries import object_validity
             adapted = object_validity(value, package, owner, reads, outputs, depth)
             if adapted is not None: return adapted
+            from blueprint_objects import native_text_format_call
+            adapted = native_text_format_call(value, package, owner, reads, outputs, depth)
+            if adapted is not None: return adapted
             from blueprint_effects import dirty_call
             adapted = dirty_call(value, package, owner)
             if adapted is not None: return adapted
@@ -472,14 +499,15 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         for index, expected_type in enumerate(NATIVE_MATH_INPUT_TYPES.get(name, ())):
             if native_math_source_type(args[index], package, owner) != expected_type:
                 raise BlueprintTranslationError('Original native math parameter type differs')
-        if name in ('BreakVector', 'BreakRotator', 'BreakTransform'):
-            components = (('X','Y','Z') if name == 'BreakVector' else
+        if name in ('BreakVector', 'BreakVector2D', 'BreakRotator', 'BreakTransform'):
+            components = (('X','Y') if name == 'BreakVector2D' else
+                          ('X','Y','Z') if name == 'BreakVector' else
                           ('Roll','Pitch','Yaw') if name == 'BreakRotator' else
                           ('Location','Rotation','Scale'))
-            natives = ('Vector','Rotator','Vector') if name == 'BreakTransform' else (None,)*3
+            natives = ('Vector','Rotator','Vector') if name == 'BreakTransform' else (None,)*len(components)
             targets = []
             for argument, native in zip(args[1:], natives):
-                typ = 'StructProperty' if native else 'FloatProperty'
+                typ = 'StructProperty' if native else 'DoubleProperty' if name in ('BreakVector','BreakVector2D') else 'FloatProperty'
                 target, prop = native_math_output_target(argument, package, owner, typ)
                 if native and property_schema(package, prop).get('native') != native:
                     raise BlueprintTranslationError('BreakTransform original native output differs')
@@ -769,12 +797,37 @@ def translate_function(export, package=None, entry_offset=None):
                           'value': expression(instruction.get('AssignmentExpression'), reads, outputs, package=package, owner=export.get('OuterIndex')), 'source_index': index})
         elif token in ('EX_Let', 'EX_LetBool', 'EX_LetObj'):
             variable = instruction.get('Variable' if token == 'EX_Let' else 'VariableExpression')
+            if isinstance(variable,dict) and kind(variable)=='EX_Context':
+                from blueprint_source_objects import source_actor_member
+                target=source_actor_member(variable,package,export.get('OuterIndex'),reads,outputs,0)
+                if target is None: raise BlueprintTranslationError('Unsupported foreign object assignment target')
+                if token=='EX_LetBool' and target['schema']['type']!='BoolProperty':
+                    raise BlueprintTranslationError('Original Actor Boolean assignment schema differs')
+                if token=='EX_LetObj' and target['schema']['type']!='ObjectProperty':
+                    raise BlueprintTranslationError('Original Actor object assignment schema differs')
+                source=instruction.get('Expression' if token=='EX_Let' else 'AssignmentExpression')
+                steps.append({'op':'set_actor_member','target':target,
+                    'value':expression(source,reads,outputs,package=package,owner=export.get('OuterIndex')),
+                    'source_index':index})
+                continue
             if isinstance(variable, dict) and kind(variable) == 'EX_StructMemberContext':
                 pointer = variable.get('StructMemberExpression', {})
-                schema = getattr(package, 'source_structs', {}).get(import_path(package, pointer.get('New', {}).get('ResolvedOwner'))) if package else None
+                identity = import_path(package, pointer.get('New', {}).get('ResolvedOwner')) if package else None
+                schema = (getattr(package, 'source_structs', {}).get(identity) or native_schema(identity)) if identity else None
                 name = field(pointer)
                 if not schema or name not in schema['fields']: raise BlueprintTranslationError('Unsupported assignment target: unresolved source struct')
                 target = expression(variable.get('StructExpression'), reads, outputs, package=package, owner=export.get('OuterIndex'))
+                if target.get('op')=='source_actor_member':
+                    if target.get('schema')!=schema:
+                        raise BlueprintTranslationError('Original Actor struct assignment member owner differs')
+                    if token=='EX_LetBool' and schema['fields'][name]['type']!='BoolProperty':
+                        raise BlueprintTranslationError('Original Actor struct Boolean member differs')
+                    if token=='EX_LetObj' and schema['fields'][name]['type']!='ObjectProperty':
+                        raise BlueprintTranslationError('Original Actor struct object member differs')
+                    steps.append({'op':'set_actor_member','target':target,'member_field':name,
+                        'value':expression(instruction.get('Expression' if token=='EX_Let' else 'AssignmentExpression'),
+                            reads,outputs,package=package,owner=export.get('OuterIndex')),'source_index':index})
+                    continue
                 if target.get('op') != 'get' or target.get('scope') not in ('local', 'self', 'persistent'):
                     raise BlueprintTranslationError('Unsupported nested struct assignment target')
                 root_pointer = variable.get('StructExpression', {}).get('Variable', {}).get('New', {})
@@ -1238,6 +1291,8 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
     runtime_sources = {name: file_hash(repository / name) for name in (
         'src/editor/ue2three-blueprint.mjs', 'src/editor/ue2three-native-math.mjs',
         'src/editor/ue2three-objects.mjs', 'src/editor/ue2three-blueprint-runtime.mjs',
+        'src/editor/ue2three-casts.mjs',
+        'src/editor/ue2three-source-objects.mjs',
         'src/editor/Ue2ThreeGameplay.js', 'src/editor/ue2three-live-verification.mjs',
         'src/editor/ue2three-fixtures.mjs', 'src/editor/ue2three-source-verification.mjs',
         'tools/ue2three/blueprint-audit.mjs')}
@@ -1253,6 +1308,10 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
                           'widgets_implementation': file_hash(Path(__file__).with_name('blueprint_widgets.py')),
                           'objects_implementation': file_hash(Path(__file__).with_name('blueprint_objects.py')),
                           'queries_implementation': file_hash(Path(__file__).with_name('blueprint_queries.py')),
+                          'actor_queries_implementation': file_hash(Path(__file__).with_name('blueprint_actor_queries.py')),
+                          'math_batch_implementation': file_hash(Path(__file__).with_name('blueprint_math.py')),
+                          'casts_implementation': file_hash(Path(__file__).with_name('blueprint_casts.py')),
+                          'source_objects_implementation': file_hash(Path(__file__).with_name('blueprint_source_objects.py')),
                           'values_implementation': file_hash(Path(__file__).with_name('blueprint_values.py')),
                           'types_implementation': file_hash(Path(__file__).with_name('blueprint_types.py'))})
     fingerprint = digest({'compiler': compiler_key, 'runtime_sources': runtime_sources})
@@ -1305,7 +1364,12 @@ def migrate_blueprints(project, workspace, publish_dir, package_name=None, read_
               'limitations': ['Locals, instance state, comparisons, static jumps and same-source-class calls with out parameters execute.',
                              'Struct member reads, typed source-struct field writes/defaults, typed Array_Get copies and ASCII FName equality execute.',
                              'Cached typed DataTable row reads retain primitive/array/native-vector fields, FText identities and data-only asset references.',
-                             'Asset references do not execute or convert their referenced assets. Other FText histories, unsupported identity characters and nested writes remain blocked.',
+                             'Asset references do not execute or convert their referenced assets. Other FText histories, unsupported identity characters and arbitrary nested writes remain blocked.',
+                             'Source KismetTextLibrary.Format retains authored placeholders for supported text/numeric arguments; culture-sensitive number formatting, localization, text modifiers and unsupported argument kinds are not certified 1:1.',
+                             'Original native UMG Image textures, specified SlateColor, focus, text, visibility, Border materials and ProgressBar values emit typed effects only for explicitly bound source widgets; game UI rendering remains separate.',
+                             'DynamicCast and ObjectToBool use explicit live Actor/component bindings and witnessed original class ancestry. Unresolved runtime families and asset-as-live-object shortcuts reject.',
+                             'Source Actor role queries require explicit live role descriptors. Standalone authority does not implement multiplayer replication.',
+                             'Typed source Actor fields support authenticated reads and staged writes, including one reflected struct member. Foreign instances and inherited field storage without explicit binding reject; writes roll back on failed calls.',
                               'Typed source arrays support Get, Length, IsValidIndex, Set, Remove, Clear, Add and Append; IsNotEmpty, LastIndex, AddUnique, Contains, Find, RemoveItem, Insert and Reverse also execute when exact source parameter and equality schemas are available. Random, Shuffle, GetDataTableRowNames, other array operations and Unicode FName comparisons remain blocked.',
                              'Original property-dirty witnesses and typed multicast emissions execute locally. Explicitly registered translated handlers run transactionally; original world/UI bindings and network replication are not migrated.',
                              'Original SCS component ownership can bind to a scene actor. GetOwner and ForceNetUpdate require explicit standalone actor bindings with no game/demo net drivers; other object methods and full lifecycle remain blocked.',

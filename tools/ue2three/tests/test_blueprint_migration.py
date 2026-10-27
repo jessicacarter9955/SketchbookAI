@@ -337,7 +337,7 @@ class BlueprintMigrationTests(unittest.TestCase):
         with self.assertRaisesRegex(BlueprintTranslationError, 'outside Engine.KismetMathLibrary'):
             translate_function(function, Package({'Imports': wrong_module}))
         wrong_function = [dict(item) for item in imports]
-        wrong_function[0]['ObjectName'] = 'MakeVector2D'
+        wrong_function[0]['ObjectName'] = 'MakeVector4D'
         with self.assertRaisesRegex(BlueprintTranslationError, 'Unsupported native math call'):
             translate_function(function, Package({'Imports': wrong_function}))
 
@@ -377,14 +377,14 @@ class BlueprintMigrationTests(unittest.TestCase):
                 with self.assertRaisesRegex(BlueprintTranslationError, 'Unsupported native math call'):
                     translate_function(function, Package({'Imports': bad}))
 
-    def test_witnessed_break_calls_write_only_original_float_output_fields_in_order(self):
+    def test_witnessed_break_calls_write_only_original_double_output_fields_in_order(self):
         imports = [{'ObjectName': 'BreakVector', 'ClassName': 'Function', 'OuterIndex': -2},
                    {'ObjectName': 'KismetMathLibrary', 'OuterIndex': -3},
                    {'ObjectName': '/Script/Engine', 'ClassName': 'Package'},
                    {'ObjectName':'Vector','ClassName':'ScriptStruct','OuterIndex':-5},
                    {'ObjectName':'/Script/CoreUObject','ClassName':'Package'}]
         function = self.function()
-        function['LoadedProperties'] = [{'Name': name, 'SerializedType': 'FloatProperty', 'PropertyFlags': 'CPF_None'}
+        function['LoadedProperties'] = [{'Name': name, 'SerializedType': 'DoubleProperty', 'PropertyFlags': 'CPF_None'}
                                         for name in ('X', 'Y', 'Z')]
         function['LoadedProperties'].append({'Name': 'Input', 'SerializedType': 'StructProperty', 'Struct':-4,'PropertyFlags': 'CPF_None'})
         call = node('EX_CallMath', StackNode=-1, Parameters=[variable('EX_LocalVariable', 'Input'),
@@ -394,8 +394,8 @@ class BlueprintMigrationTests(unittest.TestCase):
         value = translate_function(function, package)['steps'][0]['value']
         self.assertEqual(value, {'op': 'math_outputs', 'name': 'BreakVector',
             'args': [{'op': 'get', 'scope': 'local', 'field': 'Input'}], 'components': ['X', 'Y', 'Z'],
-            'targets': [{'op': 'get', 'scope': 'local', 'field': name, 'type': 'FloatProperty'} for name in ('X','Y','Z')]})
-        function['LoadedProperties'][1]['SerializedType'] = 'DoubleProperty'
+            'targets': [{'op': 'get', 'scope': 'local', 'field': name, 'type': 'DoubleProperty'} for name in ('X','Y','Z')]})
+        function['LoadedProperties'][1]['SerializedType'] = 'FloatProperty'
         with self.assertRaisesRegex(BlueprintTranslationError, 'output property type'):
             translate_function(function, package)
         function['LoadedProperties'][1]['SerializedType'] = 'FloatProperty'
@@ -427,7 +427,7 @@ class BlueprintMigrationTests(unittest.TestCase):
                    {'ObjectName':'Vector','ClassName':'ScriptStruct','OuterIndex':-5},
                    {'ObjectName':'/Script/CoreUObject','ClassName':'Package'}]
         event = {'ObjectName':'ExecuteUbergraph_Test','OuterIndex':2,'LoadedProperties':[
-            *[{'Name':name,'SerializedType':'FloatProperty','PropertyFlags':'CPF_None'} for name in ('X','Y','Z')],
+            *[{'Name':name,'SerializedType':'DoubleProperty','PropertyFlags':'CPF_None'} for name in ('X','Y','Z')],
             {'Name':'Input','SerializedType':'StructProperty','Struct':-4,'PropertyFlags':'CPF_None'}],
             'ScriptBytecode':[node('EX_Tracepoint'),node('EX_CallMath',StackNode=-1,Parameters=[
                 variable('EX_LocalVariable','Input'),variable('EX_LocalVariable','X'),
@@ -437,8 +437,8 @@ class BlueprintMigrationTests(unittest.TestCase):
         package=Package({'Imports':imports,'Exports':[event,owner]})
         report=translate_package(package)
         program=report['functions']['ExecuteUbergraph_Test']
-        self.assertEqual(program['persistent_types'],{'1':{'Input':'StructProperty','X':'FloatProperty',
-            'Y':'FloatProperty','Z':'FloatProperty'}})
+        self.assertEqual(program['persistent_types'],{'1':{'Input':'StructProperty','X':'DoubleProperty',
+            'Y':'DoubleProperty','Z':'DoubleProperty'}})
         call=program['steps'][0]['value']
         self.assertEqual([target['frame'] for target in call['targets']],[1,1,1])
 
