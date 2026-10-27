@@ -150,6 +150,51 @@ class AutomationTests(unittest.TestCase):
         self.git('add', '--', name, cwd=repo)
         self.git('commit', '-m', 'modify ' + name, cwd=repo)
 
+    def test_opt_in_remote_sync_fast_forwards_and_invalidates_compiled_checkpoint(self):
+        remote, concurrent, branch = self.git_fixture()
+        self.supervisor.config['sync_remote_branch'] = branch
+        self.commit_file(concurrent, 'docs/remote-update.txt', 'new source implementation\n')
+        self.git('push', 'origin', branch, cwd=concurrent)
+        expected = self.git('rev-parse', 'HEAD', cwd=concurrent)
+        self.supervisor.state['compiled_fingerprint'] = 'outdated'
+        self.assertTrue(self.supervisor.sync_remote())
+        self.assertEqual(self.git('rev-parse', 'HEAD'), expected)
+        self.assertIsNone(self.supervisor.state['compiled_fingerprint'])
+        self.assertEqual(self.supervisor.state['synced_remote_commit'], expected)
+        self.assertFalse(self.supervisor.sync_remote())
+
+    def test_remote_sync_never_discards_divergent_local_history(self):
+        remote, concurrent, branch = self.git_fixture()
+        self.supervisor.config['sync_remote_branch'] = branch
+        self.commit_file(self.root, 'docs/local.txt', 'unpublished local\n')
+        local = self.git('rev-parse', 'HEAD')
+        self.commit_file(concurrent, 'docs/remote.txt', 'remote work\n')
+        self.git('push', 'origin', branch, cwd=concurrent)
+        self.assertFalse(self.supervisor.sync_remote())
+        self.assertEqual(self.git('rev-parse', 'HEAD'), local)
+        self.assertEqual(self.supervisor.state['phase'], 'source_sync_needs_review')
+        self.assertEqual(self.git('status', '--porcelain'), '')
+
+    def test_remote_sync_does_not_fetch_dirty_checkout_or_pending_push(self):
+        _, concurrent, branch = self.git_fixture()
+        self.supervisor.config['sync_remote_branch'] = branch
+        self.supervisor.state['pending_push'] = True
+        with patch.object(self.supervisor, 'command', side_effect=AssertionError('pending push must not fetch')):
+            self.assertFalse(self.supervisor.sync_remote())
+        self.supervisor.state['pending_push'] = False
+        (self.root / 'user-work.txt').write_text('keep user changes\n')
+        with patch.object(self.supervisor, 'command', side_effect=AssertionError('dirty checkout must not fetch')):
+            with self.assertRaises(automation.agent.RunnerError):
+                self.supervisor.sync_remote()
+        self.assertTrue((self.root / 'user-work.txt').exists())
+
+    def test_remote_sync_requires_explicit_branch_and_matching_push(self):
+        with self.assertRaisesRegex(ValueError, 'same branch'):
+            automation.validate_config({**self.config, 'push': True, 'branch': 'main',
+                                       'sync_remote_branch': 'chatgpt/ue2three-dds'}, self.root)
+        with self.assertRaisesRegex(ValueError, 'sync_remote_branch'):
+            automation.validate_config({**self.config, 'sync_remote_branch': 'main..bad'}, self.root)
+
     def test_disjoint_remote_commit_is_merged_verified_and_pushed(self):
         remote, concurrent, branch = self.git_fixture()
         self.commit_file(self.root, 'docs/local.txt', 'local\n')
