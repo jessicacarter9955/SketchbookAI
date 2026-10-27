@@ -19,6 +19,10 @@ MODULES = {
                 'Design typed source object references, Context evaluation, null handling and calls between original components. Preserve class/package ownership, out parameters and transactional failure. Native dependencies must remain explicit; never replace game logic with guessed behavior.'),
     'data': ('Strutture e contenitori', 'EX_StructMemberContext',
              'Extend source containers only where existing IR does not support the original operation. Preserve property types, identity, array indexing, copy/reference semantics and original mutation order. Use original fields and defaults. Reject unimplemented native dependencies.'),
+    'casts': ('Cast e gerarchie originali', 'EX_DynamicCast',
+              'Translate only exact class/interface cast identities from source import/export trees. Preserve runtime instance identity and failure behavior. Never assume inherited class membership.'),
+    'flow': ('Salti dinamici e controllo di flusso', 'Dynamic computed jump',
+             'Recover exact source-authored Kismet branch targets and typed computed offsets. Keep all bytecode boundaries and flow stacks verified. Reject arbitrary dynamic dispatch without source evidence.'),
 }
 
 
@@ -49,6 +53,8 @@ def analyze_package(name, document, report):
         if 'EX_LetValueOnPersistentFrame' in tokens or event_target or export['ObjectName'].startswith('ExecuteUbergraph_'): modules.append('events')
         if any(token in tokens for token in ('EX_Context', 'EX_Context_FailSilent')): modules.append('objects')
         if any(token in tokens for token in ('EX_StructMemberContext', 'EX_ArrayGetByRef', 'EX_SetArray', 'EX_ArrayConst')): modules.append('data')
+        if 'EX_DynamicCast' in tokens: modules.append('casts')
+        if 'EX_ComputedJump' in tokens: modules.append('flow')
         records.append({'package': name, 'function': export['ObjectName'], 'export_index': index,
                         'first_blocker': blocked[index]['reason'], 'tokens': tokens,
                         'modules': modules, 'event_target': event_target,
