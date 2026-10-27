@@ -52,7 +52,7 @@ JAVASCRIPT_VERIFY_SECONDS = 120
 # scans. Five seconds caused false timeouts before the runner could checkpoint
 # a source-witnessed Blueprint family; keep the short status-specific bound
 # below, but give ordinary Git operations enough time to finish.
-GIT_TIMEOUT_SECONDS = 30
+GIT_TIMEOUT_SECONDS = 75
 # A fresh detached sparse worktree still materializes hundreds of runner and
 # test files on Windows. Allow Defender/OneDrive contention without treating a
 # slow checkout as a failed conversion batch.
@@ -61,7 +61,7 @@ GIT_CHECKOUT_TIMEOUT_SECONDS = 300
 # normal untracked files. It is markedly slower than rev-parse or branch
 # operations, especially during simultaneous Unreal exports. Keep the clean
 # worktree safety gate, but allow it a separately bounded scan budget.
-GIT_STATUS_TIMEOUT_SECONDS = 60
+GIT_STATUS_TIMEOUT_SECONDS = 150
 GLOBAL_COOLDOWN_SECONDS = 120
 RETRY_BASE_SECONDS = 600
 RETRY_MAX_SECONDS = 3600
@@ -683,21 +683,26 @@ class Heartbeat:
 
 
 def _git(repo_root: Path, *args: str, timeout: int = GIT_TIMEOUT_SECONDS) -> str:
-    try:
-        result = subprocess.run(['git', '-C', str(repo_root), *args], check=True, capture_output=True,
-                                text=True, encoding='utf-8', errors='replace', timeout=_bounded_timeout(timeout))
-    except subprocess.CalledProcessError as error:
-        # Distinguish a checkout/reconciliation failure from a temporary push
-        # rejection without publishing potentially sensitive stderr or URLs.
-        verb = args[0] if args else 'command'
-        raise RunnerError(f'Git {verb} failed (exit {error.returncode}); source patches retained.',
-                          'git_error') from None
-    except subprocess.TimeoutExpired:
-        verb = args[0] if args else 'command'
-        raise RunnerError(f'Git {verb} timed out; source patches retained.', 'git_error') from None
-    except OSError:
-        raise RunnerError('Git executable could not be started.', 'git_error') from None
-    return result.stdout.strip()
+    """Retry a stalled read-only rev-parse once; never retry mutating Git verbs."""
+    verb = args[0] if args else 'command'
+    attempts = 2 if verb == 'rev-parse' else 1
+    for attempt in range(attempts):
+        try:
+            result = subprocess.run(['git', '-C', str(repo_root), *args], check=True,
+                                    capture_output=True, text=True, encoding='utf-8',
+                                    errors='replace', timeout=_bounded_timeout(timeout))
+            return result.stdout.strip()
+        except subprocess.CalledProcessError as error:
+            raise RunnerError(f'Git {verb} failed (exit {error.returncode}); source patches retained.',
+                              'git_error') from None
+        except subprocess.TimeoutExpired:
+            if attempt + 1 < attempts:
+                time.sleep(1)
+                continue
+            raise RunnerError(f'Git {verb} timed out; source patches retained.', 'git_error') from None
+        except OSError:
+            raise RunnerError('Git executable could not be started.', 'git_error') from None
+    raise RunnerError('Unexpected Git retry exhaustion.', 'git_error')
 
 
 def _require_clean_repo(repo_root: Path) -> str:
