@@ -521,7 +521,11 @@ def _load_candidate(repo_root: Path, checkpoint: dict) -> FamilyCandidate | None
             item = _compiler_candidate(plan, programs, plan_path.parent.resolve(), row)
             if item is not None:
                 candidates.append(item)
-    candidates.sort(key=lambda item: (-item.blocked_count, item.family_id))
+    # Compiler counts are first blockers; native family counts overlap and may
+    # contain unrelated downstream calls. Prioritize direct root causes before
+    # the much larger (but non-additive) native family impact estimates.
+    candidates.sort(key=lambda item: (0 if item.family_id in COMPILER_MODULE_IDS else 1,
+                                      -item.blocked_count, item.family_id))
     now = time.time()
     family_states = checkpoint.get('families', {})
     for candidate in candidates:
