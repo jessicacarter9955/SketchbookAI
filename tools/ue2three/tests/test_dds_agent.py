@@ -182,7 +182,13 @@ class DdsAgentTests(unittest.TestCase):
         return path, plan_path
 
     def test_compiler_hotspot_is_independently_schedulable_with_hash_proof(self):
-        self._add_compiler_casts_family()
+        _, path = self._add_compiler_casts_family()
+        plan = json.loads(path.read_text(encoding='utf-8'))
+        # Native affected counts are overlapping, whereas compiler counts are
+        # witnessed *first* blockers. The root cause wins priority.
+        plan['native_dependencies']['families'][0]['blocked_source_functions_involved'] = 999
+        plan['content_sha256'] = digest({k: v for k, v in plan.items() if k != 'content_sha256'})
+        path.write_text(json.dumps(plan, sort_keys=True), encoding='utf-8')
         result = dds_agent.dry_run(self.repo, self.state_root)
         self.assertEqual(result['status'], 'ready')
         self.assertEqual(result['family'], 'compiler-casts')
