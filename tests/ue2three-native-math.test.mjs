@@ -88,7 +88,7 @@ test('Boolean equality is typed and unknown math is rejected', () => {
     assert.equal(evaluateNativeMath('EqualEqual_BoolBool', [true, true]), true);
     assert.throws(() => evaluateNativeMath('NotEqual_BoolBool', [0, 1]), /Invalid/);
     assert.throws(() => evaluateNativeMath('Add_IntInt', [0.5, 1]), /Invalid/);
-    assert.throws(() => evaluateNativeMath('Divide_IntInt', [2, 1]), /Unsupported/);
+    assert.throws(() => evaluateNativeMath('Divide_IntInt', [2, 1]), /Unwitnessed/);
 });
 test('source FName comparisons preserve case-insensitivity and instance suffixes', () => {
     assert.equal(evaluateNativeMath('EqualEqual_NameName', ['Head', 'HEAD']), true);
@@ -201,4 +201,11 @@ test('Vector_DistanceSquared uses original FVector squared distance',()=>{
     assert.equal(evaluateNativeMath('Vector_DistanceSquared',[
         {X:1,Y:2,Z:3},{X:1,Y:2,Z:3}]),0);
     assert.throws(()=>evaluateNativeMath('Vector_DistanceSquared',[{X:0,Y:0,Z:0}]),/Invalid native/);
+});
+
+test('source-witnessed IntInt halving truncates toward zero', () => {
+    for (const [a, expected] of [[-2147483648,-1073741824],[-7,-3],[-1,0],[0,0],[1,0],[7,3],[2147483647,1073741823]])
+        assert.equal(evaluateNativeMath('Divide_IntInt',[a,2]),expected);
+    for (const args of [[7,0],[7,-2],[7,3],[1.5,2],[2147483648,2],['7',2],[7]])
+        assert.throws(()=>evaluateNativeMath('Divide_IntInt',args),/Invalid|Unwitnessed/);
 });

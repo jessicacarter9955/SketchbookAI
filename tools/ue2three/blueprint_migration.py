@@ -52,7 +52,7 @@ for _type in ('ByteByte', 'IntInt', 'DoubleDouble'):
 for _type in ('IntInt', 'DoubleDouble'):
     for _operation in ('Add', 'Subtract', 'Multiply'):
         MATH_CALLS[_operation + '_' + _type] = (2, _type)
-MATH_CALLS.update({'Divide_DoubleDouble': (2, 'DoubleDouble'),
+MATH_CALLS.update({'Divide_DoubleDouble': (2, 'DoubleDouble'), 'Divide_IntInt': (2, 'IntInt'),
                    'Square': (1, 'DoubleDouble'), 'FFloor': (1, 'DoubleDouble'),
                    'Conv_BoolToDouble': (1, 'bool'),
                    'Multiply_LinearColorLinearColor': (2, 'LinearColor'),
@@ -82,6 +82,7 @@ MATH_CALLS.update({'Divide_DoubleDouble': (2, 'DoubleDouble'),
                    'Conv_LinearColorToVector': (1, 'LinearColor')})
 
 NATIVE_MATH_INPUT_TYPES = {
+    'Divide_IntInt': ('IntProperty', 'IntProperty'),
     'MakeVector': ('DoubleProperty', 'DoubleProperty', 'DoubleProperty'),
     'Add_VectorVector': ('Vector', 'Vector'),
     'Subtract_VectorVector': ('Vector', 'Vector'),
@@ -489,6 +490,8 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
             return {'op':'math_outputs','name':name,
                     'args':[expression(args[0], reads, outputs, depth+1, package, owner)],
                     'components':list(components),'targets':targets}
+        if name == 'Divide_IntInt' and (kind(args[1]) != 'EX_IntConst' or args[1].get('Value') != 2):
+            raise BlueprintTranslationError('Unwitnessed original int division denominator')
         if name == 'Round': validate_round_input(args[0], package, owner)
         if name in ('EqualEqual_NameName', 'NotEqual_NameName'):
             for arg in args:
