@@ -104,6 +104,17 @@ class DdsAgentTests(unittest.TestCase):
         self.assertIn('Git merge failed (exit 128)', str(raised.exception))
         self.assertNotIn('secret.example', str(raised.exception))
 
+    def test_stalled_revision_read_retries_once_but_git_mutation_does_not(self):
+        timeout = subprocess.TimeoutExpired(['git', 'rev-parse'], 75)
+        completed = subprocess.CompletedProcess(['git', 'rev-parse'], 0, stdout='abc123\n', stderr='')
+        with patch.object(dds_agent.subprocess, 'run', side_effect=[timeout, completed]) as run:
+            self.assertEqual(dds_agent._git(self.repo, 'rev-parse', 'HEAD'), 'abc123')
+        self.assertEqual(run.call_count, 2)
+        with patch.object(dds_agent.subprocess, 'run', side_effect=timeout) as run:
+            with self.assertRaisesRegex(dds_agent.RunnerError, 'timed out'):
+                dds_agent._git(self.repo, 'merge', '--ff-only', 'abc123')
+        run.assert_called_once()
+
     def test_clean_worktree_scan_has_separate_windows_timeout(self):
         calls = []
 
@@ -144,6 +155,67 @@ class DdsAgentTests(unittest.TestCase):
             plan['native_dependencies']['operations'].append(operation)
         plan['content_sha256'] = digest({key: value for key, value in plan.items() if key != 'content_sha256'})
         plan_path.write_text(json.dumps(plan, sort_keys=True), encoding='utf-8')
+
+    def _add_compiler_casts_family(self):
+        plan_path = self.published / 'blueprint-plan.json'
+        plan = json.loads(plan_path.read_text(encoding='utf-8'))
+        bytecode = [{'$type': 'UAssetAPI.Kismet.Bytecode.Expressions.EX_DynamicCast',
+                     'ClassPtr': -2}]
+        witness = {'package': self.package, 'function': 'CastOriginal',
+                   'export_index': 9, 'source_bytecode_sha256': digest(bytecode),
+                   'first_blocker': 'Unsupported opcode: EX_DynamicCast',
+                   'modules': ['casts']}
+        packet_example = {**witness, 'source_package_sha256': self.source_hash,
+                          'bytecode': bytecode}
+        packet = ('# ue2three collaboration task: Source Casts\n\nProgram version: '
+                  + plan['programs_content_sha256'] + '.\n\n'
+                  'Original full source examples\n'
+                  '```json\n' + json.dumps([packet_example]) + '\n```\n')
+        path = self.published / 'work-packets' / 'casts.md'
+        path.write_text(packet, encoding='utf-8')
+        plan['functions'].append(witness)
+        plan['modules'] = [{'id': 'casts', 'first_blocked_functions': 42,
+                            'packet': 'work-packets/casts.md'}]
+        plan['output_sha256']['work-packets/casts.md'] = file_hash(path)
+        plan['content_sha256'] = digest({k: v for k, v in plan.items() if k != 'content_sha256'})
+        plan_path.write_text(json.dumps(plan, sort_keys=True), encoding='utf-8')
+        return path, plan_path
+
+    def test_compiler_hotspot_is_independently_schedulable_with_hash_proof(self):
+        _, path = self._add_compiler_casts_family()
+        plan = json.loads(path.read_text(encoding='utf-8'))
+        # Native affected counts are overlapping, whereas compiler counts are
+        # witnessed *first* blockers. The root cause wins priority.
+        plan['native_dependencies']['families'][0]['blocked_source_functions_involved'] = 999
+        plan['content_sha256'] = digest({k: v for k, v in plan.items() if k != 'content_sha256'})
+        path.write_text(json.dumps(plan, sort_keys=True), encoding='utf-8')
+        result = dds_agent.dry_run(self.repo, self.state_root)
+        self.assertEqual(result['status'], 'ready')
+        self.assertEqual(result['family'], 'compiler-casts')
+        self.assertEqual(result['blocked_functions'], 42)
+        seen = {}
+        def fake_codex(executable, worker, prompt):
+            seen['prompt'] = prompt
+            self.assertTrue((worker / '.local/dds-agent/source-witness.json').is_file())
+            self.assertIn('CastOriginal', prompt)
+            return 0
+        with patch.object(dds_agent, 'run_codex', side_effect=fake_codex), \
+                patch.object(dds_agent, 'verify_worker'):
+            run = dds_agent.run_once(self.repo, self.state_root, 'codex-test-double')
+        self.assertEqual(run['status'], 'patch_ready_for_review')
+        self.assertEqual(run['family'], 'compiler-casts')
+        self.assertIn('correctly typed Kismet compiler', seen['prompt'])
+
+    def test_compiler_packet_does_not_admit_tampered_bytecode_as_witness(self):
+        packet, plan_path = self._add_compiler_casts_family()
+        text = packet.read_text(encoding='utf-8')
+        packet.write_text(text.replace('ClassPtr', 'OtherPtr'), encoding='utf-8')
+        plan = json.loads(plan_path.read_text(encoding='utf-8'))
+        plan['output_sha256']['work-packets/casts.md'] = file_hash(packet)
+        plan['content_sha256'] = digest({k: v for k, v in plan.items() if k != 'content_sha256'})
+        plan_path.write_text(json.dumps(plan, sort_keys=True), encoding='utf-8')
+        # Native witness remains eligible, but falsified compiler evidence does not.
+        self.assertEqual(dds_agent.dry_run(self.repo, self.state_root)['family'], 'native-timers')
 
     def test_dry_run_selects_only_a_verified_source_witness_and_does_not_write(self):
         result = dds_agent.dry_run(self.repo, self.state_root)

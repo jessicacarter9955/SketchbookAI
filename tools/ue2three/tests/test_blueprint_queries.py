@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from umg_migration import Package
-from blueprint_migration import translate_package, expression, BlueprintTranslationError
+from blueprint_migration import translate_package, expression, BlueprintTranslationError, memory_size
 from blueprint_queries import prune_queries
 
 
@@ -15,7 +15,8 @@ def var(token, field, owner): return node(token, Variable={'New': {'Path': [fiel
 class ComponentQueryTests(unittest.TestCase):
     def packages(self):
         imports = [{'ObjectName': 'ActorComponent', 'OuterIndex': -2}, {'ObjectName': '/Script/Engine', 'ClassName': 'Package'},
-                   {'ObjectName': 'Inventory_C', 'OuterIndex': -4}, {'ObjectName': '/Game/Inventory', 'ClassName': 'Package'}]
+                   {'ObjectName': 'Inventory_C', 'OuterIndex': -4, 'ClassName':'Class'},
+                   {'ObjectName': '/Game/Inventory', 'ClassName': 'Package'}]
         source = Package({'Imports': copy.deepcopy(imports), 'Exports': [
             {'ObjectName': 'Inventory_C', 'SuperStruct': -1, 'LoadedProperties': [{'Name': 'Count', 'SerializedType': 'IntProperty'}]},
             {'ObjectName': 'ReadCount', 'OuterIndex': 1, 'LoadedProperties': [
@@ -87,8 +88,34 @@ class ComponentQueryTests(unittest.TestCase):
         call = program['steps'][0]['value']
         self.assertEqual(call['op'], 'component_query'); self.assertEqual(call['package'], '/Game/Inventory')
         self.assertEqual(call['export_index'], 2)
+        self.assertEqual(call['dispatch'],'EX_LocalVirtualFunction')
+        self.assertEqual(call['receiver_schema'],program['schemas']['self']['Inventory'])
+        self.assertEqual(call['bindings'][0]['schema'],{'type':'IntProperty','default':0})
+        self.assertEqual(program['output_fields'],['Value'])
+        self.assertEqual(result['/Game/Inventory']['functions']['ReadCount']['source_parameters'],[
+            {'name':'CountOut','mode':'output','schema':{'type':'IntProperty','default':0}}])
         self.assertEqual(program['schemas']['self']['Inventory']['reference_kind'], 'runtime_component')
         self.assertIsNone(result['/Game/Combat']['default_state']['Inventory'])
+
+    def test_source_component_final_calls_resolve_exact_imported_class_and_output_type(self):
+        pool=self.packages();caller=pool['/Game/Combat'];caller._active_function=caller.exports[1]
+        caller.imports.append({'ObjectName':'ReadCount','ClassName':'Function','OuterIndex':-3})
+        call=node('EX_FinalFunction',StackNode=-5,Parameters=[var('EX_LocalOutVariable','Value',2)])
+        context=node('EX_Context',ObjectExpression=var('EX_InstanceVariable','Inventory',1),
+                     ContextExpression=call,Offset=memory_size(call,package=caller))
+        caller.exports[1]['ScriptBytecode'][0]=context
+        program=translate_package(caller)['functions']['ReadInventory']
+        result=program['steps'][0]['value']
+        self.assertEqual(result['op'],'component_query')
+        self.assertEqual(result['dispatch'],'EX_FinalFunction')
+        self.assertEqual(result['function'],'ReadCount')
+        self.assertEqual(result['bindings'][0]['mode'],'output')
+        self.assertEqual(result['context_offset'],memory_size(call,package=caller))
+        self.assertEqual(program['output_fields'],['Value'])
+
+        caller.imports[4]['ObjectName']='OtherFunction'
+        blocked=translate_package(caller)
+        self.assertNotIn('ReadInventory',blocked['functions'])
 
     def test_original_mutating_by_value_component_call_is_retained_transactionally(self):
         pool=self.packages()
@@ -113,7 +140,7 @@ class ComponentQueryTests(unittest.TestCase):
             result = translate_package(caller)
             self.assertNotIn('ReadInventory', result['functions'])
 
-    def test_missing_mutating_or_effectful_original_receiver_blocks_caller(self):
+    def test_missing_receivers_block_and_effectful_out_calls_are_transactional(self):
         for change in ('missing', 'write', 'effect', 'persistent'):
             result = {name: translate_package(package) for name, package in self.packages().items()}
             callee = result['/Game/Inventory']['functions']['ReadCount']
@@ -122,8 +149,13 @@ class ComponentQueryTests(unittest.TestCase):
             elif change == 'effect': callee['steps'].insert(0, {'op': 'evaluate', 'value': {'op': 'broadcast'}})
             else: callee['persistent_types'] = {'3': {'Count': 'IntProperty'}}
             prune_queries(result)
-            self.assertNotIn('ReadInventory', result['/Game/Combat']['functions'])
-            self.assertEqual(result['/Game/Combat']['counts']['translated'], 0)
+            if change == 'missing':
+                self.assertNotIn('ReadInventory', result['/Game/Combat']['functions'])
+                self.assertEqual(result['/Game/Combat']['counts']['translated'], 0)
+            else:
+                call=result['/Game/Combat']['functions']['ReadInventory']['steps'][0]['value']
+                self.assertEqual(call['op'],'component_call')
+                self.assertTrue(call['transactional_outputs_safe'])
 
     def test_query_outputs_cannot_write_const_reference_inputs(self):
         pool = self.packages()

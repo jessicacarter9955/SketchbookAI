@@ -202,3 +202,23 @@ test('Vector_DistanceSquared uses original FVector squared distance',()=>{
         {X:1,Y:2,Z:3},{X:1,Y:2,Z:3}]),0);
     assert.throws(()=>evaluateNativeMath('Vector_DistanceSquared',[{X:0,Y:0,Z:0}]),/Invalid native/);
 });
+
+test('source-witnessed IntInt halving truncates toward zero', () => {
+    for (const [a, expected] of [[-2147483648,-1073741824],[-7,-3],[-1,0],[0,0],[1,0],[7,3],[2147483647,1073741823]])
+        assert.equal(evaluateNativeMath('Divide_IntInt',[a,2]),expected);
+    assert.equal(evaluateNativeMath('Divide_IntInt',[7,-2]),-3);
+    assert.equal(evaluateNativeMath('Divide_IntInt',[7,3]),2);
+    const warnings=[];
+    assert.equal(evaluateNativeMath('Divide_IntInt',[7,0],message=>warnings.push(message)),0);
+    assert.deepEqual(warnings,['Divide by zero: Divide_IntInt']);
+    assert.throws(()=>evaluateNativeMath('Divide_IntInt',[-2147483648,-1]),/Undefined native/);
+    for (const args of [[1.5,2],[2147483648,2],['7',2],[7]])
+        assert.throws(()=>evaluateNativeMath('Divide_IntInt',args),/Invalid/);
+});
+
+test('source Vector2D Break outputs remain double precision and reject malformed input', () => {
+    const input={X:1.23456789012345,Y:-2.34567890123456};
+    assert.deepEqual(evaluateNativeMath('BreakVector2D',[input]),input);
+    for (const bad of [[],[input,input],[{X:1}],[{X:1,Y:NaN}],[{X:1,Y:2,Z:3}],[[1,2]],[null]])
+        assert.throws(()=>evaluateNativeMath('BreakVector2D',bad),/Invalid native BreakVector2D/);
+});

@@ -6,6 +6,23 @@ import { validActorReference, validComponentReference, sourceComponentOwner, sou
     sourceQueryReceiver, sourceObjectValid, sourceFindComponent, sourceNativeComponentOwner, sourceActorRole } from './ue2three-objects.mjs';
 const owns = (object, key) => object != null && Object.hasOwn(object, key);
 const safeField = key => typeof key === 'string' && key.length > 0 && !['__proto__', 'constructor', 'prototype'].includes(key);
+const nativeContextContracts = new Map([
+    [JSON.stringify(['/Script/Engine','SkeletalMeshComponent','SetMaterial']), {
+        identity:['/Script/Engine','SkeletalMeshComponent','SetMaterial'], dispatch:'EX_VirtualFunction',
+        receiver:['/Script/Engine','SkeletalMeshComponent'],
+        receiver_schema:{type:'ObjectProperty',class:['/Script/Engine','SkeletalMeshComponent'],
+            reference_kind:'runtime_native_component',default:null},
+        parameters:[{type:'IntProperty',default:0},
+            {type:'ObjectProperty',class:['/Script/Engine','MaterialInterface'],default:null}],
+    }],
+    [JSON.stringify(['/Script/Engine','SkeletalMeshComponent','SetSkeletalMeshAsset']), {
+        identity:['/Script/Engine','SkeletalMeshComponent','SetSkeletalMeshAsset'], dispatch:'EX_FinalFunction',
+        receiver:['/Script/Engine','SkeletalMeshComponent'],
+        receiver_schema:{type:'ObjectProperty',class:['/Script/Engine','SkeletalMeshComponent'],
+            reference_kind:'runtime_native_component',default:null},
+        parameters:[{type:'ObjectProperty',class:['/Script/Engine','SkeletalMesh'],default:null}],
+    }],
+]);
 const validPrimitive = (type, value) => type === 'BoolProperty' && typeof value === 'boolean'
     || type === 'ByteProperty' && Number.isInteger(value) && value >= 0 && value <= 255
     || type === 'IntProperty' && Number.isInteger(value) && value >= -2147483648 && value <= 2147483647
@@ -509,39 +526,92 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             return value;
         }
         if (expression.op === 'component_call') {
+            const target=notifications.world?.[expression.package],callee=target?.functions?.[expression.function];
+            if (!target || !callee || target.native?.source_package !== expression.package
+                || target.native.world_context_bound !== true
+                || callee.source_owner_index !== target.native.source_owner_index
+                || callee.source_export_index !== expression.export_index
+                || expression.class_export_index !== target.native.source_owner_index
+                || !expression.receiver_schema || expression.receiver_schema.type !== 'ObjectProperty'
+                || expression.receiver_schema.reference_kind !== 'runtime_component'
+                || JSON.stringify(expression.receiver_schema.class) !== JSON.stringify([expression.package,expression.class_object])
+                || expression.transactional_outputs_safe !== true
+                || !Array.isArray(expression.bindings) || !Array.isArray(callee.parameters)
+                || !Array.isArray(callee.source_parameters)
+                || expression.bindings.length !== callee.source_parameters.length)
+                throw new Error('Original component mutation requires a bound transactional receiver and source signature');
             const reference = evaluate(expression.target,depth+1);
             if (reference === null) {
                 trace.push({source_index:sourceIndex,op:'warning',message:'Accessed None: original component call skipped'});
                 return null;
             }
-            const descriptor = sourceQueryReceiver(notifications.native,reference,expression.package,expression.class_object);
-            const target = notifications.world?.[expression.package], callee = target?.functions?.[expression.function];
-            if (!target || target.source_sha256 !== descriptor.source_sha256 || !callee
-                || target.native?.source_package !== expression.package || target.native.world_context_bound !== true
+            validateSchema(expression.receiver_schema,reference);
+            const descriptor=sourceQueryReceiver(notifications.native,reference,expression.package,expression.class_object);
+            if (target.source_sha256 !== descriptor.source_sha256
                 || target.native.source_owner_index !== descriptor.class_export_index
-                || callee.source_owner_index !== descriptor.class_export_index || callee.source_export_index !== expression.export_index
-                || expression.value_parameters_only !== true || callee.value_parameters_only !== true
-                || !Array.isArray(expression.bindings) || !Array.isArray(callee.parameters)
-                || expression.bindings.length !== callee.parameters.length)
-                throw new Error('Original component mutation requires a bound transactional receiver and by-value signature');
+                || callee.source_owner_index !== descriptor.class_export_index)
+                throw new Error('Original component mutation source owner differs');
             sourceQueryReceiver(target.native,reference,expression.package,expression.class_object);
-            const args = Object.create(null);
+            const args = Object.create(null), targets=[], seenTargets=new Set();
             for (const [index,binding] of expression.bindings.entries()) {
-                const parameter = callee.parameters[index];
-                if (binding.mode !== 'input' || !safeField(binding.parameter) || owns(args,binding.parameter)
-                    || parameter.name !== binding.parameter || JSON.stringify(parameter.schema) !== JSON.stringify(binding.schema))
+                const parameter=callee.source_parameters[index];
+                if (!safeField(binding.parameter) || owns(args,binding.parameter)
+                    || parameter.name !== binding.parameter || parameter.mode !== binding.mode
+                    || JSON.stringify(parameter.schema) !== JSON.stringify(binding.schema))
                     throw new Error('Original component mutation parameter schema differs');
-                const value = evaluate(binding.value,depth+1); validateSchema(binding.schema,value);
-                args[binding.parameter] = structuredClone(value);
+                if (binding.mode === 'input') {
+                    const declared=callee.parameters.find(item=>item.name === binding.parameter);
+                    if (!declared || JSON.stringify(declared.schema) !== JSON.stringify(binding.schema))
+                        throw new Error('Original component mutation input signature differs');
+                    const value=evaluate(binding.value,depth+1);validateSchema(binding.schema,value);
+                    args[binding.parameter]=structuredClone(value);
+                } else if (binding.mode === 'output' && binding.target?.op === 'get'
+                    && safeField(binding.target.field) && ['self','local','persistent'].includes(binding.target.scope)) {
+                    const targetOwner=ownerFor(binding.target.scope,binding.target.frame);
+                    const key=JSON.stringify([binding.target.scope,binding.target.frame ?? null,binding.target.field]);
+                    if (seenTargets.has(key)) throw new Error('Aliased original component output targets are unsupported');
+                    seenTargets.add(key);
+                    if (!owns(targetOwner,binding.target.field)) throw new Error('Missing original component output storage');
+                    const targetSchema=schemaFor(binding.target);
+                    const targetType=binding.target.scope === 'persistent'
+                        ? program.persistent_types?.[binding.target.frame]?.[binding.target.field]
+                        : program.field_types?.[binding.target.scope]?.[binding.target.field];
+                    if (targetSchema ? JSON.stringify(targetSchema) !== JSON.stringify(binding.schema)
+                        : targetType !== binding.schema.type)
+                        throw new Error('Original component output target type differs');
+                    const initial=structuredClone(targetOwner[binding.target.field]);
+                    validateSchema(binding.schema,initial);args[binding.parameter]=initial;targets.push(binding);
+                } else throw new Error('Unsupported transactional component argument');
             }
             const nested = runBlueprint(callee,target.state,args,target.functions,budget,callDepth+1,target.frames,tables,
                 {...notifications,bindings:target.bindings,signatures:target.signatures || {},native:target.native,
                     queryStack:[...notifications.queryStack,expression.package]});
+            for (const binding of targets) {
+                if (!owns(nested.outputs,binding.parameter)) throw new Error(`Missing component call output: ${binding.parameter}`);
+                validateSchema(binding.schema,nested.outputs[binding.parameter]);
+                checkType(binding.target.scope,binding.target.field,nested.outputs[binding.parameter],binding.target.frame);
+            }
+            for (const binding of targets)
+                ownerFor(binding.target.scope,binding.target.frame)[binding.target.field]=structuredClone(nested.outputs[binding.parameter]);
             trace.push({source_index:sourceIndex,op:'component_call',package:expression.package,function:expression.function,
                 outputs:structuredClone(nested.outputs),trace:nested.trace});
             return nested.value;
         }
         if (expression.op === 'component_query') {
+            const query=owns(notifications.queries,expression.package) ? notifications.queries[expression.package] : null;
+            const callee=query?.functions?.[expression.function];
+            if (!query || !callee || callee.source_owner_index !== expression.class_export_index
+                || callee.source_export_index !== expression.export_index
+                || !['EX_VirtualFunction','EX_LocalVirtualFunction','EX_FinalFunction','EX_LocalFinalFunction'].includes(expression.dispatch)
+                || !Number.isSafeInteger(expression.context_offset) || expression.context_offset <= 0
+                || !expression.receiver_schema || expression.receiver_schema.type !== 'ObjectProperty'
+                || expression.receiver_schema.reference_kind !== 'runtime_component'
+                || JSON.stringify(expression.receiver_schema.class) !== JSON.stringify([expression.package,expression.class_object])
+                || !Array.isArray(callee.self_writes) || callee.self_writes.length
+                || Object.keys(callee.persistent_types || {}).length
+                || !Array.isArray(callee.source_parameters) || !Array.isArray(expression.bindings)
+                || expression.bindings.length !== callee.source_parameters.length)
+                throw new Error('Untranslated or effectful original component query');
             const reference=evaluate(expression.target,depth+1);
             if (reference === null) {
                 // These admitted calls have out parameters and no return value:
@@ -549,24 +619,41 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 trace.push({source_index:sourceIndex,op:'warning',message:'Accessed None: original component query skipped'});
                 return null;
             }
+            validateSchema(expression.receiver_schema,reference);
             const descriptor=sourceQueryReceiver(notifications.native,reference,expression.package,expression.class_object);
             if (notifications.queryStack.includes(expression.package)) throw new Error('Reentrant original component queries require shared active storage');
-            const query=owns(notifications.queries,expression.package) ? notifications.queries[expression.package] : null;
-            const callee=query?.functions?.[expression.function];
-            if (!query || query.source_sha256 !== descriptor.source_sha256 || !callee
-                || callee.source_owner_index !== descriptor.class_export_index || callee.source_export_index !== expression.export_index
-                || !Array.isArray(callee.self_writes) || callee.self_writes.length || Object.keys(callee.persistent_types || {}).length
-                || !Array.isArray(expression.bindings)) throw new Error('Untranslated or effectful original component query');
-            const args=Object.create(null),targets=[];
-            for (const binding of expression.bindings) {
-                if (!safeField(binding.parameter) || owns(args,binding.parameter)) throw new Error('Invalid component query parameter');
+            if (query.source_sha256 !== descriptor.source_sha256
+                || callee.source_owner_index !== descriptor.class_export_index)
+                throw new Error('Original component query source owner differs');
+            const args=Object.create(null),targets=[],seenTargets=new Set();
+            for (const [index,binding] of expression.bindings.entries()) {
+                const parameter=callee.source_parameters[index];
+                if (!safeField(binding.parameter) || owns(args,binding.parameter)
+                    || parameter.name !== binding.parameter || parameter.mode !== binding.mode
+                    || JSON.stringify(parameter.schema) !== JSON.stringify(binding.schema))
+                    throw new Error('Invalid component query parameter signature');
                 if (binding.mode === 'input') {
+                    const declared=callee.parameters?.find(item=>item.name === binding.parameter);
+                    if (!declared || JSON.stringify(declared.schema) !== JSON.stringify(binding.schema))
+                        throw new Error('Original component query input schema differs');
                     const value=evaluate(binding.value,depth+1);validateSchema(binding.schema,value);
                     args[binding.parameter]=structuredClone(value);
                 } else if (binding.mode === 'output' && binding.target?.op === 'get' && safeField(binding.target.field)
                     && ['local','self','persistent'].includes(binding.target.scope)) {
                     const owner=ownerFor(binding.target.scope,binding.target.frame);
-                    if (owns(owner,binding.target.field)) args[binding.parameter]=structuredClone(owner[binding.target.field]);
+                    const targetSchema=schemaFor(binding.target);
+                    const targetType=binding.target.scope === 'persistent'
+                        ? program.persistent_types?.[binding.target.frame]?.[binding.target.field]
+                        : program.field_types?.[binding.target.scope]?.[binding.target.field];
+                    if (targetSchema ? JSON.stringify(targetSchema) !== JSON.stringify(binding.schema)
+                        : targetType !== binding.schema.type)
+                        throw new Error('Original component query output target type differs');
+                    const key=JSON.stringify([binding.target.scope,binding.target.frame ?? null,binding.target.field]);
+                    if (seenTargets.has(key)) throw new Error('Aliased original component query outputs are unsupported');
+                    seenTargets.add(key);
+                    if (!owns(owner,binding.target.field)) throw new Error('Missing original component query output storage');
+                    validateSchema(binding.schema,owner[binding.target.field]);
+                    args[binding.parameter]=structuredClone(owner[binding.target.field]);
                     targets.push(binding);
                 } else throw new Error('Unsupported original component query binding');
             }
@@ -578,6 +665,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 throw new Error('Original component query attempted a state change or effect');
             for (const binding of targets) {
                 if (!owns(nested.outputs,binding.parameter)) throw new Error('Missing original component query output');
+                validateSchema(binding.schema,nested.outputs[binding.parameter]);
                 checkType(binding.target.scope,binding.target.field,nested.outputs[binding.parameter],binding.target.frame);
             }
             for (const binding of targets) ownerFor(binding.target.scope,binding.target.frame)[binding.target.field]=structuredClone(nested.outputs[binding.parameter]);
@@ -631,6 +719,46 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             emit(sourceForceNetUpdate(notifications.native, reference));
             return null;
         }
+        if (expression.op === 'native_context_call') {
+            const contract=nativeContextContracts.get(JSON.stringify(expression.identity));
+            if (!contract || expression.dispatch !== contract.dispatch
+                || JSON.stringify(expression.receiver_schema?.class) !== JSON.stringify(contract.receiver)
+                || JSON.stringify(expression.receiver_schema) !== JSON.stringify(contract.receiver_schema)
+                || expression.adapter_family_present !== false
+                || !Number.isSafeInteger(expression.context_offset) || expression.context_offset <= 0
+                || !Array.isArray(expression.parameter_schemas)
+                || JSON.stringify(expression.parameter_schemas) !== JSON.stringify(contract.parameters)
+                || !Array.isArray(expression.parameters) || expression.parameters.length !== contract.parameters.length)
+                throw new Error('Unsupported original native context call contract');
+            const reference=evaluate(expression.receiver,depth+1);
+            validateSchema(expression.receiver_schema,reference);
+            if (reference === null) {
+                trace.push({source_index:sourceIndex,op:'warning',message:'Accessed None: original native component call skipped'});
+                return null;
+            }
+            sourceObjectValid(notifications.native,reference,expression.receiver_schema);
+            const arguments_=[];
+            for (const [index,parameter] of expression.parameters.entries()) {
+                const schema=contract.parameters[index];
+                const declared=parameter?.op === 'get' ? schemaFor(parameter)
+                    : parameter?.op === 'typed_literal' ? parameter.schema : null;
+                if (declared && JSON.stringify(declared) !== JSON.stringify(schema)
+                    || !declared && parameter?.op !== 'constant'
+                    || parameter?.op === 'constant' && !validPrimitive(schema.type,parameter.value))
+                    throw new Error('Original native context parameter schema differs');
+                const value=evaluate(parameter,depth+1);
+                validateSchema(schema,value);
+                arguments_.push(structuredClone(value));
+            }
+            const request={op:'native_context_call',identity:[...contract.identity],dispatch:contract.dispatch,
+                context_offset:expression.context_offset,receiver:structuredClone(reference),
+                receiver_schema:structuredClone(expression.receiver_schema),
+                parameter_schemas:structuredClone(contract.parameters),arguments:arguments_,
+                adapter_family_present:false,adapter_required:true};
+            emit(request);
+            trace.push({source_index:sourceIndex,...structuredClone(request)});
+            return null;
+        }
         if (expression.op === 'native_self') {
             const context=notifications.native;
             if (expression.source_owner_index !== program.source_owner_index
@@ -676,7 +804,14 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','TextBlock','SetColorAndOpacity'])
                 && expression.dispatch === 'EX_FinalFunction'
                 && expression.parameter?.schema?.type === 'StructProperty'
-                && JSON.stringify(expression.parameter?.schema) === JSON.stringify(nativeSlateColorSchema());
+                && JSON.stringify(expression.parameter?.schema) === JSON.stringify(nativeSlateColorSchema())
+                || method === 'SetBrushFromTexture'
+                && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','Image','SetBrushFromTexture'])
+                && expression.dispatch === 'EX_VirtualFunction'
+                && expression.receiver_schema?.class?.[1] === 'Image'
+                && expression.parameter?.schema?.type === 'ObjectProperty'
+                && JSON.stringify(expression.parameter?.schema?.class) === JSON.stringify(['/Script/Engine','Texture2D'])
+                && expression.options?.bMatchSize?.schema?.type === 'BoolProperty';
             if (!supported || expression.source_owner_index !== program.source_owner_index
                 || expression.source_binding_required !== true
                 || expression.visual_1to1_certified !== false || !expression.receiver_schema
@@ -705,9 +840,13 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 throw new Error('Original widget source binding is unavailable or foreign');
             const values=[];
             if (method === 'SetBrushFromTexture') {
-                for (const [index,parameter] of expression.parameters.entries()) {
+                const brushParameters=Array.isArray(expression.parameters) ? expression.parameters
+                    : [expression.parameter.value,expression.options.bMatchSize.value];
+                const brushSchemas=Array.isArray(expression.parameter_schemas) ? expression.parameter_schemas
+                    : [expression.parameter.schema,expression.options.bMatchSize.schema];
+                for (const [index,parameter] of brushParameters.entries()) {
                     const value=evaluate(parameter,depth+1);
-                    validateSchema(expression.parameter_schemas[index],value);
+                    validateSchema(brushSchemas[index],value);
                     values.push(structuredClone(value));
                 }
                 if (typeof values[1] !== 'boolean') throw new Error('Unverified original UMG brush size flag');
@@ -723,7 +862,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             const effect={op:'native_widget_effect',identity:[...identity],dispatch:expression.dispatch,
                 widget_id:reference.widget_id,source_field:expression.receiver_field,
                 source_package:reference.source_package,source_owner_index:reference.source_owner_index,
-                method,...(method === 'SetBrushFromTexture' ? {parameters:values}
+                method,...(method === 'SetBrushFromTexture' ? {parameters:values,parameter:values[0],match_size:values[1]}
                     : method === 'SetFocus' ? {} : {parameter:values[0]})};
             emit(effect);
             trace.push({source_index:sourceIndex,...structuredClone(effect)});
@@ -1147,6 +1286,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 Conv_IntToString: {args: ['IntProperty'], result: 'StrProperty'},
                 Len: {args: ['StrProperty'], result: 'IntProperty'},
                 Contains: {args: ['StrProperty', 'StrProperty', 'BoolProperty', 'BoolProperty'], result: 'BoolProperty'},
+                MakeLiteralDouble: {args:['DoubleProperty'], result:'DoubleProperty', library:'KismetSystemLibrary'},
                 Conv_StringToText: {args:['StrProperty'], result:'TextProperty', library:'KismetTextLibrary'},
                 Conv_NameToText: {args:['NameProperty'], result:'TextProperty', library:'KismetTextLibrary'},
                 Conv_TextToString: {args:['TextProperty'], result:'StrProperty', library:'KismetTextLibrary'}
@@ -1180,6 +1320,9 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 } else if (sourceType === 'BoolProperty') {
                     if (typeof value !== 'boolean')
                         throw new Error('Invalid original native object bool parameter');
+                } else if (sourceType === 'DoubleProperty') {
+                    if (typeof value !== 'number' || !Number.isFinite(value))
+                        throw new Error('Invalid original native double parameter');
                 } else if (sourceType === 'TextProperty') {
                     validateSchema({type:'TextProperty'},value);
                 } else if (typeof value !== 'string') {
@@ -1187,6 +1330,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 }
                 return value;
             });
+            if (name === 'MakeLiteralDouble') return values[0];
             if (name === 'Len') return values[0].length; // Unreal FString.Len counts UTF-16 TCHAR units.
             if (name === 'Contains') {
                 if (values[2] !== false || values[3] !== false)

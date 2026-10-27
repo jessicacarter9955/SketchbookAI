@@ -208,3 +208,37 @@ test('native Widget.SetFocus emits a witnessed zero-argument source UI effect',(
   assert.throws(()=>executeBlueprint(program(forged),{Txt_Label:ref},{},{native:native()}),
     /Unsupported or unbound original UMG context contract/);
 });
+
+test('native Image.SetBrushFromTexture retains Texture2D identity and bMatchSize',()=>{
+  const imageClass=['/Script/UMG','Image'];
+  const reference={kind:'source_native_widget',source_package:pkg,source_owner_index:1,
+    source_field:'Img_Icon',widget_id:'image-original-1',declared_class:imageClass};
+  const schema={type:'ObjectProperty',class:['/Script/Engine','Texture2D'],default:null};
+  const texture={asset:'/Game/UI.T_Icon',declared_class:['/Script/Engine','Texture2D']};
+  const operation={op:'native_widget_effect',source_owner_index:1,source_binding_required:true,
+    visual_1to1_certified:false,identity:['/Script/UMG','Image','SetBrushFromTexture'],
+    dispatch:'EX_VirtualFunction',method:'SetBrushFromTexture',
+    receiver:{op:'get',scope:'self',field:'Img_Icon'},receiver_field:'Img_Icon',
+    receiver_schema:{type:'ObjectProperty',class:imageClass,reference_kind:'runtime_native_widget',default:null},
+    parameter:{schema,value:{op:'typed_literal',schema,value:texture}},
+    options:{bMatchSize:{schema:{type:'BoolProperty'},value:{op:'constant',value:false}}}};
+  const p=program(operation);
+  p.self_reads=['Img_Icon'];
+  p.field_types.self={Img_Icon:'ObjectProperty'};
+  p.schemas.self={Img_Icon:{type:'ObjectProperty',class:imageClass,reference_kind:'runtime_native_widget'}};
+  const native={source_package:pkg,source_owner_index:1,widgets:{Img_Icon:{
+    reference,source_field:'Img_Icon',source_owner_index:1,declared_class:imageClass,binding_complete:true}}};
+  const result=executeBlueprint(p,{Img_Icon:reference},{},{native});
+  assert.equal(result.effects.length,1);
+  assert.deepEqual(result.effects[0].identity,['/Script/UMG','Image','SetBrushFromTexture']);
+  assert.deepEqual(result.effects[0].parameter,texture);
+  assert.equal(result.effects[0].match_size,false);
+  const bad=structuredClone(operation);
+  bad.options.bMatchSize.value.value=1;
+  assert.throws(()=>executeBlueprint(program(bad),{Img_Icon:reference},{},{native}),
+    /Invalid typed source member/);
+  bad.options.bMatchSize.value.value=false;
+  bad.parameter.schema.class=['/Script/Engine','SoundWave'];
+  assert.throws(()=>executeBlueprint(program(bad),{Img_Icon:reference},{},{native}),
+    /Unsupported or unbound original UMG context contract/);
+});

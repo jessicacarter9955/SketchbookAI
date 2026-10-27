@@ -10,6 +10,7 @@ const isQuaternion = value => value && typeof value === 'object' && !Array.isArr
 const isTransform = value => value && typeof value === 'object' && !Array.isArray(value)
     && isQuaternion(value.Rotation) && isVector(value.Translation) && isVector(value.Scale3D);
 const isVector2D = value => value && typeof value === 'object' && !Array.isArray(value)
+    && Object.keys(value).sort().join(',') === 'X,Y'
     && ['X','Y'].every(field => typeof value[field] === 'number' && Number.isFinite(value[field]));
 const isFiniteNumber = value => typeof value === 'number' && Number.isFinite(value);
 const isInt32 = value => Number.isInteger(value) && value >= -2147483648 && value <= 2147483647;
@@ -316,7 +317,7 @@ export function evaluateNativeMath(name, args, warning = () => {}) {
     const clamp = name === 'FClamp' || name === 'Clamp';
     if (!boolean && !match && !clamp) throw new Error(`Unsupported native math: ${name}`);
     if (match && ['Add', 'Subtract', 'Multiply', 'Divide'].includes(match[1])
-        && (match[2] === 'ByteByte' || match[1] === 'Divide' && match[2] !== 'DoubleDouble'))
+        && (match[2] === 'ByteByte' || match[1] === 'Divide' && match[2] !== 'DoubleDouble' && match[2] !== 'IntInt'))
         throw new Error(`Unsupported native math: ${name}`);
     const arity = name === 'Not_PreBool' ? 1 : clamp ? 3 : 2;
     if (args.length !== arity || args.some(value => boolean ? typeof value !== 'boolean' : typeof value !== 'number' || !Number.isFinite(value)))

@@ -28,7 +28,7 @@ OPERATIONS = {
                                                   'material_classes': frozenset((
                                                       'Material', 'MaterialInstance',
                                                       'MaterialInstanceConstant', 'MaterialInterface'))},
-    ('EX_VirtualFunction', 'SetBrushFromTexture'): {'types': ('ObjectProperty', 'BoolProperty'),
+    ('EX_VirtualFunction', 'SetBrushFromTexture'): {'type': 'ObjectProperty', 'types': ('ObjectProperty', 'BoolProperty'),
                                                     'classes': frozenset(('Image',)),
                                                     'texture_classes': frozenset(('Texture2D',))},
     ('EX_FinalFunction', 'SetPercent'): {'type': 'FloatProperty',
@@ -117,8 +117,10 @@ def widget_context(value, package, owner, reads, outputs, depth):
             arg_schema = {'type': 'FloatProperty', 'default': 0}
         else:
             raise Error('Original UMG call requires source-typed parameter')
-        if not isinstance(arg_schema, dict) or arg_schema.get('type') != expected_type:
-            raise Error('Original UMG argument schema differs')
+        if not isinstance(arg_schema, dict) or not isinstance(arg, dict):
+            raise Error('Original UMG parameter schema is unavailable')
+        if arg_schema.get('type') != expected_type:
+            raise Error('Original bMatchSize Boolean property differs' if name == 'SetBrushFromTexture' and index == 1 else 'Original UMG argument schema differs')
         if name == 'SetBrushFromTexture' and index == 0:
             texture_class = arg_schema.get('class')
             if (not isinstance(texture_class, list) or len(texture_class) != 2
@@ -128,16 +130,16 @@ def widget_context(value, package, owner, reads, outputs, depth):
         return arg, arg_schema
 
     if name == 'SetBrushFromTexture':
-        translated = [translate_argument(argument, expected_type, index)
-                      for index, (argument, expected_type) in enumerate(zip(args, expected_types))]
-        if (not translated[1][0].get('op') == 'constant'
-                or type(translated[1][0].get('value')) is not bool):
-            raise Error('Original UMG brush size flag is not a verified Boolean')
+        arg, arg_schema = translate_argument(args[0], 'ObjectProperty', 0)
+        match_token = kind(args[1])
+        if match_token not in ('EX_True', 'EX_False', 'EX_InstanceVariable', 'EX_LocalVariable', 'EX_LocalOutVariable'):
+            raise Error('Original bMatchSize Boolean input is unsupported')
+        match_value, match_schema = translate_argument(args[1], 'BoolProperty', 1)
         return {'op': 'native_widget_effect', 'identity': ['/Script/UMG', 'Image', name], 'dispatch': dispatch,
                 'method': name, 'source_owner_index': owner, 'receiver': receiver,
                 'receiver_field': field(obj.get('Variable')), 'receiver_schema': schema,
-                'parameters': [arg for arg, _ in translated],
-                'parameter_schemas': [arg_schema for _, arg_schema in translated],
+                'parameter': {'schema': arg_schema, 'value': arg},
+                'options': {'bMatchSize': {'schema': match_schema, 'value': match_value}},
                 'source_binding_required': True, 'visual_1to1_certified': False}
 
     argument = args[0]

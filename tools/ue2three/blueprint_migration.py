@@ -53,7 +53,7 @@ for _type in ('ByteByte', 'IntInt', 'DoubleDouble'):
 for _type in ('IntInt', 'DoubleDouble'):
     for _operation in ('Add', 'Subtract', 'Multiply'):
         MATH_CALLS[_operation + '_' + _type] = (2, _type)
-MATH_CALLS.update({'Divide_DoubleDouble': (2, 'DoubleDouble'),
+MATH_CALLS.update({'Divide_DoubleDouble': (2, 'DoubleDouble'), 'Divide_IntInt': (2, 'IntInt'),
                    'Square': (1, 'DoubleDouble'), 'FFloor': (1, 'DoubleDouble'),
                    'Conv_BoolToDouble': (1, 'bool'),
                    'Multiply_LinearColorLinearColor': (2, 'LinearColor'),
@@ -67,6 +67,7 @@ MATH_CALLS.update({'Divide_DoubleDouble': (2, 'DoubleDouble'),
                    'MakeRotator': (3, 'rotator'),
                    'MakeTransform': (3, 'transform'),
                    'BreakVector': (4, 'break_vector'),
+                   'BreakVector2D': (3, 'break_vector2d'),
                    'BreakRotator': (4, 'break_rotator'),
                    'BreakTransform': (4, 'break_transform'),
                    'Min': (2, 'IntInt'), 'Max': (2, 'IntInt'),
@@ -85,6 +86,7 @@ MATH_CALLS.update({'Divide_DoubleDouble': (2, 'DoubleDouble'),
 MATH_CALLS.update(EXTRA_MATH_CALLS)
 
 NATIVE_MATH_INPUT_TYPES = {
+    'Divide_IntInt': ('IntProperty', 'IntProperty'),
     'MakeVector': ('DoubleProperty', 'DoubleProperty', 'DoubleProperty'),
     'Add_VectorVector': ('Vector', 'Vector'),
     'Subtract_VectorVector': ('Vector', 'Vector'),
@@ -93,6 +95,7 @@ NATIVE_MATH_INPUT_TYPES = {
     'MakeRotator': ('FloatProperty', 'FloatProperty', 'FloatProperty'),
     'MakeTransform': ('Vector', 'Rotator', 'Vector'),
     'BreakVector': ('Vector',),
+    'BreakVector2D': ('Vector2D',),
     'BreakRotator': ('Rotator',),
     'BreakTransform': ('Transform',),
     'Abs': ('DoubleProperty',), 'VSize': ('Vector',), 'VSizeXY': ('Vector',),
@@ -440,6 +443,9 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         if adapted is not None: return adapted
         from blueprint_widgets import widget_context
         adapted = widget_context(value, package, owner, reads, outputs, depth)
+        if adapted is not None: return adapted
+        from blueprint_objects import native_component_context
+        adapted = native_component_context(value, package, owner, reads, outputs, depth)
         if adapted is not None: return adapted
         raise BlueprintTranslationError('Unsupported opcode: EX_Context')
     if token in ('EX_VirtualFunction', 'EX_LocalVirtualFunction', 'EX_LocalFinalFunction', 'EX_FinalFunction'):
@@ -934,6 +940,12 @@ def translate_package(package, structs=None, tables=None):
             const_inputs = {prop['Name'] for prop in export.get('LoadedProperties', [])
                             if 'CPF_Parm' in str(prop.get('PropertyFlags')) and 'CPF_ConstParm' in str(prop.get('PropertyFlags'))}
             program['output_fields'] = [name for name in program['output_fields'] if name not in const_inputs]
+            output_parameters = [prop['Name'] for prop in export.get('LoadedProperties', [])
+                                 if 'CPF_Parm' in str(prop.get('PropertyFlags'))
+                                 and 'CPF_OutParm' in str(prop.get('PropertyFlags'))
+                                 and 'CPF_ConstParm' not in str(prop.get('PropertyFlags'))
+                                 and 'CPF_ReturnParm' not in str(prop.get('PropertyFlags'))]
+            program['output_fields'] = sorted(set(program['output_fields']) | set(output_parameters))
             for step in program['steps']:
                 if (step['op'] == 'set' and step.get('scope') == 'local' and step['field'] in const_inputs
                         or step['op'] == 'set_member' and step['target'].get('scope') == 'local' and step['target']['field'] in const_inputs):
@@ -957,11 +969,11 @@ def translate_package(package, structs=None, tables=None):
                                 if target.get('scope') == 'self'})
                         if value.get('op') == 'array_mutate' and target.get('scope') == 'self':
                             program['self_writes'] = sorted(set(program['self_writes']) | {target['field']})
-                        if value.get('op') in ('call', 'component_query') and any(binding.get('mode') == 'output'
+                        if value.get('op') in ('call', 'component_query', 'component_call') and any(binding.get('mode') == 'output'
                                 and binding.get('target', {}).get('scope') == 'local'
                                 and binding['target'].get('field') in const_inputs for binding in value.get('bindings', [])):
                             raise BlueprintTranslationError('Output binding writes original const input')
-                        if value.get('op') == 'component_query':
+                        if value.get('op') in ('component_query', 'component_call'):
                             program['self_writes'] = sorted(set(program['self_writes']) | {
                                 binding['target']['field'] for binding in value['bindings']
                                 if binding['mode'] == 'output' and binding['target']['scope'] == 'self'})
@@ -1011,6 +1023,15 @@ def translate_package(package, structs=None, tables=None):
                                      for prop in export.get('LoadedProperties', []) if 'CPF_Parm' in str(prop.get('PropertyFlags'))
                                      and 'CPF_ReturnParm' not in str(prop.get('PropertyFlags'))
                                      and ('CPF_OutParm' not in str(prop.get('PropertyFlags')) or prop['Name'] in const_inputs)]
+            program['source_parameters'] = [
+                {'name': prop['Name'],
+                 'mode': 'output' if ('CPF_OutParm' in str(prop.get('PropertyFlags'))
+                                      and 'CPF_ConstParm' not in str(prop.get('PropertyFlags')))
+                         else 'input',
+                 'schema': property_schema(package, prop)}
+                for prop in export.get('LoadedProperties', [])
+                if 'CPF_Parm' in str(prop.get('PropertyFlags'))
+                and 'CPF_ReturnParm' not in str(prop.get('PropertyFlags'))]
             program['value_parameters_only'] = all(
                 'CPF_OutParm' not in str(prop.get('PropertyFlags')) and 'CPF_ReferenceParm' not in str(prop.get('PropertyFlags'))
                 for prop in export.get('LoadedProperties', [])
