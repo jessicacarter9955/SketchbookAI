@@ -17,6 +17,18 @@ function program(call) {
     ]};
 }
 
+test('source Kismet MakeLiteralText retains invariant FText identity and history',()=>{
+  const value={history:'invariant',text:'Hello 🌍',flags:2};
+  const call={op:'native_call',identity:['/Script/Engine','KismetSystemLibrary','MakeLiteralText'],
+    parameter_types:['TextProperty'],return_type:'TextProperty',
+    args:[{op:'typed_literal',schema:{type:'TextProperty'},value}]};
+  const p={...program(call),field_types:{local:{Text:'TextProperty'}}};
+  assert.deepEqual(executeBlueprint(p,{},{}).outputs.Text,value);
+  const wrong=structuredClone(call);
+  wrong.identity[1]='KismetTextLibrary';
+  assert.throws(()=>executeBlueprint(program(wrong),{},{}),/Unsupported original native object call/);
+});
+
 test('original KismetSystemLibrary.MakeLiteralString preserves source FString without coercion', () => {
   const call = value => ({op:'native_call',
     identity:['/Script/Engine','KismetSystemLibrary','MakeLiteralString'],
