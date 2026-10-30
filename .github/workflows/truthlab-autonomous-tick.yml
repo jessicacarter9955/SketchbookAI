@@ -55,8 +55,14 @@ jobs:
             set -e
             case "$code" in
               0) echo "enabled=true" >> "$GITHUB_OUTPUT" ;;
-              2) echo "::notice::Durable PostgreSQL not connected; scheduled dialogues are safely disabled."
-                 echo "enabled=false" >> "$GITHUB_OUTPUT" ;;
+              2) echo "::error::TruthLab BLOCKED: durable PostgreSQL unavailable; zero agent cycles executed."
+                 {
+                   echo "### TruthLab blocked — no agent cycle executed"
+                   echo "The database credential is absent and the Render OIDC broker is unavailable."
+                   echo "Restore Render billing and its PostgreSQL broker, or configure the existing TRUTHLAB_DATABASE_URL Actions secret."
+                   echo "This is an infrastructure failure, not a successful conversation run."
+                 } >> "$GITHUB_STEP_SUMMARY"
+                 exit 1 ;;
               *) echo "::error::GitHub/Render OIDC credential exchange failed."
                  exit "$code" ;;
             esac
