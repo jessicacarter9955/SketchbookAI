@@ -116,3 +116,15 @@ test('source combat bone-zone Contains uses Unreal four-parameter ASCII-insensit
   const invalid=sourceCall('head','head');invalid.args[2].schema.type='StrProperty';
   assert.throws(()=>run(invalid),/parameter type differs/);
 });
+
+test('source FStrings concatenate through the shared Kismet native family runtime',()=>{
+  const concat=(left,right)=>({op:'native_call',
+    identity:['/Script/Engine','KismetStringLibrary','Concat_StrStr'],
+    parameter_types:['StrProperty','StrProperty'],return_type:'StrProperty',
+    args:[left,right].map(value=>({op:'typed_literal',schema:{type:'StrProperty'},value}))});
+  assert.equal(executeBlueprint(program(concat('Player_', '😀')),{},{})
+    .outputs.Text,'Player_😀');
+  const malformed=concat('a','b');
+  malformed.args[1].schema.type='NameProperty';
+  assert.throws(()=>executeBlueprint(program(malformed),{},{}),/parameter type differs/);
+});
