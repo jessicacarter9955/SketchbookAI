@@ -1,9 +1,11 @@
 name: TruthLab Real World Interface — verified tests
 on:
   push:
-    branches: [main]
+    branches: [main, truthlab-autonomous-agents]
     paths:
       - '.github/workflows/truthlab-world-ci.yml'
+      - 'truthlab-live/world_interface.py'
+      - 'truthlab-live/test_world_interface.py'
   workflow_dispatch:
 permissions:
   contents: read
