@@ -83,6 +83,9 @@ jobs:
           TRUTHLAB_R2_SECRET_ACCESS_KEY: ${{ secrets.TRUTHLAB_R2_SECRET_ACCESS_KEY }}
           BRAVE_SEARCH_API_KEY: ${{ secrets.BRAVE_SEARCH_API_KEY }}
           TRUTHLAB_X_USER_ACCESS_TOKEN: ${{ secrets.TRUTHLAB_X_USER_ACCESS_TOKEN }}
+          TRUTHLAB_X_REFRESH_TOKEN: ${{ secrets.TRUTHLAB_X_REFRESH_TOKEN }}
+          TRUTHLAB_X_CLIENT_ID: ${{ secrets.TRUTHLAB_X_CLIENT_ID }}
+          TRUTHLAB_X_CLIENT_SECRET: ${{ secrets.TRUTHLAB_X_CLIENT_SECRET }}
           TRUTHLAB_APPROVER_GITHUB_LOGIN: 'jessicacarter9955'
           ACTION: ${{ inputs.action }}
           DRAFT_ID: ${{ inputs.draft_id }}
