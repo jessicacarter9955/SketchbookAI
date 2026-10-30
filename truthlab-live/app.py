@@ -482,7 +482,15 @@ def scheduled_once():
     with lock:
         working = True
     cycle()
-    print("TRUTHLAB_TICK_FINISHED", flush=True)
+    # cycle() catches model/storage errors to update the shared pause state.
+    # A cron process must nevertheless exit nonzero when its due cycle failed;
+    # otherwise Actions reports a false green with zero completed turns.
+    completed = settings()["cycles"]
+    if completed != cfg["cycles"] + 1:
+        print("TRUTHLAB_TICK_FAILED expected_cycle=%d observed_cycle=%d" %
+              (cfg["cycles"] + 1, completed), flush=True)
+        raise RuntimeError("Due TruthLab cycle produced no verified completion; inspect database errors")
+    print("TRUTHLAB_TICK_FINISHED verified_cycle=%d" % completed, flush=True)
 
 
 def scheduler():
