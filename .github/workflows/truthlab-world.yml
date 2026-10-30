@@ -1,4 +1,4 @@
-name: TruthLab World Interface — private R2 and supervised X
+name: TruthLab World Interface — private R2 and supervised multichannel social
 on:
   schedule:
     - cron: '23 1,5,9,13,17,21 * * *'
@@ -8,8 +8,14 @@ on:
         description: "Real-world worker operation"
         required: true
         type: choice
-        options: [status, research, feedback, enable, pause, approve-publish]
+        options: [status, research, feedback, enable, pause, approve-publish, social-status, social-publish, social-tiktok-check]
         default: status
+      platform:
+        description: "Target network for an individually approved social post"
+        required: false
+        type: choice
+        options: [x, facebook, instagram, threads, tiktok, youtube, reddit, snapchat]
+        default: x
       draft_id:
         description: "Exact immutable 24-character draft identifier, for approve-publish only"
         required: false
@@ -86,9 +92,23 @@ jobs:
           TRUTHLAB_X_REFRESH_TOKEN: ${{ secrets.TRUTHLAB_X_REFRESH_TOKEN }}
           TRUTHLAB_X_CLIENT_ID: ${{ secrets.TRUTHLAB_X_CLIENT_ID }}
           TRUTHLAB_X_CLIENT_SECRET: ${{ secrets.TRUTHLAB_X_CLIENT_SECRET }}
+          TRUTHLAB_FB_PAGE_ID: ${{ secrets.TRUTHLAB_FB_PAGE_ID }}
+          TRUTHLAB_FB_PAGE_TOKEN: ${{ secrets.TRUTHLAB_FB_PAGE_TOKEN }}
+          TRUTHLAB_THREADS_USER_ID: ${{ secrets.TRUTHLAB_THREADS_USER_ID }}
+          TRUTHLAB_THREADS_USERNAME: ${{ secrets.TRUTHLAB_THREADS_USERNAME }}
+          TRUTHLAB_THREADS_ACCESS_TOKEN: ${{ secrets.TRUTHLAB_THREADS_ACCESS_TOKEN }}
+          TRUTHLAB_IG_USER_ID: ${{ secrets.TRUTHLAB_IG_USER_ID }}
+          TRUTHLAB_IG_ACCESS_TOKEN: ${{ secrets.TRUTHLAB_IG_ACCESS_TOKEN }}
+          TRUTHLAB_TIKTOK_USER_TOKEN: ${{ secrets.TRUTHLAB_TIKTOK_USER_TOKEN }}
+          TRUTHLAB_YOUTUBE_ACCESS_TOKEN: ${{ secrets.TRUTHLAB_YOUTUBE_ACCESS_TOKEN }}
+          TRUTHLAB_REDDIT_USER_TOKEN: ${{ secrets.TRUTHLAB_REDDIT_USER_TOKEN }}
+          TRUTHLAB_REDDIT_SUBREDDIT: ${{ vars.TRUTHLAB_REDDIT_SUBREDDIT }}
+          TRUTHLAB_SNAP_PUBLIC_PROFILE_ID: ${{ secrets.TRUTHLAB_SNAP_PUBLIC_PROFILE_ID }}
+          TRUTHLAB_SNAP_USER_TOKEN: ${{ secrets.TRUTHLAB_SNAP_USER_TOKEN }}
           TRUTHLAB_APPROVER_GITHUB_LOGIN: 'jessicacarter9955'
           ACTION: ${{ inputs.action }}
           DRAFT_ID: ${{ inputs.draft_id }}
+          PLATFORM: ${{ inputs.platform }}
           EVENT_NAME: ${{ github.event_name }}
         run: |
           if [[ "$EVENT_NAME" == "schedule" ]]; then
@@ -98,19 +118,28 @@ jobs:
             ACTION=status
           fi
           case "$ACTION" in
-            approve-publish|enable|pause)
+            approve-publish|social-publish|enable|pause)
               if [[ "$EVENT_NAME" != "workflow_dispatch" || "$GITHUB_ACTOR" != "jessicacarter9955" ]]; then
                 echo "::error::Human operator approval required; scheduling cannot publish or activate agents."
                 exit 1
               fi
               ;;
           esac
-          if [[ "$ACTION" == "approve-publish" ]]; then
+          if [[ "$ACTION" == "approve-publish" || "$ACTION" == "social-publish" || "$ACTION" == "social-tiktok-check" ]]; then
             if [[ ! "$DRAFT_ID" =~ ^[0-9a-f]{24}$ ]]; then
               echo "::error::A specific existing immutable draft ID is required."
               exit 1
             fi
-            python -u truthlab-live/world_interface.py approve-publish --draft-id "$DRAFT_ID"
-          else
-            python -u truthlab-live/world_interface.py "$ACTION"
           fi
+          case "$ACTION" in
+            social-status)
+              python -u truthlab-live/social_cli.py status ;;
+            social-publish)
+              python -u truthlab-live/social_cli.py publish --platform "$PLATFORM" --draft-id "$DRAFT_ID" ;;
+            social-tiktok-check)
+              python -u truthlab-live/social_cli.py confirm-tiktok --platform tiktok --draft-id "$DRAFT_ID" ;;
+            approve-publish)
+              python -u truthlab-live/world_interface.py approve-publish --draft-id "$DRAFT_ID" ;;
+            *)
+              python -u truthlab-live/world_interface.py "$ACTION" ;;
+          esac
