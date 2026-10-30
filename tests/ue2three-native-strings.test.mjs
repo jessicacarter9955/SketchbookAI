@@ -17,6 +17,21 @@ function program(call) {
     ]};
 }
 
+test('original KismetSystemLibrary.MakeLiteralString preserves source FString without coercion', () => {
+  const call = value => ({op:'native_call',
+    identity:['/Script/Engine','KismetSystemLibrary','MakeLiteralString'],
+    parameter_types:['StrProperty'],return_type:'StrProperty',
+    args:[{op:'typed_literal',schema:{type:'StrProperty'},value}]});
+  for (const value of ['', 'Actor_A', '😀']) {
+    assert.equal(executeBlueprint(program(call(value)),{},{}).outputs.Text, value);
+  }
+  assert.throws(() => executeBlueprint(program(call(34)),{},{}), /Invalid/);
+  const foreign = call('Actor_A');
+  foreign.identity[1] = 'KismetStringLibrary';
+  assert.throws(() => executeBlueprint(program(foreign),{},{}),
+      /Unsupported original native object call/);
+});
+
 test('source FName to FString preserves exact bone token identity',()=>{
   for (const bone of ['Bone_Spine_02', 'Clavicle_L', 'None']) {
     const call = contract('Conv_NameToString','NameProperty',bone);
