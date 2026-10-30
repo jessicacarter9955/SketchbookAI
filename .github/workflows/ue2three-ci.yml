@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - chatgpt/ue2three-dds
+      - chatgpt/dds-validator-cwd-fix-20261030
   pull_request:
     paths:
       - 'tools/ue2three/**'
