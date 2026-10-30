@@ -366,6 +366,15 @@ def research_cycle(ledger):
     ledger.save("drafts/"+draft_id+".json", {"id":draft_id,"text":draft,
                 "sha256":fingerprint(payload),"research_id":research_id,
                 "reply_to":reply_to,"created_at":timestamp(),"status":"pending_human_review"})
+    # Real, source-linked text drafts for networks supporting text-only posts.
+    # Instagram, TikTok, YouTube and Snapchat require actual media assets.
+    from social_hub import queue_draft
+    for channel in ("x","threads","facebook"):
+        queue_draft(ledger, channel, {"text":draft}, research_id)
+    approved_subreddit=os.environ.get("TRUTHLAB_REDDIT_SUBREDDIT","")
+    if re.fullmatch(r"[A-Za-z0-9_]{2,21}", approved_subreddit):
+        queue_draft(ledger, "reddit", {"title":("TruthLab: "+query)[:300],
+                    "text":draft,"subreddit":approved_subreddit}, research_id)
     if reply_to:
         ledger.save("reply-drafts/"+reply_to+".json",{"draft_id":draft_id,"at":timestamp()})
     return {"research_id":research_id,"source_urls":[x["url"] for x in evidence],
