@@ -190,6 +190,8 @@ function sourceArrayValueEqual(schema, left, right, depth = 0) {
 
 const nativeObject = identity => ({type:'ObjectProperty', ...(identity ? {class:identity} : {}), default:null});
 const nativeStruct = name => {
+    if (name === 'Key') return {type:'StructProperty',source:'/Script/InputCore',native:name,
+        fields:{KeyName:{type:'NameProperty',default:'None'}},default:{KeyName:'None'},member_order:['KeyName']};
     if (name === 'Quat') return {type:'StructProperty',source:'/Script/CoreUObject',native:name,
         fields:Object.fromEntries(['X','Y','Z','W'].map(field=>[field,{type:'DoubleProperty'}])),
         default:{X:0,Y:0,Z:0,W:1},member_order:['X','Y','Z','W']};
@@ -387,9 +389,10 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
     const schemaFor = target => target?.scope === 'persistent' ? program.persistent_schemas?.[target.frame]?.[target.field]
         : program.schemas?.[target?.scope]?.[target?.field];
     const nativeMathStructType = value => {
-        if (value?.op === 'typed_literal' || value?.op === 'get') {
-            const schema=value.op === 'typed_literal' ? value.schema : schemaFor(value);
-            if (!['Vector2D','Vector','Rotator','Quat','Transform'].includes(schema?.native)
+        if (value?.op === 'typed_literal' || value?.op === 'get' || value?.op === 'struct_literal') {
+            const schema=value.op === 'typed_literal' || value.op === 'struct_literal' ? value.schema : schemaFor(value);
+            if (value.op === 'struct_literal' && schema?.native === 'Key' && value.source_struct_size !== 32) return null;
+            if (!['Vector2D','Vector','Rotator','Quat','Transform','Key'].includes(schema?.native)
                 || JSON.stringify(schema) !== JSON.stringify(nativeStruct(schema.native))) return null;
             return schema.native;
         }
@@ -1265,7 +1268,8 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 Conv_RotatorToVector:['Rotator'],GetUpVector:['Rotator'],Conv_VectorToRotator:['Vector'],
                 GreaterGreater_VectorRotator:['Vector','Rotator'],ProjectPointOnToPlane:['Vector','Vector','Vector'],
                 NotEqual_VectorVector:['Vector','Vector',null],SelectTransform:['Transform','Transform',null],
-                BreakVector2D:['Vector2D'],RInterpTo:['Rotator','Rotator',null,null]};
+                BreakVector2D:['Vector2D'],RInterpTo:['Rotator','Rotator',null,null],
+                EqualEqual_KeyKey:['Key','Key']};
             const expected=structContracts[expression.name];
             if (expected) {
                 if (expected.length !== expression.args.length) throw new Error('Invalid original native math parameter count');
