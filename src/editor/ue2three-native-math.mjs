@@ -139,6 +139,14 @@ export function evaluateNativeMath(name, args, warning = () => {}) {
         const value=args[args[2] ? 0 : 1];
         return {Rotation:{...value.Rotation},Translation:{...value.Translation},Scale3D:{...value.Scale3D}};
     }
+    if (name === 'NormalizedDeltaRotator') {
+        // UKismetMathLibrary::NormalizedDeltaRotator: (A - B).GetNormalized().
+        if (!Array.isArray(args) || args.length !== 2 || !args.every(isRotator))
+            throw new Error('Invalid native NormalizedDeltaRotator parameters');
+        return Object.fromEntries(['Pitch','Yaw','Roll'].map(axis => [
+            axis, sourceNormalizeAxis(args[0][axis] - args[1][axis])
+        ]));
+    }
     if (name === 'RInterpTo') {
         if (!Array.isArray(args) || args.length !== 4 || !isRotator(args[0]) || !isRotator(args[1])
             || !isFiniteNumber(args[2]) || !isFiniteNumber(args[3])) throw new Error('Invalid native RInterpTo parameters');
