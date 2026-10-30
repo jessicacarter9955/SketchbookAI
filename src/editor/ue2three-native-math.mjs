@@ -58,6 +58,17 @@ const makeQuaternion = rotation => {
 };
 
 export function evaluateNativeMath(name, args, warning = () => {}) {
+    if (name === 'EqualEqual_KeyKey') {
+        // UE InputCore FKey::operator== compares FName KeyName (case-insensitive).
+        // Restrict to source-authored ASCII input key identities; foreign Unicode
+        // case folds are not silently treated as Unreal's FName comparison.
+        if (!Array.isArray(args) || args.length !== 2 || !args.every(key =>
+            key && typeof key === 'object' && !Array.isArray(key)
+            && Object.keys(key).length === 1 && typeof key.KeyName === 'string'
+            && /^[\x01-\x7f]+$/.test(key.KeyName)))
+            throw new Error('Invalid original FKey comparison parameters');
+        return args[0].KeyName.toLowerCase() === args[1].KeyName.toLowerCase();
+    }
     if (name === 'Divide_IntInt' || name === 'Percent_IntInt') {
         if (!Array.isArray(args) || args.length !== 2 || !args.every(isInt32))
             throw new Error(`Invalid native ${name} parameters`);
