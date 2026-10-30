@@ -5,6 +5,7 @@ Do not confuse this BYO-S3 R2 journal with the existing ChatGPT Site R2 memory:
 they are shared only when explicitly configured to the same authorized backend.
 """
 import argparse
+import base64
 import hashlib
 from html.parser import HTMLParser
 import ipaddress
@@ -13,6 +14,7 @@ import os
 import re
 import socket
 import sys
+import time
 from datetime import datetime, timezone
 from urllib.parse import quote, urlencode, urljoin, urlsplit
 from urllib.request import Request, build_opener, HTTPRedirectHandler, urlopen
@@ -213,13 +215,60 @@ class R2Journal:
             cursor = page["NextContinuationToken"]
 
 class XClient:
-    """X official API v2; requires the account owner's user-context OAuth access token."""
-    def __init__(self, token=None):
-        self.token = token or os.getenv("TRUTHLAB_X_USER_ACCESS_TOKEN","")
-        if not self.token:
-            raise RuntimeError("Connect X developer application and OAuth user access token before using X")
+    """Official X API v2, user-context OAuth2 with optional durable token rotation."""
+    def __init__(self, token=None, ledger=None):
+        self.ledger = ledger
+        saved = ledger.load("state/x-oauth-token.json", {}) if ledger else {}
+        self.token = token or saved.get("access_token") or os.getenv("TRUTHLAB_X_USER_ACCESS_TOKEN","")
+        self.refresh = saved.get("refresh_token") or os.getenv("TRUTHLAB_X_REFRESH_TOKEN","")
+        self.client_id = os.getenv("TRUTHLAB_X_CLIENT_ID","")
+        self.client_secret = os.getenv("TRUTHLAB_X_CLIENT_SECRET","")
+        self.expires_at = float(saved.get("expires_at",0) or 0)
+        if not self.token and not self.refresh:
+            raise RuntimeError("Connect X User OAuth2 with tweet.read tweet.write users.read offline.access")
+
+    def _refresh_token(self):
+        if not self.refresh or not self.client_id:
+            raise RuntimeError("X OAuth token expired; reconnect with offline.access and a client ID")
+        form = urlencode({"grant_type":"refresh_token","refresh_token":self.refresh,
+                          "client_id":self.client_id}).encode("utf-8")
+        headers = {"Content-Type":"application/x-www-form-urlencoded",
+                   "Accept":"application/json","User-Agent":USER_AGENT}
+        if self.client_secret:
+            pair=(self.client_id+":"+self.client_secret).encode("utf-8")
+            headers["Authorization"]="Basic "+base64.b64encode(pair).decode("ascii")
+        req=Request("https://api.x.com/2/oauth2/token",data=form,headers=headers,method="POST")
+        try:
+            with urlopen(req,timeout=20) as resp:
+                raw=resp.read(20001)
+                if len(raw)>20000:
+                    raise RuntimeError("X OAuth response too large")
+                response=json.loads(raw)
+        except HTTPError as exc:
+            raise RuntimeError("X OAuth refresh rejected: HTTP "+str(exc.code)) from None
+        new_token=response.get("access_token")
+        if not isinstance(new_token,str) or not new_token:
+            raise RuntimeError("X OAuth refresh did not return an access token")
+        self.token=new_token
+        self.refresh=response.get("refresh_token") or self.refresh
+        self.expires_at=time.time()+max(120,int(response.get("expires_in",7200)))
+        if self.ledger:
+            # Private credentials never appear in agent prompts or repository artifacts.
+            self.ledger.save("state/x-oauth-token.json",
+                     {"access_token":self.token,"refresh_token":self.refresh,
+                      "expires_at":self.expires_at})
+        return self.token
+
+    def bearer(self):
+        if self.expires_at and self.expires_at<=time.time()+120:
+            return "Bearer "+self._refresh_token()
+        if not self.token and self.refresh:
+            return "Bearer "+self._refresh_token()
+        return "Bearer "+self.token
+
     def get_me(self):
-        return request_json("https://api.x.com/2/users/me", "Bearer "+self.token)["data"]
+        return request_json("https://api.x.com/2/users/me", self.bearer())["data"]
+
     def create_post(self, text, reply_to=None):
         if not isinstance(text, str) or not (1 <= len(text) <= 280):
             raise ValueError("X post must be 1-280 characters")
@@ -228,12 +277,13 @@ class XClient:
             if not str(reply_to).isdigit():
                 raise ValueError("Invalid X reply destination")
             payload["reply"] = {"in_reply_to_tweet_id": str(reply_to)}
-        response = request_json("https://api.x.com/2/tweets", "Bearer "+self.token,
+        response = request_json("https://api.x.com/2/tweets", self.bearer(),
                                 method="POST", payload=payload)
         post_id = response.get("data",{}).get("id")
         if not post_id:
             raise RuntimeError("X did not confirm an actual post ID")
         return {"id":str(post_id),"url":"https://x.com/i/web/status/"+str(post_id)}
+
     def mentions(self, user_id, since_id=None):
         if not str(user_id).isdigit():
             raise ValueError("X user id invalid")
@@ -241,7 +291,7 @@ class XClient:
         if since_id:
             args["since_id"]=str(since_id)
         value = request_json("https://api.x.com/2/users/"+str(user_id)+"/mentions?"+urlencode(args),
-                             "Bearer "+self.token)
+                             self.bearer())
         return value.get("data", [])
 
 def propose_research_query(ledger):
@@ -350,7 +400,7 @@ def approve_and_publish(ledger, draft_id, github_actor, xclient=None):
     # exactly this immutable draft ID. The "sending" marker prevents uncertain retries.
     ledger.save("approvals/"+draft_id+".json",
                 {"draft_id":draft_id,"sha256":draft["sha256"],"github_actor":github_actor,"at":timestamp()})
-    client=xclient or XClient()
+    client=xclient or XClient(ledger=ledger)
     ledger.save("sending/"+draft_id+".json", {"draft_id":draft_id,"at":timestamp()})
     posted=client.create_post(draft["text"], reply_to=reply_to)
     ledger.save("published/"+draft_id+".json",
@@ -361,7 +411,7 @@ def approve_and_publish(ledger, draft_id, github_actor, xclient=None):
     return posted
 
 def poll_feedback(ledger, xclient=None):
-    client=xclient or XClient()
+    client=xclient or XClient(ledger=ledger)
     me=client.get_me()
     user_id=str(me["id"])
     state=ledger.load("state/x-feedback-cursor.json",{})
