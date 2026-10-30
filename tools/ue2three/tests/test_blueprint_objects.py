@@ -283,4 +283,41 @@ class SourceObjectTests(unittest.TestCase):
             expression(call,set(),set(),package=wrong_array,owner=1)
 
 
+    def test_static_kismet_context_family_dispatch_is_source_typed(self):
+        # UE5.7 static pure calls sometimes carry the exact native library CDO
+        # in EX_Context, while EX_FinalFunction retains the imported signature.
+        for library, method, params, result_type in [
+            ('KismetStringLibrary', 'Concat_StrStr',
+             [node('EX_StringConst', Value='Hello '), node('EX_StringConst', Value='world')], 'StrProperty'),
+            ('KismetStringLibrary', 'Conv_NameToString',
+             [node('EX_NameConst', Value='PlayerBone')], 'StrProperty'),
+            ('KismetSystemLibrary', 'MakeLiteralString',
+             [node('EX_UnicodeStringConst', Value='test 😀')], 'StrProperty'),
+        ]:
+            with self.subTest(library=library, method=method):
+                package = Package({'Imports': [
+                    {'ObjectName': '/Script/Engine', 'ClassName': 'Package'},
+                    {'ObjectName': library, 'ClassName': 'Class', 'OuterIndex': -1},
+                    {'ObjectName': 'Default__' + library, 'ClassName': library, 'OuterIndex': -1},
+                    {'ObjectName': method, 'ClassName': 'Function', 'OuterIndex': -2},
+                    {'ObjectName': 'Default__OtherLibrary', 'ClassName': 'OtherLibrary', 'OuterIndex': -1},
+                ], 'Exports': []})
+                call = node('EX_FinalFunction', StackNode=-4, Parameters=params)
+                context = node('EX_Context', ObjectExpression=node('EX_ObjectConst', Value=-3),
+                               ContextExpression=call, Offset=memory_size(call, package=package))
+                actual = expression(context, set(), set(), package=package)
+                self.assertEqual(actual['op'], 'native_call')
+                self.assertEqual(actual['identity'], ['/Script/Engine', library, method])
+                self.assertEqual(actual['return_type'], result_type)
+                self.assertEqual(len(actual['args']), len(params))
+                for broken in [
+                    {**context, 'Offset': context['Offset']+1},
+                    {**context, 'ObjectExpression': node('EX_ObjectConst', Value=-5)},
+                    {**context, 'ObjectExpression': node('EX_Nothing')},
+                    {**context, 'ContextExpression': node('EX_FinalFunction', StackNode=-4, Parameters=[])},
+                ]:
+                    with self.assertRaises(BlueprintTranslationError):
+                        expression(broken, set(), set(), package=package)
+
+
 if __name__ == '__main__': unittest.main()
