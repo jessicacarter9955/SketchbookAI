@@ -18,7 +18,7 @@ from urllib.request import Request, urlopen
 from world_interface import R2Journal, XClient, fingerprint, public_https_url, request_json, timestamp
 
 NETWORKS = ("x", "threads", "facebook", "instagram", "tiktok",
-            "youtube", "reddit", "snapchat")
+            "youtube", "reddit", "snapchat", "bluesky", "linkedin", "pinterest")
 
 def mandatory(name):
     value = os.environ.get(name, "")
@@ -266,6 +266,9 @@ def platform_publish(platform, draft, ledger):
     if platform=="tiktok": return tiktok_post(draft)
     if platform=="youtube": return youtube_post(draft,ledger)
     if platform=="snapchat": return snapchat_post(draft)
+    if platform in ("bluesky","linkedin","pinterest"):
+        from social_extra import bluesky_post, linkedin_post, pinterest_post
+        return {"bluesky":bluesky_post,"linkedin":linkedin_post,"pinterest":pinterest_post}[platform](draft)
     raise ValueError("Unsupported social platform")
 
 def queue_draft(ledger, platform, content, research_id):
