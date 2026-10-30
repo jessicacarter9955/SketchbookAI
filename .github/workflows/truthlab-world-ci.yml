@@ -37,6 +37,6 @@ jobs:
           assert result["provider"]=="wikipedia", result
           assert result["results"], result
           page=read_public_page(result["results"][0]["url"])
-          assert page["sha256"] and len(page["text"])>100
+          assert page["sha256"] and len(page["text"])>100 and isinstance(page["truncated"], bool)
           print("LIVE_INTERNET_VERIFIED",result["provider"],page["url"],len(page["text"]))
           PY
