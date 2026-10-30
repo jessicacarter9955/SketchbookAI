@@ -100,7 +100,22 @@ def source_actor_member(value, package, owner, reads, outputs, depth):
     call = value.get('ContextExpression', {})
     if kind(call) != 'EX_InstanceVariable':
         return None
-    target, target_schema = variable(value.get('ObjectExpression', {}), package, owner, reads, outputs, depth)
+    receiver = value.get('ObjectExpression', {})
+    receiver_token = kind(receiver)
+    if receiver_token in ('EX_InstanceVariable', 'EX_LocalVariable', 'EX_LocalOutVariable'):
+        target, target_schema = variable(receiver, package, owner, reads, outputs, depth)
+    elif receiver_token == 'EX_Context':
+        # UE can chain original Actor member contexts. Each intermediate Actor
+        # handle must itself come from a verified reflected source property.
+        nested = source_actor_member(receiver, package, owner, reads, outputs, depth + 1)
+        if nested is None: return None
+        target, target_schema = nested, nested['schema']
+    elif receiver_token == 'EX_DynamicCast':
+        from blueprint_casts import dynamic_cast
+        target = dynamic_cast(receiver, package, owner, reads, outputs, depth + 1)
+        target_schema = target['schema']
+    else:
+        return None
     identity = tuple(target_schema.get('class', ()))
     if target_schema.get('reference_kind') != 'runtime_actor' or len(identity) != 2 or not identity[0].startswith('/Game/'):
         return None
