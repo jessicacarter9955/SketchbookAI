@@ -189,6 +189,26 @@ class SourceObjectTests(unittest.TestCase):
         with self.assertRaisesRegex(BlueprintTranslationError,'non-ASCII narrow string layout'):
             expression(node('EX_CallMath',StackNode=-1,Parameters=[narrow_unicode,right]),set(),set(),package=package,owner=1)
 
+    def test_source_make_literal_string_accepts_only_exact_kismet_system_identity(self):
+        package = Package({'Imports': [
+            {'ObjectName': 'MakeLiteralString', 'ClassName': 'Function', 'OuterIndex': -2},
+            {'ObjectName': 'KismetSystemLibrary', 'OuterIndex': -3},
+            {'ObjectName': '/Script/Engine', 'ClassName': 'Package'},
+        ]})
+        literal = node('EX_UnicodeStringConst', Value='Blue-Print 😀')
+        call = node('EX_CallMath', StackNode=-1, Parameters=[literal])
+        result = expression(call, set(), set(), package=package)
+        self.assertEqual(result['op'], 'native_call')
+        self.assertEqual(result['identity'], ['/Script/Engine', 'KismetSystemLibrary', 'MakeLiteralString'])
+        self.assertEqual(result['parameter_types'], ['StrProperty'])
+        self.assertEqual(result['return_type'], 'StrProperty')
+        self.assertEqual(result['args'][0]['value'], 'Blue-Print 😀')
+        with self.assertRaisesRegex(BlueprintTranslationError, 'arity'):
+            expression(node('EX_CallMath', StackNode=-1, Parameters=[]), set(), set(), package=package)
+        package.imports[1]['ObjectName'] = 'KismetStringLibrary'
+        with self.assertRaisesRegex(BlueprintTranslationError, 'outside Engine.KismetMathLibrary'):
+            expression(call, set(), set(), package=package)
+
     def test_component_get_owner_context_requires_a_typed_original_native_component(self):
         package=Package({'Imports':[
             {'ObjectName':'GetOwner','ClassName':'Function','OuterIndex':-2},
