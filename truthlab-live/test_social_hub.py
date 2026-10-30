@@ -81,7 +81,7 @@ class HubTests(unittest.TestCase):
                     sh.facebook_post({"text":"hello"})
     def test_instagram_denies_text_only(self):
         with patch.dict(os.environ,{"TRUTHLAB_IG_USER_ID":"12345","TRUTHLAB_IG_ACCESS_TOKEN":"test"}):
-            with self.assertRaisesRegex(ValueError,"media"):
+            with self.assertRaisesRegex(ValueError,"image/video"):
                 sh.instagram_post({"text":"Only text","media_type":"text","media_url":"https://example.com/photo.jpg"})
     def test_tiktok_processing_is_not_published(self):
         content={"text":"photo","media_type":"image","media_url":"https://example.com/photo.jpg",
