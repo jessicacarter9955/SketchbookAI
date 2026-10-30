@@ -122,6 +122,20 @@ test('witnessed rotator construction and breaks retain native argument and outpu
         assert.throws(()=>evaluateNativeMath(name,args),/Invalid native/);
 });
 
+test('original NormalizedDeltaRotator computes normalized A minus B in Unreal axis conventions', () => {
+    assert.deepEqual(evaluateNativeMath('NormalizedDeltaRotator', [
+        {Pitch:190,Yaw:-10,Roll:180}, {Pitch:0,Yaw:20,Roll:0}
+    ]), {Pitch:-170,Yaw:-30,Roll:180});
+    assert.deepEqual(evaluateNativeMath('NormalizedDeltaRotator', [
+        {Pitch:-181,Yaw:359,Roll:-720}, {Pitch:0,Yaw:-2,Roll:0}
+    ]), {Pitch:179,Yaw:1,Roll:0});
+    for (const args of [[], [{}], [{Pitch:0,Yaw:0,Roll:0}], [
+        {Pitch:0,Yaw:NaN,Roll:0},{Pitch:0,Yaw:0,Roll:0}
+    ], [{Pitch:0,Yaw:0,Roll:0},{X:0,Y:0,Z:0}]])
+        assert.throws(() => evaluateNativeMath('NormalizedDeltaRotator', args),
+            /Invalid native NormalizedDeltaRotator parameters/);
+});
+
 test('witnessed MakeTransform constructs source FTransform quaternion, translation and scale fields', () => {
     const location={X:1,Y:2,Z:3},rotation={Pitch:0,Yaw:90,Roll:0},scale={X:2,Y:3,Z:4};
     const transform=evaluateNativeMath('MakeTransform',[location,rotation,scale]);
