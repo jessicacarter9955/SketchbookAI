@@ -9,6 +9,57 @@ from map_migration import valid_glb
 from sound_migration import SoundMigrationError, validate_source_wave
 
 
+def certified_recovered_map_files(receipt, published, project, snapshot_hash, source_maps):
+    """Recognize the separately source-verified DDS GLB recovery without rewriting failed native receipts.
+
+    Green here means *file integrity only*. It never certifies Unreal Play,
+    original shader/light fidelity, or Three.js gameplay behavior.
+    """
+    if (not isinstance(receipt, dict) or receipt.get('schema_version') != 1
+            or receipt.get('status') != 'all_58_glb_files_source_validated'
+            or receipt.get('original_source_project') != project
+            or receipt.get('source_snapshot_hash') != snapshot_hash
+            or receipt.get('original_verified_files') != 56
+            or receipt.get('recovered_files') != 2
+            or receipt.get('total_verified_glb_files') != 58
+            or receipt.get('visual_1to1_verified') is not False
+            or receipt.get('gameplay_play_verified') is not False):
+        return {}
+    files = receipt.get('files')
+    if not isinstance(files, list) or len(files) != 58 or not isinstance(source_maps, list):
+        return {}
+    expected = set(source_maps)
+    if not expected or len(expected) != len(source_maps) or not all(isinstance(x, str) for x in expected):
+        return {}
+    map_root = (Path(published) / 'maps').resolve()
+    found = {}
+    for row in files:
+        if not isinstance(row, dict) or row.get('kind') != 'map':
+            continue
+        package, path = row.get('source_package'), row.get('path')
+        if (package not in expected or package in found or not isinstance(path, str)
+                or not isinstance(row.get('sha256'), str)):
+            return {}
+        output = Path(path).resolve()
+        # The source witness is only accepted for the actual published file,
+        # never an unrelated or missing copy elsewhere on the workstation.
+        if (output.parent != map_root or output.suffix.lower() != '.glb'
+                or not valid_glb(output) or file_hash(output) != row['sha256']):
+            return {}
+        found[package] = row
+    if set(found) != expected:
+        return {}
+    startup = found.get('/Game/Fixers/Maps/LV_Fixers_Startup')
+    gallery = found.get('/Game/Fixers/VFX/NiagaraExamples/GalleryLevel')
+    if (not startup or startup.get('mesh_count') != 0 or startup.get('source_only') is not True
+            or not gallery or gallery.get('original_actor_count') != 185
+            or gallery.get('source_actors_represented') != 185
+            or gallery.get('source_geometry_covered') != 184
+            or gallery.get('native_unreal_export_clean') is not False):
+        return {}
+    return found
+
+
 def offline_source_checks(programs, proof):
     """Data evidence can make migration partial, never grant visual acceptance."""
     if (not programs or proof.get('schema_version') != 1 or proof.get('status') != 'passed'
@@ -34,7 +85,8 @@ def project_progress(workspace, published, character_dir=None):
     workspace, published = Path(workspace).resolve(), Path(published).resolve()
     inputs = {'inventory': workspace / 'artifacts/inventory.json',
               'registry': workspace / 'artifacts/engine_metadata.json',
-              'maps': published / 'map-manifest.json', 'ui': published / 'ui-manifest.json',
+              'maps': published / 'map-manifest.json',
+              'glb_recovery': published / 'glb-source-recovery.json', 'ui': published / 'ui-manifest.json',
               'audio': published / 'audio-manifest.json',
               'blueprints': published / 'blueprint-programs.json',
               'live_blueprints': published / 'blueprint-live-verification.json',
@@ -110,6 +162,12 @@ def project_progress(workspace, published, character_dir=None):
         outputs[row.get('package')] = sha
         if row.get('status') in ('exported', 'reused') and valid_glb(path) and sha == row.get('output_sha256'):
             ready.append(row)
+    recovered_map_files = certified_recovered_map_files(
+        documents.get('glb_recovery', {}), published, project,
+        registry['source_snapshot_hash'], inventory.get('maps', []))
+    outputs['recovered_map_files'] = {
+        package: file_hash(Path(entry['path'])) for package, entry in recovered_map_files.items()
+    }
     character = documents.get('character', {})
     if character.get('source', {}).get('project') != project:
         character = {}
@@ -156,16 +214,25 @@ def project_progress(workspace, published, character_dir=None):
     def row(key, title, evidence, action, partial=False):
         rows.append({'id': key, 'title': title, 'status': 'yellow' if partial else 'red',
                      'evidence': evidence, 'next': action, 'fidelity_1_to_1': False})
+    gallery_recovered = recovered_map_files.get('/Game/Fixers/VFX/NiagaraExamples/GalleryLevel')
     row('geometry', 'Geometria e trasformazioni',
-        f"{transforms['matched']} trasformazioni coerenti, {transforms['mismatched']} diverse, {transforms['skipped']} non confrontabili",
-        'Associare gli attori mancanti; confrontare componenti, dimensioni, gerarchie e terreno', bool(ready))
+        f"{transforms['matched']} trasformazioni coerenti, {transforms['mismatched']} diverse, {transforms['skipped']} non confrontabili"
+        + ('; Gallery 185/185 attori rappresentati, 184 geometrie e un TargetPoint non renderizzabile'
+           if gallery_recovered else ''),
+        'Confrontare componenti, dimensioni, gerarchie e terreno con il Play originale'
+        if gallery_recovered else 'Associare gli attori mancanti; confrontare componenti, dimensioni, gerarchie e terreno',
+        bool(ready or recovered_map_files))
     row('materials', 'Materiali, texture e shader',
         f"{classes['Material'] + classes['MaterialInstanceConstant']} materiali/istanze, {classes['Texture2D']} texture sorgenti; {fallbacks} ripieghi nella selezione pubblicata",
         'Tradurre funzioni e shader originali, risolvere i ripieghi e confrontare tutti i canali PBR', bool(ready))
     row('lighting', 'Luci, esposizione e postprocessing', 'Luci glTF conservate; ambiente approssimato' if ready else 'Nessuna scena pubblicata verificata',
         'Migrare SkyLight, esposizione, ombre, riflessi e postprocessing con confronto visivo', bool(ready))
-    row('maps', 'Altre mappe e streaming', f"{len(ready)}/{len(inventory.get('maps', []))} file mappa pubblicati e integri; {classes['World']} World nel registry",
-        'Convertire le mappe mancanti e verificarle; tradurre streaming e passaggi tra livelli', bool(ready))
+    map_file_count = len(recovered_map_files) if recovered_map_files else len(ready)
+    row('maps', 'Altre mappe e streaming',
+        f"{map_file_count}/{len(inventory.get('maps', []))} file mappa pubblicati e integri; {classes['World']} World nel registry",
+        'Certificare il Play, streaming e passaggi tra livelli; file GLB già completi'
+        if recovered_map_files else 'Convertire le mappe mancanti e verificarle; tradurre streaming e passaggi tra livelli',
+        bool(ready or recovered_map_files))
     row('characters', 'Personaggi, rig e accessori', f"{classes['SkeletalMesh']} mesh scheletriche sorgenti; profilo personaggio {'presente' if character else 'assente'}",
         'Verificare rig, skin, materiali, socket, IK e gli altri personaggi', bool(character))
     row('clips', 'Clip di animazione', f"{clips} file clip pubblicati; {classes['AnimSequence']} sequenze sorgenti (incluse pose e varianti)",
@@ -218,6 +285,12 @@ def project_progress(workspace, published, character_dir=None):
     if ready:
         milestones.append({'title': 'Integrità delle mappe pubblicate', 'status': 'green',
                            'evidence': f'{len(ready)} GLB con checksum e intestazione verificati'})
+    if recovered_map_files:
+        milestones.append({'title': 'GLB mappe originali DDS completi', 'status': 'green',
+                           'evidence': f"{len(recovered_map_files)}/{len(inventory.get('maps', []))} GLB originali con SHA-256 e sorgente certificati; Play separato"})
+        if gallery_recovered:
+            milestones.append({'title': 'Gallery originale: attori tutti rappresentati', 'status': 'green',
+                               'evidence': '185/185 attori, 184 con geometria; TargetPoint originale non renderizzabile; fedeltà Play esclusa'})
     if transforms['matched'] and not transforms['mismatched']:
         milestones.append({'title': 'Trasformazioni confrontabili', 'status': 'green',
                            'evidence': f"{transforms['matched']} coerenti; escluse le {transforms['skipped']} non confrontabili"})
