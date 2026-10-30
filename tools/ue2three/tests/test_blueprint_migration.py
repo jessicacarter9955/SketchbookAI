@@ -13,6 +13,26 @@ def variable(token, name): return node(token, Variable={'New': {'Path': [name], 
 
 
 class BlueprintMigrationTests(unittest.TestCase):
+    def test_normalized_delta_rotator_requires_two_source_rotators(self):
+        from blueprint_migration import expression, MATH_CALLS, NATIVE_MATH_INPUT_TYPES
+        self.assertEqual(MATH_CALLS['NormalizedDeltaRotator'][0], 2)
+        self.assertEqual(NATIVE_MATH_INPUT_TYPES['NormalizedDeltaRotator'], ('Rotator', 'Rotator'))
+        imports = [
+            {'ObjectName': 'NormalizedDeltaRotator', 'ClassName': 'Function', 'OuterIndex': -2},
+            {'ObjectName': 'KismetMathLibrary', 'OuterIndex': -3},
+            {'ObjectName': '/Script/Engine'}
+        ]
+        package = Package({'Imports': imports, 'ObjectVersionUE5': 'IMPORT_TYPE_HIERARCHIES'})
+        rotator = lambda pitch: node('EX_RotationConst', Value={'Pitch': pitch, 'Yaw': 0, 'Roll': 0})
+        call = node('EX_CallMath', StackNode=-1, Parameters=[rotator(190), rotator(10)])
+        ir = expression(call, set(), set(), package=package)
+        self.assertEqual(ir['op'], 'math')
+        self.assertEqual(ir['name'], 'NormalizedDeltaRotator')
+        self.assertEqual(ir['args'][0]['value']['Pitch'], 190)
+        call['Parameters'][1] = node('EX_VectorConst', Value={'X': 0, 'Y': 0, 'Z': 0})
+        with self.assertRaisesRegex(BlueprintTranslationError, 'parameter type differs'):
+            expression(call, set(), set(), package=package)
+
     def test_source_ue5_transform_constant_has_exact_lwc_layout_and_runtime_schema(self):
         import copy
         from blueprint_migration import expression, native_math_source_type
