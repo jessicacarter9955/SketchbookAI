@@ -22,8 +22,10 @@ class FakeR2:
 class FakeX:
     def __init__(self):
         self.sent=[]
-    def create_post(self,text):
+        self.replies=[]
+    def create_post(self,text,reply_to=None):
         self.sent.append(text)
+        self.replies.append(reply_to)
         return {"id":"123456789","url":"https://x.com/i/web/status/123456789"}
     def get_me(self):
         return {"id":"123456"}
@@ -121,6 +123,28 @@ class WorldTests(unittest.TestCase):
         self.assertEqual(result["real_mentions"],1)
         self.assertEqual(result["last_seen_id"],"1234567890")
         self.assertTrue(r.load("feedback/1234567890.json"))
+    def test_real_mention_becomes_only_human_approved_reply(self):
+        r=FakeR2()
+        w.poll_feedback(r,FakeX())
+        r.save("state/control.json",{"paused":False})
+        with patch.object(w,"search_web",return_value={"query":"astronomy","searched_at":"time",
+             "results":[{"title":"Stars","url":"https://example.com/stars","snippet":"Astronomy","provider":"brave"}]}):
+            with patch.object(w,"read_public_page",return_value={"url":"https://example.com/stars",
+                "text":"Actual test-page excerpt about the evolution of stars with substantial content.", 
+                "sha256":"sha","fetched_at":"time"}):
+                with patch.object(w,"completion",side_effect=["astronomy","Ari verified a source",
+                    "Noor independently checked source",
+                    "An AI account replies with a source https://example.com/stars"]):
+                    result=w.research_cycle(r)
+        did=result["draft_id"]
+        self.assertEqual(r.load("drafts/"+did+".json")["reply_to"],"1234567890")
+        self.assertFalse(r.load("replied/1234567890.json"))
+        x=FakeX()
+        with patch.dict(os.environ,{"TRUTHLAB_APPROVER_GITHUB_LOGIN":"jessicacarter9955"}):
+            posted=w.approve_and_publish(r,did,"jessicacarter9955",x)
+        self.assertEqual(posted["id"],"123456789")
+        self.assertEqual(x.replies,["1234567890"])
+        self.assertTrue(r.load("replied/1234567890.json"))
     def test_x_does_not_fabricate_success(self):
         x=w.XClient(token="test")
         with patch.object(w,"request_json",return_value={}):
