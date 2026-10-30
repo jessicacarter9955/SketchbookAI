@@ -128,7 +128,7 @@ test('original NormalizedDeltaRotator computes normalized A minus B in Unreal ax
     ]), {Pitch:-170,Yaw:-30,Roll:180});
     assert.deepEqual(evaluateNativeMath('NormalizedDeltaRotator', [
         {Pitch:-181,Yaw:359,Roll:-720}, {Pitch:0,Yaw:-2,Roll:0}
-    ]), {Pitch:179,Yaw:1,Roll:0});
+    ]), {Pitch:179,Yaw:1,Roll:-0});
     for (const args of [[], [{}], [{Pitch:0,Yaw:0,Roll:0}], [
         {Pitch:0,Yaw:NaN,Roll:0},{Pitch:0,Yaw:0,Roll:0}
     ], [{Pitch:0,Yaw:0,Roll:0},{X:0,Y:0,Z:0}]])
