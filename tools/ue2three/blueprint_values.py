@@ -29,6 +29,12 @@ def asset_constant(package, reference):
 
 
 def native_schema(identity):
+    # FKey is a reflected InputCore struct: equality compares its FName KeyName.
+    if identity == ('/Script/InputCore', 'Key'):
+        key_name = {'type': 'NameProperty', 'default': 'None'}
+        return {'type': 'StructProperty', 'source': identity[0], 'native': identity[1],
+                'fields': {'KeyName': key_name}, 'default': {'KeyName': 'None'},
+                'member_order': ['KeyName']}
     if identity == ('/Script/SlateCore', 'SlateColor'):
         linear_color=native_schema(('/Script/CoreUObject','LinearColor'))
         color_rules={'ESlateColorStylingMode::UseColor_Specified':0,
