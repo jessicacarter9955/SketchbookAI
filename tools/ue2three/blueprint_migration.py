@@ -416,6 +416,22 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
             # Kismet bytecode offset.
             promoted = {**call, '$type': 'UAssetAPI.Kismet.Bytecode.Expressions.EX_CallMath, UAssetAPI'}
             return expression(promoted, reads, outputs, depth+1, package, owner)
+        # A full family of pure Engine Kismet library functions may be encoded
+        # by UE5.7 as EX_Context(Default__Library, EX_FinalFunction) instead of
+        # EX_CallMath. Route only exact reflected native contracts; this keeps
+        # every String/Text/System signature and runtime implementation in the
+        # shared registry rather than manually special-casing each Blueprint.
+        if kind(call) == 'EX_FinalFunction':
+            from blueprint_objects import NATIVE_OBJECT_CALLS
+            static_identity = import_path(package, call.get('StackNode'))
+            if static_identity in NATIVE_OBJECT_CALLS:
+                expected_cdo = ('/Script/Engine', 'Default__' + static_identity[1])
+                if (kind(obj) != 'EX_ObjectConst'
+                        or import_path(package, obj.get('Value')) != expected_cdo
+                        or value.get('Offset') != memory_size(call, package=package)):
+                    raise BlueprintTranslationError('Original pure Kismet library CDO receiver or context offset differs')
+                promoted = {**call, '$type': 'UAssetAPI.Kismet.Bytecode.Expressions.EX_CallMath, UAssetAPI'}
+                return expression(promoted, reads, outputs, depth+1, package, owner)
         if (kind(obj) == 'EX_ObjectConst' and import_path(package, obj.get('Value')) == ('/Script/Engine', 'Default__DataTableFunctionLibrary')
                 and kind(call) == 'EX_CallMath'
                 and import_path(package, call.get('StackNode')) == ('/Script/Engine', 'DataTableFunctionLibrary', 'GetDataTableRowNames')):
