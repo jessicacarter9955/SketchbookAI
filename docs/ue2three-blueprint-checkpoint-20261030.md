@@ -22,6 +22,8 @@ Source: the original `VIPExtractionKitDDS.uproject` inventory and cached UAssetA
 5. `KismetSystemLibrary.MakeLiteralText`: UE5.7 inline `FText` identity with preserved invariant FText metadata/history; targeted compiler and runtime tests pass. It unblocks an opcode family but yielded **zero additional whole functions** in this replay.
 6. `KismetInputLibrary.EqualEqual_KeyKey`: original InputCore `FKey` schema, reflected `FName KeyName`, `StructSize=32`, exact native import and parameter arity; implemented in source compiler and Three.js runtime, rejecting foreign layouts and Unicode case-fold uncertainty. Targeted tests pass, no added completely translated functions in the source replay.
 
+7. Shared pure-Kismet `EX_Context` dispatcher: recognizes exact `Default__KismetStringLibrary`, `Default__KismetTextLibrary`, and `Default__KismetSystemLibrary` native calls via the existing reflected signature registry, validating import ownership, bytecode offset, and original argument/return types. Added strict positive/negative compiler tests and JS runtime concatenation test. This is a working generic family capability, *not yet* a universal cross-object dispatcher. The full source replay remained **537/1,957**, so it does **not** count additional green functions.
+
 The source is on branch `chatgpt/dds-blueprints-continue-20261030`, additional `FKey` implementation at commit `03c5224e805e974cafc45c65ba8cb331208bf91b`.
 
 ## Verified tests and replay
@@ -30,13 +32,14 @@ An **isolated test worktree** (not the dirty existing DDS worktree) was used:
 `C:\Users\jessi\Documents\Codex\2026-10-01\cl\SketchbookAI-dds-blueprint-test-20261030`.
 
 - `test_blueprint_keys.py`: **2 passed** (additional regression and rejection checks).
-- `test_blueprint_objects.py`: **16 passed**.
+- `test_blueprint_objects.py`: **17 passed** after generic CDO dispatcher.
 - `test_blueprint_source_objects.py`: **4 passed**.
 - `test_blueprint_migration.py`: **36 passed**.
 - `tests/ue2three-native-keys.test.mjs`: **2 passed** (additional input key semantics and rejection checks).
-- `tests/ue2three-native-strings.test.mjs`: **7 passed**.
+- `tests/ue2three-native-strings.test.mjs`: **8 passed** after shared native concatenation.
 - `tests/ue2three-native-math.test.mjs`: **20 passed**.
 - Full source-witnessed replay of the 276 packages after `FKey` change: **537 translated, 1,420 blocked, 0 missing**, completed on Windows (35.4-second whole-source replay; 0 exit code).
+- Full source-witnessed replay after shared CDO dispatcher commit `e7cfd006226f9ffdd13361a06f1727d0b8ff4381`: **537 translated, 1,420 blocked, 0 missing** (44.6-second full replay; 0 exit code).
 
 A previous broader isolated run passed **447 Python tests** and **194 JS tests**. Two Python test *files* exceeded an isolated 40-second timeout. Five JS test cases could not run due to missing `three` dependency in this fresh worktree; this is not evidence that the corresponding runtime passes.
 
@@ -67,3 +70,7 @@ Across *all* bytecode, frequent `EX_Context` receiver/call pairs include origina
 6. Run an actual Play certification in the port; full gameplay/animation/physics/inventory/multiplayer fidelity is **not yet certified**.
 
 The original Unreal/DDS assets, TruthLab and unrelated development environments must remain untouched. Do not delete or overwrite other branches/worktrees. This checkpoint does not mark the Blueprint migration as complete.
+
+## Windows autonomous coordinator observed blocker (2026-10-30)
+
+A separate read-only bridge audit found an existing `dds_automation.py` coordinator in the original checkout, but **not working**: `phase=failed`, `error=Repository worktree must be clean before autonomous work starts.`, 77 failures, 8 families exhausted, 2 configured workers, last checkpoint 534/1,957 on the older `chatgpt/ue2three-dds` branch. The isolated test worktree at `SketchbookAI-dds-blueprint-test-20261030` is clean, but initially had no `blueprint-plan.json`; generating that from the preserved source cache is the safe next prerequisite. Do not claim autonomous coding is active until an actual worker is observed.
