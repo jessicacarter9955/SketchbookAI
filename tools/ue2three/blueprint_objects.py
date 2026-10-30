@@ -6,6 +6,10 @@ from core import digest
 
 ACTOR_BASES = {('/Script/Engine', name) for name in ('Actor', 'Pawn', 'Character')}
 NATIVE_OBJECT_CALLS = {
+    ('/Script/Engine', 'KismetSystemLibrary', 'MakeLiteralText'): {
+        'parameter_types': ('TextProperty',), 'return_type': 'TextProperty',
+        'argument_tokens': (('EX_TextConst',),),
+    },
     ('/Script/Engine', 'KismetSystemLibrary', 'MakeLiteralString'): {
         'parameter_types': ('StrProperty',), 'return_type': 'StrProperty',
         'argument_tokens': (('EX_StringConst', 'EX_UnicodeStringConst'),),
