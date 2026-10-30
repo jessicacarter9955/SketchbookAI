@@ -1287,6 +1287,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 Len: {args: ['StrProperty'], result: 'IntProperty'},
                 Contains: {args: ['StrProperty', 'StrProperty', 'BoolProperty', 'BoolProperty'], result: 'BoolProperty'},
                 MakeLiteralDouble: {args:['DoubleProperty'], result:'DoubleProperty', library:'KismetSystemLibrary'},
+                MakeLiteralString: {args:['StrProperty'], result:'StrProperty', library:'KismetSystemLibrary'},
                 Conv_StringToText: {args:['StrProperty'], result:'TextProperty', library:'KismetTextLibrary'},
                 Conv_NameToText: {args:['NameProperty'], result:'TextProperty', library:'KismetTextLibrary'},
                 Conv_TextToString: {args:['TextProperty'], result:'StrProperty', library:'KismetTextLibrary'}
@@ -1330,7 +1331,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 }
                 return value;
             });
-            if (name === 'MakeLiteralDouble') return values[0];
+            if (name === 'MakeLiteralDouble' || name === 'MakeLiteralString') return values[0];
             if (name === 'Len') return values[0].length; // Unreal FString.Len counts UTF-16 TCHAR units.
             if (name === 'Contains') {
                 if (values[2] !== false || values[3] !== false)
