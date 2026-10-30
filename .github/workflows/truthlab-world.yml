@@ -14,7 +14,7 @@ on:
         description: "Target network for an individually approved social post"
         required: false
         type: choice
-        options: [x, facebook, instagram, threads, tiktok, youtube, reddit, snapchat]
+        options: [x, facebook, instagram, threads, tiktok, youtube, reddit, snapchat, bluesky, linkedin, pinterest]
         default: x
       draft_id:
         description: "Exact immutable 24-character draft identifier, for approve-publish only"
@@ -106,6 +106,12 @@ jobs:
           TRUTHLAB_REDDIT_SUBREDDIT: ${{ vars.TRUTHLAB_REDDIT_SUBREDDIT }}
           TRUTHLAB_SNAP_PUBLIC_PROFILE_ID: ${{ secrets.TRUTHLAB_SNAP_PUBLIC_PROFILE_ID }}
           TRUTHLAB_SNAP_USER_TOKEN: ${{ secrets.TRUTHLAB_SNAP_USER_TOKEN }}
+          TRUTHLAB_BSKY_IDENTIFIER: ${{ secrets.TRUTHLAB_BSKY_IDENTIFIER }}
+          TRUTHLAB_BSKY_APP_PASSWORD: ${{ secrets.TRUTHLAB_BSKY_APP_PASSWORD }}
+          TRUTHLAB_LINKEDIN_AUTHOR_URN: ${{ secrets.TRUTHLAB_LINKEDIN_AUTHOR_URN }}
+          TRUTHLAB_LINKEDIN_ACCESS_TOKEN: ${{ secrets.TRUTHLAB_LINKEDIN_ACCESS_TOKEN }}
+          TRUTHLAB_LINKEDIN_VERSION: '202609'
+          TRUTHLAB_PINTEREST_ACCESS_TOKEN: ${{ secrets.TRUTHLAB_PINTEREST_ACCESS_TOKEN }}
           TRUTHLAB_APPROVER_GITHUB_LOGIN: 'jessicacarter9955'
           ACTION: ${{ inputs.action }}
           DRAFT_ID: ${{ inputs.draft_id }}
