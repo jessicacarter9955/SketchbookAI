@@ -97,8 +97,8 @@ def read_public_page(url, max_chars=7000):
         if typ not in ("text/plain", "text/html"):
             raise ValueError("Unsupported page content type: " + typ)
         raw = response.read(320001)
-        if len(raw) > 320000:
-            raise ValueError("Page too large")
+        was_truncated = len(raw) > 320000
+        raw = raw[:320000]
         decoded = raw.decode(response.headers.get_content_charset() or "utf-8", errors="replace")
         if typ == "text/html":
             parser = PlainText()
@@ -108,7 +108,7 @@ def read_public_page(url, max_chars=7000):
         if len(body) < 80:
             raise ValueError("Page has insufficient visible text")
         return {"url": response.geturl(), "fetched_at": timestamp(), "text": body,
-                "sha256": hashlib.sha256(body.encode()).hexdigest()}
+                "sha256": hashlib.sha256(body.encode()).hexdigest(), "truncated": was_truncated}
 
 def search_web(query, count=4):
     if not isinstance(query, str) or not (2 <= len(query.strip()) <= 180):
