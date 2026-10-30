@@ -164,6 +164,8 @@ def native_math_source_type(value, package, owner):
         from blueprint_objects import NATIVE_OBJECT_CALLS
         native = NATIVE_OBJECT_CALLS.get(import_path(package, value.get('StackNode')))
         if native is not None: return native['return_type']
+        if import_path(package, value.get('StackNode')) == ('/Script/Engine', 'KismetInputLibrary', 'EqualEqual_KeyKey'):
+            return 'BoolProperty'
         return native_math_result_type(math_call(package, value.get('StackNode')))
     if token in ('EX_InstanceVariable','EX_LocalVariable','EX_LocalOutVariable') and package:
         pointer = value.get('Variable', {})
@@ -519,6 +521,31 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         from blueprint_effects import multicast
         return multicast(value, package, owner, reads, outputs, depth)
     if token == 'EX_CallMath':
+        if package and import_path(package, value.get('StackNode')) == ('/Script/Engine', 'KismetInputLibrary', 'EqualEqual_KeyKey'):
+            # UKismetInputLibrary::EqualEqual_KeyKey delegates to FKey::operator==
+            # and that operator compares the reflected FName KeyName, not display text.
+            from blueprint_effects import array_item_schema
+            ref = value.get('StackNode')
+            imported = package.imports[-ref-1] if type(ref) is int and -len(package.imports) <= ref < 0 else {}
+            if (imported.get('ClassName') != 'Function'
+                    or import_path(package, imported.get('OuterIndex')) != ('/Script/Engine', 'KismetInputLibrary')):
+                raise BlueprintTranslationError('Original KismetInputLibrary function identity differs')
+            args = value.get('Parameters')
+            if not isinstance(args, list) or len(args) != 2:
+                raise BlueprintTranslationError('Original FKey comparison arity differs')
+            key_schema = native_schema(('/Script/InputCore', 'Key'))
+            for arg in args:
+                if array_item_schema(arg, package, owner, reads, outputs, depth) != key_schema:
+                    raise BlueprintTranslationError('Original FKey comparison parameter schema differs')
+                if kind(arg) == 'EX_StructConst':
+                    entries = arg.get('Value')
+                    if (arg.get('StructSize') != 32 or not isinstance(entries, list) or len(entries) != 1
+                            or kind(entries[0]) != 'EX_NameConst'
+                            or not isinstance(entries[0].get('Value'), str)
+                            or not re.fullmatch(r'[\x01-\x7f]+', entries[0]['Value'])):
+                        raise BlueprintTranslationError('Original FKey literal layout or FName spelling differs')
+            return {'op': 'math', 'name': 'EqualEqual_KeyKey',
+                    'args': [expression(arg, reads, outputs, depth+1, package, owner) for arg in args]}
         if package:
             if import_path(package, value.get('StackNode')) == ('/Script/Engine', 'DataTableFunctionLibrary', 'GetDataTableRowNames'):
                 raise BlueprintTranslationError('Unsupported original GetDataTableRowNames: source row-name ordering is not verified')
