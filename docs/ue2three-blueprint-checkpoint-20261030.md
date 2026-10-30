@@ -74,3 +74,17 @@ The original Unreal/DDS assets, TruthLab and unrelated development environments 
 ## Windows autonomous coordinator observed blocker (2026-10-30)
 
 A separate read-only bridge audit found an existing `dds_automation.py` coordinator in the original checkout, but **not working**: `phase=failed`, `error=Repository worktree must be clean before autonomous work starts.`, 77 failures, 8 families exhausted, 2 configured workers, last checkpoint 534/1,957 on the older `chatgpt/ue2three-dds` branch. The isolated test worktree at `SketchbookAI-dds-blueprint-test-20261030` is clean, but initially had no `blueprint-plan.json`; generating that from the preserved source cache is the safe next prerequisite. Do not claim autonomous coding is active until an actual worker is observed.
+
+## Isolated validator repair candidate (2026-10-30, late run; not yet promoted)
+
+- Source baseline independently read from the target branch `68e5669df45d216bb3ae7f4f71086123874d031d`: **537/1,957 translated; 1,420 blocked; 0 missing original parsed packages**. No new translation is claimed.
+- Previous Windows bridge probes proved `python -B -m unittest discover -s tests -p test_blueprint*.py -q`, with cwd `tools/ue2three`, passes **181 tests** in the clean isolated checkout and **182 tests** in the native-math worker worktree. This is a focused environment probe, not verification of this candidate commit.
+- The existing worker validator was incorrectly launching discovery from the repository root. Its logs show `ModuleNotFoundError: blueprint_migration`, `ModuleNotFoundError: blueprint_batch_plan`, and duplicate test-module import paths. The repair runs Python discovery from the converter directory, retaining JS tests and `git diff --check` in their original repository-root context. The reconciliation Python test command and CI test discovery use the same corrected module root. Regression assertions cover working directories.
+- Staged separately on `chatgpt/dds-validator-cwd-fix-20261030` because the private bridge issue #3 has not yet acknowledged a read-only job list and ping. **DDS active-job status is unknown; do not start a competing local job or promote to the running conversion branch until acknowledged.**
+- **Verification gates:** GitHub commits created; new candidate Python/JS tests **not yet run**; full 276-package/1,957-function replay **not yet run**; UE/Three.js Play **not certified**. No Unreal assets, images, TruthLab files or local Python/Node environments were changed by these GitHub commits.
+- Next safe gate: obtain bridge job inventory and fresh source hashes, then execute candidate Python/JS suites and full source replay in an isolated checkout, compare all function identities/counts, and only then promote the candidate if validation passes. Keep the 537 baseline unchanged until source evidence proves a gain.
+
+### GitHub Actions verification of isolated validator candidate
+
+- Draft PR #5, run `41141939811` (pull_request): **494 Python tests passed**, **222 JavaScript tests passed (0 failures)**, **editor/player build succeeded**, and final `migration` CI gate succeeded. These are actual GitHub Actions results for the isolated repair branch, not Unreal source replay or Play certification.
+- The branch remains isolated because the private Windows bridge has not acknowledged job inventory/ping. Source-witnessed 1,957-function replay is still pending, so **537/1,957** remains the last certified translation count and no worker patch is promoted.

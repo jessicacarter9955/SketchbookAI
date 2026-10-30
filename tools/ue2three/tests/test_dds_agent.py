@@ -444,6 +444,11 @@ class DdsAgentTests(unittest.TestCase):
         diff_command = run.call_args_list[2].args[0]
         self.assertEqual(python_command[0], sys.executable)
         self.assertIn('test_blueprint*.py', python_command)
+        self.assertIn('-B', python_command)
+        self.assertEqual(python_command[python_command.index('-s') + 1], 'tests')
+        self.assertEqual(run.call_args_list[0].kwargs['cwd'], self.repo / 'tools/ue2three')
+        self.assertEqual(run.call_args_list[1].kwargs['cwd'], self.repo)
+        self.assertEqual(run.call_args_list[2].kwargs['cwd'], self.repo)
         self.assertEqual(javascript_command[0:3], ['node-test-double', '--test',
                                                    'tests/ue2three-blueprint.test.mjs'])
         self.assertNotIn('tests/ue2three-attachment.test.mjs', javascript_command)

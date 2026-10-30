@@ -326,6 +326,9 @@ class AutomationTests(unittest.TestCase):
             self.supervisor._validate_reconciled_push()
         self.assertEqual([call.args[0] for call in command.call_args_list],
                          ['git-reconcile-python-tests', 'git-reconcile-node-tests'])
+        self.assertEqual(command.call_args_list[0].kwargs['cwd'], self.root / 'tools/ue2three')
+        self.assertEqual(command.call_args_list[0].args[1][
+            command.call_args_list[0].args[1].index('-s') + 1], 'tests')
         self.assertIn('tests/ue2three-test.test.mjs', command.call_args_list[1].args[1])
         self.assertFalse(self.supervisor.state['push_validation_required'])
         self.assertEqual(self.supervisor.state['validated_push_head'], self.git('rev-parse', 'HEAD'))
