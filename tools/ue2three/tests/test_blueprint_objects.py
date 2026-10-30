@@ -189,6 +189,26 @@ class SourceObjectTests(unittest.TestCase):
         with self.assertRaisesRegex(BlueprintTranslationError,'non-ASCII narrow string layout'):
             expression(node('EX_CallMath',StackNode=-1,Parameters=[narrow_unicode,right]),set(),set(),package=package,owner=1)
 
+    def test_source_make_literal_text_preserves_original_ftext_history(self):
+        package = Package({'Imports': [
+            {'ObjectName': 'MakeLiteralText', 'ClassName': 'Function', 'OuterIndex': -2},
+            {'ObjectName': 'KismetSystemLibrary', 'OuterIndex': -3},
+            {'ObjectName': '/Script/Engine', 'ClassName': 'Package'},
+        ]})
+        literal = node('EX_TextConst', Value={'TextLiteralType': 'InvariantText',
+            'InvariantLiteralString': node('EX_UnicodeStringConst', Value='Hello 🌍')})
+        call = node('EX_CallMath', StackNode=-1, Parameters=[literal])
+        result = expression(call, set(), set(), package=package)
+        self.assertEqual(result['op'], 'native_call')
+        self.assertEqual(result['identity'], ['/Script/Engine', 'KismetSystemLibrary', 'MakeLiteralText'])
+        self.assertEqual(result['return_type'], 'TextProperty')
+        self.assertEqual(result['args'][0]['value'],
+                         {'history': 'invariant', 'text': 'Hello 🌍', 'flags': 2})
+        with self.assertRaisesRegex(BlueprintTranslationError, 'argument requires'):
+            expression(node('EX_CallMath', StackNode=-1,
+                            Parameters=[node('EX_StringConst', Value='Hello')]),
+                       set(), set(), package=package)
+
     def test_source_make_literal_string_accepts_only_exact_kismet_system_identity(self):
         package = Package({'Imports': [
             {'ObjectName': 'MakeLiteralString', 'ClassName': 'Function', 'OuterIndex': -2},
