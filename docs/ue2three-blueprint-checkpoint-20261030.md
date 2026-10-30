@@ -11,6 +11,7 @@ Source: the original `VIPExtractionKitDDS.uproject` inventory and cached UAssetA
 - Missing original parsed packages: **0**.
 - Baseline at start of this batch: **534** translated; net **+3** complete translations.
 - No count regressions were observed in full replays. Do not infer complete source/gameplay fidelity from this metric.
+- Later replay after verified `FKey` equality adapter: **537/1,957 translated**, **1,420 blocked** and **0 missing** (unchanged count; another bytecode blocker still prevents complete translation of the affected original functions).
 
 ## Changes implemented and tested
 
@@ -19,20 +20,23 @@ Source: the original `VIPExtractionKitDDS.uproject` inventory and cached UAssetA
 3. Original nested Actor property context: source-owned chained receiver resolution, with owner/property/offset checks and rejection of unresolved references.
 4. `KismetSystemLibrary.MakeLiteralString`: exact source-validated `FString` identity through the compiler and runtime. Full DDS replay gained two completed source functions.
 5. `KismetSystemLibrary.MakeLiteralText`: UE5.7 inline `FText` identity with preserved invariant FText metadata/history; targeted compiler and runtime tests pass. It unblocks an opcode family but yielded **zero additional whole functions** in this replay.
+6. `KismetInputLibrary.EqualEqual_KeyKey`: original InputCore `FKey` schema, reflected `FName KeyName`, `StructSize=32`, exact native import and parameter arity; implemented in source compiler and Three.js runtime, rejecting foreign layouts and Unicode case-fold uncertainty. Targeted tests pass, no added completely translated functions in the source replay.
 
-The source is on branch `chatgpt/dds-blueprints-continue-20261030`, verified at commit `a71d915a7e5fc5f6ef2c9bf376e5479e5e5dfe1e`.
+The source is on branch `chatgpt/dds-blueprints-continue-20261030`, additional `FKey` implementation at commit `03c5224e805e974cafc45c65ba8cb331208bf91b`.
 
 ## Verified tests and replay
 
 An **isolated test worktree** (not the dirty existing DDS worktree) was used:
 `C:\Users\jessi\Documents\Codex\2026-10-01\cl\SketchbookAI-dds-blueprint-test-20261030`.
 
+- `test_blueprint_keys.py`: **2 passed** (additional regression and rejection checks).
 - `test_blueprint_objects.py`: **16 passed**.
 - `test_blueprint_source_objects.py`: **4 passed**.
 - `test_blueprint_migration.py`: **36 passed**.
+- `tests/ue2three-native-keys.test.mjs`: **2 passed** (additional input key semantics and rejection checks).
 - `tests/ue2three-native-strings.test.mjs`: **7 passed**.
 - `tests/ue2three-native-math.test.mjs`: **20 passed**.
-- Full source-witnessed replay of the 276 packages: **537 translated, 1,420 blocked, 0 missing**, completed on Windows.
+- Full source-witnessed replay of the 276 packages after `FKey` change: **537 translated, 1,420 blocked, 0 missing**, completed on Windows (35.4-second whole-source replay; 0 exit code).
 
 A previous broader isolated run passed **447 Python tests** and **194 JS tests**. Two Python test *files* exceeded an isolated 40-second timeout. Five JS test cases could not run due to missing `three` dependency in this fresh worktree; this is not evidence that the corresponding runtime passes.
 
