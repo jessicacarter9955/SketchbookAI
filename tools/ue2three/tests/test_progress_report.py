@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from core import atomic_json, digest, file_hash
-from progress_report import project_progress, offline_source_checks
+from progress_report import project_progress, offline_source_checks, certified_recovered_map_files
 from test_map_processing import model
 
 
@@ -53,6 +53,50 @@ class ProgressReportTests(unittest.TestCase):
         self.assertTrue(any(m['title'] == 'Trasformazioni confrontabili' for m in report['milestones']))
         self.assertEqual(report['source_classes']['AnimSequence'], 10)
         self.assertEqual(report, project_progress(self.workspace, self.published, self.character))
+
+    def test_source_recovered_glbs_are_counted_without_falsifying_original_export_or_play(self):
+        from core import read_json
+        inventory = read_json(self.workspace / 'artifacts/inventory.json')
+        packages = ['/Game/Fixers/Maps/LV_Fixers_Startup',
+                    '/Game/Fixers/VFX/NiagaraExamples/GalleryLevel']
+        inventory['maps'] = packages
+        atomic_json(self.workspace / 'artifacts/inventory.json', inventory)
+        source_hash = read_json(self.workspace / 'artifacts/engine_metadata.json')['source_snapshot_hash']
+        entries = []
+        for name, package in [('LV_Fixers_Startup', packages[0]), ('GalleryLevel', packages[1])]:
+            path = self.published / 'maps' / (name + '.glb')
+            model(path)
+            record = {'kind': 'map', 'source_package': package, 'path': str(path),
+                      'sha256': file_hash(path), 'mesh_count': 0 if name == 'LV_Fixers_Startup' else 204}
+            if name == 'LV_Fixers_Startup':
+                record['source_only'] = True
+            else:
+                record.update(original_actor_count=185, source_actors_represented=185,
+                              source_geometry_covered=184, native_unreal_export_clean=False)
+            entries.append(record)
+        receipt = {'schema_version': 1, 'status': 'all_58_glb_files_source_validated',
+                   'original_source_project': self.project, 'source_snapshot_hash': source_hash,
+                   'original_verified_files': 56, 'recovered_files': 2,
+                   'total_verified_glb_files': 58, 'visual_1to1_verified': False,
+                   'gameplay_play_verified': False, 'files': [{'kind': 'clip'}] * 56 + entries}
+        atomic_json(self.published / 'glb-source-recovery.json', receipt)
+        self.assertEqual(set(certified_recovered_map_files(
+            receipt, self.published, self.project, source_hash, packages)), set(packages))
+        report = project_progress(self.workspace, self.published, self.character)
+        maps = next(row for row in report['rows'] if row['id'] == 'maps')
+        geometry = next(row for row in report['rows'] if row['id'] == 'geometry')
+        self.assertIn('2/2 file mappa', maps['evidence'])
+        self.assertEqual(maps['status'], 'yellow')
+        self.assertIn('Gallery 185/185', geometry['evidence'])
+        self.assertFalse(maps['fidelity_1_to_1'])
+        self.assertTrue(any(m['title'] == 'GLB mappe originali DDS completi'
+                            for m in report['milestones']))
+        entries[1]['sha256'] = '0' * 64
+        atomic_json(self.published / 'glb-source-recovery.json', receipt)
+        tampered = project_progress(self.workspace, self.published, self.character)
+        self.assertFalse(any(m['title'] == 'GLB mappe originali DDS completi'
+                             for m in tampered['milestones']))
+        self.assertNotEqual(tampered['fingerprint'], report['fingerprint'])
 
     def test_audio_progress_only_counts_source_witnessed_intact_wav(self):
         inventory = {'files': [{'path': 'Content/Map.umap', 'sha256': 'source'}], 'maps': ['/Game/A', '/Game/B'],
