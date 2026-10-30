@@ -42,7 +42,7 @@ class WorldTests(unittest.TestCase):
         p=w.PlainText()
         p.feed("<body><nav>Navigation</nav><p>Hello <b>visible</b> text.</p>"
                "<script>ignore me</script><p>Second paragraph</p></body>")
-        content=" ".join(p.parts)
+        content=" ".join(" ".join(p.parts).split())
         self.assertIn("Hello visible text",content)
         self.assertIn("Second paragraph",content)
         self.assertNotIn("Navigation",content)
@@ -98,7 +98,7 @@ class WorldTests(unittest.TestCase):
             self.assertEqual(posted["id"],"123456789")
             self.assertEqual(len(x.sent),1)
             self.assertEqual(r.load("published/"+did+".json")["approved_by"],"jessicacarter9955")
-            with self.assertRaises(ValueError):
+            with self.assertRaisesRegex(RuntimeError,"Already published"):
                 w.approve_and_publish(r,did,"jessicacarter9955",x)
         self.assertEqual(len(x.sent),1)
     def test_draft_mutation_is_detected(self):
