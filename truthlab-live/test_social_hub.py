@@ -24,9 +24,9 @@ class HubTests(unittest.TestCase):
         content=content or {"text":"Ari and Noor verified a source https://example.com"}
         key=sh.queue_draft(r,network,content,"research-123")
         return r,key
-    def test_all_eight_channels_declared(self):
+    def test_all_eleven_channels_declared(self):
         self.assertEqual(set(sh.NETWORKS),{"x","threads","facebook","instagram",
-                                         "tiktok","youtube","reddit","snapchat"})
+                                         "tiktok","youtube","reddit","snapchat","bluesky","linkedin","pinterest"})
     def test_unknown_network_fails_closed(self):
         with self.assertRaisesRegex(ValueError,"Unknown"):
             sh.queue_draft(Ledger(),"myspace",{"text":"hello"},"research")
