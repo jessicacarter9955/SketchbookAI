@@ -1,7 +1,5 @@
 name: TruthLab World Interface — private R2 and supervised multichannel social
 on:
-  schedule:
-    - cron: '23 1,5,9,13,17,21 * * *'
   workflow_dispatch:
     inputs:
       action:
