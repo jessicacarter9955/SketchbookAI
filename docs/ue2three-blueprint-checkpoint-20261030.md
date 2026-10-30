@@ -83,3 +83,8 @@ A separate read-only bridge audit found an existing `dds_automation.py` coordina
 - Staged separately on `chatgpt/dds-validator-cwd-fix-20261030` because the private bridge issue #3 has not yet acknowledged a read-only job list and ping. **DDS active-job status is unknown; do not start a competing local job or promote to the running conversion branch until acknowledged.**
 - **Verification gates:** GitHub commits created; new candidate Python/JS tests **not yet run**; full 276-package/1,957-function replay **not yet run**; UE/Three.js Play **not certified**. No Unreal assets, images, TruthLab files or local Python/Node environments were changed by these GitHub commits.
 - Next safe gate: obtain bridge job inventory and fresh source hashes, then execute candidate Python/JS suites and full source replay in an isolated checkout, compare all function identities/counts, and only then promote the candidate if validation passes. Keep the 537 baseline unchanged until source evidence proves a gain.
+
+### GitHub Actions verification of isolated validator candidate
+
+- Draft PR #5, run `41141939811` (pull_request): **494 Python tests passed**, **222 JavaScript tests passed (0 failures)**, **editor/player build succeeded**, and final `migration` CI gate succeeded. These are actual GitHub Actions results for the isolated repair branch, not Unreal source replay or Play certification.
+- The branch remains isolated because the private Windows bridge has not acknowledged job inventory/ping. Source-witnessed 1,957-function replay is still pending, so **537/1,957** remains the last certified translation count and no worker patch is promoted.
