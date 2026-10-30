@@ -1,0 +1,40 @@
+name: TruthLab Real World Interface — verified tests
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/truthlab-world-ci.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate-world-interface:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: truthlab-autonomous-agents
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install actual storage adapter
+        run: python -m pip install 'boto3>=1.35,<2'
+      - name: Run behavioral and security regression suite
+        run: python -m unittest discover -s truthlab-live -p 'test_world_interface.py' -v
+      - name: Execute a real HTTPS encyclopedia search and page read
+        env:
+          BRAVE_SEARCH_API_KEY: ''
+        run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0,'truthlab-live')
+          from world_interface import search_web,read_public_page
+          result=search_web("Ada Lovelace")
+          assert result["provider"]=="wikipedia", result
+          assert result["results"], result
+          page=read_public_page(result["results"][0]["url"])
+          assert page["sha256"] and len(page["text"])>100
+          print("LIVE_INTERNET_VERIFIED",result["provider"],page["url"],len(page["text"]))
+          PY
