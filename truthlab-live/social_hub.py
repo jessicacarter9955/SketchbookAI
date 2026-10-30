@@ -35,11 +35,11 @@ def required_field(obj, name):
         raise ValueError("Missing required field: "+name)
     return val.strip()
 
-def form_json(url, fields, access_token):
+def form_json(url, fields, access_token, user_agent="TruthLabSocial/1.0"):
     public_https_url(url)
     req = Request(url, urlencode(fields).encode("utf-8"),
                   {"Authorization":"Bearer "+access_token, "Content-Type":"application/x-www-form-urlencoded",
-                   "User-Agent":"TruthLabSocial/1.0"}, method="POST")
+                   "User-Agent":user_agent}, method="POST")
     try:
         with urlopen(req, timeout=35) as result:
             return json.loads(result.read(500000))
@@ -115,9 +115,13 @@ def reddit_post(draft):
     body=required_field(draft,"text")
     if len(title)>300:
         raise ValueError("Reddit post title exceeds 300 characters")
+    reddit_user=mandatory("TRUTHLAB_REDDIT_USERNAME")
+    if not re.fullmatch(r"[A-Za-z0-9_-]{3,20}",reddit_user):
+        raise ValueError("Invalid Reddit app-account username")
     result=form_json("https://oauth.reddit.com/api/submit",
                      {"api_type":"json","kind":"self","sr":sub,"title":title,"text":body,
-                      "sendreplies":"false"},mandatory("TRUTHLAB_REDDIT_USER_TOKEN"))
+                      "sendreplies":"false"},mandatory("TRUTHLAB_REDDIT_USER_TOKEN"),
+                      user_agent="script:truthlab-autonomous:v1.0 (by /u/"+reddit_user+")")
     reply=result.get("json",{})
     if reply.get("errors"):
         raise RuntimeError("Reddit submission rejected: "+str(reply["errors"][:3]))
@@ -242,7 +246,13 @@ def snapchat_post(draft):
         raise RuntimeError("Snap Public Profile API did not confirm a successful creation")
     post_id=res.get("spotlight_id") or res.get("story_id")
     if not post_id:
-        raise RuntimeError("Snap API returned no content ID")
+        # The Story API may return SUCCESS/request_id without a created Story ID.
+        # Never turn a successful request into an unverified public-post claim.
+        request_id=res.get("request_id")
+        if request_id:
+            return {"status":"processing","request_id":str(request_id),
+                    "provider":"snap-public-profile","public_post_verified":False}
+        raise RuntimeError("Snap API returned no content ID or request identifier")
     return {"status":"published","id":str(post_id),"provider":"snap-public-profile"}
 
 def platform_publish(platform, draft, ledger):
