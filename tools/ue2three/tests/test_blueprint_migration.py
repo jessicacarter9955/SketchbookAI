@@ -13,6 +13,44 @@ def variable(token, name): return node(token, Variable={'New': {'Path': [name], 
 
 
 class BlueprintMigrationTests(unittest.TestCase):
+    def test_source_ue5_transform_constant_has_exact_lwc_layout_and_runtime_schema(self):
+        import copy
+        from blueprint_migration import expression, native_math_source_type
+        from blueprint_values import native_schema
+        package = Package({'ObjectVersionUE5': 'IMPORT_TYPE_HIERARCHIES'})
+        quat = {'$type': 'UAssetAPI.UnrealTypes.FQuat, UAssetAPI',
+                'X': '+0', 'Y': '-0', 'Z': 0.25, 'W': 1.0}
+        vector = lambda x, y, z: {'$type': 'UAssetAPI.UnrealTypes.FVector, UAssetAPI',
+                                   'X': x, 'Y': y, 'Z': z}
+        literal = node('EX_TransformConst', Value={
+            '$type': 'UAssetAPI.UnrealTypes.FTransform, UAssetAPI',
+            'Rotation': quat, 'Translation': vector(2.5, '-3', 0),
+            'Scale3D': vector(1, 1, 1)})
+        self.assertEqual(memory_size(literal, package=package), 81)
+        self.assertEqual(native_math_source_type(literal, package, None), 'Transform')
+        result = expression(literal, set(), set(), package=package)
+        self.assertEqual(result['op'], 'typed_literal')
+        self.assertEqual(result['schema'], native_schema(('/Script/CoreUObject', 'Transform')))
+        self.assertEqual(result['value']['Rotation']['Z'], 0.25)
+        self.assertEqual(result['value']['Translation'], {'X': 2.5, 'Y': -3.0, 'Z': 0.0})
+        self.assertEqual(result['value']['Scale3D'], {'X': 1.0, 'Y': 1.0, 'Z': 1.0})
+        older = Package({'ObjectVersionUE5': 'UNKNOWN_VERSION'})
+        with self.assertRaisesRegex(BlueprintTranslationError, 'version'):
+            memory_size(literal, package=older)
+        for broken in ('nan', '1e309', '0x0', True, None):
+            invalid = copy.deepcopy(literal)
+            invalid['Value']['Translation']['X'] = broken
+            with self.subTest(broken=broken), self.assertRaises(BlueprintTranslationError):
+                expression(invalid, set(), set(), package=package)
+        invalid = copy.deepcopy(literal)
+        invalid['Value']['Rotation']['$type'] = 'UAssetAPI.UnrealTypes.FVector, UAssetAPI'
+        with self.assertRaisesRegex(BlueprintTranslationError, 'Rotation layout'):
+            memory_size(invalid, package=package)
+        invalid = copy.deepcopy(literal)
+        invalid['Value']['Extra'] = 123
+        with self.assertRaisesRegex(BlueprintTranslationError, 'Transform constant layout'):
+            memory_size(invalid, package=package)
+
     def test_source_event_entrypoint_dispatch_retains_vm_offset_and_type(self):
         dispatcher = {'ObjectName': 'ExecuteUbergraph_Original', 'OuterIndex': 2,
                       'LoadedProperties': [{'Name': 'EntryPoint', 'SerializedType': 'IntProperty',
