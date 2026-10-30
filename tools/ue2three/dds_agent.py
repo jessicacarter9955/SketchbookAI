@@ -969,20 +969,24 @@ def verify_worker(worker: Path, family_id: str) -> None:
     node = shutil.which('node')
     if not node:
         raise RunnerError('Node.js is required for the scoped JavaScript checks.', 'verification_tool_missing')
+    # The Blueprint tests import sibling modules (blueprint_migration, etc.).
+    # Discover from the converter directory, not the repository root: otherwise
+    # unittest resolves duplicate test module names and rejects valid patches.
+    python_root = worker / 'tools/ue2three'
     commands = (
-        ([sys.executable, '-m', 'unittest', 'discover', '-s', 'tools/ue2three/tests',
-          '-p', 'test_blueprint*.py', '-q'], PYTHON_VERIFY_SECONDS),
-        ([node, '--test', *JAVASCRIPT_TESTS_BY_FAMILY[family_id]], JAVASCRIPT_VERIFY_SECONDS),
-        (['git', '-C', str(worker), 'diff', '--check'], GIT_TIMEOUT_SECONDS),
+        ([sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'tests',
+          '-p', 'test_blueprint*.py', '-q'], PYTHON_VERIFY_SECONDS, python_root),
+        ([node, '--test', *JAVASCRIPT_TESTS_BY_FAMILY[family_id]], JAVASCRIPT_VERIFY_SECONDS, worker),
+        (['git', '-C', str(worker), 'diff', '--check'], GIT_TIMEOUT_SECONDS, worker),
     )
     logs = worker / '.local/dds-agent'
     logs.mkdir(parents=True, exist_ok=True)
-    for command, timeout in commands:
+    for command, timeout, cwd in commands:
         try:
             with (logs / 'verification.log').open('ab') as output:
                 output.write(('\nCHECK ' + command[0] + '\n').encode('utf-8'))
                 output.flush()
-                result = subprocess.run(command, cwd=worker, stdout=output,
+                result = subprocess.run(command, cwd=cwd, stdout=output,
                                         stderr=output, timeout=_bounded_timeout(timeout), check=False)
         except subprocess.TimeoutExpired:
             raise RunnerError('A scoped validation command exceeded its time bound.', 'verification_timeout') from None
