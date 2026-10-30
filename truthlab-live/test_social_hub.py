@@ -112,12 +112,13 @@ class HubTests(unittest.TestCase):
             sh.reddit_post({"text":"body","title":"title","subreddit":"r/unknown"})
     def test_reddit_submits_real_self_post_with_oauth(self):
         payload={"text":"real excerpt","title":"Research","subreddit":"science"}
-        with patch.dict(os.environ,{"TRUTHLAB_REDDIT_USER_TOKEN":"private"}):
+        with patch.dict(os.environ,{"TRUTHLAB_REDDIT_USER_TOKEN":"private","TRUTHLAB_REDDIT_USERNAME":"truthlabtest"}):
             with patch.object(sh,"form_json",return_value={"json":{"errors":[],"data":{
                  "name":"t3_2345","url":"https://reddit.com/r/science/comments/2345"}}}) as req:
                 result=sh.reddit_post(payload)
         self.assertEqual(result["id"],"t3_2345")
         self.assertEqual(req.call_args.args[0],"https://oauth.reddit.com/api/submit")
+        self.assertIn("by /u/truthlabtest",req.call_args.kwargs["user_agent"])
 
 if __name__=="__main__":
     unittest.main()
