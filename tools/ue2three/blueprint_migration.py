@@ -145,6 +145,7 @@ def native_math_source_type(value, package, owner):
     if token in constants: return constants[token]
     if token == 'EX_VectorConst': return 'Vector'
     if token == 'EX_RotationConst': return 'Rotator'
+    if token == 'EX_TransformConst': return 'Transform'
     if token == 'EX_PrimitiveCast':
         conversion = value.get('ConversionType')
         if type(conversion) is int and conversion==1 and package:
@@ -307,6 +308,47 @@ def local_call(value, package, owner, reads, outputs, depth):
         result['entry_offset'] = bindings[0]['value']['value']
         result['function'] += '@' + str(result['entry_offset'])
     return result
+
+
+def verified_source_transform(value, package):
+    """Decode an original UE5 LWC FTransform constant and verify its complete layout.
+
+    FQuat is 4 doubles, Translation and Scale3D are 3 doubles each:
+    80 payload bytes plus one opcode.
+    """
+    if not package or package.document.get('ObjectVersionUE5') != 'IMPORT_TYPE_HIERARCHIES':
+        raise BlueprintTranslationError('Unverified Transform constant version')
+    transform = value.get('Value') if isinstance(value, dict) else None
+    if (not isinstance(transform, dict)
+            or transform.get('$type') != 'UAssetAPI.UnrealTypes.FTransform, UAssetAPI'
+            or set(transform) != {'$type', 'Rotation', 'Translation', 'Scale3D'}):
+        raise BlueprintTranslationError('Invalid original Transform constant layout')
+    parts = {}
+    for name, typ, fields in (
+        ('Rotation', 'FQuat', ('X', 'Y', 'Z', 'W')),
+        ('Translation', 'FVector', ('X', 'Y', 'Z')),
+        ('Scale3D', 'FVector', ('X', 'Y', 'Z')),
+    ):
+        part = transform[name]
+        if (not isinstance(part, dict)
+                or part.get('$type') != 'UAssetAPI.UnrealTypes.' + typ + ', UAssetAPI'
+                or set(part) != set(fields) | {'$type'}):
+            raise BlueprintTranslationError('Invalid original Transform ' + name + ' layout')
+        numbers = {}
+        for field_name in fields:
+            raw = part[field_name]
+            if (isinstance(raw, bool) or not isinstance(raw, (int, float, str))
+                    or isinstance(raw, str) and not re.fullmatch(
+                        r'[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?', raw)):
+                raise BlueprintTranslationError('Invalid original Transform coordinate')
+            try: number = float(raw)
+            except (ValueError, OverflowError):
+                raise BlueprintTranslationError('Invalid original Transform coordinate')
+            if not math.isfinite(number):
+                raise BlueprintTranslationError('Non-finite original Transform coordinate')
+            numbers[field_name] = number
+        parts[name] = numbers
+    return parts
 
 
 def expression(value, reads, outputs, depth=0, package=None, owner=None):
@@ -575,6 +617,10 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
         except (KeyError, TypeError, ValueError): raise BlueprintTranslationError('Invalid source native struct constant')
         if not all(math.isfinite(v) for v in literal.values()): raise BlueprintTranslationError('Non-finite source native struct constant')
         return {'op': 'typed_literal', 'schema': schema, 'value': literal}
+    if token == 'EX_TransformConst':
+        memory_size(value, package=package)
+        return {'op': 'typed_literal', 'schema': native_schema(('/Script/CoreUObject', 'Transform')),
+                'value': verified_source_transform(value, package)}
     if token in ('EX_True', 'EX_False', 'EX_IntZero', 'EX_IntOne', 'EX_Nothing', 'EX_NoObject'):
         return {'op': 'constant', 'value': {'EX_True': True, 'EX_False': False,
                 'EX_IntZero': 0, 'EX_IntOne': 1, 'EX_Nothing': None, 'EX_NoObject': None}[token]}
@@ -665,6 +711,9 @@ def memory_size(value, depth=0, package=None):
         if not package or package.document.get('ObjectVersionUE5') != 'IMPORT_TYPE_HIERARCHIES':
             raise BlueprintTranslationError('Unverified vector constant version')
         return 25
+    if token == 'EX_TransformConst':
+        verified_source_transform(value, package)
+        return 81
     if token == 'EX_StructConst':
         if not isinstance(value.get('Value'), list): raise BlueprintTranslationError('Invalid struct layout')
         return 14 + sum(size(child) for child in value['Value'])
