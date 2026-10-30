@@ -56,6 +56,39 @@ class SourceActorMemberTests(unittest.TestCase):
         self.assertEqual(program['steps'][0]['op'],'set_actor_member')
         self.assertEqual(program['steps'][0]['target']['schema']['type'],'FloatProperty')
 
+    def test_nested_source_actor_property_context_preserves_both_original_owners(self):
+        sources = self.sources()
+        caller, base = sources['/Game/Caller'], sources['/Game/Base']
+        base.imports.extend([
+            {'ObjectName': 'Child_C', 'ClassName': 'BlueprintGeneratedClass', 'OuterIndex': -4},
+            {'ObjectName': '/Game/Child', 'ClassName': 'Package'},
+        ])
+        base.exports[0]['LoadedProperties'].append({
+            'Name': 'Friend', 'SerializedType': 'ObjectProperty', 'PropertyClass': -3,
+        })
+        actor = node('EX_InstanceVariable', Variable={
+            'New': {'Path': ['Actor'], 'ResolvedOwner': 1},
+        })
+        friend_ptr = {'New': {'Path': ['Friend'], 'ResolvedOwner': -1}}
+        friend_read = node('EX_InstanceVariable', Variable=friend_ptr)
+        inner = node('EX_Context', ObjectExpression=actor, ContextExpression=friend_read,
+                     RValuePointer=friend_ptr, Offset=memory_size(friend_read, package=caller))
+        health_ptr = {'New': {'Path': ['Health'], 'ResolvedOwner': -1}}
+        health_read = node('EX_InstanceVariable', Variable=health_ptr)
+        outer = node('EX_Context', ObjectExpression=inner, ContextExpression=health_read,
+                     RValuePointer=health_ptr, Offset=memory_size(health_read, package=caller))
+        result = expression(outer, set(), set(), package=caller, owner=1)
+        self.assertEqual(result['op'], 'source_actor_member')
+        self.assertEqual(result['field'], 'Health')
+        self.assertEqual(result['schema']['type'], 'FloatProperty')
+        self.assertEqual(result['target']['op'], 'source_actor_member')
+        self.assertEqual(result['target']['field'], 'Friend')
+        self.assertEqual(result['target_schema']['class'], ['/Game/Child', 'Child_C'])
+        invalid = deepcopy(outer)
+        invalid['ObjectExpression']['Offset'] += 1
+        with self.assertRaisesRegex(BlueprintTranslationError, 'context layout differs'):
+            expression(invalid, set(), set(), package=caller, owner=1)
+
     def test_foreign_actor_struct_member_write_keeps_reflected_struct_identity(self):
         sources=self.sources();p=sources['/Game/Caller'];base=sources['/Game/Base']
         base.imports.extend([{'ObjectName':'Vector','ClassName':'ScriptStruct','OuterIndex':-4},
