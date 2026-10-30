@@ -1,0 +1,130 @@
+name: TruthLab Standalone Repository Export
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/truthlab-standalone-export.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: source-main
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: truthlab-autonomous-agents
+          path: source-agents
+          persist-credentials: false
+      - name: Assemble isolated self-contained TruthLab
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p export/TruthLab/truthlab-live export/TruthLab/.github/workflows export/TruthLab/scripts
+          cp source-agents/truthlab-live/* export/TruthLab/truthlab-live/
+          cp source-main/.github/workflows/truthlab-github-public.yml export/TruthLab/.github/workflows/
+          cp source-main/.github/workflows/truthlab-world.yml export/TruthLab/.github/workflows/
+          cp source-main/.github/workflows/truthlab-world-ci.yml export/TruthLab/.github/workflows/
+          python - <<'PY'
+          from pathlib import Path
+          base=Path("export/TruthLab")
+          p=base/"truthlab-live/github_public_agent.py"
+          s=p.read_text()
+          assert 'REPO = "jessicacarter9955/SketchbookAI"' in s
+          assert "ISSUE = 4" in s
+          p.write_text(s.replace('REPO = "jessicacarter9955/SketchbookAI"',
+                                 'REPO = "jessicacarter9955/TruthLab"').replace("ISSUE = 4","ISSUE = 1"))
+          p=base/"truthlab-live/test_github_public_agent.py"
+          p.write_text(p.read_text().replace("jessicacarter9955/SketchbookAI/issues/4",
+                                             "jessicacarter9955/TruthLab/issues/1"))
+          for p in (base/".github/workflows").glob("*.yml"):
+              p.write_text(p.read_text().replace("ref: truthlab-autonomous-agents","ref: main").replace("SketchbookAI","TruthLab"))
+          PY
+          cat > export/TruthLab/README.md <<'EOF'
+          # TruthLab - Ari and Noor
+          
+          Independent AI research and public journal. Local pinned Qwen2.5-1.5B
+          via GitHub Actions, real HTTPS page reads, two separately generated
+          Ari/Noor contributions and verifiable GitHub issue comments.
+          
+          Repository: https://github.com/jessicacarter9955/TruthLab
+          Public journal: https://github.com/jessicacarter9955/TruthLab/issues/1
+          Source: truthlab-live/
+          CI and worker: .github/workflows/
+          Multiplatform integrations: social_hub.py and social_extra.py.
+          
+          PRIVATE memory of original 500 Qwen turns is in the separate
+          TruthLab ChatGPT Site R2, NOT included in this public archive.
+          No Render is needed for the new public research worker.
+          External social accounts require separately authorized OAuth.
+          EOF
+          cat > export/TruthLab/.gitignore <<'EOF'
+          __pycache__/
+          *.pyc
+          .env
+          .env.*
+          *.sqlite
+          *.sqlite3
+          *.zip
+          *.db
+          .venv/
+          .pytest_cache/
+          *token*
+          *secret*
+          EOF
+          cat > export/TruthLab/scripts/migrate.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          cd "$(dirname "$0")/.."
+          TARGET="jessicacarter9955/TruthLab"
+          command -v gh >/dev/null || { echo 'GitHub CLI required'; exit 2; }
+          gh auth status >/dev/null
+          if gh repo view "$TARGET" >/dev/null 2>&1; then
+            echo "Repo $TARGET already exists, refusing to overwrite."
+            exit 3
+          fi
+          gh repo create "$TARGET" --public --description 'Independent TruthLab AI agents' --disable-wiki
+          ISSUE_JSON="$(gh api "repos/$TARGET/issues" -X POST -f title='TruthLab - Ari and Noor Public Journal' -f body='Public, clearly labelled Qwen AI research and feedback; no private R2 turns or secrets.')"
+          NUMBER="$(printf '%s' "$ISSUE_JSON" | python -c 'import json,sys;print(json.load(sys.stdin)["number"])')"
+          [[ "$NUMBER" == 1 ]] || { echo "Unexpected issue number $NUMBER"; exit 4; }
+          git init -b main
+          git config user.name 'TruthLab Migration'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .
+          git commit -m 'Initial independent TruthLab source and CI'
+          git remote add origin "https://github.com/$TARGET.git"
+          git push -u origin main
+          echo "SUCCESS https://github.com/$TARGET"
+          EOF
+          chmod +x export/TruthLab/scripts/migrate.sh
+          cat > export/TruthLab/MIGRATION.md <<'EOF'
+          The active TruthLab repository must be independent from SketchbookAI.
+          This source-only archive contains no personal memories or credentials.
+          Creating the new repository requires an authenticated owner account.
+          Run scripts/migrate.sh using GitHub CLI and existing account credentials.
+          Verify new CI and public comment before disabling the old workflow.
+          EOF
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          base=Path("export/TruthLab")
+          hashes={str(p.relative_to(base)):hashlib.sha256(p.read_bytes()).hexdigest()
+                  for p in base.rglob("*") if p.is_file()}
+          (base/"MANIFEST.sha256.json").write_text(json.dumps(hashes,indent=2,sort_keys=True)+"\n")
+          print("STANDALONE_EXPORT_SUCCESS",len(hashes))
+          PY
+          (cd export && zip -qr TruthLab-standalone-repository.zip TruthLab)
+          ls -lh export/TruthLab-standalone-repository.zip
+      - name: Publish verified portable source archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: TruthLab-standalone-repository
+          path: export/TruthLab-standalone-repository.zip
+          if-no-files-found: error
+          retention-days: 30
