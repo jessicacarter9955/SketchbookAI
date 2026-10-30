@@ -22,6 +22,7 @@ MATH_CALLS = {
     'MakeVector2D': (2, 'vector2d'),
     'BreakVector2D': (3, 'break_vector2d'),
     'RInterpTo': (4, 'rotator_interp'),
+    'NormalizedDeltaRotator': (2, 'rotator_delta'),
 }
 INPUT_TYPES = {
     'Divide_IntInt': ('IntProperty', 'IntProperty'),
@@ -38,6 +39,7 @@ INPUT_TYPES = {
     'MakeVector2D': ('DoubleProperty', 'DoubleProperty'),
     'BreakVector2D': ('Vector2D',),
     'RInterpTo': ('Rotator', 'Rotator', 'FloatProperty', 'FloatProperty'),
+    'NormalizedDeltaRotator': ('Rotator', 'Rotator'),
 }
 RESULT_TYPES = {
     'Divide_IntInt': 'IntProperty', 'Percent_IntInt': 'IntProperty',
@@ -46,5 +48,5 @@ RESULT_TYPES = {
     'GreaterGreater_VectorRotator': 'Vector', 'GetUpVector': 'Vector',
     'NotEqual_VectorVector': 'BoolProperty', 'ProjectPointOnToPlane': 'Vector',
     'SelectTransform': 'Transform', 'MakeVector2D': 'Vector2D',
-    'RInterpTo': 'Rotator',
+    'RInterpTo': 'Rotator', 'NormalizedDeltaRotator': 'Rotator',
 }
