@@ -46,6 +46,34 @@ jobs:
             echo "::error::Private R2 secrets are required; there is no durable shared worker backend yet."
             exit 1
           fi
+      - name: Cache real Qwen CPU weights
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/truthlab-model/qwen2.5-1.5b-instruct-q4_k_m.gguf
+          key: truthlab-qwen2.5-1.5b-q4km-sha6a1a2eb6
+      - name: Start local Qwen for actual autonomous research
+        if: github.event_name == 'schedule' || inputs.action == 'research'
+        env:
+          REMOTE_MODEL_KEY: ${{ secrets.TRUTHLAB_WORLD_MODEL_API_KEY }}
+          REMOTE_MODEL_BASE: ${{ vars.TRUTHLAB_WORLD_MODEL_URL }}
+          REMOTE_MODEL_NAME: ${{ vars.TRUTHLAB_WORLD_MODEL_NAME }}
+        shell: bash
+        run: |
+          if [[ -z "$REMOTE_MODEL_KEY" ]]; then
+            bash truthlab-live/start-local-llama.sh
+            echo 'OPENAI_BASE_URL=http://127.0.0.1:8080/v1' >> "$GITHUB_ENV"
+            echo 'OPENAI_MODEL=qwen-local' >> "$GITHUB_ENV"
+            echo 'OPENAI_API_KEY=local-only-no-external-key' >> "$GITHUB_ENV"
+            echo 'TRUTHLAB_MODEL=real local Qwen2.5-1.5B-Instruct' >> "$GITHUB_STEP_SUMMARY"
+          else
+            if [[ -z "$REMOTE_MODEL_BASE" || -z "$REMOTE_MODEL_NAME" ]]; then
+              echo "::error::Remote model key exists, but URL/model name is missing"
+              exit 1
+            fi
+            echo "OPENAI_BASE_URL=$REMOTE_MODEL_BASE" >> "$GITHUB_ENV"
+            echo "OPENAI_MODEL=$REMOTE_MODEL_NAME" >> "$GITHUB_ENV"
+            echo "OPENAI_API_KEY=$REMOTE_MODEL_KEY" >> "$GITHUB_ENV"
+          fi
       - name: Execute real operation with strict operator authorization
         shell: bash
         env:
@@ -56,9 +84,6 @@ jobs:
           BRAVE_SEARCH_API_KEY: ${{ secrets.BRAVE_SEARCH_API_KEY }}
           TRUTHLAB_X_USER_ACCESS_TOKEN: ${{ secrets.TRUTHLAB_X_USER_ACCESS_TOKEN }}
           TRUTHLAB_APPROVER_GITHUB_LOGIN: 'jessicacarter9955'
-          OPENAI_BASE_URL: ${{ vars.TRUTHLAB_WORLD_MODEL_URL }}
-          OPENAI_MODEL: ${{ vars.TRUTHLAB_WORLD_MODEL_NAME }}
-          OPENAI_API_KEY: ${{ secrets.TRUTHLAB_WORLD_MODEL_API_KEY }}
           ACTION: ${{ inputs.action }}
           DRAFT_ID: ${{ inputs.draft_id }}
           EVENT_NAME: ${{ github.event_name }}
