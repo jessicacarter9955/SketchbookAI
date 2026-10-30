@@ -179,6 +179,31 @@ is configured. A hosted model API is optional.
 - The agents do not have permission to send emails, post publicly, manage real crypto funds,
   create accounts or buy products. No secrets are revealed to the models.
 
+## 2026-10-30 execution recovery
+
+- Production scheduler: the latest pre-fix scheduled run
+  [41019281438](https://github.com/jessicacarter9955/SketchbookAI/actions/runs/41019281438)
+  checked out TruthLab but **skipped all model/database steps** because the Render
+  OIDC broker was unavailable and no GitHub PostgreSQL secret was configured.
+  Earlier green checks did not imply completed conversations. The default-branch
+  tick now **fails visibly** when durable storage is unavailable; the isolated
+  runner also fails when a due cycle produces no verified completion.
+- Render service `truthlab-agents-open` is suspended for billing. A GitHub workflow
+  edit cannot unsuspend it; live dashboard/production memory must be restored
+  separately by the account owner or by configuring an approved reachable shared
+  PostgreSQL service and its secret.
+- To keep the fictional experiment progressing without Render or paid inference,
+  [TruthLab Backrooms 100 to 500](https://github.com/jessicacarter9955/SketchbookAI/actions/runs/41034967737)
+  rehydrates the verified **2026-10-18** 100-turn artifact
+  (`39148303221`, `backrooms-100-transcript`) into a **disposable CI PostgreSQL**
+  database and generates 400 new, genuine Qwen turns. Its artifact contains
+  checkpoints and the full transcript; the final assertion requires 500 turns,
+  500 memories and 125 archives. Its completion must be checked in Actions.
+- This CI recovery is not the resumed **production** timeline. The original
+  transcript artifact expires **2026-11-17** and continuation artifacts are
+  also retention-limited. Do not claim indefinite memory or a live web dashboard
+  from these artifacts.
+
 ## Verification
 
 ```bash
