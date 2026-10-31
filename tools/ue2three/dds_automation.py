@@ -653,6 +653,21 @@ def replay_improves(before: dict, after: dict) -> bool:
             return False
         audit = validate_source_replay(before, after)
         gain = audit['new_translation_count']
+        # A source hash is necessary but not sufficient: never promote a
+        # candidate whose *newly translated* program is a stub or a no-op.
+        # Existing historical no-op entries are not retroactively reclassified.
+        for row in audit['new_translations']:
+            program = after['packages'][row['package']]['functions'][row['after']['function']]
+            steps = program.get('steps') if isinstance(program, dict) else None
+            if not isinstance(steps, list) or not steps:
+                return False
+            if any(not isinstance(step, dict) or step.get('op') in
+                   ('stub', 'noop', 'no_op') for step in steps):
+                return False
+            if all(step.get('op') == 'return'
+                   and step.get('value') == {'op': 'constant', 'value': None}
+                   for step in steps):
+                return False
         return (gain > 0
                 and after['counts']['translated'] - before['counts']['translated'] == gain
                 and before['counts']['blocked'] - after['counts']['blocked'] == gain)
