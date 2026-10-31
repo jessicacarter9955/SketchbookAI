@@ -453,7 +453,21 @@ class Supervisor:
                 self.save('needs_review', family=family, reason='Concurrent patch conflict; original retained')
                 return
         before = read(Path(self.config['publish_dir']) / 'blueprint-programs.json')
-        after = self.compile(target, target / '.local/ue2three/replay')
+        try:
+            after = self.compile(target, target / '.local/ue2three/replay')
+        except (RuntimeError, OSError, ValueError) as error:
+            # A worker may pass its isolated unit tests yet fail to compile the
+            # original cached DDS bytecode (e.g. an unbound source object).
+            # Reject only that candidate: never merge it or stop the entire
+            # supervisor. Keep the worker commit and the replay log for review.
+            record.update(status='needs_review', result='candidate_replay_failed',
+                          original_commit=original_commit,
+                          candidate_replay_error=str(error)[:600])
+            agent._checkpoint_event(self.root / agent.STATE_RELATIVE, checkpoint,
+                                    'needs_review', family=family)
+            self.save('needs_review', family=family, active_job=None,
+                      reason='Candidate source replay failed; patch retained')
+            return
         if not replay_improves(before, after):
             record.update(status='needs_review', result='no_proven_conversion_gain',
                           original_commit=original_commit)
