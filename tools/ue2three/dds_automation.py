@@ -284,8 +284,9 @@ class Supervisor:
 
     def _validate_reconciled_push(self):
         self.command('git-reconcile-python-tests',
-                     [sys.executable, '-m', 'unittest', 'discover', '-s', 'tools/ue2three/tests',
-                      '-p', 'test_*.py', '-q'], timeout=300)
+                     [sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'tests',
+                      '-p', 'test_*.py', '-q'],
+                     cwd=self.root / 'tools' / 'ue2three', timeout=300)
         node_tests = sorted((self.root / 'tests').glob('ue2three-*.test.mjs'))
         if node_tests:
             node = shutil.which('node')
