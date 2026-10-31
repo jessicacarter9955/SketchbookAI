@@ -449,6 +449,39 @@ test('skeletal mesh contexts emit typed native requests, short-circuit null and 
     assert.deepEqual(runtime.snapshot(),before);
 });
 
+test('SkeletalMeshComponent.PlayAnimation carries source parameter types into an explicit native request',()=>{
+    const {report,runtime,player}=fixture(),root=report.packages['/Game/Pawn'];
+    const receiverSchema={type:'ObjectProperty',class:['/Script/Engine','SkeletalMeshComponent'],
+        reference_kind:'runtime_native_component',default:null};
+    const animationSchema={type:'ObjectProperty',class:['/Script/Engine','AnimSequence'],default:null};
+    const loopingSchema={type:'BoolProperty',default:false};
+    root.default_state.SkeletalMesh=null;root.default_state.IdleAnimation=null;root.default_state.bLoopAnimation=false;
+    Object.assign(runtime.states['/Game/Pawn'],{SkeletalMesh:null,IdleAnimation:null,bLoopAnimation:false});
+    root.field_schemas={SkeletalMesh:receiverSchema,IdleAnimation:animationSchema,bLoopAnimation:loopingSchema};
+    const graph=report.actor_graph.roots['/Game/Pawn'];
+    graph.native_components=[{variable:'SkeletalMesh',package:'/Script/Engine',class_object:'SkeletalMeshComponent',
+        scs_node_export_index:8,template_export_index:9,template_sha256:'c'.repeat(64)}];
+    graph.native_component_bindings_complete=true;
+    runtime.bindSourceActor('/Game/Pawn',player);
+    const call={op:'native_context_call',identity:['/Script/Engine','SkeletalMeshComponent','PlayAnimation'],
+        dispatch:'EX_FinalFunction',receiver:{op:'get',scope:'self',field:'SkeletalMesh'},receiver_schema:receiverSchema,
+        context_offset:19,parameter_schemas:[animationSchema,loopingSchema],
+        parameters:[{op:'get',scope:'self',field:'IdleAnimation'},c(true)],adapter_family_present:false};
+    root.functions.PlayIdle={schema_version:1,name:'PlayIdle',status:'translated_straight_line',source_owner_index:1,
+        source_export_index:12,input_fields:[],output_fields:[],self_reads:['SkeletalMesh','IdleAnimation'],self_writes:[],
+        field_types:{self:{SkeletalMesh:'ObjectProperty',IdleAnimation:'ObjectProperty',bLoopAnimation:'BoolProperty'}},
+        schemas:{self:{SkeletalMesh:receiverSchema,IdleAnimation:animationSchema,bLoopAnimation:loopingSchema}},
+        steps:[{op:'evaluate',value:call},end]};
+    const result=runtime.call('/Game/Pawn','PlayIdle');
+    assert.equal(result.effects[0].op,'native_context_call');
+    assert.deepEqual(result.effects[0].identity,['/Script/Engine','SkeletalMeshComponent','PlayAnimation']);
+    assert.deepEqual(result.effects[0].parameter_schemas,[animationSchema,loopingSchema]);
+    assert.deepEqual(result.effects[0].arguments,[null,true]);
+    assert.equal(result.effects[0].adapter_required,true);
+    root.functions.PlayIdle.steps[0].value.parameters.pop();
+    assert.throws(()=>runtime.call('/Game/Pawn','PlayIdle'),/Unsupported original native context call contract/);
+});
+
 test('SceneCaptureComponent2D.CaptureScene emits an explicit native request and skips a null receiver',()=>{
     const {report,runtime,player}=fixture(),root=report.packages['/Game/Pawn'];
     const receiverSchema={type:'ObjectProperty',class:['/Script/Engine','SceneCaptureComponent2D'],

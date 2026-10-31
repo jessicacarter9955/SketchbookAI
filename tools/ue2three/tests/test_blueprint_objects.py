@@ -197,6 +197,35 @@ class SourceObjectTests(unittest.TestCase):
             with self.assertRaises(BlueprintTranslationError):
                 expression(broken,set(),set(),package=package,owner=1)
 
+    def test_skeletal_mesh_play_animation_preserves_source_argument_types(self):
+        package=Package({'Imports':[
+            {'ObjectName':'SkeletalMeshComponent','ClassName':'Class','OuterIndex':-2},
+            {'ObjectName':'/Script/Engine','ClassName':'Package'},
+            {'ObjectName':'PlayAnimation','ClassName':'Function','OuterIndex':-1},
+            {'ObjectName':'AnimSequence','ClassName':'Class','OuterIndex':-2}],
+            'Exports':[{'ObjectName':'Mover_C','LoadedProperties':[
+                {'Name':'SkeletalMesh','SerializedType':'ObjectProperty','PropertyClass':-1},
+                {'Name':'IdleAnimation','SerializedType':'ObjectProperty','PropertyClass':-4},
+                {'Name':'bLoopAnimation','SerializedType':'BoolProperty'}]}]})
+        package._active_function={'ObjectName':'PlayIdle','OuterIndex':1,'LoadedProperties':[]}
+        get=lambda name:node('EX_InstanceVariable',Variable={'New':{'Path':[name],'ResolvedOwner':1}})
+        call=node('EX_FinalFunction',StackNode=-3,Parameters=[get('IdleAnimation'),get('bLoopAnimation')])
+        context=node('EX_Context',ObjectExpression=get('SkeletalMesh'),ContextExpression=call,
+            Offset=memory_size(call,package=package),PropertyType=0,
+            RValuePointer={'New':{'Path':[],'ResolvedOwner':0}})
+        translated=expression(context,set(),set(),package=package,owner=1)
+        self.assertEqual(translated['op'],'native_context_call')
+        self.assertEqual(translated['identity'],['/Script/Engine','SkeletalMeshComponent','PlayAnimation'])
+        self.assertEqual(translated['parameter_schemas'],[
+            {'type':'ObjectProperty','class':['/Script/Engine','AnimSequence'],'default':None},
+            {'type':'BoolProperty','default':False}])
+        self.assertEqual([arg['field'] for arg in translated['parameters']],['IdleAnimation','bLoopAnimation'])
+        self.assertFalse(translated['adapter_family_present'])
+        broken=deepcopy(context);broken['ContextExpression']['Parameters'].pop()
+        broken['Offset']=memory_size(broken['ContextExpression'],package=package)
+        with self.assertRaisesRegex(BlueprintTranslationError,'arity'):
+            expression(broken,set(),set(),package=package,owner=1)
+
     def test_source_static_mesh_visibility_context_keeps_native_request_contract(self):
         # Original BP_PickUp invokes SceneComponent.SetVisibility on a
         # StaticMeshComponent instance, not the declaring SceneComponent CDO.

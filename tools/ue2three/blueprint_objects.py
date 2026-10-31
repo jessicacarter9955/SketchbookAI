@@ -257,6 +257,15 @@ def native_component_context(value, package, owner, reads, outputs, depth):
                 {'type': 'ObjectProperty', 'class': ['/Script/Engine', 'SkeletalMesh'], 'default': None},
             ],
         },
+        ('/Script/Engine', 'SkeletalMeshComponent', 'PlayAnimation'): {
+            'dispatch': 'EX_FinalFunction',
+            'receiver': ('/Script/Engine', 'SkeletalMeshComponent'),
+            # The source packet witnesses the identity and two inputs, but not
+            # the referenced function's reflected parameter metadata. Retain
+            # each original input schema instead of guessing an asset subtype.
+            'arity': 2,
+            'source_typed_parameters': True,
+        },
         # BP_PickUp uses a StaticMeshComponent receiver but imports the
         # declaring SceneComponent method. Preserve that exact UE identity.
         ('/Script/Engine', 'SceneComponent', 'SetVisibility'): {
@@ -299,11 +308,13 @@ def native_component_context(value, package, owner, reads, outputs, depth):
             or rvalue.get('ResolvedOwner') != 0):
         raise Error('Original native skeletal mesh context return storage is unsupported')
     args = call.get('Parameters')
-    if not isinstance(args, list) or len(args) != len(contract['parameters']):
+    parameter_count = contract['arity'] if 'arity' in contract else len(contract['parameters'])
+    if not isinstance(args, list) or len(args) != parameter_count:
         raise Error('Original native skeletal mesh context arity differs')
 
     translated, schemas = [], []
-    for argument, expected in zip(args, contract['parameters']):
+    for index, argument in enumerate(args):
+        expected = contract.get('parameters', [])[index] if not contract.get('source_typed_parameters') else None
         token = kind(argument)
         if token in ('EX_InstanceVariable', 'EX_LocalVariable', 'EX_LocalOutVariable'):
             from blueprint_effects import variable as resolve_variable
@@ -317,7 +328,8 @@ def native_component_context(value, package, owner, reads, outputs, depth):
                 'EX_True': 'BoolProperty', 'EX_False': 'BoolProperty',
             }.get(token)
             schema = {'type': primitive, 'default': False if primitive == 'BoolProperty' else 0} if primitive else None
-        if schema != expected:
+        if (not isinstance(schema, dict) or not schema.get('type')
+                or expected is not None and schema != expected):
             raise Error('Original native skeletal mesh parameter type differs')
         schemas.append(schema)
         translated.append(expression(argument, reads, outputs, depth+1, package, owner))

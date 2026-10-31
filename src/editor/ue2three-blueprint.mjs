@@ -29,6 +29,13 @@ const nativeContextContracts = new Map([
             reference_kind:'runtime_native_component',default:null},
         parameters:[{type:'ObjectProperty',class:['/Script/Engine','SkeletalMesh'],default:null}],
     }],
+    [JSON.stringify(['/Script/Engine','SkeletalMeshComponent','PlayAnimation']), {
+        identity:['/Script/Engine','SkeletalMeshComponent','PlayAnimation'], dispatch:'EX_FinalFunction',
+        receiver:['/Script/Engine','SkeletalMeshComponent'],
+        receiver_schema:{type:'ObjectProperty',class:['/Script/Engine','SkeletalMeshComponent'],
+            reference_kind:'runtime_native_component',default:null},
+        arity:2, source_typed_parameters:true,
+    }],
     [JSON.stringify(['/Script/Engine','SceneComponent','SetVisibility']), {
         identity:['/Script/Engine','SceneComponent','SetVisibility'], dispatch:'EX_FinalFunction',
         // The source final function belongs to SceneComponent; receiver
@@ -753,6 +760,11 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
         }
         if (expression.op === 'native_context_call') {
             const contract=nativeContextContracts.get(JSON.stringify(expression.identity));
+            const sourceTypedParameters=contract?.source_typed_parameters === true;
+            const parameterSchemasMatch=sourceTypedParameters
+                ? Array.isArray(expression.parameter_schemas) && expression.parameter_schemas.length === contract.arity
+                : Array.isArray(contract?.parameters)
+                    && JSON.stringify(expression.parameter_schemas) === JSON.stringify(contract.parameters);
             if (!contract || expression.dispatch !== contract.dispatch
                 || !(contract.receivers || [contract.receiver]).some(receiver =>
                     JSON.stringify(expression.receiver_schema?.class) === JSON.stringify(receiver))
@@ -761,9 +773,8 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 || expression.receiver_schema?.default !== null
                 || expression.adapter_family_present !== false
                 || !Number.isSafeInteger(expression.context_offset) || expression.context_offset <= 0
-                || !Array.isArray(expression.parameter_schemas)
-                || JSON.stringify(expression.parameter_schemas) !== JSON.stringify(contract.parameters)
-                || !Array.isArray(expression.parameters) || expression.parameters.length !== contract.parameters.length)
+                || !parameterSchemasMatch
+                || !Array.isArray(expression.parameters) || expression.parameters.length !== expression.parameter_schemas.length)
                 throw new Error('Unsupported original native context call contract');
             const reference=evaluate(expression.receiver,depth+1);
             validateSchema(expression.receiver_schema,reference);
@@ -774,7 +785,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             sourceObjectValid(notifications.native,reference,expression.receiver_schema);
             const arguments_=[];
             for (const [index,parameter] of expression.parameters.entries()) {
-                const schema=contract.parameters[index];
+                const schema=expression.parameter_schemas[index];
                 const declared=parameter?.op === 'get' ? schemaFor(parameter)
                     : parameter?.op === 'typed_literal' ? parameter.schema : null;
                 if (declared && JSON.stringify(declared) !== JSON.stringify(schema)
@@ -788,7 +799,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             const request={op:'native_context_call',identity:[...contract.identity],dispatch:contract.dispatch,
                 context_offset:expression.context_offset,receiver:structuredClone(reference),
                 receiver_schema:structuredClone(expression.receiver_schema),
-                parameter_schemas:structuredClone(contract.parameters),arguments:arguments_,
+                parameter_schemas:structuredClone(expression.parameter_schemas),arguments:arguments_,
                 adapter_family_present:false,adapter_required:true};
             emit(request);
             trace.push({source_index:sourceIndex,...structuredClone(request)});
