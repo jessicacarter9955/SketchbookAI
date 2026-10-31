@@ -137,10 +137,10 @@ class Supervisor:
     def command(self, name: str, args: list[str], cwd: Path | None = None, timeout=180):
         self.save(name, active_job=name)
         log = self.directory / (name + '.log')
-        flags = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
+        window_kwargs = agent._hidden_windows_process_kwargs()
         with log.open('ab') as output:
             process = subprocess.Popen(args, cwd=cwd or self.root, stdout=output, stderr=output,
-                                       creationflags=flags, start_new_session=os.name != 'nt')
+                                       start_new_session=os.name != 'nt', **window_kwargs)
             try:
                 code = process.wait(timeout=timeout)
             except subprocess.TimeoutExpired:
