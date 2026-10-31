@@ -51,6 +51,14 @@ def validate_source_replay(reference, result):
     old_entries, new_entries = entries(reference), entries(result)
     if set(old_entries) != set(new_entries):
         raise RuntimeError('Original function export inventory differs')
+    for key in old_entries:
+        if old_entries[key]['function'] != new_entries[key]['function']:
+            raise RuntimeError(f'Original function name changed for export: {key}')
+    for row in audit['new_translations']:
+        program = current[row['package']]['functions'].get(row['after']['function'])
+        witness = program.get('source_bytecode_sha256') if isinstance(program, dict) else None
+        if not isinstance(witness, str) or not valid_sha(witness):
+            raise RuntimeError(f'New translation has no original bytecode SHA-256: {row["package"]}')
     for report, indexed in ((reference, old_entries), (result, new_entries)):
         counts = report.get('counts', {})
         translated = sum(item['status'] == 'translated' for item in indexed.values())
