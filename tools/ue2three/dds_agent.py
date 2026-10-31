@@ -29,6 +29,24 @@ from core import digest, file_hash, workspace_lock
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+def _hidden_windows_process_kwargs(*, new_group: bool = False) -> dict:
+    """Do not create even a transient visible console for DDS-owned children.
+
+    CREATE_NO_WINDOW alone covers console attachment; STARTF_USESHOWWINDOW and
+    SW_HIDE additionally suppress a child's own initial window. They must be
+    passed at process creation, not applied after a window has appeared.
+    """
+    if os.name != 'nt':
+        return {}
+    startup = subprocess.STARTUPINFO()
+    startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    startup.wShowWindow = subprocess.SW_HIDE
+    flags = getattr(subprocess, 'CREATE_NO_WINDOW', 0)
+    if new_group:
+        flags |= getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0)
+    return {'creationflags': flags, 'startupinfo': startup}
+
 STATE_RELATIVE = Path('.local/ue2three/dds-agent')
 PLAN_RELATIVE = Path('build/local-scenes/ue2three/projects')
 MAX_PLAN_FILES = 32
@@ -897,12 +915,8 @@ def _kill_process_tree(process: subprocess.Popen) -> None:
 
 def run_codex(executable: str, worker: Path, prompt: str) -> int:
     """Persist progress independently of the chat; zero means no job expiry."""
-    flags = 0
-    kwargs = {}
-    if os.name == 'nt':
-        flags = getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0) | getattr(subprocess, 'CREATE_NO_WINDOW', 0)
-        kwargs['creationflags'] = flags
-    else:
+    kwargs = _hidden_windows_process_kwargs(new_group=True)
+    if os.name != 'nt':
         kwargs['start_new_session'] = True
     timeout = _bounded_timeout(MAX_CODEX_SECONDS)
     logs = worker / '.local' / 'dds-agent'
