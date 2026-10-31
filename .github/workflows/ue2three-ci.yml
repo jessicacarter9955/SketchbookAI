@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - chatgpt/ue2three-dds
+      - chatgpt/dds-blueprints-continue-20261030
   pull_request:
     paths:
       - 'tools/ue2three/**'
