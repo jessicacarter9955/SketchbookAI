@@ -161,6 +161,42 @@ class SourceObjectTests(unittest.TestCase):
             with self.assertRaises(BlueprintTranslationError):
                 expression(broken,set(),set(),package=package,owner=1)
 
+    def test_source_static_mesh_visibility_context_keeps_native_request_contract(self):
+        # Original BP_PickUp invokes SceneComponent.SetVisibility on a
+        # StaticMeshComponent instance, not the declaring SceneComponent CDO.
+        package=Package({'Imports':[
+            {'ObjectName':'StaticMeshComponent','ClassName':'Class','OuterIndex':-3},
+            {'ObjectName':'SceneComponent','ClassName':'Class','OuterIndex':-3},
+            {'ObjectName':'/Script/Engine','ClassName':'Package'},
+            {'ObjectName':'SetVisibility','ClassName':'Function','OuterIndex':-2}],
+            'Exports':[{'ObjectName':'BP_PickUp_C','LoadedProperties':[
+                {'Name':'Pickup Mesh','SerializedType':'ObjectProperty','PropertyClass':-1}]}]})
+        package._active_function={'ObjectName':'ExecuteUbergraph_BP_PickUp',
+                                  'OuterIndex':1,'LoadedProperties':[]}
+        getter=node('EX_InstanceVariable',Variable={'New':{'Path':['Pickup Mesh'],'ResolvedOwner':1}})
+        call=node('EX_FinalFunction',StackNode=-4,Parameters=[node('EX_True'),node('EX_False')])
+        context=node('EX_Context',ObjectExpression=getter,ContextExpression=call,
+                     Offset=memory_size(call,package=package),PropertyType=0,
+                     RValuePointer={'New':{'Path':[],'ResolvedOwner':0}})
+        compiled=expression(context,set(),set(),package=package,owner=1)
+        self.assertEqual(compiled['op'],'native_context_call')
+        self.assertEqual(compiled['identity'],['/Script/Engine','SceneComponent','SetVisibility'])
+        self.assertEqual(compiled['receiver_schema']['class'],['/Script/Engine','StaticMeshComponent'])
+        self.assertEqual(compiled['parameter_schemas'],[
+            {'type':'BoolProperty','default':False},
+            {'type':'BoolProperty','default':False}])
+        self.assertEqual([v['value'] for v in compiled['parameters']],[True,False])
+        self.assertFalse(compiled['adapter_family_present'])
+        broken=deepcopy(context);broken['Offset']+=1
+        with self.assertRaises(BlueprintTranslationError):
+            expression(broken,set(),set(),package=package,owner=1)
+        broken=deepcopy(context);broken['ContextExpression']['Parameters'][1]=node('EX_IntOne')
+        with self.assertRaises(BlueprintTranslationError):
+            expression(broken,set(),set(),package=package,owner=1)
+        broken=deepcopy(context);broken['RValuePointer']['New']['Path']=['UnwitnessedReturn']
+        with self.assertRaises(BlueprintTranslationError):
+            expression(broken,set(),set(),package=package,owner=1)
+
     def test_native_concat_preserves_exact_identity_order_and_fstring_types(self):
         package=Package({'Imports':[{'ObjectName':'Concat_StrStr','ClassName':'Function','OuterIndex':-2},
             {'ObjectName':'KismetStringLibrary','OuterIndex':-3}, {'ObjectName':'/Script/Engine','ClassName':'Package'}],
