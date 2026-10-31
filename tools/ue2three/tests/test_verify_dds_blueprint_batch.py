@@ -85,6 +85,17 @@ class SourceReplayGateTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "source_export_index"):
             validate_source_replay(before, after)
 
+    def test_renamed_original_export_and_unwitnessed_gain_rejected(self):
+        before, after = snapshot(), snapshot(translated=True)
+        name = "/Game/Fixers/BP_GI_Fixers"
+        after["packages"][name]["functions"]["ResetRaidConfig"]["name"] = "FakeReset"
+        with self.assertRaisesRegex(RuntimeError, "function name changed"):
+            validate_source_replay(before, after)
+        after = snapshot(translated=True)
+        after["packages"][name]["functions"]["ResetRaidConfig"].pop("source_bytecode_sha256")
+        with self.assertRaisesRegex(RuntimeError, "bytecode SHA-256"):
+            validate_source_replay(before, after)
+
     def test_missing_package_or_cache_rejected(self):
         before, after = snapshot(), snapshot(translated=True)
         after["packages"].clear()
