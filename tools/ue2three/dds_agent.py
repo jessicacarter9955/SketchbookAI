@@ -687,9 +687,9 @@ class Heartbeat:
 
 
 def _git(repo_root: Path, *args: str, timeout: int = GIT_TIMEOUT_SECONDS) -> str:
-    """Retry a stalled read-only rev-parse once; never retry mutating Git verbs."""
+    """Retry safe read-only Git queries once; never retry mutating Git verbs."""
     verb = args[0] if args else 'command'
-    attempts = 2 if verb == 'rev-parse' else 1
+    attempts = 2 if verb in ('rev-parse', 'diff', 'status', 'ls-files') else 1
     for attempt in range(attempts):
         try:
             result = subprocess.run(['git', '-C', str(repo_root), *args], check=True,
@@ -698,6 +698,9 @@ def _git(repo_root: Path, *args: str, timeout: int = GIT_TIMEOUT_SECONDS) -> str
                                     creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
             return result.stdout.strip()
         except subprocess.CalledProcessError as error:
+            if attempt + 1 < attempts:
+                time.sleep(1)
+                continue
             raise RunnerError(f'Git {verb} failed (exit {error.returncode}); source patches retained.',
                               'git_error') from None
         except subprocess.TimeoutExpired:
@@ -991,6 +994,7 @@ def verify_worker(worker: Path, family_id: str) -> None:
           '--pattern', 'test_blueprint*.py'], PYTHON_VERIFY_SECONDS, python_root),
         ([node, '--test', *js_tests], JAVASCRIPT_VERIFY_SECONDS, worker),
         (['git', '-C', str(worker), 'diff', '--check'], GIT_TIMEOUT_SECONDS, worker),
+        (['git', '-C', str(worker), 'diff', '--cached', '--check'], GIT_TIMEOUT_SECONDS, worker),
     )
     logs = worker / '.local/dds-agent'
     logs.mkdir(parents=True, exist_ok=True)

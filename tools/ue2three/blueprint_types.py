@@ -22,7 +22,8 @@ def source_structs(documents, error):
 NATIVE_COMPONENT_REFERENCES = {
     ('/Script/Engine', name) for name in ('ActorComponent', 'SceneComponent', 'PrimitiveComponent',
         'MeshComponent', 'SkeletalMeshComponent', 'StaticMeshComponent', 'CapsuleComponent',
-        'CameraComponent', 'SpringArmComponent', 'AudioComponent', 'TextRenderComponent')
+        'CameraComponent', 'SpringArmComponent', 'AudioComponent', 'TextRenderComponent',
+        'SceneCaptureComponent', 'SceneCaptureComponent2D', 'SpotLightComponent')
 } | {
     ('/Script/Niagara', 'NiagaraComponent'),
     ('/Script/HairStrandsCore', 'GroomComponent'),

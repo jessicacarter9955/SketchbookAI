@@ -105,6 +105,42 @@ class SourceObjectTests(unittest.TestCase):
             {'type':'ObjectProperty','class':['/Script/HairStrandsCore','GroomComponent'],
              'reference_kind':'runtime_native_component','default':None})
 
+    def test_scene_capture_and_spotlight_fields_keep_their_native_component_types(self):
+        package=Package({'Imports':[{'ObjectName':'SceneCaptureComponent2D','OuterIndex':-2},
+            {'ObjectName':'/Script/Engine','ClassName':'Package'},
+            {'ObjectName':'SpotLightComponent','OuterIndex':-2}], 'Exports':[]})
+        for reference, name in ((-1,'SceneCaptureComponent2D'),(-3,'SpotLightComponent')):
+            with self.subTest(name=name):
+                self.assertEqual(property_schema(package,{'SerializedType':'ObjectProperty','PropertyClass':reference}),
+                    {'type':'ObjectProperty','class':['/Script/Engine',name],
+                     'reference_kind':'runtime_native_component','default':None})
+
+    def test_scene_capture_context_call_preserves_the_exact_native_dependency(self):
+        package=Package({'Imports':[
+            {'ObjectName':'CaptureScene','ClassName':'Function','OuterIndex':-2},
+            {'ObjectName':'SceneCaptureComponent2D','ClassName':'Class','OuterIndex':-3},
+            {'ObjectName':'/Script/Engine','ClassName':'Package'}],
+            'Exports':[{'ObjectName':'Preview_C','LoadedProperties':[
+                {'Name':'SceneCapture','SerializedType':'ObjectProperty','PropertyClass':-2}]}]})
+        package._active_function={'ObjectName':'RefreshPreview','OuterIndex':1,'LoadedProperties':[]}
+        receiver=node('EX_InstanceVariable',Variable={'New':{'Path':['SceneCapture'],'ResolvedOwner':1}})
+        call=node('EX_FinalFunction',StackNode=-1,Parameters=[])
+        context=node('EX_Context',ObjectExpression=receiver,ContextExpression=call,
+            Offset=memory_size(call,package=package),PropertyType=0,
+            RValuePointer={'New':{'Path':[],'ResolvedOwner':0}})
+        translated=expression(context,set(),set(),package=package,owner=1)
+        self.assertEqual(translated['op'],'native_context_call')
+        self.assertEqual(translated['identity'],['/Script/Engine','SceneCaptureComponent2D','CaptureScene'])
+        self.assertEqual(translated['receiver_schema'],property_schema(package,package.exports[0]['LoadedProperties'][0]))
+        self.assertEqual(translated['parameter_schemas'],[])
+        self.assertFalse(translated['adapter_family_present'])
+        broken_offset=deepcopy(context);broken_offset['Offset']+=1
+        broken_function=deepcopy(context);broken_function['ContextExpression']['StackNode']=-2
+        broken_storage=deepcopy(context);broken_storage['PropertyType']=1
+        for broken in (broken_offset,broken_function,broken_storage):
+            with self.assertRaises(BlueprintTranslationError):
+                expression(broken,set(),set(),package=package,owner=1)
+
     def test_actor_context_requires_original_typed_receiver_and_exact_offset(self):
         package=self.packages()['/Game/Component'];function={'ObjectName':'Write','OuterIndex':1,'LoadedProperties':[
             {'Name':'OwningActor','SerializedType':'ObjectProperty','PropertyClass':-4}]}

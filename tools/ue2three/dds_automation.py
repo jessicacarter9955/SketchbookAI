@@ -389,6 +389,7 @@ class Supervisor:
                 if not agent._contained(worker, worktree_root):
                     raise ValueError('Retained worker is outside the DDS worktree root')
                 changed = agent._git(worker, 'diff', '--name-only').splitlines()
+                changed += agent._git(worker, 'diff', '--cached', '--name-only').splitlines()
                 changed += agent._git(worker, 'ls-files', '--others', '--exclude-standard').splitlines()
                 changed = sorted(set(changed))
                 if not changed or any(not blueprint_patch_in_scope(item) for item in changed):
@@ -422,6 +423,7 @@ class Supervisor:
         if not agent._contained(worker.resolve(), (self.root / agent.STATE_RELATIVE / 'worktrees').resolve()):
             raise RuntimeError('Worker path escapes its isolated directory')
         changed = agent._git(worker, 'diff', '--name-only').splitlines()
+        changed += agent._git(worker, 'diff', '--cached', '--name-only').splitlines()
         changed += agent._git(worker, 'ls-files', '--others', '--exclude-standard').splitlines()
         changed = sorted(set(changed))
         if not changed or any(not blueprint_patch_in_scope(item) for item in changed):
