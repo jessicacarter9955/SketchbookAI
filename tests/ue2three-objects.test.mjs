@@ -449,6 +449,37 @@ test('skeletal mesh contexts emit typed native requests, short-circuit null and 
     assert.deepEqual(runtime.snapshot(),before);
 });
 
+test('SceneCaptureComponent2D.CaptureScene emits an explicit native request and skips a null receiver',()=>{
+    const {report,runtime,player}=fixture(),root=report.packages['/Game/Pawn'];
+    const receiverSchema={type:'ObjectProperty',class:['/Script/Engine','SceneCaptureComponent2D'],
+        reference_kind:'runtime_native_component',default:null};
+    root.default_state.SceneCapture=null;
+    root.field_schemas={SceneCapture:receiverSchema};
+    const graph=report.actor_graph.roots['/Game/Pawn'];
+    graph.native_components=[{variable:'SceneCapture',package:'/Script/Engine',class_object:'SceneCaptureComponent2D',
+        scs_node_export_index:8,template_export_index:9,template_sha256:'b'.repeat(64)}];
+    graph.native_component_bindings_complete=true;
+    root.functions.RefreshPreview={schema_version:1,name:'RefreshPreview',status:'translated_straight_line',
+        source_owner_index:1,source_export_index:10,input_fields:[],output_fields:[],self_reads:['SceneCapture'],self_writes:[],
+        field_types:{self:{SceneCapture:'ObjectProperty'}},schemas:{self:{SceneCapture:receiverSchema}},steps:[
+            {op:'evaluate',value:{op:'native_context_call',identity:['/Script/Engine','SceneCaptureComponent2D','CaptureScene'],
+                dispatch:'EX_FinalFunction',receiver:{op:'get',scope:'self',field:'SceneCapture'},receiver_schema:receiverSchema,
+                context_offset:10,parameter_schemas:[],parameters:[],adapter_family_present:false}},end]};
+    runtime.bindSourceActor('/Game/Pawn',player);
+    const result=runtime.call('/Game/Pawn','RefreshPreview');
+    assert.deepEqual(result.effects[0].identity,['/Script/Engine','SceneCaptureComponent2D','CaptureScene']);
+    assert.equal(result.effects[0].dispatch,'EX_FinalFunction');
+    assert.deepEqual(result.effects[0].arguments,[]);
+    assert.equal(result.effects[0].adapter_required,true);
+    root.functions.RefreshPreview.steps[0].value.identity[2]='CaptureEveryFrame';
+    assert.throws(()=>runtime.call('/Game/Pawn','RefreshPreview'),/Unsupported original native context call contract/);
+    root.functions.RefreshPreview.steps[0].value.identity[2]='CaptureScene';
+    runtime.states['/Game/Pawn'].SceneCapture=null;
+    const count=runtime.nativeRequests.length,skipped=runtime.call('/Game/Pawn','RefreshPreview');
+    assert.equal(runtime.nativeRequests.length,count);
+    assert.ok(skipped.trace.some(entry=>entry.message?.includes('Accessed None')));
+});
+
 test('original component graph binds the actual actor and applies source template overrides once',()=>{
     const {runtime,player}=fixture();
     assert.equal(runtime.bindSourceActor('/Game/Pawn',player).components,1);

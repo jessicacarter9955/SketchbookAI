@@ -200,10 +200,10 @@ def native_component_owner_context(value, package, owner, reads, outputs, depth)
 
 
 def native_component_context(value, package, owner, reads, outputs, depth):
-    """Retain the exact native setter dependency for the witnessed mesh contexts.
+    """Retain exact native component dependencies for explicitly bound receivers.
 
     These calls are requests to a runtime adapter. This compiler does not
-    synthesize mesh/material behavior when no native adapter is installed.
+    synthesize native component behavior when no adapter is installed.
     """
     from blueprint_migration import kind, expression, memory_size, BlueprintTranslationError as Error
     from blueprint_effects import variable
@@ -236,8 +236,14 @@ def native_component_context(value, package, owner, reads, outputs, depth):
     # Only complete source-witnessed calls are admitted. The request records
     # observed signatures and exact Unreal identity for a native adapter.
     contracts = {
+        ('/Script/Engine', 'SceneCaptureComponent2D', 'CaptureScene'): {
+            'dispatch': 'EX_FinalFunction',
+            'receiver': ('/Script/Engine', 'SceneCaptureComponent2D'),
+            'parameters': [],
+        },
         ('/Script/Engine', 'SkeletalMeshComponent', 'SetMaterial'): {
             'dispatch': 'EX_VirtualFunction',
+            'receiver': ('/Script/Engine', 'SkeletalMeshComponent'),
             'parameters': [
                 {'type': 'IntProperty', 'default': 0},
                 {'type': 'ObjectProperty', 'class': ['/Script/Engine', 'MaterialInterface'], 'default': None},
@@ -245,6 +251,7 @@ def native_component_context(value, package, owner, reads, outputs, depth):
         },
         ('/Script/Engine', 'SkeletalMeshComponent', 'SetSkeletalMeshAsset'): {
             'dispatch': 'EX_FinalFunction',
+            'receiver': ('/Script/Engine', 'SkeletalMeshComponent'),
             'parameters': [
                 {'type': 'ObjectProperty', 'class': ['/Script/Engine', 'SkeletalMesh'], 'default': None},
             ],
@@ -253,8 +260,8 @@ def native_component_context(value, package, owner, reads, outputs, depth):
     contract = contracts.get(identity)
     if contract is None: return None
     if (contract['dispatch'] != dispatch or value.get('Offset') != memory_size(call, package=package)
-            or receiver_class != ('/Script/Engine', 'SkeletalMeshComponent')):
-        raise Error('Original native skeletal mesh context identity or layout differs')
+            or receiver_class != contract['receiver']):
+        raise Error('Original native component context identity or layout differs')
     rvalue = value.get('RValuePointer', {}).get('New', {})
     if (value.get('PropertyType') != 0 or rvalue.get('Path') != []
             or rvalue.get('ResolvedOwner') != 0):

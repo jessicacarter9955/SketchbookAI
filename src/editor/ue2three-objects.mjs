@@ -4,7 +4,8 @@ const bases = new Set(['Actor', 'Pawn', 'Character']);
 const safeName = name => typeof name === 'string' && name && !['__proto__', 'constructor', 'prototype'].includes(name);
 const nativeComponentClasses = new Set([
     ...['ActorComponent','SceneComponent','PrimitiveComponent','MeshComponent','SkeletalMeshComponent',
-        'StaticMeshComponent','CapsuleComponent','CameraComponent','SpringArmComponent','AudioComponent']
+        'StaticMeshComponent','CapsuleComponent','CameraComponent','SpringArmComponent','AudioComponent',
+        'SceneCaptureComponent','SceneCaptureComponent2D','SpotLightComponent']
         .map(name => JSON.stringify(['/Script/Engine',name])),
     JSON.stringify(['/Script/Niagara','NiagaraComponent']),
     JSON.stringify(['/Script/HairStrandsCore','GroomComponent']),

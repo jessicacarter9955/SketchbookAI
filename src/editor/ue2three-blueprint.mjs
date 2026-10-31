@@ -7,6 +7,13 @@ import { validActorReference, validComponentReference, sourceComponentOwner, sou
 const owns = (object, key) => object != null && Object.hasOwn(object, key);
 const safeField = key => typeof key === 'string' && key.length > 0 && !['__proto__', 'constructor', 'prototype'].includes(key);
 const nativeContextContracts = new Map([
+    [JSON.stringify(['/Script/Engine','SceneCaptureComponent2D','CaptureScene']), {
+        identity:['/Script/Engine','SceneCaptureComponent2D','CaptureScene'], dispatch:'EX_FinalFunction',
+        receiver:['/Script/Engine','SceneCaptureComponent2D'],
+        receiver_schema:{type:'ObjectProperty',class:['/Script/Engine','SceneCaptureComponent2D'],
+            reference_kind:'runtime_native_component',default:null},
+        parameters:[],
+    }],
     [JSON.stringify(['/Script/Engine','SkeletalMeshComponent','SetMaterial']), {
         identity:['/Script/Engine','SkeletalMeshComponent','SetMaterial'], dispatch:'EX_VirtualFunction',
         receiver:['/Script/Engine','SkeletalMeshComponent'],
