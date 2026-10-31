@@ -181,7 +181,8 @@ class AutomationTests(unittest.TestCase):
                   'packages': {'A': {'source': {'sha': 'same'}, 'functions': {'existing': {}}}}}
         after = {'project': 'DDS', 'counts': {'translated': 2, 'blocked': 1},
                  'packages': {'A': {'source': {'sha': 'same'}, 'functions': {'existing': {}, 'new': {}}}}}
-        self.assertTrue(automation.replay_improves(before, after))
+        # A fabricated one-package report is not the 276/1,957 original source.
+        self.assertFalse(automation.replay_improves(before, after))
         after['packages']['A']['functions'].pop('existing')
         self.assertFalse(automation.replay_improves(before, after))
         after['packages']['A']['functions']['existing'] = {}
