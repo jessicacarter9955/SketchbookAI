@@ -22,7 +22,7 @@ def source_structs(documents, error):
 NATIVE_COMPONENT_REFERENCES = {
     ('/Script/Engine', name) for name in ('ActorComponent', 'SceneComponent', 'PrimitiveComponent',
         'MeshComponent', 'SkeletalMeshComponent', 'StaticMeshComponent', 'CapsuleComponent',
-        'CameraComponent', 'SpringArmComponent', 'AudioComponent')
+        'CameraComponent', 'SpringArmComponent', 'AudioComponent', 'TextRenderComponent')
 } | {
     ('/Script/Niagara', 'NiagaraComponent'),
     ('/Script/HairStrandsCore', 'GroomComponent'),
