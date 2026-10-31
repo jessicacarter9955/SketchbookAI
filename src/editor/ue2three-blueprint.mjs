@@ -24,12 +24,25 @@ const nativeContextContracts = new Map([
     }],
     [JSON.stringify(['/Script/Engine','SceneComponent','SetVisibility']), {
         identity:['/Script/Engine','SceneComponent','SetVisibility'], dispatch:'EX_FinalFunction',
-        // Reflected native component identity is the receiver class; the
-        // imported final-function owner is the declaring SceneComponent.
+        // The source final function belongs to SceneComponent; receiver
+        // classes retain the exact reflected concrete SCS component type.
         receiver:['/Script/Engine','StaticMeshComponent'],
-        receiver_schema:{type:'ObjectProperty',class:['/Script/Engine','StaticMeshComponent'],
-            reference_kind:'runtime_native_component',default:null},
+        receivers:[['/Script/Engine','StaticMeshComponent'],['/Script/Engine','TextRenderComponent']],
         parameters:[{type:'BoolProperty',default:false},{type:'BoolProperty',default:false}],
+    }],
+    [JSON.stringify(['/Script/Engine','TextRenderComponent','K2_SetText']), {
+        identity:['/Script/Engine','TextRenderComponent','K2_SetText'], dispatch:'EX_FinalFunction',
+        receiver:['/Script/Engine','TextRenderComponent'],
+        parameters:[{type:'TextProperty',default:{history:'empty',text:'',flags:0}}],
+    }],
+    [JSON.stringify(['/Script/Niagara','NiagaraComponent','Activate']), {
+        identity:['/Script/Niagara','NiagaraComponent','Activate'], dispatch:'EX_VirtualFunction',
+        receiver:['/Script/Niagara','NiagaraComponent'],
+        parameters:[{type:'BoolProperty',default:false}],
+    }],
+    [JSON.stringify(['/Script/Niagara','NiagaraComponent','Deactivate']), {
+        identity:['/Script/Niagara','NiagaraComponent','Deactivate'], dispatch:'EX_VirtualFunction',
+        receiver:['/Script/Niagara','NiagaraComponent'],parameters:[],
     }],
 ]);
 const validPrimitive = (type, value) => type === 'BoolProperty' && typeof value === 'boolean'
@@ -734,8 +747,11 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
         if (expression.op === 'native_context_call') {
             const contract=nativeContextContracts.get(JSON.stringify(expression.identity));
             if (!contract || expression.dispatch !== contract.dispatch
-                || JSON.stringify(expression.receiver_schema?.class) !== JSON.stringify(contract.receiver)
-                || JSON.stringify(expression.receiver_schema) !== JSON.stringify(contract.receiver_schema)
+                || !(contract.receivers || [contract.receiver]).some(receiver =>
+                    JSON.stringify(expression.receiver_schema?.class) === JSON.stringify(receiver))
+                || expression.receiver_schema?.type !== 'ObjectProperty'
+                || expression.receiver_schema?.reference_kind !== 'runtime_native_component'
+                || expression.receiver_schema?.default !== null
                 || expression.adapter_family_present !== false
                 || !Number.isSafeInteger(expression.context_offset) || expression.context_offset <= 0
                 || !Array.isArray(expression.parameter_schemas)
