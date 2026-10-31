@@ -137,8 +137,13 @@ class AutomationTests(unittest.TestCase):
         self.assertEqual(result['waiting_reason'], 'usage_limit')
         self.assertGreater(result['retry_after'], 0)
 
-    def test_parallel_configuration_defaults_to_four_and_rejects_overcommit(self):
-        self.assertEqual(self.supervisor.config['parallel_workers'], 4)
+    def test_sequential_is_default_and_parallel_execution_is_explicit(self):
+        self.assertEqual(self.supervisor.config['parallel_workers'], 1)
+        self.assertEqual(self.supervisor.config['conversion_mode'], 'sequential')
+        self.assertEqual(automation.Supervisor({**self.config, 'parallel_workers': 4}, self.root).config['parallel_workers'], 1)
+        self.assertEqual(automation.Supervisor({**self.config, 'conversion_mode': 'parallel', 'parallel_workers': 4}, self.root).config['parallel_workers'], 4)
+        with self.assertRaisesRegex(ValueError, 'conversion_mode'):
+            automation.Supervisor({**self.config, 'conversion_mode': 'other'}, self.root)
         with self.assertRaisesRegex(ValueError, 'parallel_workers'):
             automation.Supervisor({**self.config, 'parallel_workers': 5}, self.root)
 

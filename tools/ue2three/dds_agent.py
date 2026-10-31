@@ -1236,9 +1236,8 @@ def run_many(repo_root: Path = REPO_ROOT, state_root: Path | None = None,
             executable = codex_executable or shutil.which('codex')
             if not executable:
                 raise RunnerError('Installed Codex executable was not found on PATH.', 'codex_unavailable')
-            for family in _reopen_reviews_for_new_head(checkpoint, head):
-                _checkpoint_event(state_root, checkpoint, 'review_reopened_on_new_head',
-                                  family=family, head=head)
+            # A new HEAD alone is not a new source-witnessed plan. Previously
+            # rejected no-gain families reopen only if their plan fingerprint changes.
             tasks = []
             for lane in range(1, max_workers + 1):
                 candidate = _load_candidate(repo_root, checkpoint)

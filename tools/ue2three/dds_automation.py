@@ -99,9 +99,14 @@ class Supervisor:
         self.directory.mkdir(parents=True, exist_ok=True)
         self.state_path = self.directory / 'state.json'
         self.state = read(self.state_path, {'schema_version': 1, 'events': [], 'started_epoch': time.time()})
-        self.config['parallel_workers'] = self.config.get('parallel_workers', 4)
-        if type(self.config['parallel_workers']) is not int or not 1 <= self.config['parallel_workers'] <= 4:
+        requested_workers = self.config.get('parallel_workers', 4)
+        if type(requested_workers) is not int or not 1 <= requested_workers <= 4:
             raise ValueError('parallel_workers must be between one and four')
+        conversion_mode = self.config.get('conversion_mode', 'sequential')
+        if conversion_mode not in ('sequential', 'parallel'):
+            raise ValueError("conversion_mode must be 'sequential' or 'parallel'")
+        self.config['conversion_mode'] = conversion_mode
+        self.config['parallel_workers'] = requested_workers if conversion_mode == 'parallel' else 1
 
     def save(self, phase: str, **fields):
         self.state.update(phase=phase, updated_at=agent.utc_now(), **fields)
@@ -586,6 +591,11 @@ class Supervisor:
                     result = agent.run_many(self.root, codex_executable=executable,
                                             max_workers=self.config['parallel_workers'])
                     self.save('agent_checkpoint', agent_result=result, active_job=None)
+                    if result.get('status') == 'no_eligible_family':
+                        self.additional_stages()
+                        self.save('needs_source_adapter', active_job=None, error=None,
+                                  reason='No eligible source-witnessed family; refresh the blocker plan')
+                        return self.state
                     account_errors = {'usage_limit', 'authentication_required', 'connection_interrupted'}
                     errors = {row.get('result') for row in result.get('results', [])}
                     if errors and errors.issubset(account_errors):
