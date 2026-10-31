@@ -163,7 +163,8 @@ class Supervisor:
         try:
             result = subprocess.run(
                 ['git', '-C', str(self.root), 'diff', '--no-renames', '--name-only', '-z', base, commit],
-                check=True, capture_output=True, timeout=60)
+                check=True, capture_output=True, timeout=60,
+                creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
             raise RuntimeError('Unable to compare both Git revisions; push left pending') from None
         return {os.fsdecode(item) for item in result.stdout.split(b'\0') if item}
@@ -182,7 +183,8 @@ class Supervisor:
         try:
             probe = subprocess.run(['git', '-C', str(self.root), 'merge-base',
                                     '--is-ancestor', local, remote],
-                                   capture_output=True, timeout=60)
+                                   capture_output=True, timeout=60,
+                                   creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         except (OSError, subprocess.TimeoutExpired):
             raise PushReconciliationBlocked('Unable to verify whether the remote includes local work') from None
         if probe.returncode == 1:
@@ -215,7 +217,8 @@ class Supervisor:
         try:
             probe = subprocess.run(['git', '-C', str(self.root), 'merge-base',
                                     '--is-ancestor', local, remote],
-                                   capture_output=True, timeout=60)
+                                   capture_output=True, timeout=60,
+                                   creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         except (OSError, subprocess.TimeoutExpired):
             raise PushReconciliationBlocked('Remote source ancestry could not be checked') from None
         if probe.returncode == 1:
