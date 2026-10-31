@@ -694,7 +694,8 @@ def _git(repo_root: Path, *args: str, timeout: int = GIT_TIMEOUT_SECONDS) -> str
         try:
             result = subprocess.run(['git', '-C', str(repo_root), *args], check=True,
                                     capture_output=True, text=True, encoding='utf-8',
-                                    errors='replace', timeout=_bounded_timeout(timeout))
+                                    errors='replace', timeout=_bounded_timeout(timeout),
+                                    creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
             return result.stdout.strip()
         except subprocess.CalledProcessError as error:
             raise RunnerError(f'Git {verb} failed (exit {error.returncode}); source patches retained.',
@@ -743,7 +744,8 @@ def _link_worker_dependencies(repo_root: Path, worker: Path) -> None:
         if os.name == 'nt':
             subprocess.run(['cmd', '/c', 'mklink', '/J', str(target), str(source)], check=True,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                           timeout=_bounded_timeout(GIT_TIMEOUT_SECONDS))
+                           timeout=_bounded_timeout(GIT_TIMEOUT_SECONDS),
+                           creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         else:
             target.symlink_to(source, target_is_directory=True)
     except (OSError, subprocess.SubprocessError):
@@ -769,7 +771,8 @@ def _worktree_for(repo_root: Path, state_root: Path, candidate: FamilyCandidate,
     try:
         subprocess.run(['git', '-C', str(repo_root), 'worktree', 'add', '--detach', '--no-checkout', str(worker), head],
                        check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                       timeout=_bounded_timeout(GIT_TIMEOUT_SECONDS))
+                       timeout=_bounded_timeout(GIT_TIMEOUT_SECONDS),
+                       creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         _git(worker, 'sparse-checkout', 'set', '--skip-checks', 'tools/ue2three', 'src', 'tests', 'docs', '.github')
         _git(worker, 'checkout', '--detach', head, timeout=GIT_CHECKOUT_TIMEOUT_SECONDS)
     except (OSError, subprocess.SubprocessError):
@@ -870,7 +873,8 @@ def _kill_process_tree(process: subprocess.Popen) -> None:
     if os.name == 'nt':
         try:
             subprocess.run(['taskkill', '/PID', str(process.pid), '/T', '/F'], check=False,
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5,
+                           creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         except (OSError, subprocess.SubprocessError):
             pass
         try:
@@ -996,7 +1000,8 @@ def verify_worker(worker: Path, family_id: str) -> None:
                 output.write(('\nCHECK ' + command[0] + '\n').encode('utf-8'))
                 output.flush()
                 result = subprocess.run(command, cwd=working_dir, stdout=output,
-                                        stderr=output, timeout=_bounded_timeout(timeout), check=False)
+                                        stderr=output, timeout=_bounded_timeout(timeout), check=False,
+                                        creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         except subprocess.TimeoutExpired:
             raise RunnerError('A scoped validation command exceeded its time bound.', 'verification_timeout') from None
         except OSError:
