@@ -635,20 +635,30 @@ class Supervisor:
 
 
 def replay_improves(before: dict, after: dict) -> bool:
-    old, new = before.get('counts', {}), after.get('counts', {})
-    if after.get('missing_cached_packages') or before.get('project') != after.get('project'):
-        return False
-    old_packages, new_packages = before.get('packages', {}), after.get('packages', {})
-    if set(old_packages) != set(new_packages):
-        return False
-    for name, package in old_packages.items():
-        if package.get('source') != new_packages[name].get('source'):
+    """Promote only a strict, complete, original-source 276/1,957 replay gain.
+
+    Aggregate counters and function names are not source witnesses. The same
+    validator used by the standalone full replay must gate promotion *before*
+    any candidate commit is merged into the isolated checkout. Incomplete or
+    malformed reports fail closed, including a candidate that merely inflates
+    its counts, renames exports, or changes an original package/bytecode hash.
+    This is not a Play certification.
+    """
+    from compare_blueprint_reports import entries
+    from verify_dds_blueprint_batch import validate_source_replay
+
+    try:
+        if (len(before['packages']) != 276 or len(after['packages']) != 276
+                or len(entries(before)) != 1957 or len(entries(after)) != 1957):
             return False
-        # Whole existing functions must stay translated, not just the aggregate count.
-        if not set(package.get('functions', {})).issubset(new_packages[name].get('functions', {})):
-            return False
-    return (new.get('translated', 0) > old.get('translated', 0)
-            and new.get('blocked', sys.maxsize) < old.get('blocked', 0))
+        audit = validate_source_replay(before, after)
+        gain = audit['new_translation_count']
+        return (gain > 0
+                and after['counts']['translated'] - before['counts']['translated'] == gain
+                and before['counts']['blocked'] - after['counts']['blocked'] == gain)
+    except (RuntimeError, ValueError, KeyError, TypeError, AttributeError):
+        # Do not promote malformed, partial or unwitnessed source reports.
+        return False
 
 
 def main(argv=None):
