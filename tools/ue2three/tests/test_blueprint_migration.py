@@ -228,6 +228,19 @@ class BlueprintMigrationTests(unittest.TestCase):
         queue_reset = next(step for step in result['steps'] if step.get('field') == 'QueuePoolLobbyID')
         self.assertEqual(queue_reset['scope'], 'self')
         self.assertEqual(queue_reset['value'], {'op': 'constant', 'value': 0})
+        # This is the complete original UE5.7 ResetRaidConfig bytecode body,
+        # not an invented fixture. Verify every side effect and its source order,
+        # rather than declaring a function translated from one Int64 assignment.
+        assignments = [step for step in result['steps'] if step.get('op') == 'set']
+        self.assertEqual(
+            [(step['field'], step['value']) for step in assignments],
+            [('SelectedRaidMap', {'op': 'constant', 'value': ''}),
+             ('bFillSquad', {'op': 'constant', 'value': False}),
+             ('bRaidConfigured', {'op': 'constant', 'value': False}),
+             ('QueuePoolLobbyID', {'op': 'constant', 'value': 0}),
+             ('SelectedRaidMapRowName', {'op': 'constant', 'value': 'None'})])
+        self.assertEqual([step['source_index'] for step in assignments], [3, 6, 9, 12, 15])
+        self.assertEqual([step['op'] for step in result['steps'] if step['op'] != 'set'], ['return'])
 
     def test_int64_constants_reject_values_that_java_script_cannot_represent_exactly(self):
         from blueprint_migration import expression
