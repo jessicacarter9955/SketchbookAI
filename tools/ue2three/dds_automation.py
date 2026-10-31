@@ -337,6 +337,60 @@ class Supervisor:
         if not (self.root / 'node_modules/three/package.json').is_file():
             raise RuntimeError('npm finished but Three.js worker dependency is missing')
 
+    def recover_retained_verification_patches(self, checkpoint: dict) -> list[str]:
+        """Recheck retained dirty worktrees after a validator repair.
+
+        Do not reset attempts, discard patch files, or claim a conversion gain.
+        Only the existing promote() path may integrate a candidate, after
+        a full source-witnessed replay proves a strict monotonic improvement.
+        """
+        state_root = self.root / agent.STATE_RELATIVE
+        worktree_root = (state_root / 'worktrees').resolve()
+        head = agent._git(self.root, 'rev-parse', 'HEAD')
+        allowed = ('tools/ue2three/blueprint', 'tools/ue2three/tests/',
+                   'src/editor/ue2three-', 'tests/ue2three-', 'docs/')
+        recovered = []
+        for family, record in sorted(checkpoint['families'].items()):
+            if (record.get('status') != 'exhausted'
+                    or record.get('result') != 'verification_failed'
+                    or record.get('recovery_probe_head') == head):
+                continue
+            worktree_path = record.get('worktree_path')
+            if not isinstance(worktree_path, str) or not worktree_path:
+                continue
+            try:
+                worker = Path(worktree_path).resolve(strict=True)
+                if not agent._contained(worker, worktree_root):
+                    raise ValueError('Retained worker is outside the DDS worktree root')
+                changed = agent._git(worker, 'diff', '--name-only').splitlines()
+                changed += agent._git(worker, 'ls-files', '--others', '--exclude-standard').splitlines()
+                changed = sorted(set(changed))
+                if (not changed
+                        or any('..' in Path(item).parts or not item.startswith(allowed)
+                               for item in changed)):
+                    record['recovery_probe_head'] = head
+                    record['recovery_probe_error'] = 'empty_or_out_of_scope_patch'
+                    agent._checkpoint_event(state_root, checkpoint, 'retained_patch_needs_scope_review',
+                                            family=family)
+                    continue
+                agent.verify_worker(worker, family)
+            except (agent.RunnerError, OSError, ValueError) as error:
+                record['recovery_probe_head'] = head
+                record['recovery_probe_error'] = (
+                    error.code if isinstance(error, agent.RunnerError) else type(error).__name__)
+                agent._checkpoint_event(state_root, checkpoint, 'retained_patch_validation_failed',
+                                        family=family, error=record['recovery_probe_error'])
+                continue
+            record.update(status='patch_ready_for_review',
+                          result='historical_patch_revalidated',
+                          recovery_probe_head=head,
+                          revalidated_at=agent.utc_now())
+            record.pop('recovery_probe_error', None)
+            agent._checkpoint_event(state_root, checkpoint, 'retained_patch_revalidated',
+                                    family=family)
+            recovered.append(family)
+        return recovered
+
     def promote(self, family: str, checkpoint: dict):
         record = checkpoint['families'][family]
         head = agent._require_clean_repo(self.root)
@@ -478,6 +532,7 @@ class Supervisor:
                     report = self.compile()
                     self.save('conversion_checkpoint', counts=report['counts'], compiled_fingerprint=current)
                 checkpoint = agent._read_checkpoint(self.root / agent.STATE_RELATIVE)
+                self.recover_retained_verification_patches(checkpoint)
                 pending = [family for family, row in checkpoint['families'].items()
                            if row.get('status') == 'patch_ready_for_review']
                 if pending:
