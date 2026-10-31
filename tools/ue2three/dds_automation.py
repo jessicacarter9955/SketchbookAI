@@ -374,17 +374,22 @@ class Supervisor:
         """
         state_root = self.root / agent.STATE_RELATIVE
         worktree_root = (state_root / 'worktrees').resolve()
+        # Most ticks have no retained verification failures. Avoid probing Git
+        # at all unless an actionable, source-scoped recovery record exists.
+        recovery_candidates = [
+            (family, record) for family, record in sorted(checkpoint['families'].items())
+            if ((record.get('status') == 'exhausted'
+                 and record.get('result') == 'verification_failed')
+                or (record.get('status') == 'needs_review'
+                    and record.get('result') == 'empty_or_out_of_scope_patch'))
+        ]
+        if not recovery_candidates:
+            return []
         head = agent._git(self.root, 'rev-parse', 'HEAD')
 
         recovered = []
-        for family, record in sorted(checkpoint['families'].items()):
-            recoverable = (
-                (record.get('status') == 'exhausted'
-                 and record.get('result') == 'verification_failed')
-                or (record.get('status') == 'needs_review'
-                    and record.get('result') == 'empty_or_out_of_scope_patch')
-            )
-            if not recoverable or record.get('recovery_probe_head') == head:
+        for family, record in recovery_candidates:
+            if record.get('recovery_probe_head') == head:
                 continue
             worktree_path = record.get('worktree_path')
             if not isinstance(worktree_path, str) or not worktree_path:

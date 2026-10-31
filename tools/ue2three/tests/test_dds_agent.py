@@ -438,16 +438,17 @@ class DdsAgentTests(unittest.TestCase):
                 patch.object(dds_agent.subprocess, 'run',
                              return_value=SimpleNamespace(returncode=0)) as run:
             dds_agent.verify_worker(self.repo, 'native-timers')
-        self.assertEqual(run.call_count, 3)
-        python_command = run.call_args_list[0].args[0]
-        javascript_command = run.call_args_list[1].args[0]
-        diff_command = run.call_args_list[2].args[0]
-        self.assertEqual(python_command[0], sys.executable)
-        self.assertIn('test_blueprint*.py', python_command)
+        self.assertEqual(run.call_count, 5)
+        commands = [call.args[0] for call in run.call_args_list]
+        for python_command in commands[:2]:
+            self.assertEqual(python_command[0], sys.executable)
+            self.assertIn('test_blueprint*.py', python_command)
+        javascript_command = commands[2]
         self.assertEqual(javascript_command[0:3], ['node-test-double', '--test',
                                                    'tests/ue2three-blueprint.test.mjs'])
         self.assertNotIn('tests/ue2three-attachment.test.mjs', javascript_command)
-        self.assertEqual(diff_command[-2:], ['diff', '--check'])
+        self.assertEqual(commands[3][-2:], ['diff', '--check'])
+        self.assertEqual(commands[4][-3:], ['diff', '--cached', '--check'])
 
 
 def time_now():
