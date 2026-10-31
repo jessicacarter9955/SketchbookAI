@@ -120,6 +120,21 @@ class DDSCandidatePromotionGateTests(unittest.TestCase):
         after["counts"]["blocked"] += 1
         self.assertFalse(replay_improves(before, after))
 
+    def test_noop_stub_or_missing_executable_steps_cannot_promote(self):
+        for defect in ("empty", "noop", "stub", "missing"):
+            before, after = original_inventory()
+            program = after["packages"]["/Game/Fixture/BP_000"]["functions"]["Original_0_1"]
+            if defect == "empty":
+                program["steps"] = [{"op": "return", "value": {"op": "constant", "value": None}}]
+            elif defect == "noop":
+                program["steps"] = [{"op": "noop"}]
+            elif defect == "stub":
+                program["steps"] = [{"op": "stub"}]
+            else:
+                program.pop("steps")
+            with self.subTest(defect=defect):
+                self.assertFalse(replay_improves(before, after))
+
     def test_partial_inventory_even_with_consistent_counts_cannot_promote(self):
         before, after = original_inventory()
         for report in (before, after):
