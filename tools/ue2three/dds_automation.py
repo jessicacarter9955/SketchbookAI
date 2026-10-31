@@ -40,6 +40,26 @@ def fingerprint(root: Path) -> str:
     return digest.hexdigest()
 
 
+BLUEPRINT_PATCH_PREFIXES = (
+    'tools/ue2three/blueprint', 'tools/ue2three/tests/',
+    'tools/ue2three/test_blueprint_', 'src/editor/ue2three-',
+    'tests/ue2three-', 'docs/',
+)
+PRESERVED_ASSET_SUFFIXES = frozenset({
+    '.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.bmp', '.tif',
+    '.tiff', '.dds', '.uasset', '.umap', '.glb', '.gltf',
+})
+
+
+def blueprint_patch_in_scope(relative_path: str) -> bool:
+    """Only Blueprint code/tests/docs; never source assets or reference images."""
+    path = Path(relative_path)
+    return (bool(relative_path) and not path.is_absolute()
+            and '\\' not in relative_path and '..' not in path.parts
+            and path.suffix.lower() not in PRESERVED_ASSET_SUFFIXES
+            and relative_path.startswith(BLUEPRINT_PATCH_PREFIXES))
+
+
 def read(path: Path, fallback=None):
     return json.loads(path.read_text(encoding='utf-8-sig')) if path.exists() else fallback
 
@@ -347,13 +367,16 @@ class Supervisor:
         state_root = self.root / agent.STATE_RELATIVE
         worktree_root = (state_root / 'worktrees').resolve()
         head = agent._git(self.root, 'rev-parse', 'HEAD')
-        allowed = ('tools/ue2three/blueprint', 'tools/ue2three/tests/',
-                   'src/editor/ue2three-', 'tests/ue2three-', 'docs/')
+
         recovered = []
         for family, record in sorted(checkpoint['families'].items()):
-            if (record.get('status') != 'exhausted'
-                    or record.get('result') != 'verification_failed'
-                    or record.get('recovery_probe_head') == head):
+            recoverable = (
+                (record.get('status') == 'exhausted'
+                 and record.get('result') == 'verification_failed')
+                or (record.get('status') == 'needs_review'
+                    and record.get('result') == 'empty_or_out_of_scope_patch')
+            )
+            if not recoverable or record.get('recovery_probe_head') == head:
                 continue
             worktree_path = record.get('worktree_path')
             if not isinstance(worktree_path, str) or not worktree_path:
@@ -365,9 +388,7 @@ class Supervisor:
                 changed = agent._git(worker, 'diff', '--name-only').splitlines()
                 changed += agent._git(worker, 'ls-files', '--others', '--exclude-standard').splitlines()
                 changed = sorted(set(changed))
-                if (not changed
-                        or any('..' in Path(item).parts or not item.startswith(allowed)
-                               for item in changed)):
+                if not changed or any(not blueprint_patch_in_scope(item) for item in changed):
                     record['recovery_probe_head'] = head
                     record['recovery_probe_error'] = 'empty_or_out_of_scope_patch'
                     agent._checkpoint_event(state_root, checkpoint, 'retained_patch_needs_scope_review',
@@ -400,9 +421,7 @@ class Supervisor:
         changed = agent._git(worker, 'diff', '--name-only').splitlines()
         changed += agent._git(worker, 'ls-files', '--others', '--exclude-standard').splitlines()
         changed = sorted(set(changed))
-        allowed = ('tools/ue2three/blueprint', 'tools/ue2three/tests/', 'src/editor/ue2three-',
-                   'tests/ue2three-', 'docs/')
-        if not changed or any(not item.startswith(allowed) or '..' in Path(item).parts for item in changed):
+        if not changed or any(not blueprint_patch_in_scope(item) for item in changed):
             record.update(status='needs_review', result='empty_or_out_of_scope_patch')
             agent._checkpoint_event(self.root / agent.STATE_RELATIVE, checkpoint, 'needs_review', family=family)
             self.save('needs_review', family=family)
