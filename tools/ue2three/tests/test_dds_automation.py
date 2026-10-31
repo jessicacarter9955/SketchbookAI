@@ -27,6 +27,60 @@ class AutomationTests(unittest.TestCase):
                        'publish_dir': str(self.root / 'build/local-scenes/ue2three/projects/DDS')}
         self.supervisor = automation.Supervisor(self.config, self.root)
 
+    def test_blueprint_patch_scope_preserves_assets_and_accepts_root_regression_tests(self):
+        allowed = (
+            'tools/ue2three/blueprint_migration.py',
+            'tools/ue2three/test_blueprint_audio_vfx.py',
+            'tools/ue2three/test_blueprint_physics.py',
+            'tools/ue2three/tests/test_blueprint_cache.py',
+            'src/editor/ue2three-blueprint-runtime.mjs',
+            'tests/ue2three-native-physics.test.mjs',
+            'docs/ue2three-blueprint-checkpoint-20261030.md',
+        )
+        rejected = (
+            '', '../tools/ue2three/blueprint_migration.py',
+            'tools/ue2three/test_blueprint_x.py/../../reference.png',
+            'tools/ue2three/dds_agent.py',
+            'docs/original-reference.png',
+            'docs/original-reference.svg',
+            'assets/Unreal/Source.uasset',
+            'img2three/AGENTS.md',
+        )
+        for item in allowed:
+            with self.subTest(allowed=item):
+                self.assertTrue(automation.blueprint_patch_in_scope(item))
+        for item in rejected:
+            with self.subTest(rejected=item):
+                self.assertFalse(automation.blueprint_patch_in_scope(item))
+
+    def test_recover_retained_scope_rejection_requires_real_patch_verification(self):
+        worktree = self.root / '.local/ue2three/dds-agent/worktrees/native-audio-vfx'
+        worktree.mkdir(parents=True)
+        checkpoint = {'families': {'native-audio-vfx': {
+            'status': 'needs_review', 'result': 'empty_or_out_of_scope_patch',
+            'worktree_path': str(worktree)}}}
+
+        def git_result(_root, *args):
+            if args[0] == 'rev-parse':
+                return 'verified-head'
+            if args[0] == 'diff':
+                return 'tools/ue2three/blueprint_migration.py'
+            if args[0] == 'ls-files':
+                return 'tools/ue2three/test_blueprint_audio_vfx.py'
+            raise AssertionError(args)
+
+        with patch.object(automation.agent, '_git', side_effect=git_result), \\
+                patch.object(automation.agent, 'verify_worker') as verify, \\
+                patch.object(automation.agent, '_checkpoint_event'):
+            self.assertEqual(
+                self.supervisor.recover_retained_verification_patches(checkpoint),
+                ['native-audio-vfx'])
+            verify.assert_called_once_with(worktree, 'native-audio-vfx')
+        row = checkpoint['families']['native-audio-vfx']
+        self.assertEqual(row['status'], 'patch_ready_for_review')
+        self.assertEqual(row['result'], 'historical_patch_revalidated')
+        self.assertEqual(row['recovery_probe_head'], 'verified-head')
+
     def test_fingerprint_includes_native_math_and_all_python_modules(self):
         (self.root / 'tools/ue2three').mkdir(parents=True)
         (self.root / 'src/editor').mkdir(parents=True)
