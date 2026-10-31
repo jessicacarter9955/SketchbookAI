@@ -3,7 +3,8 @@ import { evaluateNativeMath } from './ue2three-native-math.mjs';
 import { sourceDynamicCast } from './ue2three-casts.mjs';
 import { readSourceActorMember, writeSourceActorMember } from './ue2three-source-objects.mjs';
 import { validActorReference, validComponentReference, sourceComponentOwner, sourceForceNetUpdate,
-    sourceQueryReceiver, sourceObjectValid, sourceFindComponent, sourceNativeComponentOwner, sourceActorRole } from './ue2three-objects.mjs';
+    validSourceObjectReference, sourceQueryReceiver, sourceObjectReceiver, sourceObjectValid,
+    sourceFindComponent, sourceNativeComponentOwner, sourceActorRole } from './ue2three-objects.mjs';
 const owns = (object, key) => object != null && Object.hasOwn(object, key);
 const safeField = key => typeof key === 'string' && key.length > 0 && !['__proto__', 'constructor', 'prototype'].includes(key);
 const nativeContextContracts = new Map([
@@ -93,6 +94,12 @@ function validateSchema(schema, value, depth = 0) {
                 || JSON.stringify(value.declared_class) !== JSON.stringify(schema.class))) throw new Error('Invalid original component reference');
             return;
         }
+        if (schema.reference_kind === 'runtime_source_object') {
+            if (value !== null && (!validSourceObjectReference(value)
+                || JSON.stringify(value.declared_class) !== JSON.stringify(schema.class)))
+                throw new Error('Invalid original source object reference');
+            return;
+        }
         if (schema.reference_kind === 'runtime_native_widget') {
             if (value !== null && (value?.kind !== 'source_native_widget'
                 || typeof value.source_package !== 'string'
@@ -174,6 +181,54 @@ function sourceFormatText(pattern, arguments_) {
         result+=value; index=end+1;
     }
     return {history:'invariant',text:result,flags:2};
+}
+
+function clearValue(schema, depth = 0) {
+    if (!schema || depth > 16) throw new Error('Unverified source ClearValue schema');
+    const primitives={BoolProperty:false,ByteProperty:0,IntProperty:0,Int64Property:0,
+        FloatProperty:0,DoubleProperty:0,StrProperty:'',NameProperty:'None'};
+    if (Object.hasOwn(primitives,schema.type)) return primitives[schema.type];
+    if (schema.type === 'ObjectProperty' || schema.type === 'ClassProperty') return null;
+    if (schema.type === 'TextProperty') return {history:'empty',text:'',flags:0};
+    if (schema.type === 'ArrayProperty') return [];
+    if (schema.type === 'StructProperty' && schema.fields && typeof schema.fields === 'object'
+        && Array.isArray(schema.member_order)
+        && schema.member_order.length === Object.keys(schema.fields).length
+        && schema.member_order.every((field,index) => safeField(field) && Object.keys(schema.fields)[index] === field)) {
+        const value=Object.create(null);
+        for (const [field,child] of Object.entries(schema.fields)) {
+            if (!safeField(field)) throw new Error('Invalid source ClearValue struct field');
+            value[field]=clearValue(child,depth+1);
+        }
+        return value;
+    }
+    throw new Error('Unverified original struct ClearValue layout');
+}
+
+function resolveSourceReceiver(context, reference, schema, packageName, classObject, classExportIndex, sourceSha256) {
+    if (schema?.reference_kind === 'runtime_source_object')
+        return sourceObjectReceiver(context,reference,packageName,classObject,classExportIndex,sourceSha256);
+    if (schema?.reference_kind === 'runtime_component')
+        return sourceQueryReceiver(context,reference,packageName,classObject);
+    throw new Error('Unsupported original source object receiver type');
+}
+
+function validateSourceObjectOwner(reference, schema, expression, program, notifications) {
+    if (schema?.reference_kind !== 'runtime_source_object') return;
+    const target=expression.target, owner=expression.reference_owner;
+    if (target?.op !== 'get' || !owner || owner.scope !== target.scope || owner.field !== target.field
+        || owner.frame !== target.frame)
+        throw new Error('Original source object reference owner differs from its Kismet property');
+    if (target.scope === 'self'
+        && (reference.owner_package !== notifications.native?.source_package
+            || reference.owner_export_index !== program.source_owner_index
+            || reference.owner_field !== target.field))
+        throw new Error('Original source object belongs to another class or property owner');
+}
+
+function validateSourceObjectInstance(reference, schema, receiver) {
+    if (schema?.reference_kind === 'runtime_source_object' && receiver?.object_id !== reference.object_id)
+        throw new Error('Original source object state is bound to another instance');
 }
 
 const nativeFormatArgumentSchema = () => ({type:'StructProperty',source:'/Script/Engine',native:'FormatArgumentData',
@@ -508,14 +563,21 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
         if (expression.op === 'component_member') {
             const reference = evaluate(expression.target,depth+1);
             if (reference === null) {
-                if (expression.schema?.type === 'StructProperty')
-                    throw new Error('Unverified original struct ClearValue for a null component context');
-                validateSchema(expression.schema,expression.schema?.default);
+                const value=clearValue(expression.schema);
+                validateSchema(expression.schema,value);
                 trace.push({source_index:sourceIndex,op:'warning',message:'Accessed None: original component property default'});
-                return structuredClone(expression.schema.default);
+                return value;
             }
-            const descriptor = sourceQueryReceiver(notifications.native,reference,expression.package,expression.class_object);
             const query = owns(notifications.queries,expression.package) ? notifications.queries[expression.package] : null;
+            const context=notifications.readWorld?.[expression.package]?.native || query?.native;
+            const receiverSchema=expression.receiver_schema || {
+                type:'ObjectProperty',class:[expression.package,expression.class_object],reference_kind:'runtime_component',default:null};
+            validateSourceObjectOwner(reference,receiverSchema,expression,program,notifications);
+            validateSourceObjectInstance(reference,receiverSchema,
+                notifications.readWorld?.[expression.package] || query);
+            const descriptor=resolveSourceReceiver(receiverSchema.reference_kind === 'runtime_component'
+                ? notifications.native : context,reference,receiverSchema,expression.package,
+                expression.class_object,expression.class_export_index,query?.source_sha256);
             if (!safeField(expression.field) || !query || query.source_sha256 !== descriptor.source_sha256
                 || expression.class_export_index !== descriptor.class_export_index
                 || JSON.stringify(query.field_schemas?.[expression.field]) !== JSON.stringify(expression.schema))
@@ -532,11 +594,10 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             const reference=evaluate(expression.target,depth+1);
             validateSchema(expression.target_schema,reference);
             if (reference===null) {
-                if (expression.schema?.type==='StructProperty')
-                    throw Error('Unverified original struct ClearValue for a null Actor context');
-                validateSchema(expression.schema,expression.schema?.default);
+                const value=clearValue(expression.schema);
+                validateSchema(expression.schema,value);
                 trace.push({source_index:sourceIndex,op:'warning',message:'Accessed None: original Actor property default'});
-                return structuredClone(expression.schema.default);
+                return value;
             }
             const value=readSourceActorMember(notifications.native,reference,expression,
                 {instance,queries:notifications.queries,world:notifications.readWorld});
@@ -567,12 +628,15 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
         if (expression.op === 'component_call') {
             const target=notifications.world?.[expression.package],callee=target?.functions?.[expression.function];
             if (!target || !callee || target.native?.source_package !== expression.package
-                || target.native.world_context_bound !== true
+                || expression.receiver_schema?.reference_kind === 'runtime_component'
+                    && target.native.world_context_bound !== true
+                || !['EX_VirtualFunction','EX_LocalVirtualFunction','EX_FinalFunction','EX_LocalFinalFunction'].includes(expression.dispatch)
+                || !Number.isSafeInteger(expression.context_offset) || expression.context_offset <= 0
                 || callee.source_owner_index !== target.native.source_owner_index
                 || callee.source_export_index !== expression.export_index
                 || expression.class_export_index !== target.native.source_owner_index
                 || !expression.receiver_schema || expression.receiver_schema.type !== 'ObjectProperty'
-                || expression.receiver_schema.reference_kind !== 'runtime_component'
+                || !['runtime_component','runtime_source_object'].includes(expression.receiver_schema.reference_kind)
                 || JSON.stringify(expression.receiver_schema.class) !== JSON.stringify([expression.package,expression.class_object])
                 || expression.transactional_outputs_safe !== true
                 || !Array.isArray(expression.bindings) || !Array.isArray(callee.parameters)
@@ -585,12 +649,17 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 return null;
             }
             validateSchema(expression.receiver_schema,reference);
-            const descriptor=sourceQueryReceiver(notifications.native,reference,expression.package,expression.class_object);
+            validateSourceObjectOwner(reference,expression.receiver_schema,expression,program,notifications);
+            validateSourceObjectInstance(reference,expression.receiver_schema,target);
+            const descriptor=resolveSourceReceiver(expression.receiver_schema.reference_kind === 'runtime_component'
+                ? notifications.native : target.native,reference,expression.receiver_schema,
+                expression.package,expression.class_object,expression.class_export_index,target.source_sha256);
             if (target.source_sha256 !== descriptor.source_sha256
                 || target.native.source_owner_index !== descriptor.class_export_index
                 || callee.source_owner_index !== descriptor.class_export_index)
                 throw new Error('Original component mutation source owner differs');
-            sourceQueryReceiver(target.native,reference,expression.package,expression.class_object);
+            if (expression.receiver_schema.reference_kind === 'runtime_component')
+                sourceQueryReceiver(target.native,reference,expression.package,expression.class_object);
             const args = Object.create(null), targets=[], seenTargets=new Set();
             for (const [index,binding] of expression.bindings.entries()) {
                 const parameter=callee.source_parameters[index];
@@ -644,7 +713,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 || !['EX_VirtualFunction','EX_LocalVirtualFunction','EX_FinalFunction','EX_LocalFinalFunction'].includes(expression.dispatch)
                 || !Number.isSafeInteger(expression.context_offset) || expression.context_offset <= 0
                 || !expression.receiver_schema || expression.receiver_schema.type !== 'ObjectProperty'
-                || expression.receiver_schema.reference_kind !== 'runtime_component'
+                || !['runtime_component','runtime_source_object'].includes(expression.receiver_schema.reference_kind)
                 || JSON.stringify(expression.receiver_schema.class) !== JSON.stringify([expression.package,expression.class_object])
                 || !Array.isArray(callee.self_writes) || callee.self_writes.length
                 || Object.keys(callee.persistent_types || {}).length
@@ -659,7 +728,13 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 return null;
             }
             validateSchema(expression.receiver_schema,reference);
-            const descriptor=sourceQueryReceiver(notifications.native,reference,expression.package,expression.class_object);
+            validateSourceObjectOwner(reference,expression.receiver_schema,expression,program,notifications);
+            validateSourceObjectInstance(reference,expression.receiver_schema,
+                notifications.readWorld?.[expression.package] || query);
+            const context=notifications.readWorld?.[expression.package]?.native || query.native;
+            const descriptor=resolveSourceReceiver(expression.receiver_schema.reference_kind === 'runtime_component'
+                ? notifications.native : context,reference,expression.receiver_schema,
+                expression.package,expression.class_object,expression.class_export_index,query.source_sha256);
             if (notifications.queryStack.includes(expression.package)) throw new Error('Reentrant original component queries require shared active storage');
             if (query.source_sha256 !== descriptor.source_sha256
                 || callee.source_owner_index !== descriptor.class_export_index)

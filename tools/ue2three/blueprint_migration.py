@@ -37,7 +37,7 @@ def property_type(prop, package=None):
         if schema and (identity and identity[1] in STATIC_ASSET_MODULES.get(identity[0], set())
                        or schema.get('reference_kind') in
                        ('runtime_actor', 'runtime_component', 'runtime_native_component',
-                        'runtime_native_object', 'runtime_native_widget')): return result
+                        'runtime_native_object', 'runtime_native_widget', 'runtime_source_object')): return result
     if result == 'EnumProperty':
         result = prop.get('UnderlyingProp', {}).get('SerializedType')
     if result not in ('BoolProperty', 'ByteProperty', 'IntProperty', 'Int64Property', 'FloatProperty',

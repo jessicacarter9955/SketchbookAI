@@ -86,9 +86,10 @@ def source_object_property_schema(package, identity):
     if hierarchy is None:
         return None
     native = tuple(hierarchy['native_base'])
-    kind = 'runtime_actor' if native in ACTOR_BASES else 'runtime_component' if native == COMPONENT_BASE else None
-    if kind is None:
+    if not native[0].startswith('/Script/'):
         return None
+    kind = ('runtime_actor' if native in ACTOR_BASES else
+            'runtime_component' if native == COMPONENT_BASE else 'runtime_source_object')
     return {'type': 'ObjectProperty', 'class': list(identity), 'reference_kind': kind, 'default': None}
 
 

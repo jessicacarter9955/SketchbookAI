@@ -108,3 +108,85 @@ class SourceActorMemberTests(unittest.TestCase):
         self.assertEqual(step['op'],'set_actor_member')
         self.assertEqual(step['member_field'],'X')
         self.assertEqual(step['target']['schema']['native'],'Vector')
+
+    def test_generated_source_class_remains_a_typed_nullable_reference_without_loaded_behavior(self):
+        caller = Package({'Imports': [
+            {'ObjectName': 'WBP_Tracker_C', 'ClassName': 'WidgetBlueprintGeneratedClass', 'OuterIndex': -2},
+            {'ObjectName': '/Game/UncachedTracker', 'ClassName': 'Package'},
+        ], 'Exports': []})
+        schema = property_schema(caller, {'SerializedType': 'ObjectProperty', 'PropertyClass': -1})
+        self.assertEqual(schema, {'type': 'ObjectProperty',
+                                  'class': ['/Game/UncachedTracker', 'WBP_Tracker_C'],
+                                  'reference_kind': 'runtime_source_object', 'default': None})
+
+    def test_generated_widget_reference_and_context_call_keep_exact_source_contract(self):
+        target = Package({'Imports': [
+            {'ObjectName': 'UserWidget', 'ClassName': 'Class', 'OuterIndex': -2},
+            {'ObjectName': '/Script/UMG', 'ClassName': 'Package'},
+            {'ObjectName': 'Actor', 'ClassName': 'Class', 'OuterIndex': -4},
+            {'ObjectName': '/Script/Engine', 'ClassName': 'Package'},
+        ], 'Exports': [
+            {'$type': 'UAssetAPI.ExportTypes.ClassExport, UAssetAPI', 'ObjectName': 'WBP_Tracker_C',
+             'SuperStruct': -1, 'LoadedProperties': [
+                 {'Name': 'QuestCount', 'SerializedType': 'IntProperty'}]},
+            {'ObjectName': 'InitQuestTracker', 'OuterIndex': 1, 'LoadedProperties': [
+                {'Name': 'OwnerPawn', 'SerializedType': 'ObjectProperty', 'PropertyClass': -3,
+                 'PropertyFlags': 'CPF_Parm'}], 'ScriptBytecode': [
+                node('EX_Return', ReturnExpression=node('EX_Nothing')), node('EX_EndOfScript')]},
+        ]})
+        caller = Package({'Imports': [
+            {'ObjectName': 'WBP_Tracker_C', 'ClassName': 'WidgetBlueprintGeneratedClass', 'OuterIndex': -2},
+            {'ObjectName': '/Game/Tracker', 'ClassName': 'Package'},
+            {'ObjectName': 'Actor', 'ClassName': 'Class', 'OuterIndex': -4},
+            {'ObjectName': '/Script/Engine', 'ClassName': 'Package'},
+        ], 'Exports': [
+            {'$type': 'UAssetAPI.ExportTypes.ClassExport, UAssetAPI', 'ObjectName': 'WBP_HUD_C',
+             'LoadedProperties': [
+                 {'Name': 'Tracker', 'SerializedType': 'ObjectProperty', 'PropertyClass': -1}]},
+            {'ObjectName': 'InitHUDWidgets', 'OuterIndex': 1, 'LoadedProperties': [
+                {'Name': 'OwnerPawn', 'SerializedType': 'ObjectProperty', 'PropertyClass': -3,
+                 'PropertyFlags': 'CPF_Parm'}], 'ScriptBytecode': []},
+        ]})
+        sources = {'/Game/HUD': caller, '/Game/Tracker': target}
+        for package in sources.values():
+            package.source_packages = sources
+
+        widget_schema = property_schema(caller, caller.exports[0]['LoadedProperties'][0])
+        self.assertEqual(widget_schema, {'type': 'ObjectProperty', 'class': ['/Game/Tracker', 'WBP_Tracker_C'],
+                                         'reference_kind': 'runtime_source_object', 'default': None})
+
+        widget = node('EX_InstanceVariable', Variable={'New': {'Path': ['Tracker'], 'ResolvedOwner': 1}})
+        owner = node('EX_LocalVariable', Variable={'New': {'Path': ['OwnerPawn'], 'ResolvedOwner': 2}})
+        call = node('EX_LocalVirtualFunction', VirtualFunctionName='InitQuestTracker', Parameters=[owner])
+        context = node('EX_Context', ObjectExpression=widget, ContextExpression=call, Offset=23,
+                       PropertyType=0, RValuePointer={'New': {'Path': [], 'ResolvedOwner': 0}})
+        function = caller.exports[1]
+        function['ScriptBytecode'] = [context, node('EX_Return', ReturnExpression=node('EX_Nothing')),
+                                      node('EX_EndOfScript')]
+        program = translate_package(caller)['functions']['InitHUDWidgets']
+        call_expression = program['steps'][0]['value']
+        self.assertEqual(call_expression['op'], 'component_query')
+        self.assertEqual(call_expression['package'], '/Game/Tracker')
+        self.assertEqual(call_expression['class_object'], 'WBP_Tracker_C')
+        self.assertEqual(call_expression['class_export_index'], 1)
+        self.assertEqual(call_expression['dispatch'], 'EX_LocalVirtualFunction')
+        self.assertEqual(call_expression['bindings'][0]['schema']['reference_kind'], 'runtime_actor')
+
+        for key, replacement in (
+            ('Offset', context['Offset'] + 1),
+            ('PropertyType', 1),
+            ('RValuePointer', {'New': {'Path': ['OwnerPawn'], 'ResolvedOwner': 2}}),
+        ):
+            bad = deepcopy(context)
+            bad[key] = replacement
+            with self.subTest(context_field=key), self.assertRaises(BlueprintTranslationError):
+                expression(bad, set(), set(), package=caller, owner=1)
+
+        quest_count = node('EX_InstanceVariable', Variable={'New': {'Path': ['QuestCount'], 'ResolvedOwner': -1}})
+        member_context = node('EX_Context', ObjectExpression=widget, ContextExpression=quest_count,
+                              Offset=memory_size(quest_count, package=caller), PropertyType=0,
+                              RValuePointer=quest_count['Variable'])
+        member = expression(member_context, set(), set(), package=caller, owner=1)
+        self.assertEqual(member['op'], 'component_member')
+        self.assertEqual(member['receiver_schema'], widget_schema)
+        self.assertEqual(member['schema'], {'type': 'IntProperty', 'default': 0})

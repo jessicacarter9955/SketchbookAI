@@ -28,6 +28,7 @@ class ComponentQueryTests(unittest.TestCase):
             {'ObjectName': 'ReadInventory', 'OuterIndex': 1, 'LoadedProperties': [
                 {'Name': 'Value', 'SerializedType': 'IntProperty', 'PropertyFlags': 'CPF_Parm, CPF_OutParm'}],
              'ScriptBytecode': [node('EX_Context', ObjectExpression=var('EX_InstanceVariable', 'Inventory', 1), Offset=23,
+                    PropertyType=0, RValuePointer={'New': {'Path': [], 'ResolvedOwner': 0}},
                     ContextExpression=node('EX_LocalVirtualFunction', VirtualFunctionName='ReadCount', Parameters=[var('EX_LocalOutVariable', 'Value', 2)])),
                                 node('EX_Return', ReturnExpression=node('EX_Nothing')), node('EX_EndOfScript')]}]})
         pool = {'/Game/Inventory': source, '/Game/Combat': caller}
@@ -52,6 +53,7 @@ class ComponentQueryTests(unittest.TestCase):
         pool=self.packages();caller=pool['/Game/Combat'];caller._active_function=caller.exports[1]
         pointer={'New':{'Path':['Count'],'ResolvedOwner':-3}}
         call=node('EX_Context',ObjectExpression=var('EX_InstanceVariable','Inventory',1),Offset=9,RValuePointer=pointer,
+                  PropertyType=0,
                   ContextExpression=node('EX_InstanceVariable',Variable=pointer))
         result=expression(call,set(),set(),package=caller,owner=1)
         self.assertEqual(result['op'],'component_member');self.assertEqual(result['schema']['type'],'IntProperty')
@@ -102,7 +104,8 @@ class ComponentQueryTests(unittest.TestCase):
         caller.imports.append({'ObjectName':'ReadCount','ClassName':'Function','OuterIndex':-3})
         call=node('EX_FinalFunction',StackNode=-5,Parameters=[var('EX_LocalOutVariable','Value',2)])
         context=node('EX_Context',ObjectExpression=var('EX_InstanceVariable','Inventory',1),
-                     ContextExpression=call,Offset=memory_size(call,package=caller))
+                     ContextExpression=call,Offset=memory_size(call,package=caller),PropertyType=0,
+                     RValuePointer={'New':{'Path':[],'ResolvedOwner':0}})
         caller.exports[1]['ScriptBytecode'][0]=context
         program=translate_package(caller)['functions']['ReadInventory']
         result=program['steps'][0]['value']

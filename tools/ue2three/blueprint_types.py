@@ -14,6 +14,13 @@ def import_path(package, reference):
     return None
 
 
+def import_class_name(package, reference):
+    """Return the serialized class of an import without resolving its object."""
+    if type(reference) is not int or reference >= 0 or -reference > len(package.imports):
+        return None
+    return package.imports[-reference-1].get('ClassName')
+
+
 def source_structs(documents, error):
     from blueprint_values import construct_source_structs
     return construct_source_structs(documents)
@@ -56,6 +63,13 @@ def property_schema(package, prop):
             from blueprint_source_objects import source_object_property_schema
             inherited_schema=source_object_property_schema(package,identity)
             if inherited_schema: return inherited_schema
+            # A generated Blueprint class import is an object identity even if
+            # its source package is not in this cache. Its class hierarchy and
+            # behavior remain unresolved until that package is supplied.
+            if import_class_name(package, prop.get('PropertyClass')) in (
+                    'BlueprintGeneratedClass', 'WidgetBlueprintGeneratedClass'):
+                return {'type': type_name, 'class': list(identity),
+                        'reference_kind': 'runtime_source_object', 'default': None}
         source = getattr(package, 'source_packages', {}).get((identity or (None,))[0])
         if source and identity:
             from blueprint_objects import class_metadata

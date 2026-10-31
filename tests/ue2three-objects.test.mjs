@@ -162,7 +162,7 @@ test('cross-component callbacks see active caller writes and their changes survi
     child.functions.Write.steps=[{op:'set',scope:'self',field:'Count',value:member},
         {op:'evaluate',value:{op:'component_call',target:get('self','Combat'),package:'/Game/Combat',class_object:'Combat_C',
             receiver_schema:combatReferenceSchema,class_export_index:2,function:'Callback',export_index:8,
-            bindings:[],transactional_outputs_safe:true}},end];
+            dispatch:'EX_LocalVirtualFunction',context_offset:14,bindings:[],transactional_outputs_safe:true}},end];
     child.functions.Impl={...child.functions.Write,source_export_index:9};
     child.functions.Write.steps=[{op:'evaluate',value:{op:'call',function:'Impl',export_index:9,bindings:[]}},end];
     program.field_types.self.Count='IntProperty';

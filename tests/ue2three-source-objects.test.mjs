@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {executeBlueprint} from '../src/editor/ue2three-blueprint.mjs';
 
+const c=value=>({op:'constant',value});
+const end={op:'return',value:c(null)};
+
 function fixture(){
     const ref={realm:'local',actor_id:'player',declared_class:['/Script/Engine','Actor']};
     const schema={type:'ObjectProperty',class:['/Game/Player','Player_C'],reference_kind:'runtime_actor',default:null};
@@ -61,4 +64,101 @@ test('Actor struct member writes preserve untouched fields in the same staged pr
     const result=executeBlueprint(p,self,{Player:ref},{native,queries,receivers});
     assert.deepEqual(result.value,{X:1/3,Y:2,Z:3});
     assert.deepEqual(self.Health,{X:1,Y:2,Z:3});
+});
+
+function generatedObjectFixture(){
+    const callerPackage='/Game/HUD',targetPackage='/Game/QuestTracker';
+    const callerOwner=5,targetOwner=2,objectId='quest-tracker-1';
+    const schema={type:'ObjectProperty',class:[targetPackage,'WBP_QuestTracker_C'],
+        reference_kind:'runtime_source_object',default:null};
+    const reference={kind:'source_object',object_id:objectId,source_package:targetPackage,source_owner_index:targetOwner,
+        declared_class:[targetPackage,'WBP_QuestTracker_C'],owner_package:callerPackage,
+        owner_export_index:callerOwner,owner_field:'WBP_HUD_QuestTracker'};
+    const intSchema={type:'IntProperty',default:0};
+    const native={mode:'standalone',net_drivers:0,source_package:targetPackage,source_owner_index:targetOwner,
+        world_context_bound:false,source_objects:{[objectId]:{binding_complete:true,reference,
+            source_package:targetPackage,class_object:'WBP_QuestTracker_C',class_export_index:targetOwner,
+            source_sha256:'tracker-source',owner_package:callerPackage,owner_export_index:callerOwner,
+            owner_field:'WBP_HUD_QuestTracker'}}};
+    const descriptor={schema_version:1,name:'InitQuestTracker',status:'translated_straight_line',
+        source_owner_index:targetOwner,source_export_index:8,parameters:[],source_parameters:[
+            {name:'Result',mode:'output',schema:intSchema}],input_fields:[],output_fields:['Result'],
+        self_reads:[],self_writes:['Count'],persistent_types:{},field_types:{self:{Count:'IntProperty'},local:{Result:'IntProperty'}},
+        schemas:{},steps:[{op:'set',scope:'self',field:'Count',value:c(17)},
+            {op:'set',scope:'local',field:'Result',value:c(42)},end]};
+    const caller={schema_version:1,status:'translated_straight_line',source_owner_index:callerOwner,
+        source_export_index:6,input_fields:[],output_fields:['Result'],field_types:{self:{WBP_HUD_QuestTracker:'ObjectProperty'},
+            local:{Result:'IntProperty'}},schemas:{self:{WBP_HUD_QuestTracker:schema},local:{Result:intSchema}},
+        steps:[]};
+    const call={op:'component_call',target:{op:'get',scope:'self',field:'WBP_HUD_QuestTracker'},
+        package:targetPackage,class_object:'WBP_QuestTracker_C',class_export_index:targetOwner,
+        receiver_schema:schema,reference_owner:{scope:'self',field:'WBP_HUD_QuestTracker'},
+        function:'InitQuestTracker',export_index:8,dispatch:'EX_LocalVirtualFunction',
+        context_offset:23,transactional_outputs_safe:true,bindings:[{mode:'output',parameter:'Result',
+            schema:intSchema,target:{op:'get',scope:'local',field:'Result'}}]};
+    caller.steps=[{op:'evaluate',value:call},end];
+    const queries={[targetPackage]:{source_sha256:'tracker-source',source_owner_index:targetOwner,
+        object_id:objectId,state:{Count:1},field_schemas:{Count:intSchema},functions:{InitQuestTracker:descriptor},native}};
+    const rootNative={mode:'standalone',net_drivers:0,source_package:callerPackage,source_owner_index:callerOwner};
+    const receivers={[callerPackage]:{state:{WBP_HUD_QuestTracker:reference},functions:{},native:rootNative},
+        [targetPackage]:{state:{Count:1},functions:{InitQuestTracker:descriptor},native,source_sha256:'tracker-source',object_id:objectId}};
+    return {caller,call,descriptor,intSchema,native,queries,receivers,reference,schema,callerPackage,targetPackage};
+}
+
+test('generated source object Context reads require an exact package, class and instance binding',()=>{
+    const f=generatedObjectFixture();
+    const member={op:'component_member',target:{op:'get',scope:'self',field:'WBP_HUD_QuestTracker'},
+        package:f.targetPackage,class_object:'WBP_QuestTracker_C',class_export_index:2,receiver_schema:f.schema,
+        reference_owner:{scope:'self',field:'WBP_HUD_QuestTracker'},
+        field:'Count',schema:f.intSchema};
+    f.caller.steps=[{op:'return',value:member}];
+    assert.equal(executeBlueprint(f.caller,f.receivers[f.callerPackage].state,{},
+        {native:f.receivers[f.callerPackage].native,queries:f.queries}).value,1);
+    f.receivers[f.callerPackage].state.WBP_HUD_QuestTracker={...f.reference,owner_field:'Other'};
+    assert.throws(()=>executeBlueprint(f.caller,f.receivers[f.callerPackage].state,{},
+        {native:f.receivers[f.callerPackage].native,queries:f.queries}),/property owner/);
+    f.receivers[f.callerPackage].state.WBP_HUD_QuestTracker={...f.reference,object_id:'foreign'};
+    assert.throws(()=>executeBlueprint(f.caller,f.receivers[f.callerPackage].state,{},
+        {native:f.receivers[f.callerPackage].native,queries:f.queries}),/another instance/);
+});
+
+test('generated source object calls preserve out parameters and commit atomically',()=>{
+    const f=generatedObjectFixture(),root=f.receivers[f.callerPackage];
+    const result=executeBlueprint(f.caller,root.state,{},
+        {native:root.native,queries:f.queries,receivers:f.receivers});
+    assert.equal(result.outputs.Result,42);
+    assert.equal(result.receivers[f.targetPackage].state.Count,17);
+    assert.equal(f.receivers[f.targetPackage].state.Count,1);
+
+    f.receivers[f.targetPackage].object_id='another-instance';
+    assert.throws(()=>executeBlueprint(f.caller,root.state,{},
+        {native:root.native,queries:f.queries,receivers:f.receivers}),/another instance/);
+    f.receivers[f.targetPackage].object_id=f.reference.object_id;
+
+    f.caller.steps.splice(1,0,{op:'evaluate',value:{op:'unsupported'}});
+    assert.throws(()=>executeBlueprint(f.caller,root.state,{},
+        {native:root.native,queries:f.queries,receivers:f.receivers}),/Unsupported Blueprint expression/);
+    assert.equal(f.receivers[f.targetPackage].state.Count,1);
+});
+
+test('null generated-object contexts clear typed members and skip calls without changing out storage',()=>{
+    const f=generatedObjectFixture(),rootState={WBP_HUD_QuestTracker:null};
+    f.receivers[f.callerPackage].state=rootState;
+    const struct={type:'StructProperty',source:'/Script/CoreUObject',native:'Vector',
+        fields:{X:{type:'DoubleProperty',default:9},Y:{type:'DoubleProperty'},Z:{type:'DoubleProperty'}},
+        default:{X:9,Y:4,Z:5},member_order:['X','Y','Z']};
+    const member={op:'component_member',target:{op:'get',scope:'self',field:'WBP_HUD_QuestTracker'},
+        package:f.targetPackage,class_object:'WBP_QuestTracker_C',class_export_index:2,receiver_schema:f.schema,
+        reference_owner:{scope:'self',field:'WBP_HUD_QuestTracker'},
+        field:'Offset',schema:struct};
+    f.caller.output_fields=[];f.caller.steps=[{op:'return',value:member}];
+    assert.deepEqual(executeBlueprint(f.caller,rootState,{},
+        {native:f.receivers[f.callerPackage].native,queries:f.queries}).value,{X:0,Y:0,Z:0});
+
+    f.caller.output_fields=['Result'];f.caller.input_fields=['Result'];
+    f.caller.steps=[{op:'evaluate',value:f.call},end];
+    const result=executeBlueprint(f.caller,rootState,{Result:9},
+        {native:f.receivers[f.callerPackage].native,queries:f.queries,receivers:f.receivers});
+    assert.equal(result.outputs.Result,9);
+    assert.equal(result.receivers[f.targetPackage].state.Count,1);
 });

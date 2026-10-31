@@ -19,6 +19,16 @@ export const validComponentReference = value => value !== null && typeof value =
     && /^[A-Za-z0-9_-]{1,128}$/.test(value.actor_id) && safeName(value.component_variable)
     && Array.isArray(value.declared_class) && value.declared_class.length === 2
     && /^\/Game\/[A-Za-z0-9_/.]+$/.test(value.declared_class[0]) && safeName(value.declared_class[1]);
+export const validSourceObjectReference = value => value !== null && typeof value === 'object' && !Array.isArray(value)
+    && value.kind === 'source_object' && typeof value.object_id === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(value.object_id)
+    && safeName(value.object_id)
+    && typeof value.source_package === 'string' && /^\/Game\/[A-Za-z0-9_/.]+$/.test(value.source_package)
+    && Number.isSafeInteger(value.source_owner_index) && value.source_owner_index > 0
+    && Array.isArray(value.declared_class) && value.declared_class.length === 2
+    && value.declared_class[0] === value.source_package && safeName(value.declared_class[1])
+    && typeof value.owner_package === 'string' && /^\/Game\/[A-Za-z0-9_/.]+$/.test(value.owner_package)
+    && Number.isSafeInteger(value.owner_export_index) && value.owner_export_index > 0
+    && safeName(value.owner_field);
 export const validNativeComponentReference = value => value !== null && typeof value === 'object' && !Array.isArray(value)
     && value.kind === 'source_native_component' && typeof value.realm === 'string' && value.realm.length > 0
     && typeof value.actor_id === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(value.actor_id)
@@ -92,6 +102,30 @@ export function sourceQueryReceiver(context, reference, packageName, classObject
     return descriptor;
 }
 
+// Generated UObject references (including original UserWidget instances) are
+// identity handles. Their behavior is available only when a host adapter binds
+// the exact instance and source class into the receiving package context.
+export function sourceObjectReceiver(context, reference, packageName, classObject, classExportIndex, sourceSha256) {
+    if (!context || context.source_package !== packageName || context.source_owner_index !== classExportIndex
+        || !validSourceObjectReference(reference)
+        || reference.source_package !== packageName
+        || reference.source_owner_index !== classExportIndex
+        || JSON.stringify(reference.declared_class) !== JSON.stringify([packageName,classObject]))
+        throw new Error('Unbound or incompatible original source object reference');
+    const descriptor = owns(context.source_objects,reference.object_id)
+        ? context.source_objects[reference.object_id] : null;
+    if (!descriptor || descriptor.binding_complete !== true
+        || JSON.stringify(descriptor.reference) !== JSON.stringify(reference)
+        || descriptor.source_package !== packageName || descriptor.class_object !== classObject
+        || descriptor.class_export_index !== classExportIndex
+        || sourceSha256 !== undefined && descriptor.source_sha256 !== sourceSha256
+        || descriptor.owner_package !== reference.owner_package
+        || descriptor.owner_export_index !== reference.owner_export_index
+        || descriptor.owner_field !== reference.owner_field)
+        throw new Error('Original source object ownership or instance binding is unavailable');
+    return descriptor;
+}
+
 export function sourceObjectValid(context, reference, schema) {
     if (reference === null) return false;
     if (schema?.reference_kind === 'runtime_native_widget') {
@@ -114,6 +148,11 @@ export function sourceObjectValid(context, reference, schema) {
     }
     if (schema?.reference_kind === 'runtime_component') {
         sourceQueryReceiver(context, reference, schema.class[0], schema.class[1]);
+        return true;
+    }
+    if (schema?.reference_kind === 'runtime_source_object') {
+        sourceObjectReceiver(context,reference,reference?.source_package,reference?.declared_class?.[1],
+            reference?.source_owner_index);
         return true;
     }
     if (schema?.reference_kind === 'runtime_native_component') {

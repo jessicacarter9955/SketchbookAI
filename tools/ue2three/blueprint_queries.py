@@ -23,7 +23,7 @@ def component_access(value, package, owner, reads, outputs, depth):
                 'package': identity[0], 'class_object': identity[1], 'class_export_index': meta['export_index']}
     if kind(call) != 'EX_InstanceVariable': return None
     target, target_schema = variable(value.get('ObjectExpression', {}), package, owner, reads, outputs, depth)
-    if target_schema.get('reference_kind') != 'runtime_component': return None
+    if target_schema.get('reference_kind') not in ('runtime_component', 'runtime_source_object'): return None
     identity = tuple(target_schema['class'])
     pointer = call.get('Variable', {}).get('New', {})
     source = getattr(package, 'source_packages', {}).get(identity[0])
@@ -31,6 +31,7 @@ def component_access(value, package, owner, reads, outputs, depth):
     meta = class_metadata(source) if source else None
     if (not meta or meta['object'] != identity[1] or import_path(package, pointer.get('ResolvedOwner')) != identity
             or value.get('RValuePointer') != call.get('Variable')
+            or value.get('PropertyType') != 0
             or value.get('Offset') != memory_size(call, package=package)):
         raise Error('Original component property owner or context layout differs')
     name = field(call.get('Variable'))
@@ -38,7 +39,10 @@ def component_access(value, package, owner, reads, outputs, depth):
     schema = property_schema(source, props[0]) if len(props) == 1 else None
     if not schema: raise Error('Original component property schema is unavailable')
     return {'op': 'component_member', 'target': target, 'package': identity[0], 'class_object': identity[1],
-            'class_export_index': meta['export_index'], 'field': name, 'schema': schema}
+            'class_export_index': meta['export_index'], 'receiver_schema': target_schema,
+            'reference_owner': {'scope': target['scope'], 'field': target['field'],
+                                **({'frame': target['frame']} if 'frame' in target else {})},
+            'field': name, 'schema': schema}
 
 
 def game_time(value, package, owner):
@@ -56,7 +60,7 @@ def object_validity(value, package, owner, reads, outputs, depth):
     args = value.get('Parameters')
     if not isinstance(args, list) or len(args) != 1: raise Error('Original IsValid arity differs')
     target, schema = variable(args[0], package, owner, reads, outputs, depth)
-    if schema.get('reference_kind') not in ('runtime_actor', 'runtime_component', 'runtime_native_component',
+    if schema.get('reference_kind') not in ('runtime_actor', 'runtime_component', 'runtime_source_object', 'runtime_native_component',
                                              'runtime_native_widget'):
         raise Error('IsValid requires an explicit original live-object binding; asset loading is not implied')
     return {'op': 'native_object_valid', 'target': target, 'schema': schema}
@@ -69,7 +73,7 @@ def component_query(value, package, owner, reads, outputs, depth):
     if dispatch not in ('EX_LocalVirtualFunction', 'EX_VirtualFunction', 'EX_FinalFunction', 'EX_LocalFinalFunction'):
         return None
     target, schema = variable(value.get('ObjectExpression', {}), package, owner, reads, outputs, depth)
-    if schema.get('reference_kind') != 'runtime_component': return None
+    if schema.get('reference_kind') not in ('runtime_component', 'runtime_source_object'): return None
     identity = tuple(schema['class']); source = getattr(package, 'source_packages', {}).get(identity[0])
     if source is package: raise Error('Same-instance component aliases require shared active storage')
     from blueprint_objects import class_metadata
@@ -83,21 +87,32 @@ def component_query(value, package, owner, reads, outputs, depth):
         if (type(reference) is not int or reference >= 0 or -reference > len(package.imports)
                 or imported.get('ClassName') != 'Function' or type(outer) is not int or outer >= 0
                 or -outer > len(package.imports) or package.imports[-outer-1].get('ClassName') != 'Class'
-                or not function_identity or function_identity[:2] != identity
-                or len(function_identity) != 3):
+                or not function_identity or len(function_identity) != 3):
+            raise Error('Original component direct function import belongs to another package or class')
+        if function_identity[:2] != identity:
+            # Native and foreign class calls need their own exact adapter.
+            # Do not reinterpret them as source-owned component functions.
+            if function_identity[0].startswith('/Script/'):
+                return None
             raise Error('Original component direct function import belongs to another package or class')
         function_name = function_identity[2]
     else:
         function_name = call.get('VirtualFunctionName')
     candidates = [(i, e) for i, e in enumerate(source.exports, 1) if e.get('ObjectName') == function_name
                   and e.get('OuterIndex') == meta['export_index'] and e.get('ScriptBytecode')]
-    if len(candidates) != 1: raise Error('Original component query implementation is unresolved')
+    if len(candidates) != 1:
+        if schema.get('reference_kind') == 'runtime_source_object' and dispatch in ('EX_VirtualFunction', 'EX_LocalVirtualFunction'):
+            return None
+        raise Error('Original component query implementation is unresolved')
     index, function = candidates[0]
     props = [p for p in function.get('LoadedProperties', []) if 'CPF_Parm' in str(p.get('PropertyFlags'))]
     if any('CPF_ReturnParm' in str(p.get('PropertyFlags')) for p in props):
         raise Error('Component query return storage requires an explicit adapter')
     args = call.get('Parameters')
     if (not isinstance(args, list) or len(args) != len(props)
+            or value.get('PropertyType') != 0
+            or value.get('RValuePointer', {}).get('New', {}).get('Path') != []
+            or value.get('RValuePointer', {}).get('New', {}).get('ResolvedOwner') != 0
             or value.get('Offset') != memory_size(call, package=package)):
         raise Error('Original component query signature or context offset differs')
     bindings, output_targets = [], set()
@@ -126,6 +141,8 @@ def component_query(value, package, owner, reads, outputs, depth):
     output_safe = all('CPF_ReferenceParm' not in str(prop.get('PropertyFlags')) for prop in props)
     return {'op': 'component_query', 'target': target, 'package': identity[0], 'class_object': identity[1],
             'receiver_schema': schema, 'class_export_index': meta['export_index'], 'function': function['ObjectName'],
+            'reference_owner': {'scope': target['scope'], 'field': target['field'],
+                                **({'frame': target['frame']} if 'frame' in target else {})},
             'export_index': index, 'dispatch': dispatch,
             'context_offset': value.get('Offset'), 'bindings': bindings,
             'transactional_outputs_safe': output_safe,
