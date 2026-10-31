@@ -27,6 +27,35 @@ class AutomationTests(unittest.TestCase):
                        'publish_dir': str(self.root / 'build/local-scenes/ue2three/projects/DDS')}
         self.supervisor = automation.Supervisor(self.config, self.root)
 
+    def test_windows_hidden_child_flags_apply_before_process_creation(self):
+        class FakeStartupInfo:
+            def __init__(self):
+                self.dwFlags = 0
+                self.wShowWindow = 999
+
+        proc = automation.agent.subprocess
+        with patch.object(automation.agent.os, 'name', 'nt'), \
+             patch.object(proc, 'STARTUPINFO', FakeStartupInfo, create=True), \
+             patch.object(proc, 'STARTF_USESHOWWINDOW', 1, create=True), \
+             patch.object(proc, 'SW_HIDE', 0, create=True), \
+             patch.object(proc, 'CREATE_NO_WINDOW', 0x08000000, create=True), \
+             patch.object(proc, 'CREATE_NEW_PROCESS_GROUP', 0x00000200, create=True):
+            settings = automation.agent._hidden_windows_process_kwargs(new_group=True)
+        self.assertEqual(settings['creationflags'], 0x08000200)
+        self.assertEqual(settings['startupinfo'].dwFlags & 1, 1)
+        self.assertEqual(settings['startupinfo'].wShowWindow, 0)
+
+    def test_supervisor_uses_hidden_startup_before_launch(self):
+        window = object()
+        expected = {'creationflags': 0x08000000, 'startupinfo': window}
+        with patch.object(automation.agent, '_hidden_windows_process_kwargs',
+                          return_value=expected), \
+             patch.object(automation.subprocess, 'Popen') as popen:
+            popen.return_value.wait.return_value = 0
+            self.supervisor.command('hidden-probe', [sys.executable, '-V'], timeout=3)
+            self.assertEqual(popen.call_args.kwargs['startupinfo'], window)
+            self.assertEqual(popen.call_args.kwargs['creationflags'], 0x08000000)
+
     def test_blueprint_patch_scope_preserves_assets_and_accepts_root_regression_tests(self):
         allowed = (
             'tools/ue2three/blueprint_migration.py',
