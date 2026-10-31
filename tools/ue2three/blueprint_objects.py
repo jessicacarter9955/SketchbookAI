@@ -249,12 +249,23 @@ def native_component_context(value, package, owner, reads, outputs, depth):
                 {'type': 'ObjectProperty', 'class': ['/Script/Engine', 'SkeletalMesh'], 'default': None},
             ],
         },
+        # BP_PickUp uses a StaticMeshComponent receiver but imports the
+        # declaring SceneComponent method. Preserve that exact UE identity.
+        ('/Script/Engine', 'SceneComponent', 'SetVisibility'): {
+            'dispatch': 'EX_FinalFunction',
+            'receiver_classes': [('/Script/Engine', 'StaticMeshComponent')],
+            'parameters': [
+                {'type': 'BoolProperty', 'default': False},
+                {'type': 'BoolProperty', 'default': False},
+            ],
+        },
     }
     contract = contracts.get(identity)
     if contract is None: return None
+    allowed_receivers = contract.get('receiver_classes', [('/Script/Engine', 'SkeletalMeshComponent')])
     if (contract['dispatch'] != dispatch or value.get('Offset') != memory_size(call, package=package)
-            or receiver_class != ('/Script/Engine', 'SkeletalMeshComponent')):
-        raise Error('Original native skeletal mesh context identity or layout differs')
+            or receiver_class not in allowed_receivers):
+        raise Error('Original native component context identity or layout differs')
     rvalue = value.get('RValuePointer', {}).get('New', {})
     if (value.get('PropertyType') != 0 or rvalue.get('Path') != []
             or rvalue.get('ResolvedOwner') != 0):
@@ -275,8 +286,9 @@ def native_component_context(value, package, owner, reads, outputs, depth):
         else:
             primitive = {
                 'EX_IntZero': 'IntProperty', 'EX_IntOne': 'IntProperty', 'EX_IntConst': 'IntProperty',
+                'EX_True': 'BoolProperty', 'EX_False': 'BoolProperty',
             }.get(token)
-            schema = {'type': primitive, 'default': 0} if primitive else None
+            schema = {'type': primitive, 'default': False if primitive == 'BoolProperty' else 0} if primitive else None
         if schema != expected:
             raise Error('Original native skeletal mesh parameter type differs')
         schemas.append(schema)
