@@ -253,11 +253,31 @@ def native_component_context(value, package, owner, reads, outputs, depth):
         # declaring SceneComponent method. Preserve that exact UE identity.
         ('/Script/Engine', 'SceneComponent', 'SetVisibility'): {
             'dispatch': 'EX_FinalFunction',
-            'receiver_classes': [('/Script/Engine', 'StaticMeshComponent')],
+            'receiver_classes': [
+                ('/Script/Engine', 'StaticMeshComponent'),
+                ('/Script/Engine', 'TextRenderComponent'),
+            ],
             'parameters': [
                 {'type': 'BoolProperty', 'default': False},
                 {'type': 'BoolProperty', 'default': False},
             ],
+        },
+        ('/Script/Engine', 'TextRenderComponent', 'K2_SetText'): {
+            'dispatch': 'EX_FinalFunction',
+            'receiver_classes': [('/Script/Engine', 'TextRenderComponent')],
+            'parameters': [
+                {'type': 'TextProperty', 'default': {'history': 'empty', 'text': '', 'flags': 0}},
+            ],
+        },
+        ('/Script/Niagara', 'NiagaraComponent', 'Activate'): {
+            'dispatch': 'EX_VirtualFunction',
+            'receiver_classes': [('/Script/Niagara', 'NiagaraComponent')],
+            'parameters': [{'type': 'BoolProperty', 'default': False}],
+        },
+        ('/Script/Niagara', 'NiagaraComponent', 'Deactivate'): {
+            'dispatch': 'EX_VirtualFunction',
+            'receiver_classes': [('/Script/Niagara', 'NiagaraComponent')],
+            'parameters': [],
         },
     }
     contract = contracts.get(identity)
