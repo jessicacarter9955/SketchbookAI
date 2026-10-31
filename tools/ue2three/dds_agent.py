@@ -974,7 +974,7 @@ def verify_worker(worker: Path, family_id: str) -> None:
     # worker patch is correct. Keep Node and Git checks at the repository root.
     python_root = worker / 'tools' / 'ue2three'
     commands = (
-        ([sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'tests',
+        ([sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'tests', '-t', '.',
           '-p', 'test_blueprint*.py', '-q'], PYTHON_VERIFY_SECONDS, python_root),
         ([node, '--test', *JAVASCRIPT_TESTS_BY_FAMILY[family_id]], JAVASCRIPT_VERIFY_SECONDS, worker),
         (['git', '-C', str(worker), 'diff', '--check'], GIT_TIMEOUT_SECONDS, worker),
