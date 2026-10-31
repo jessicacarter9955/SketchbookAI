@@ -22,6 +22,15 @@ const nativeContextContracts = new Map([
             reference_kind:'runtime_native_component',default:null},
         parameters:[{type:'ObjectProperty',class:['/Script/Engine','SkeletalMesh'],default:null}],
     }],
+    [JSON.stringify(['/Script/Engine','SceneComponent','SetVisibility']), {
+        identity:['/Script/Engine','SceneComponent','SetVisibility'], dispatch:'EX_FinalFunction',
+        // Reflected native component identity is the receiver class; the
+        // imported final-function owner is the declaring SceneComponent.
+        receiver:['/Script/Engine','StaticMeshComponent'],
+        receiver_schema:{type:'ObjectProperty',class:['/Script/Engine','StaticMeshComponent'],
+            reference_kind:'runtime_native_component',default:null},
+        parameters:[{type:'BoolProperty',default:false},{type:'BoolProperty',default:false}],
+    }],
 ]);
 const validPrimitive = (type, value) => type === 'BoolProperty' && typeof value === 'boolean'
     || type === 'ByteProperty' && Number.isInteger(value) && value >= 0 && value <= 255
