@@ -69,8 +69,8 @@ class AutomationTests(unittest.TestCase):
                 return 'tools/ue2three/test_blueprint_audio_vfx.py'
             raise AssertionError(args)
 
-        with patch.object(automation.agent, '_git', side_effect=git_result), \\
-                patch.object(automation.agent, 'verify_worker') as verify, \\
+        with patch.object(automation.agent, '_git', side_effect=git_result), \
+                patch.object(automation.agent, 'verify_worker') as verify, \
                 patch.object(automation.agent, '_checkpoint_event'):
             self.assertEqual(
                 self.supervisor.recover_retained_verification_patches(checkpoint),
