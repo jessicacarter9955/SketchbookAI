@@ -154,6 +154,52 @@ class AutomationTests(unittest.TestCase):
         after['packages']['A']['source']['sha'] = 'different'
         self.assertFalse(automation.replay_improves(before, after))
 
+    def test_failed_candidate_source_replay_preserves_patch_and_supervisor(self):
+        family = 'native-objects'
+        worker = self.root / '.local/ue2three/dds-agent/worktrees/native-objects'
+        worker.mkdir(parents=True)
+        publish = Path(self.config['publish_dir'])
+        publish.mkdir(parents=True)
+        (publish / 'blueprint-programs.json').write_text(json.dumps({
+            'project': 'DDS', 'counts': {'translated': 1, 'blocked': 1},
+            'packages': {'A': {'functions': {'existing': {}}}}}))
+        head, candidate = 'a' * 40, 'b' * 40
+        record = {'status': 'patch_ready_for_review', 'worktree_path': str(worker),
+                  'base_head': head}
+        checkpoint = {'families': {family: record}}
+        calls = []
+
+        def fake_git(_root, *args, **kwargs):
+            calls.append(args)
+            if args == ('diff', '--name-only'):
+                return 'tools/ue2three/blueprint_migration.py'
+            if args == ('diff', '--cached', '--name-only'):
+                return ''
+            if args[0] == 'rev-parse':
+                return candidate
+            if args[0] in ('ls-files', 'add', 'commit', 'diff'):
+                return ''
+            raise AssertionError(args)
+
+        with patch.object(automation.agent, '_require_clean_repo', return_value=head), \
+                patch.object(automation.agent, '_git', side_effect=fake_git), \
+                patch.object(automation.agent, 'verify_worker') as verify, \
+                patch.object(automation.agent, '_checkpoint_event') as event, \
+                patch.object(self.supervisor, 'compile',
+                             side_effect=RuntimeError('cached-blueprints: exit 2; see cached-blueprints.log')):
+            self.supervisor.promote(family, checkpoint)
+
+        verify.assert_called_once_with(worker, family)
+        event.assert_called_once()
+        self.assertEqual(record['status'], 'needs_review')
+        self.assertEqual(record['result'], 'candidate_replay_failed')
+        self.assertEqual(record['original_commit'], candidate)
+        self.assertIn('exit 2', record['candidate_replay_error'])
+        self.assertEqual(self.supervisor.state['phase'], 'needs_review')
+        self.assertIsNone(self.supervisor.state['active_job'])
+        self.assertFalse(any(args[0] == 'merge' for args in calls))
+        self.assertTrue(worker.exists())
+
     def test_stages_are_cached_and_require_real_outputs(self):
         source = self.root / 'input.json'
         output = self.root / 'output.json'
