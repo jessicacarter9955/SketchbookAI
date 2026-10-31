@@ -197,6 +197,43 @@ class SourceObjectTests(unittest.TestCase):
         with self.assertRaises(BlueprintTranslationError):
             expression(broken,set(),set(),package=package,owner=1)
 
+    def test_original_niagara_activation_and_text_render_contexts(self):
+        package=Package({'Imports':[
+            {'ObjectName':'NiagaraComponent','ClassName':'Class','OuterIndex':-5},
+            {'ObjectName':'TextRenderComponent','ClassName':'Class','OuterIndex':-4},
+            {'ObjectName':'SceneComponent','ClassName':'Class','OuterIndex':-4},
+            {'ObjectName':'/Script/Engine','ClassName':'Package'},
+            {'ObjectName':'/Script/Niagara','ClassName':'Package'},
+            {'ObjectName':'K2_SetText','ClassName':'Function','OuterIndex':-2},
+            {'ObjectName':'SetVisibility','ClassName':'Function','OuterIndex':-3}],
+            'Exports':[{'ObjectName':'BP_PickUp_C','LoadedProperties':[
+                {'Name':'Pickup Idle','SerializedType':'ObjectProperty','PropertyClass':-1},
+                {'Name':'TextRender','SerializedType':'ObjectProperty','PropertyClass':-2},
+                {'Name':'Text','SerializedType':'TextProperty'}]}]})
+        package._active_function={'ObjectName':'UpdateTextString','OuterIndex':1,'LoadedProperties':[]}
+        receiver=lambda name:node('EX_InstanceVariable',Variable={'New':{'Path':[name],'ResolvedOwner':1}})
+        context=lambda field,call:node('EX_Context',ObjectExpression=receiver(field),ContextExpression=call,
+            Offset=memory_size(call,package=package),PropertyType=0,
+            RValuePointer={'New':{'Path':[],'ResolvedOwner':0}})
+        for name,args in (('Activate',[node('EX_True')]),('Deactivate',[])):
+            compiled=expression(context('Pickup Idle',node('EX_VirtualFunction',
+                                  VirtualFunctionName=name,Parameters=args)),set(),set(),package=package,owner=1)
+            self.assertEqual(compiled['identity'],['/Script/Niagara','NiagaraComponent',name])
+            self.assertEqual(compiled['parameter_schemas'],
+                [{'type':'BoolProperty','default':False}] if name=='Activate' else [])
+            self.assertFalse(compiled['adapter_family_present'])
+        set_text=node('EX_FinalFunction',StackNode=-6,Parameters=[receiver('Text')])
+        compiled=expression(context('TextRender',set_text),set(),set(),package=package,owner=1)
+        self.assertEqual(compiled['identity'],['/Script/Engine','TextRenderComponent','K2_SetText'])
+        self.assertEqual(compiled['parameter_schemas'][0]['type'],'TextProperty')
+        show=node('EX_FinalFunction',StackNode=-7,Parameters=[node('EX_True'),node('EX_False')])
+        compiled=expression(context('TextRender',show),set(),set(),package=package,owner=1)
+        self.assertEqual(compiled['identity'],['/Script/Engine','SceneComponent','SetVisibility'])
+        self.assertEqual(compiled['receiver_schema']['class'],['/Script/Engine','TextRenderComponent'])
+        invalid=context('Pickup Idle',show)
+        with self.assertRaises(BlueprintTranslationError):
+            expression(invalid,set(),set(),package=package,owner=1)
+
     def test_native_concat_preserves_exact_identity_order_and_fstring_types(self):
         package=Package({'Imports':[{'ObjectName':'Concat_StrStr','ClassName':'Function','OuterIndex':-2},
             {'ObjectName':'KismetStringLibrary','OuterIndex':-3}, {'ObjectName':'/Script/Engine','ClassName':'Package'}],
