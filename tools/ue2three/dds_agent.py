@@ -973,10 +973,19 @@ def verify_worker(worker: Path, family_id: str) -> None:
     # discovery at the repository root makes those imports fail even when the
     # worker patch is correct. Keep Node and Git checks at the repository root.
     python_root = worker / 'tools' / 'ue2three'
+    runner = str(Path(__file__).resolve().parent / 'blueprint_test_runner.py')
+    js_tests = list(JAVASCRIPT_TESTS_BY_FAMILY[family_id])
+    # A worker may add a source-witnessed physics regression test. Do not
+    # silently omit that untracked file from verification before promotion.
+    if (family_id == 'native-physics'
+            and (worker / 'tests/ue2three-native-physics.test.mjs').is_file()):
+        js_tests.append('tests/ue2three-native-physics.test.mjs')
     commands = (
-        ([sys.executable, '-B', str(Path(__file__).resolve().parent / 'blueprint_test_runner.py'),
+        ([sys.executable, '-B', runner, '--tests-dir', 'tests',
           '--pattern', 'test_blueprint*.py'], PYTHON_VERIFY_SECONDS, python_root),
-        ([node, '--test', *JAVASCRIPT_TESTS_BY_FAMILY[family_id]], JAVASCRIPT_VERIFY_SECONDS, worker),
+        ([sys.executable, '-B', runner, '--tests-dir', '.',
+          '--pattern', 'test_blueprint*.py'], PYTHON_VERIFY_SECONDS, python_root),
+        ([node, '--test', *js_tests], JAVASCRIPT_VERIFY_SECONDS, worker),
         (['git', '-C', str(worker), 'diff', '--check'], GIT_TIMEOUT_SECONDS, worker),
     )
     logs = worker / '.local/dds-agent'
