@@ -242,6 +242,42 @@ class BlueprintMigrationTests(unittest.TestCase):
         self.assertEqual([step['source_index'] for step in assignments], [3, 6, 9, 12, 15])
         self.assertEqual([step['op'] for step in result['steps'] if step['op'] != 'set'], ['return'])
 
+    def test_ue57_straight_line_function_checks_original_vm_size(self):
+        # A recorded, hashed UE5.7.4 body with five real side effects.
+        # A source export is not complete if its bytecode cannot account for
+        # its original serialized ScriptBytecodeSize.
+        import copy
+        witness = json.loads((Path(__file__).parent / 'fixtures' /
+                              'dds-int64-source-witness.json').read_text(encoding='utf-8'))
+        self.assertEqual(digest(witness['function']['ScriptBytecode']),
+                         witness['source_bytecode_sha256'])
+        original = witness['function']
+        package = Package({'ObjectVersionUE5': witness['object_version_ue5']})
+        self.assertEqual(original['ScriptBytecodeSize'], 115)
+        self.assertEqual(translate_function(original, package)['status'], 'translated_straight_line')
+        for delta in (-1, 1):
+            modified = copy.deepcopy(original)
+            modified['ScriptBytecodeSize'] += delta
+            with self.subTest(delta=delta), self.assertRaisesRegex(
+                    BlueprintTranslationError, 'memory size differs'):
+                translate_function(modified, package)
+        truncated = copy.deepcopy(original)
+        truncated['ScriptBytecode'].pop(0)  # Remove a real VM tracepoint byte.
+        with self.assertRaisesRegex(BlueprintTranslationError, 'memory size differs'):
+            translate_function(truncated, package)
+        for invalid in (0, -1, True, '115', 115.0):
+            modified = copy.deepcopy(original)
+            modified['ScriptBytecodeSize'] = invalid
+            with self.subTest(invalid=invalid), self.assertRaisesRegex(
+                    BlueprintTranslationError, 'Invalid original ScriptBytecodeSize'):
+                translate_function(modified, package)
+        # Synthetic tests without a serialized size remain supported, but
+        # cannot be used as proof of a complete original source export.
+        synthetic = copy.deepcopy(original)
+        del synthetic['ScriptBytecodeSize']
+        self.assertEqual(translate_function(synthetic, package)['status'],
+                         'translated_straight_line')
+
     def test_int64_constants_reject_values_that_java_script_cannot_represent_exactly(self):
         from blueprint_migration import expression
         for value in (-(2**53)+1, 2**53-1):
