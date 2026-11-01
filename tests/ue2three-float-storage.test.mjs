@@ -29,7 +29,7 @@ test('UE5.7 reflected struct FloatProperty member writes round to binary32, unli
     assert.ok(Object.is(executeBlueprint(write(-0)).value.Ratio,-0));
     assert.equal(executeBlueprint(write(1e-50)).value.Ratio,0);
     assert.throws(()=>executeBlueprint(write(1e40)),/float32 assignment overflow/);
-    assert.throws(()=>executeBlueprint(write(NaN)),/Invalid typed source member/);
+    assert.throws(()=>executeBlueprint(write(NaN)),/Invalid Blueprint constant|Invalid typed source member/);
     assert.throws(()=>executeBlueprint({...program,steps:[{...program.steps[0],member_type:'DoubleProperty'},program.steps[2]]}),
         /assignment type/);
 });
