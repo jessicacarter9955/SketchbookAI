@@ -481,3 +481,36 @@ test('native MakeTransform result matches the source FTransform and FQuat schema
         args:[program.steps[0].value.args[0],program.steps[0].value.args[0],program.steps[0].value.args[2]]}},program.steps[1]]}),
         /not Rotator/);
 });
+
+test('UE5.7 source FloatProperty assignment rounds binary64 expressions to binary32', () => {
+    const program = {schema_version:1,status:'translated_straight_line',input_fields:[],output_fields:[],
+        field_types:{self:{Speed:'FloatProperty',Precise:'DoubleProperty'},
+            local:{Result:'FloatProperty'}},
+        steps:[
+            {op:'set',scope:'self',field:'Speed',value:{op:'constant',value:0.1}},
+            {op:'set',scope:'self',field:'Precise',value:{op:'constant',value:0.1}},
+            {op:'set',scope:'local',field:'Result',value:{op:'constant',value:-0.1}},
+            {op:'return',value:{op:'get',scope:'local',field:'Result'}}
+        ]};
+    const initial={Speed:0,Precise:0};
+    const result=executeBlueprint(program,initial);
+    assert.equal(result.state.Speed,Math.fround(0.1));
+    assert.equal(result.state.Precise,0.1);
+    assert.equal(result.value,Math.fround(-0.1));
+    assert.deepEqual(initial,{Speed:0,Precise:0});
+    const overflow={...program,steps:[
+        {op:'set',scope:'self',field:'Speed',value:{op:'constant',value:1e40}},
+        program.steps[3]
+    ]};
+    assert.throws(()=>executeBlueprint(overflow,initial),/float32 assignment overflow/);
+    const invalid={...program,steps:[
+        {op:'set',scope:'self',field:'Speed',value:{op:'constant',value:'0.1'}},
+        program.steps[3]
+    ]};
+    assert.throws(()=>executeBlueprint(invalid,initial),/invalid FloatProperty/);
+    const negativeZero={...program,steps:[
+        {op:'set',scope:'self',field:'Speed',value:{op:'constant',value:-0}},
+        {op:'return',value:{op:'get',scope:'self',field:'Speed'}}
+    ]};
+    assert.equal(Object.is(executeBlueprint(negativeZero,initial).value,-0),true);
+});
