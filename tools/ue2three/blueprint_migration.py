@@ -810,6 +810,18 @@ def translate_function(export, package=None, entry_offset=None):
         raise BlueprintTranslationError('Parsed source bytecode is required')
     reads, outputs, writes, steps = set(), set(), set(), []
     branching = entry_offset is not None or any(kind(instruction) in ('EX_Jump', 'EX_JumpIfNot', 'EX_ComputedJump', 'EX_PushExecutionFlow', 'EX_PopExecutionFlow', 'EX_PopExecutionFlowIfNot') for instruction in bytecode)
+    # A straight-line function must satisfy the same original UE VM byte count
+    # as a control-flow function. Otherwise a truncated/misparsed source body
+    # could be reported as translated even though its serialized size differs.
+    # Small synthetic unit-test exports may omit this optional source field;
+    # real cached exports with a declared size must match it exactly.
+    declared_size = export.get('ScriptBytecodeSize')
+    if declared_size is not None and (type(declared_size) is not int or declared_size <= 0):
+        raise BlueprintTranslationError('Invalid original ScriptBytecodeSize')
+    if not branching and declared_size is not None:
+        measured_size = sum(memory_size(instruction, package=package) for instruction in bytecode)
+        if measured_size != declared_size:
+            raise BlueprintTranslationError('Computed Kismet memory size differs from ScriptBytecodeSize')
     offsets, boundaries, offset = {}, {}, 0
     reachable, prologue = None, None
     if entry_offset is not None:
