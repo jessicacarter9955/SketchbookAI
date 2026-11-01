@@ -479,6 +479,17 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
     };
     const schemaFor = target => target?.scope === 'persistent' ? program.persistent_schemas?.[target.frame]?.[target.field]
         : program.schemas?.[target?.scope]?.[target?.field];
+    // A reflected UE5.7 FloatProperty stores an IEEE-754 binary32 value.
+    // Round at the actual FProperty write boundary, not at an earlier JS
+    // expression; DoubleProperty must retain its original binary64 value.
+    const storedFloat32 = (value, label) => {
+        if (typeof value !== 'number' || !Number.isFinite(value))
+            throw new Error('Invalid UE FloatProperty assignment: ' + label);
+        const stored = Math.fround(value);
+        if (!Number.isFinite(stored))
+            throw new Error('UE float32 assignment overflow: ' + label);
+        return stored;
+    };
     const nativeMathStructType = value => {
         if (value?.op === 'typed_literal' || value?.op === 'get' || value?.op === 'struct_literal') {
             const schema=value.op === 'typed_literal' || value.op === 'struct_literal' ? value.schema : schemaFor(value);
@@ -1239,7 +1250,8 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 array = evaluate(target, depth+1);
                 if (array.length !== index+1 || before !== null && JSON.stringify(array) !== before)
                     throw new Error('Reentrant SetArray destination mutation is unsupported');
-                validateSchema(schema.element, value); array[index] = value;
+                validateSchema(schema.element, value);
+                array[index] = schema.element.type === 'FloatProperty' ? storedFloat32(value, target.field) : value;
             }
             trace.push({source_index:sourceIndex,op:'array_literal',scope:target.scope,field:target.field,length:array.length});
             return null;
@@ -1259,9 +1271,10 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             validateSchema(schema.element, item);
             if (array.length >= 100000) throw new Error('Array_Add exceeds maximum verified array size');
             const index = array.length;
-            array.push(structuredClone(item));
+            const stored = schema.element.type === 'FloatProperty' ? storedFloat32(item, target.field) : item;
+            array.push(structuredClone(stored));
             checkType('self', target.field, array);
-            trace.push({source_index: sourceIndex, op: 'array_add', index, value: structuredClone(item)});
+            trace.push({source_index: sourceIndex, op: 'array_add', index, value: structuredClone(stored)});
             return index;
         }
         if (expression.op === 'array_set') {
@@ -1292,7 +1305,8 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 validateSchema(schema.element, schema.element.default);
                 while (array.length <= index) array.push(structuredClone(schema.element.default));
             }
-            array[index] = structuredClone(item);
+            const stored = schema.element.type === 'FloatProperty' ? storedFloat32(item, target.field) : item;
+            array[index] = structuredClone(stored);
             checkType('self', target.field, array);
             trace.push({source_index: sourceIndex, op: 'array_set', index, applied: true, size_to_fit: sizeToFit});
             return null;
@@ -1598,12 +1612,13 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             if (!schema || schema.type !== 'StructProperty' || !owns(schema.fields, step.field)
                 || schema.fields[step.field].type !== step.member_type) throw new Error('Unresolved source struct assignment type');
             const value = evaluate(step.value); validateSchema(schema.fields[step.field], value);
+            const stored = step.member_type === 'FloatProperty' ? storedFloat32(value, step.field) : value;
             // An original nested call can assign this same source property.
             // Reacquire its storage after evaluating the RHS, as its VM address
             // still denotes that property rather than an obsolete JS object.
             const structure = evaluate(target); validateSchema(schema,structure);
-            structure[step.field] = structuredClone(value);
-            trace.push({source_index: sourceIndex, op: 'set_member', scope: target.scope, field: target.field, member: step.field, value: structuredClone(value)});
+            structure[step.field] = structuredClone(stored);
+            trace.push({source_index: sourceIndex, op: 'set_member', scope: target.scope, field: target.field, member: step.field, value: structuredClone(stored)});
             continue;
         }
         if (step.op === 'set' && safeField(step.field)) {
