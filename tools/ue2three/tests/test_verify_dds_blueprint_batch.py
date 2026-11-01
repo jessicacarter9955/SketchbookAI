@@ -15,7 +15,8 @@ BYTECODE = "c" * 64
 
 def snapshot(*, translated=False):
     function = {"name": "ResetRaidConfig", "source_export_index": 7,
-                "source_bytecode_sha256": BYTECODE}
+                "source_bytecode_sha256": BYTECODE,
+                "steps": [{"op": "return", "value": {"op": "constant", "value": 7}}]}
     package = {
         "source": {"source_sha256": SOURCE, "parsed_sha256": PARSED},
         "functions": {"ResetRaidConfig": function} if translated else {},
@@ -35,6 +36,37 @@ class SourceReplayGateTests(unittest.TestCase):
         result = validate_source_replay(before, after)
         self.assertEqual(result["new_translation_count"], 1)
         self.assertTrue(result["monotonic_source_compilation"])
+
+    def test_standalone_replay_rejects_unexecutable_source_witnessed_gains(self):
+        # A genuine source hash is necessary, never sufficient: the standalone
+        # report must not claim a gain that supervisor promotion would reject.
+        defects = [
+            ("missing", None, "executable steps"),
+            ("empty", [], "executable steps"),
+            ("stub", [{"op": "stub"}], "stub/no-op"),
+            ("noop", [{"op": "noop"}], "stub/no-op"),
+            ("no_op", [{"op": "no_op"}], "stub/no-op"),
+            ("not-a-step", ["return"], "stub/no-op"),
+            ("empty-return", [{"op": "return", "value": {"op": "constant", "value": None}}],
+             "empty returns"),
+        ]
+        for label, steps, message in defects:
+            with self.subTest(defect=label):
+                before, after = snapshot(), snapshot(translated=True)
+                program = after["packages"]["/Game/Fixers/BP_GI_Fixers"]["functions"]["ResetRaidConfig"]
+                if label == "missing":
+                    del program["steps"]
+                else:
+                    program["steps"] = steps
+                with self.assertRaisesRegex(RuntimeError, message):
+                    validate_source_replay(before, after)
+
+    def test_standalone_replay_rejects_mixed_noop_with_real_steps(self):
+        before, after = snapshot(), snapshot(translated=True)
+        program = after["packages"]["/Game/Fixers/BP_GI_Fixers"]["functions"]["ResetRaidConfig"]
+        program["steps"].append({"op": "noop"})
+        with self.assertRaisesRegex(RuntimeError, "stub/no-op"):
+            validate_source_replay(before, after)
 
     def test_changed_original_source_or_parsed_package_rejected(self):
         for field in ("source_sha256", "parsed_sha256"):
