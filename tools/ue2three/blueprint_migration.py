@@ -1,6 +1,7 @@
 """Translate cached Kismet state, control flow and source-class function calls."""
 import math
 import re
+import struct
 from collections import Counter
 from pathlib import Path
 
@@ -689,6 +690,16 @@ def expression(value, reads, outputs, depth=0, package=None, owner=None):
             if token in ('EX_ByteConst', 'EX_IntConstByte'): valid = valid and 0 <= result <= 255
             else: valid = valid and -2**31 <= result < 2**31
         if not valid: raise BlueprintTranslationError(f'Invalid constant: {token}')
+        if token == 'EX_FloatConst':
+            # UE5.7 EX_FloatConst stores an IEEE-754 binary32 value, not a
+            # double. JSON numbers are binary64; restore the original VM
+            # precision before emitting the IR (including signed zero).
+            try:
+                result = struct.unpack('<f', struct.pack('<f', result))[0]
+            except (OverflowError, struct.error) as exc:
+                raise BlueprintTranslationError('Float constant is outside UE float32 range') from exc
+            if not math.isfinite(result):
+                raise BlueprintTranslationError('Float constant is outside UE float32 range')
         return {'op': 'constant', 'value': result}
     if token == 'EX_Int64Const':
         result = value.get('Value')
