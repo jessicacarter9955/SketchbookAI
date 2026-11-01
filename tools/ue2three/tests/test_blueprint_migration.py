@@ -252,6 +252,30 @@ class BlueprintMigrationTests(unittest.TestCase):
                 expression(node('EX_Int64Const', Value=value), set(), set())
         self.assertEqual(memory_size(node('EX_Int64Const', Value=0)), 9)
 
+    def test_ue57_int64_native_input_type_is_source_witnessed_and_exact(self):
+        from blueprint_migration import expression, native_math_source_type
+        witness = json.loads((Path(__file__).parent / 'fixtures' / 'dds-int64-source-witness.json').read_text(encoding='utf-8'))
+        self.assertEqual(witness['engine_version'], '5.7.4')
+        self.assertEqual(digest(witness['function']['ScriptBytecode']), witness['source_bytecode_sha256'])
+        # EX_Let in the original ResetRaidConfig stores this literal in the
+        # reflected QueuePoolLobbyID Int64Property, not an IntProperty.
+        source_literal = witness['function']['ScriptBytecode'][12]['Expression']
+        self.assertEqual(source_literal['$type'].split('.')[-1], 'EX_Int64Const, UAssetAPI')
+        package = Package({'ObjectVersionUE5': witness['object_version_ue5']})
+        self.assertEqual(native_math_source_type(source_literal, package, 2), 'Int64Property')
+        self.assertEqual(expression(source_literal, set(), set(), package=package)['value'], 0)
+        self.assertEqual(native_math_source_type(node('EX_IntConst', Value=0), package, 2), 'IntProperty')
+        for value in (-(2**53) + 1, 0, 2**53 - 1):
+            with self.subTest(valid=value):
+                literal = node('EX_Int64Const', Value=value)
+                self.assertEqual(native_math_source_type(literal, package, 2), 'Int64Property')
+                self.assertEqual(expression(literal, set(), set(), package=package)['value'], value)
+        for value in (-(2**53), 2**53, 2**63, -(2**63) - 1, True, '0', None):
+            with self.subTest(rejected=value):
+                literal = node('EX_Int64Const', Value=value)
+                with self.assertRaisesRegex(BlueprintTranslationError, 'exact JavaScript integer range'):
+                    native_math_source_type(literal, package, 2)
+
     def test_asset_constant_retains_original_import_and_rejects_runtime_objects(self):
         from blueprint_migration import expression
         imports = [{'ObjectName': 'OriginalEquip', 'OuterIndex': -2, 'ClassName': 'AnimMontage', 'ClassPackage': '/Script/Engine'},
