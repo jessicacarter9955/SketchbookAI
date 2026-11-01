@@ -278,6 +278,26 @@ class BlueprintMigrationTests(unittest.TestCase):
         self.assertEqual(translate_function(synthetic, package)['status'],
                          'translated_straight_line')
 
+    def test_ue57_float_constant_preserves_binary32_vm_precision(self):
+        # EX_FloatConst is a serialized 4-byte float even when UAssetAPI JSON
+        # presents the literal as a decimal or a Python binary64 number.
+        import math
+        import struct
+        from blueprint_migration import expression, native_math_source_type
+        for original in (0.1, '0.1', -0.0, 1.0, 16777217.0, 3.4028234663852886e38):
+            literal = node('EX_FloatConst', Value=original)
+            expected = struct.unpack('<f', struct.pack('<f', float(original)))[0]
+            translated = expression(literal, set(), set())
+            with self.subTest(original=original):
+                self.assertEqual(native_math_source_type(literal, None, None), 'FloatProperty')
+                self.assertEqual(translated['value'], expected)
+                self.assertEqual(math.copysign(1, translated['value']),
+                                 math.copysign(1, expected))
+                self.assertEqual(memory_size(literal), 5)
+        for original in (1e39, -1e39, 1e308, True, '1e309', 'nan'):
+            with self.subTest(invalid=original), self.assertRaises(BlueprintTranslationError):
+                expression(node('EX_FloatConst', Value=original), set(), set())
+
     def test_int64_constants_reject_values_that_java_script_cannot_represent_exactly(self):
         from blueprint_migration import expression
         for value in (-(2**53)+1, 2**53-1):
