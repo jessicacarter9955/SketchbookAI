@@ -1609,9 +1609,20 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
         if (step.op === 'set' && safeField(step.field)) {
             const scope = step.scope || 'local';
             if (!['self', 'local', 'persistent'].includes(scope)) throw new Error('Invalid assignment scope');
-            const value = evaluate(step.value);
-            if (step.boolean && typeof value !== 'boolean') throw new Error(`Expected Boolean: ${step.field}`);
-            checkType(scope, step.field, value, step.frame);
+            const evaluated = evaluate(step.value);
+            if (step.boolean && typeof evaluated !== 'boolean') throw new Error(`Expected Boolean: ${step.field}`);
+            checkType(scope, step.field, evaluated, step.frame);
+            // UE5.7 FProperty::CopyCompleteValue writes a binary32 for a
+            // FloatProperty. JS arithmetic is binary64: round at the original
+            // assignment boundary, never silently retain double precision.
+            const declaredType = scope === 'persistent'
+                ? program.persistent_types?.[step.frame]?.[step.field]
+                : program.field_types?.[scope]?.[step.field];
+            const value = declaredType === 'FloatProperty' ? Math.fround(evaluated) : evaluated;
+            if (declaredType === 'FloatProperty') {
+                if (!Number.isFinite(value)) throw new Error(`UE float32 assignment overflow: ${step.field}`);
+                checkType(scope, step.field, value, step.frame);
+            }
             if (scope === 'self') {
                 if (!owns(instance, step.field)) throw new Error(`Missing self property: ${step.field}`);
                 instance[step.field] = structuredClone(value);
