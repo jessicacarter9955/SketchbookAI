@@ -129,6 +129,7 @@ class FamilyCandidate:
     plan_fingerprint: str
     programs_content_sha256: str
     project: str
+    source_family_fingerprint: str
 
 
 def utc_now() -> str:
@@ -319,6 +320,20 @@ def _source_witnesses(plan: dict, programs: dict, row: dict) -> list[tuple[dict,
     return found
 
 
+def _source_family_fingerprint(family_id: str, blocked_count: int, witnesses: list) -> str:
+    """Identify one family's original blockers without unrelated implementation hashes.
+
+    The global plan fingerprint includes compiler/runtime files and changes on
+    unrelated HEAD updates. Only original package/function witnesses and this
+    family's blocked count may reopen an already rejected no-gain family.
+    """
+    rows = [(w['package'], w['function'], w['export_index'],
+             w['source_bytecode_sha256'], source['source_sha256'],
+             source['parsed_sha256']) for w, source in witnesses]
+    return digest({'family': family_id, 'blocked_count': blocked_count,
+                   'source_witnesses': sorted(rows)})
+
+
 def _candidate_from_row(plan: dict, programs: dict, published: Path, row: dict) -> FamilyCandidate | None:
     family_id = row.get('id')
     if not isinstance(family_id, str) or family_id not in FAMILY_IDS \
@@ -382,6 +397,7 @@ def _candidate_from_row(plan: dict, programs: dict, published: Path, row: dict) 
         plan_fingerprint=plan['fingerprint'],
         programs_content_sha256=programs['content_sha256'],
         project=plan['project'],
+        source_family_fingerprint=_source_family_fingerprint(family_id, blocked_count, witnesses),
     )
 
 
@@ -457,7 +473,8 @@ def _compiler_candidate(plan: dict, programs: dict, published: Path, row: dict) 
         witness_count=len(eligible), package=example['package'],
         source_sha256=source['source_sha256'], parsed_sha256=source['parsed_sha256'],
         plan_fingerprint=plan['fingerprint'], programs_content_sha256=programs['content_sha256'],
-        project=plan['project'])
+        project=plan['project'],
+        source_family_fingerprint=_source_family_fingerprint('compiler-' + module, count, eligible))
 
 
 def _workspace_candidates(repo_root: Path) -> list[Path]:
@@ -550,10 +567,18 @@ def _load_candidate(repo_root: Path, checkpoint: dict) -> FamilyCandidate | None
         record = family_states.get(candidate.family_id, {})
         if not isinstance(record, dict):
             continue
-        if (record.get('plan_fingerprint') != candidate.plan_fingerprint
-                and record.get('status') in {'integrated', 'needs_review', 'exhausted'}):
-            # A new verified plan is new work. Preserve lifetime accounting,
-            # but do not exhaust an entire adapter family after three batches.
+        no_gain_review = (record.get('status') == 'needs_review'
+                          and record.get('result') == 'no_proven_conversion_gain')
+        if no_gain_review:
+            previous_source = record.get('source_family_fingerprint')
+            # A legacy checkpoint without a family-specific witness fails closed.
+            if not _valid_sha(previous_source) or previous_source == candidate.source_family_fingerprint:
+                continue
+            record['lifetime_attempts'] = record.get('lifetime_attempts', 0) + record.get('attempts', 0)
+            record.update(attempts=0, retry_after=0, status='pending_new_revision')
+        elif (record.get('plan_fingerprint') != candidate.plan_fingerprint
+              and record.get('status') in {'integrated', 'needs_review', 'exhausted'}):
+            # Preserve existing recovery for other review types.
             record['lifetime_attempts'] = record.get('lifetime_attempts', 0) + record.get('attempts', 0)
             record['attempts'] = 0
             record['retry_after'] = 0
@@ -1034,25 +1059,11 @@ def _retry_delay(attempt: int) -> int:
 
 
 def _reopen_reviews_for_new_head(checkpoint: dict, head: str) -> list[str]:
-    """Allow one fresh attempt after a newer integration revision, retaining history.
+    """Compatibility guard: HEAD alone never proves a source-family change.
 
-    A previously rejected patch is never reused as if accepted. Conflicts and
-    all integrated families remain untouched. An unsuccessful new attempt on
-    this same HEAD is not retried endlessly on subsequent scheduler ticks.
+    _load_candidate owns witness-based reopening. Preserve legacy checkpoints.
     """
-    reopened = []
-    for family, record in checkpoint.get('families', {}).items():
-        if (family not in FAMILY_IDS or not isinstance(record, dict)
-                or record.get('status') != 'needs_review'
-                or record.get('result') != 'no_proven_conversion_gain'
-                or not record.get('base_head') or record['base_head'] == head
-                or record.get('last_reopen_head') == head):
-            continue
-        record['lifetime_attempts'] = record.get('lifetime_attempts', 0) + record.get('attempts', 0)
-        record.update(status='pending_new_revision', attempts=0, retry_after=0,
-                      last_reopen_head=head, previous_review_commit=record.get('commit'))
-        reopened.append(family)
-    return reopened
+    return []
 
 
 def dry_run(repo_root: Path = REPO_ROOT, state_root: Path | None = None) -> dict:
@@ -1129,6 +1140,7 @@ def run_once(repo_root: Path = REPO_ROOT, state_root: Path | None = None,
             run_id = uuid.uuid4().hex
             family_state.update({'attempts': attempt, 'status': 'running', 'retry_after': 0,
                                  'base_head': head, 'plan_fingerprint': candidate.plan_fingerprint,
+                                 'source_family_fingerprint': candidate.source_family_fingerprint,
                                  'worktree_path': str(worker),
                                  'worktree_family': candidate.family_id, 'last_run_id': run_id,
                                  'started_at': utc_now()})
@@ -1268,6 +1280,7 @@ def run_many(repo_root: Path = REPO_ROOT, state_root: Path | None = None,
                 run_id = uuid.uuid4().hex
                 record.update({'attempts': attempt, 'status': 'running', 'retry_after': 0,
                                'base_head': head, 'plan_fingerprint': candidate.plan_fingerprint,
+                                 'source_family_fingerprint': candidate.source_family_fingerprint,
                                'worktree_path': str(worker), 'worktree_family': candidate.family_id,
                                'last_run_id': run_id, 'lane': lane, 'started_at': utc_now()})
                 tasks.append((candidate, worker, run_id, attempt))
