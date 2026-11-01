@@ -59,6 +59,19 @@ def validate_source_replay(reference, result):
         witness = program.get('source_bytecode_sha256') if isinstance(program, dict) else None
         if not isinstance(witness, str) or not valid_sha(witness):
             raise RuntimeError(f'New translation has no original bytecode SHA-256: {row["package"]}')
+        # A matching source hash does not make a non-executable program green.
+        # Enforce the same minimum executable-step gate as DDS supervisor promotion,
+        # including direct invocation of this standalone replay validator.
+        steps = program.get('steps')
+        if not isinstance(steps, list) or not steps:
+            raise RuntimeError(f'New translation has no executable steps: {row["package"]}')
+        if any(not isinstance(step, dict) or step.get('op') in
+               ('stub', 'noop', 'no_op') for step in steps):
+            raise RuntimeError(f'New translation contains stub/no-op steps: {row["package"]}')
+        if all(step.get('op') == 'return'
+               and step.get('value') == {'op': 'constant', 'value': None}
+               for step in steps):
+            raise RuntimeError(f'New translation contains only empty returns: {row["package"]}')
     for report, indexed in ((reference, old_entries), (result, new_entries)):
         counts = report.get('counts', {})
         translated = sum(item['status'] == 'translated' for item in indexed.values())
