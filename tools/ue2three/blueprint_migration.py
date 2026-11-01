@@ -143,6 +143,14 @@ def native_math_source_type(value, package, owner):
                  'EX_IntConst':'IntProperty','EX_IntConstByte':'ByteProperty','EX_ByteConst':'ByteProperty',
                  'EX_FloatConst':'FloatProperty','EX_DoubleConst':'DoubleProperty'}
     if token in constants: return constants[token]
+    if token == 'EX_Int64Const':
+        # UE5.7 EX_Int64Const is a signed 64-bit source literal. The current
+        # JSON/Three.js Number IR can represent only the safe integer subset;
+        # reject unrepresentable values at type inference as well as emission.
+        literal = value.get('Value')
+        if type(literal) is not int or not -(2**53) < literal < 2**53:
+            raise BlueprintTranslationError('Int64 constant is outside the exact JavaScript integer range')
+        return 'Int64Property'
     if token == 'EX_VectorConst': return 'Vector'
     if token == 'EX_RotationConst': return 'Rotator'
     if token == 'EX_TransformConst': return 'Transform'
