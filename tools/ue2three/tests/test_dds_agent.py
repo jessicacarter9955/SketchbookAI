@@ -347,25 +347,69 @@ class DdsAgentTests(unittest.TestCase):
         with patch.object(dds_agent, 'run_codex', side_effect=AssertionError('no duplicate run')):
             self.assertEqual(dds_agent.run_many(self.repo, self.state_root, 'codex-test-double')['status'], 'cooldown')
 
-    def test_new_head_reopens_only_no_gain_reviews_once_and_retains_attempt_history(self):
-        current_head = self._git('rev-parse', 'HEAD')
-        old_head = 'a' * 40
+    def test_changed_head_alone_never_reopens_no_gain_reviews(self):
         checkpoint = dds_agent._default_checkpoint()
         checkpoint['families'] = {
             'native-timers': {'status': 'needs_review', 'result': 'no_proven_conversion_gain',
-                              'attempts': 3, 'base_head': old_head},
+                              'attempts': 3, 'base_head': 'a' * 40},
             'native-physics': {'status': 'needs_review', 'result': 'reconciliation_conflict',
-                               'attempts': 1, 'base_head': old_head},
-            'native-math': {'status': 'integrated', 'result': 'no_proven_conversion_gain',
-                            'attempts': 1, 'base_head': old_head}}
-        self.assertEqual(dds_agent._reopen_reviews_for_new_head(checkpoint, current_head), ['native-timers'])
-        item = checkpoint['families']['native-timers']
-        self.assertEqual((item['status'], item['attempts'], item['lifetime_attempts']),
+                               'attempts': 1, 'base_head': 'a' * 40}}
+        original = json.dumps(checkpoint, sort_keys=True)
+        self.assertEqual(dds_agent._reopen_reviews_for_new_head(
+            checkpoint, self._git('rev-parse', 'HEAD')), [])
+        self.assertEqual(json.dumps(checkpoint, sort_keys=True), original)
+
+    def test_source_family_fingerprint_ignores_global_plan_and_witness_order(self):
+        witness = {'package': self.package, 'function': 'CanStart',
+                   'export_index': 7, 'source_bytecode_sha256': self.bytecode_hash}
+        source = {'source_sha256': self.source_hash, 'parsed_sha256': self.parsed_hash}
+        one = dds_agent._source_family_fingerprint('native-timers', 2, [(witness, source)])
+        self.assertEqual(len(one), 64)
+        self.assertEqual(one, dds_agent._source_family_fingerprint(
+            'native-timers', 2, [(witness, source)]))
+        self.assertNotEqual(one, dds_agent._source_family_fingerprint(
+            'native-timers', 3, [(witness, source)]))
+        changed = dict(witness, source_bytecode_sha256='c' * 64)
+        self.assertNotEqual(one, dds_agent._source_family_fingerprint(
+            'native-timers', 2, [(changed, source)]))
+
+    def test_no_gain_review_requires_changed_family_witness_not_plan_or_head(self):
+        from dataclasses import replace
+        base = dds_agent._load_candidate(self.repo, dds_agent._default_checkpoint())
+        self.assertEqual(base.family_id, 'native-timers')
+        self.assertEqual(len(base.source_family_fingerprint), 64)
+        old_plan, new_plan = base.plan_fingerprint, 'e' * 64
+        self.assertNotEqual(old_plan, new_plan)
+        record = {'status': 'needs_review', 'result': 'no_proven_conversion_gain',
+                  'attempts': 3, 'base_head': 'a' * 40,
+                  'plan_fingerprint': old_plan,
+                  'source_family_fingerprint': base.source_family_fingerprint}
+        checkpoint = dds_agent._default_checkpoint()
+        checkpoint['families'] = {'native-timers': record}
+        with patch.object(dds_agent, '_candidate_from_row',
+                          return_value=replace(base, plan_fingerprint=new_plan)):
+            self.assertIsNone(dds_agent._load_candidate(self.repo, checkpoint))
+        self.assertEqual((record['status'], record['attempts']), ('needs_review', 3))
+        self.assertNotIn('lifetime_attempts', record)
+
+        # A legacy no-gain checkpoint without family-specific evidence stays blocked.
+        legacy = dict(record)
+        legacy.pop('source_family_fingerprint')
+        checkpoint['families']['native-timers'] = legacy
+        with patch.object(dds_agent, '_candidate_from_row',
+                          return_value=replace(base, plan_fingerprint=new_plan)):
+            self.assertIsNone(dds_agent._load_candidate(self.repo, checkpoint))
+        self.assertEqual(legacy['attempts'], 3)
+
+        # A genuinely different verified original blocker identity allows a new attempt.
+        checkpoint['families']['native-timers'] = record
+        changed = replace(base, plan_fingerprint=new_plan,
+                          source_family_fingerprint='f' * 64)
+        with patch.object(dds_agent, '_candidate_from_row', return_value=changed):
+            candidate = dds_agent._load_candidate(self.repo, checkpoint)
+        self.assertEqual(candidate.source_family_fingerprint, 'f' * 64)
+        self.assertEqual((record['status'], record['attempts'], record['lifetime_attempts']),
                          ('pending_new_revision', 0, 3))
-        item['status'] = 'needs_review'
-        self.assertEqual(dds_agent._reopen_reviews_for_new_head(checkpoint, current_head), [])
-        self.assertEqual(checkpoint['families']['native-physics']['status'], 'needs_review')
-        self.assertEqual(checkpoint['families']['native-math']['status'], 'integrated')
 
     def test_retry_count_is_bounded_and_failed_worktree_is_reused(self):
         workers = []
