@@ -1176,29 +1176,36 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             const index = expression.index ? evaluate(expression.index, depth+1) : null;
             if (['Array_Set', 'Array_Remove', 'Array_Insert'].includes(operation) && !validPrimitive('IntProperty', index)) throw new Error('Invalid source array index');
             const value = expression.value ? structuredClone(evaluate(expression.value, depth+1)) : null;
+            // Generic KismetArrayLibrary mutations also write through the
+            // original reflected element FProperty (not JS binary64 storage).
+            const storeElement = item => expression.element.type === 'FloatProperty'
+                ? storedFloat32(item, target.field) : item;
             let result = null, inBounds = index >= 0 && index < array.length;
             if (operation === 'Array_Set') {
                 const resize = evaluate(expression.resize, depth+1);
                 if (typeof resize !== 'boolean') throw new Error('Invalid source Array_Set resize flag');
                 validateSchema(expression.element, value);
+                // Validate a writable FloatProperty before growing the array:
+                // an overflow must never leave partially initialized slots.
+                const stored = (inBounds || resize && index >= 0) ? storeElement(value) : value;
                 if (resize && index >= 0) {
                     if (index >= 100000) throw new Error('Source array resource limit exceeded');
                     while (array.length <= index) { validateSchema(expression.element, expression.element.default); array.push(structuredClone(expression.element.default)); }
                     inBounds = true;
                 }
-                if (inBounds) array[index] = value;
+                if (inBounds) array[index] = stored;
             } else if (operation === 'Array_Remove') { if (inBounds) array.splice(index, 1); }
             else if (operation === 'Array_Clear') array.length = 0;
             else if (operation === 'Array_Add') {
                 validateSchema(expression.element, value);
                 if (array.length >= 100000) throw new Error('Source array resource limit exceeded');
-                result = array.length; array.push(value);
+                result = array.length; array.push(storeElement(value));
             } else if (operation === 'Array_AddUnique') {
                 validateSchema(expression.element, value);
                 const found = array.findIndex(item => sourceArrayValueEqual(expression.element, item, value));
                 if (found === -1) {
                     if (array.length >= 100000) throw new Error('Source array resource limit exceeded');
-                    result = array.length; array.push(value);
+                    result = array.length; array.push(storeElement(value));
                 } else result = -1;
                 inBounds = found !== -1;
             } else if (operation === 'Array_RemoveItem') {
@@ -1213,14 +1220,16 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 validateSchema(expression.element, value);
                 if (index < 0 || index > array.length) throw new RangeError('Original Array_Insert index is outside the valid range');
                 if (array.length >= 100000) throw new Error('Source array resource limit exceeded');
-                array.splice(index, 0, value); inBounds = true;
+                array.splice(index, 0, storeElement(value)); inBounds = true;
             } else if (operation === 'Array_Reverse') {
                 array.reverse(); inBounds = true;
             } else if (operation === 'Array_Append') {
                 if (!Array.isArray(value) || array.length+value.length > 100000) throw new Error('Invalid or oversized source array append');
                 for (const item of value) validateSchema(expression.element, item);
+                // Preflight all FloatProperty stores before mutating the array.
                 // Copying the source first also preserves UE's self-append behavior.
-                for (const item of value) array.push(item);
+                const stored = value.map(storeElement);
+                for (const item of stored) array.push(item);
             } else throw new Error('Unsupported source array mutation');
             if (['Array_Set', 'Array_Remove'].includes(operation) && !inBounds)
                 trace.push({source_index: sourceIndex, op: 'warning', message: operation+' index out of bounds; source array unchanged'});
