@@ -1208,7 +1208,14 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 const stored = (inBounds || resize && index >= 0) ? storeElement(value) : value;
                 if (resize && index >= 0) {
                     if (index >= 100000) throw new Error('Source array resource limit exceeded');
-                    while (array.length <= index) { validateSchema(expression.element, expression.element.default); array.push(structuredClone(expression.element.default)); }
+                    if (index >= array.length) {
+                        // UE5.7 SetArrayElem grows through the reflected element
+                        // property. Validate and convert the source-owned default
+                        // before changing the destination, including nested floats.
+                        const defaultElement = storedReflected(expression.element,
+                            expression.element.default, target.field + '[default]');
+                        while (array.length <= index) array.push(structuredClone(defaultElement));
+                    }
                     inBounds = true;
                 }
                 if (inBounds) array[index] = stored;
