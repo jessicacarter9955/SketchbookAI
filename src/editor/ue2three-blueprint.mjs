@@ -490,6 +490,25 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             throw new Error('UE float32 assignment overflow: ' + label);
         return stored;
     };
+    // UE5.7 FProperty::CopyCompleteValue stores nested reflected fields at
+    // their own physical precision. Clone before conversion so overflow in a
+    // nested FloatProperty never mutates caller-owned or staged source values.
+    const storedReflected = (schema, value, label, depth = 0) => {
+        if (!schema || depth > 16) throw new Error('Unverified reflected storage schema: ' + label);
+        validateSchema(schema, value, depth);
+        if (schema.type === 'FloatProperty') return storedFloat32(value, label);
+        if (schema.type === 'ArrayProperty') return value.map((item, index) =>
+            storedReflected(schema.element, item, label + '[' + index + ']', depth+1));
+        if (schema.type === 'StructProperty') {
+            const stored = structuredClone(value);
+            for (const [field, child] of Object.entries(schema.fields || {})) {
+                if (!safeField(field)) throw new Error('Invalid reflected struct storage field');
+                stored[field] = storedReflected(child, value[field], label + '.' + field, depth+1);
+            }
+            return stored;
+        }
+        return structuredClone(value);
+    };
     const nativeMathStructType = value => {
         if (value?.op === 'typed_literal' || value?.op === 'get' || value?.op === 'struct_literal') {
             const schema=value.op === 'typed_literal' || value.op === 'struct_literal' ? value.schema : schemaFor(value);
@@ -1178,8 +1197,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             const value = expression.value ? structuredClone(evaluate(expression.value, depth+1)) : null;
             // Generic KismetArrayLibrary mutations also write through the
             // original reflected element FProperty (not JS binary64 storage).
-            const storeElement = item => expression.element.type === 'FloatProperty'
-                ? storedFloat32(item, target.field) : item;
+            const storeElement = item => storedReflected(expression.element, item, target.field);
             let result = null, inBounds = index >= 0 && index < array.length;
             if (operation === 'Array_Set') {
                 const resize = evaluate(expression.resize, depth+1);
@@ -1260,7 +1278,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 if (array.length !== index+1 || before !== null && JSON.stringify(array) !== before)
                     throw new Error('Reentrant SetArray destination mutation is unsupported');
                 validateSchema(schema.element, value);
-                array[index] = schema.element.type === 'FloatProperty' ? storedFloat32(value, target.field) : value;
+                array[index] = storedReflected(schema.element, value, target.field);
             }
             trace.push({source_index:sourceIndex,op:'array_literal',scope:target.scope,field:target.field,length:array.length});
             return null;
@@ -1280,7 +1298,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             validateSchema(schema.element, item);
             if (array.length >= 100000) throw new Error('Array_Add exceeds maximum verified array size');
             const index = array.length;
-            const stored = schema.element.type === 'FloatProperty' ? storedFloat32(item, target.field) : item;
+            const stored = storedReflected(schema.element, item, target.field);
             array.push(structuredClone(stored));
             checkType('self', target.field, array);
             trace.push({source_index: sourceIndex, op: 'array_add', index, value: structuredClone(stored)});
@@ -1310,11 +1328,11 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 return null;
             }
             if (index >= 100000) throw new Error('Array_Set exceeds maximum verified array size');
+            const stored = storedReflected(schema.element, item, target.field);
             if (index >= array.length) {
                 validateSchema(schema.element, schema.element.default);
-                while (array.length <= index) array.push(structuredClone(schema.element.default));
+                while (array.length <= index) array.push(storedReflected(schema.element, schema.element.default, target.field));
             }
-            const stored = schema.element.type === 'FloatProperty' ? storedFloat32(item, target.field) : item;
             array[index] = structuredClone(stored);
             checkType('self', target.field, array);
             trace.push({source_index: sourceIndex, op: 'array_set', index, applied: true, size_to_fit: sizeToFit});
@@ -1609,8 +1627,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             // EX_Let through EX_Context writes the reflected destination
             // FProperty, including a struct member of a foreign Actor. Its
             // FloatProperty storage is binary32 even when JS RHS is binary64.
-            const stored=memberSchema.type==='FloatProperty'
-                ? storedFloat32(value,step.member_field ?? target.field) : value;
+            const stored=storedReflected(memberSchema,value,step.member_field ?? target.field);
             const environment={instance,queries:notifications.queries,world:notifications.world};
             const replacement=step.member_field===undefined ? stored
                 : readSourceActorMember(notifications.native,reference,target,environment);
@@ -1627,7 +1644,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             if (!schema || schema.type !== 'StructProperty' || !owns(schema.fields, step.field)
                 || schema.fields[step.field].type !== step.member_type) throw new Error('Unresolved source struct assignment type');
             const value = evaluate(step.value); validateSchema(schema.fields[step.field], value);
-            const stored = step.member_type === 'FloatProperty' ? storedFloat32(value, step.field) : value;
+            const stored = storedReflected(schema.fields[step.field], value, step.field);
             // An original nested call can assign this same source property.
             // Reacquire its storage after evaluating the RHS, as its VM address
             // still denotes that property rather than an obsolete JS object.
@@ -1648,11 +1665,10 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             const declaredType = scope === 'persistent'
                 ? program.persistent_types?.[step.frame]?.[step.field]
                 : program.field_types?.[scope]?.[step.field];
-            const value = declaredType === 'FloatProperty' ? Math.fround(evaluated) : evaluated;
-            if (declaredType === 'FloatProperty') {
-                if (!Number.isFinite(value)) throw new Error(`UE float32 assignment overflow: ${step.field}`);
-                checkType(scope, step.field, value, step.frame);
-            }
+            const schema = schemaFor({scope,field:step.field,frame:step.frame});
+            const value = schema ? storedReflected(schema,evaluated,step.field)
+                : declaredType === 'FloatProperty' ? storedFloat32(evaluated,step.field) : evaluated;
+            checkType(scope, step.field, value, step.frame);
             if (scope === 'self') {
                 if (!owns(instance, step.field)) throw new Error(`Missing self property: ${step.field}`);
                 instance[step.field] = structuredClone(value);
