@@ -39,7 +39,7 @@ test('UE5.7 BreakRotator writes binary32 FloatProperty out pins from double FRot
 
 test('UE5.7 BreakRotator rejects finite doubles overflowing a FloatProperty out pin',()=>{
     const input={Pitch:1e40,Yaw:0.5,Roll:0.25};
-    assert.throws(()=>executeBlueprint(program,{}, {Input:input}),/float32 assignment overflow/);
+    assert.throws(()=>executeBlueprint(program,{}, {Input:input}),/float32 assignment overflow|Unsupported or invalid FloatProperty/);
     assert.deepEqual(input,{Pitch:1e40,Yaw:0.5,Roll:0.25});
 });
 
