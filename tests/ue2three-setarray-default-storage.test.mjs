@@ -7,15 +7,20 @@ const constant = value => ({op:'constant',value});
 const items = {op:'get',scope:'self',field:'Items'};
 function setArray(element, values, initial=[]) {
     const schema={type:'ArrayProperty',element,default:[]};
+    // Struct values are reflected local inputs, never untyped Blueprint constants.
+    const names=values.map((_,index)=>'Item'+index);
+    const locals=Object.fromEntries(names.map((name,index)=>[name,values[index]]));
+    const localSchemas=Object.fromEntries(names.map(name=>[name,element]));
+    const localTypes=Object.fromEntries(names.map(name=>[name,element.type]));
     const program={schema_version:1,status:'translated_straight_line',
-        input_fields:[],output_fields:[],
-        field_types:{self:{Items:'ArrayProperty'}},
-        schemas:{self:{Items:schema}},
+        input_fields:names,output_fields:[],
+        field_types:{self:{Items:'ArrayProperty'},local:localTypes},
+        schemas:{self:{Items:schema},local:localSchemas},
         steps:[{op:'evaluate',source_index:1,value:{
             op:'array_literal',target:items,element,
-            elements:values.map(constant)
+            elements:names.map(name=>({op:'get',scope:'local',field:name}))
         }},{op:'return',source_index:2,value:constant(null)}]};
-    return executeBlueprint(program,{Items:initial});
+    return executeBlueprint(program,{Items:initial},locals);
 }
 
 test('UE5.7 EX_SetArray rejects a FloatProperty temporary-slot default that overflows binary32',()=>{
