@@ -66,6 +66,54 @@ test('Actor struct member writes preserve untouched fields in the same staged pr
     assert.deepEqual(self.Health,{X:1,Y:2,Z:3});
 });
 
+
+test('UE5.7 source Actor EX_Context FloatProperty writes store binary32 without mutating caller state',()=>{
+    const {ref,native,queries,p}=fixture(),member=p.steps[0].value;
+    p.steps.unshift({op:'set_actor_member',target:member,value:c(0.1)});
+    const self={Health:90},receivers={'/Game/Player':{state:self,native,functions:{},source_sha256:'source-hash'}};
+    const run=()=>executeBlueprint(p,self,{Player:ref},{native,queries,receivers});
+    const rounded=run();
+    assert.equal(rounded.value,Math.fround(0.1));
+    assert.equal(rounded.receivers['/Game/Player'].state.Health,Math.fround(0.1));
+    assert.equal(rounded.trace.find(step=>step.op==='set_actor_member').value,Math.fround(0.1));
+    assert.equal(self.Health,90);
+    p.steps[0].value=c(-0);
+    assert.ok(Object.is(run().value,-0));
+    p.steps[0].value=c(1e40);
+    assert.throws(run,/float32 assignment overflow/);
+    assert.equal(receivers['/Game/Player'].state.Health,90);
+
+    // The same EX_Context write must not downcast a reflected DoubleProperty.
+    const double={type:'DoubleProperty',default:0};
+    member.schema=double;p.field_types.self.Health='DoubleProperty';p.schemas.self.Health=double;
+    queries['/Game/Player'].field_schemas.Health=double;
+    p.steps[0].value=c(0.1);
+    assert.equal(run().value,0.1);
+});
+
+test('UE5.7 source Actor struct FloatProperty member writes preserve other reflected fields',()=>{
+    const {ref,native,queries,p}=fixture(),member=p.steps[0].value;
+    const schema={type:'StructProperty',source:'/Game/Player',
+        fields:{R:{type:'FloatProperty',default:0},G:{type:'FloatProperty',default:0},
+            Precise:{type:'DoubleProperty',default:0}},
+        default:{R:0,G:0,Precise:0},member_order:['R','G','Precise']};
+    member.schema=schema;p.field_types.self.Health='StructProperty';p.schemas.self.Health=schema;
+    queries['/Game/Player'].field_schemas.Health=schema;
+    p.steps.unshift({op:'set_actor_member',target:member,member_field:'R',value:c(0.1)});
+    const self={Health:{R:2,G:3,Precise:0.1}};
+    const receivers={'/Game/Player':{state:self,native,functions:{},source_sha256:'source-hash'}};
+    const run=()=>executeBlueprint(p,self,{Player:ref},{native,queries,receivers});
+    assert.deepEqual(run().value,{R:Math.fround(0.1),G:3,Precise:0.1});
+    assert.deepEqual(self.Health,{R:2,G:3,Precise:0.1});
+    p.steps[0].value=c(-0);
+    assert.ok(Object.is(run().value.R,-0));
+    p.steps[0].member_field='Precise';p.steps[0].value=c(0.1);
+    assert.equal(run().value.Precise,0.1);
+    p.steps[0].member_field='R';p.steps[0].value=c(1e40);
+    assert.throws(run,/float32 assignment overflow/);
+    assert.deepEqual(receivers['/Game/Player'].state.Health,self.Health);
+});
+
 function generatedObjectFixture(){
     const callerPackage='/Game/HUD',targetPackage='/Game/QuestTracker';
     const callerOwner=5,targetOwner=2,objectId='quest-tracker-1';
