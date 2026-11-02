@@ -1346,9 +1346,14 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             const inBounds = index >= 0 && index < array.length;
             const value = inBounds ? array[index] : expression.element?.default;
             validateSchema(expression.element, value); checkType(target.scope, target.field, value, target.frame);
-            ownerFor(target.scope, target.frame)[target.field] = structuredClone(value);
+            // KismetArrayLibrary.Array_Get copies into a reflected out pin.
+            // Its FloatProperty (including nested struct fields) is stored as
+            // binary32; do not leak a JS binary64 host-array value to the pin.
+            const stored=storedReflected(expression.element,value,target.field);
+            checkType(target.scope,target.field,stored,target.frame);
+            ownerFor(target.scope, target.frame)[target.field] = structuredClone(stored);
             if (!inBounds) trace.push({source_index: sourceIndex, op: 'warning', message: 'Array_Get index out of bounds; original source type default restored'});
-            trace.push({source_index: sourceIndex, op: 'array_get', index, in_bounds: inBounds, value: structuredClone(value)});
+            trace.push({source_index: sourceIndex, op: 'array_get', index, in_bounds: inBounds, value: structuredClone(stored)});
             return null;
         }
         if (expression.op === 'call') {
