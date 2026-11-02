@@ -1600,18 +1600,24 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             if (step.member_field!==undefined && (target.schema?.type!=='StructProperty'
                 ||!safeField(step.member_field)||!owns(target.schema.fields,step.member_field)))
                 throw Error('Original Actor struct member assignment schema differs');
-            validateSchema(step.member_field===undefined ? target.schema : target.schema.fields[step.member_field],value);
+            const memberSchema=step.member_field===undefined ? target.schema : target.schema.fields[step.member_field];
+            validateSchema(memberSchema,value);
             if (reference===null) {
                 trace.push({source_index:sourceIndex,op:'warning',message:'Accessed None: original Actor property assignment skipped'});
                 continue;
             }
+            // EX_Let through EX_Context writes the reflected destination
+            // FProperty, including a struct member of a foreign Actor. Its
+            // FloatProperty storage is binary32 even when JS RHS is binary64.
+            const stored=memberSchema.type==='FloatProperty'
+                ? storedFloat32(value,step.member_field ?? target.field) : value;
             const environment={instance,queries:notifications.queries,world:notifications.world};
-            const replacement=step.member_field===undefined ? value
+            const replacement=step.member_field===undefined ? stored
                 : readSourceActorMember(notifications.native,reference,target,environment);
-            if (step.member_field!==undefined) replacement[step.member_field]=structuredClone(value);
+            if (step.member_field!==undefined) replacement[step.member_field]=structuredClone(stored);
             validateSchema(target.schema,replacement);
             writeSourceActorMember(notifications.native,reference,target,replacement,environment);
-            trace.push({source_index:sourceIndex,op:'set_actor_member',package:target.package,field:target.field,value:structuredClone(value)});
+            trace.push({source_index:sourceIndex,op:'set_actor_member',package:target.package,field:target.field,value:structuredClone(stored)});
             continue;
         }
         if (step.op === 'set_member') {
