@@ -1409,8 +1409,12 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 if (nativeOutputs && (target.native !== nativeOutputs[index]
                     || JSON.stringify(schemaFor(target)) !== JSON.stringify(nativeStruct(nativeOutputs[index]))))
                     throw new Error('Original BreakTransform output struct differs');
-                const value=components[outputNames[index]];
-                checkType(target.scope,target.field,value,target.frame);
+                const raw=components[outputNames[index]];
+                checkType(target.scope,target.field,raw,target.frame);
+                // BreakRotator's reflected output pins are FloatProperty even
+                // though UE5.7 FRotator stores its source angles as doubles.
+                // Store each out parameter at the declared pin precision.
+                const value=expectedType==='FloatProperty' ? storedFloat32(raw,target.field) : raw;
                 return {target,value};
             });
             for (const {target,value} of writes) ownerFor(target.scope,target.frame)[target.field]=value;
