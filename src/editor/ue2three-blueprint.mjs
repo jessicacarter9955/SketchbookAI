@@ -1274,9 +1274,14 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             const canMutate = value => value && typeof value === 'object' &&
                 (['call','array_literal','array_mutate','array_add','array_set'].includes(value.op) || Object.values(value).some(canMutate));
             for (const item of expression.elements) {
-                // execSetArray constructs each slot BEFORE evaluating its source.
-                validateSchema(schema.element, schema.element.default);
-                const index = array.length; array.push(structuredClone(schema.element.default));
+                // UE5.7 execSetArray constructs each slot before evaluating its
+                // source expression. The temporary slot is a reflected
+                // FProperty value, so its source-owned default must be stored
+                // at the declared physical precision (including nested floats).
+                // Reject invalid defaults before growing the destination.
+                const defaultElement = storedReflected(schema.element,
+                    schema.element.default, target.field + '[default]');
+                const index = array.length; array.push(defaultElement);
                 const before = canMutate(item) ? JSON.stringify(array) : null;
                 const value = structuredClone(evaluate(item, depth+1));
                 // A transactional nested call may replace the state with a copy.
