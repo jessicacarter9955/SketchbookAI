@@ -151,6 +151,65 @@ class AutomationTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'reached actual work'):
                 self.supervisor.tick()
 
+    def test_progressive_batch_continues_after_first_verified_gain(self):
+        self.supervisor.state['counts'] = {'translated': 545, 'blocked': 1412}
+        checkpoint = self.root / automation.agent.STATE_RELATIVE / 'checkpoint.json'
+        checkpoint.parent.mkdir(parents=True)
+        checkpoint.write_text('before')
+        attempts = []
+
+        def one_round():
+            attempts.append(len(attempts) + 1)
+            checkpoint.write_text('after-' + str(len(attempts)))
+            self.supervisor.state['counts'] = {'translated': 546 if len(attempts) == 1 else 575}
+            self.supervisor.state['phase'] = ('waiting_next_tick' if len(attempts) == 1
+                                               else 'needs_source_adapter')
+            self.supervisor.state['agent_result'] = {'status': 'parallel_batch_finished'}
+
+        with patch.object(self.supervisor, 'tick', side_effect=one_round):
+            result = self.supervisor.run_progressive_batch()
+        self.assertEqual(attempts, [1, 2])
+        self.assertEqual(result['progressive_batch']['source_replay_gain'], 30)
+        self.assertTrue(result['progressive_batch']['target_met'])
+        self.assertEqual(result['progressive_batch']['stop_reason'], 'needs_source_adapter')
+
+    def test_progressive_batch_stops_when_no_new_family_state(self):
+        self.supervisor.state['counts'] = {'translated': 545}
+
+        def no_progress():
+            self.supervisor.state.update(phase='waiting_next_tick',
+                                         agent_result={'status': 'parallel_batch_finished'})
+
+        with patch.object(self.supervisor, 'tick', side_effect=no_progress) as tick:
+            result = self.supervisor.run_progressive_batch()
+        tick.assert_called_once()
+        self.assertEqual(result['progressive_batch']['source_replay_gain'], 0)
+        self.assertEqual(result['progressive_batch']['stop_reason'], 'no_new_candidate_state')
+
+    def test_progressive_batch_waits_for_runner_cooldown_without_retry_spin(self):
+        attempts = []
+
+        def one_round():
+            attempts.append(len(attempts) + 1)
+            if len(attempts) == 1:
+                self.supervisor.state.update(phase='waiting_next_tick', agent_result={
+                    'status': 'cooldown', 'remaining_seconds': 3})
+            else:
+                self.supervisor.state['phase'] = 'needs_source_adapter'
+
+        with patch.object(self.supervisor, 'tick', side_effect=one_round), \
+             patch.object(automation.time, 'sleep') as sleep:
+            result = self.supervisor.run_progressive_batch()
+        self.assertEqual(attempts, [1, 2])
+        sleep.assert_called_once_with(3)
+        self.assertEqual(result['progressive_batch']['stop_reason'], 'needs_source_adapter')
+
+    def test_progressive_batch_rejects_invalid_budgets(self):
+        self.supervisor.config['batch_budget_seconds'] = 0
+        with patch.object(self.supervisor, 'tick', side_effect=AssertionError('must not start')):
+            with self.assertRaisesRegex(ValueError, 'batch_budget_seconds'):
+                self.supervisor.run_progressive_batch()
+
     def test_usage_limit_pauses_the_whole_agent_queue(self):
         self.supervisor.state['compiled_fingerprint'] = automation.fingerprint(self.root)
         self.supervisor.config['codex_executable'] = 'codex-test-double'

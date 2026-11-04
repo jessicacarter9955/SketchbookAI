@@ -108,6 +108,71 @@ class Supervisor:
         self.config['conversion_mode'] = conversion_mode
         self.config['parallel_workers'] = requested_workers if conversion_mode == 'parallel' else 1
 
+    def run_progressive_batch(self):
+        """Keep attempting distinct source families during one hidden task run.
+
+        ``tick`` persists and verifies each candidate independently. A new
+        scheduled invocation must not be needed just to move from one eligible
+        source family to the next. The time budget prevents overlap with a
+        later scheduled invocation; it is not a limit on conversion counts.
+        """
+        budget = self.config.get('batch_budget_seconds', 7200)
+        if type(budget) is not int or not 60 <= budget <= 10800:
+            raise ValueError('batch_budget_seconds must be 60..10800')
+        deadline = time.monotonic() + budget
+        baseline = self.state.get('counts', {}).get('translated')
+        rounds = 0
+        stop_reason = None
+        checkpoint_path = self.root / agent.STATE_RELATIVE / 'checkpoint.json'
+        terminal = {'paused', 'session_budget_reached', 'waiting_account',
+                    'waiting_connection', 'needs_source_adapter', 'push_needs_review'}
+
+        while time.monotonic() < deadline:
+            before = checkpoint_path.read_bytes() if checkpoint_path.is_file() else None
+            self.tick()
+            rounds += 1
+            phase = self.state.get('phase')
+            if phase in terminal:
+                stop_reason = phase
+                break
+            if phase != 'waiting_next_tick':
+                stop_reason = phase or 'unexpected_phase'
+                break
+            after = checkpoint_path.read_bytes() if checkpoint_path.is_file() else None
+            result = self.state.get('agent_result') or {}
+            if before == after and result.get('status') == 'cooldown':
+                # The runner prevents immediate retries. Waiting inside the
+                # already hidden task avoids losing hours to an external cron.
+                remaining = max(0, int(result.get('remaining_seconds', 0)))
+                if remaining <= 0:
+                    stop_reason = 'cooldown_unknown'
+                    break
+                if time.monotonic() + remaining + 1 >= deadline:
+                    stop_reason = 'batch_budget_reached'
+                    break
+                while remaining > 0:
+                    delay = min(remaining, 30)
+                    time.sleep(delay)
+                    remaining -= delay
+                continue
+            if before == after:
+                # A duplicate/no-op result is not an excuse to spin forever.
+                stop_reason = 'no_new_candidate_state'
+                break
+        else:
+            stop_reason = 'batch_budget_reached'
+
+        current = self.state.get('counts', {}).get('translated')
+        gain = current - baseline if type(baseline) is int and type(current) is int else None
+        self.state['progressive_batch'] = {
+            'rounds': rounds, 'source_replay_gain': gain,
+            'target_gain': 25, 'target_met': gain is not None and gain >= 25,
+            'stop_reason': stop_reason,
+        }
+        agent._atomic_json(self.state_path, self.state)
+        self.dashboard()
+        return self.state
+
     def save(self, phase: str, **fields):
         self.state.update(phase=phase, updated_at=agent.utc_now(), **fields)
         self.state['events'] = (self.state.get('events', []) + [
@@ -688,7 +753,7 @@ def main(argv=None):
         print(json.dumps(supervisor.state, ensure_ascii=True))
         return 0
     try:
-        supervisor.tick()
+        supervisor.run_progressive_batch()
     except Exception:
         print(json.dumps({'phase': supervisor.state.get('phase'), 'error': supervisor.state.get('error')}))
         return 1
