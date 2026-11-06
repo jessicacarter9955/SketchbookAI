@@ -1,0 +1,585 @@
+{
+  "date": "2026-11-06",
+  "baseline_commit": "2c8c332e63886f5e675a84dee198618dbe017826",
+  "full_python_suite": "passed",
+  "javascript_tests_passed": 241,
+  "original_packages": 276,
+  "original_functions": 1957,
+  "source_replay_audit": {
+    "same_source_snapshot": true,
+    "source_mismatches": {},
+    "before_counts": {
+      "blocked": 1402,
+      "declarations": 185,
+      "empty_event_functions": 121,
+      "event_entries": 146,
+      "no_op_functions": 38,
+      "translated": 555
+    },
+    "after_counts": {
+      "blocked": 1392,
+      "declarations": 185,
+      "empty_event_functions": 122,
+      "event_entries": 147,
+      "no_op_functions": 38,
+      "translated": 565
+    },
+    "changed_functions": [
+      {
+        "package": "/Game/Blueprints/MovementModes/BP_MovementTransition_FromSlide",
+        "export_index": "6",
+        "before": {
+          "status": "blocked",
+          "function": "Evaluate",
+          "reason": "Original native math parameter type differs",
+          "source_sha256": "c52422f0149f65dbe5e65108dfd41b5f606f7ca5957936b2fe8845d40160798b"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "Evaluate",
+          "reason": "Source adapter property schema is unavailable",
+          "source_sha256": "c52422f0149f65dbe5e65108dfd41b5f606f7ca5957936b2fe8845d40160798b"
+        }
+      },
+      {
+        "package": "/Game/Blueprints/MovementModes/BP_MovementTransition_ToSlide",
+        "export_index": "6",
+        "before": {
+          "status": "blocked",
+          "function": "Evaluate",
+          "reason": "Original native math parameter type differs",
+          "source_sha256": "61f372d48326d0157839b049f9c2bb3ffb7c0cdfc1fb212a993ef3cc231c8d93"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "Evaluate",
+          "reason": "Source adapter property schema is unavailable",
+          "source_sha256": "61f372d48326d0157839b049f9c2bb3ffb7c0cdfc1fb212a993ef3cc231c8d93"
+        }
+      },
+      {
+        "package": "/Game/Blueprints/SmartObjects/AC_SmartObjectAnimation",
+        "export_index": "24",
+        "before": {
+          "status": "blocked",
+          "function": "ExecuteUbergraph_AC_SmartObjectAnimation",
+          "reason": "Original primitive cast source type differs",
+          "source_sha256": "77a9e4a55eb95b14565add0da3a445ce9cd3365dc528f04d0d78f7fb502c16aa"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "ExecuteUbergraph_AC_SmartObjectAnimation",
+          "reason": "Source adapter property schema is unavailable",
+          "source_sha256": "77a9e4a55eb95b14565add0da3a445ce9cd3365dc528f04d0d78f7fb502c16aa"
+        }
+      },
+      {
+        "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+        "export_index": "210",
+        "before": {
+          "status": "blocked",
+          "function": "Get_OrientationIntent",
+          "reason": "Original native math parameter type differs",
+          "source_sha256": "6836de8c7be7e1077e7b050cd0cb6e90e6c25ccbd1a1ce4dd0fd33fce5f083ea"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "Get_OrientationIntent",
+          "reason": "Source adapter property schema is unavailable",
+          "source_sha256": "6836de8c7be7e1077e7b050cd0cb6e90e6c25ccbd1a1ce4dd0fd33fce5f083ea"
+        }
+      },
+      {
+        "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover_ABP",
+        "export_index": "1176",
+        "before": {
+          "status": "blocked",
+          "function": "Get_LandVelocity",
+          "reason": "Original native math parameter type differs",
+          "source_sha256": "b49213d5e9c6383680786bf7ade1da60ba94702eecb9b7602008ca0dc99180dd"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "Get_LandVelocity",
+          "reason": "Source adapter property schema is unavailable",
+          "source_sha256": "b49213d5e9c6383680786bf7ade1da60ba94702eecb9b7602008ca0dc99180dd"
+        }
+      },
+      {
+        "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover_ABP",
+        "export_index": "1188",
+        "before": {
+          "status": "blocked",
+          "function": "Get_SlideSlopeOffset",
+          "reason": "Original native math parameter type differs",
+          "source_sha256": "b49213d5e9c6383680786bf7ade1da60ba94702eecb9b7602008ca0dc99180dd"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "Get_SlideSlopeOffset",
+          "reason": "Source adapter property schema is unavailable",
+          "source_sha256": "b49213d5e9c6383680786bf7ade1da60ba94702eecb9b7602008ca0dc99180dd"
+        }
+      },
+      {
+        "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover_ABP",
+        "export_index": "1191",
+        "before": {
+          "status": "blocked",
+          "function": "Get_StrafeWarpDirection",
+          "reason": "Unsupported native math call: VLerp",
+          "source_sha256": "b49213d5e9c6383680786bf7ade1da60ba94702eecb9b7602008ca0dc99180dd"
+        },
+        "after": {
+          "status": "translated",
+          "function": "Get_StrafeWarpDirection",
+          "reason": null,
+          "source_sha256": "b49213d5e9c6383680786bf7ade1da60ba94702eecb9b7602008ca0dc99180dd"
+        }
+      },
+      {
+        "package": "/Game/Fixers/UI/HUD/WBP_TeammateDot",
+        "export_index": "9",
+        "before": {
+          "status": "blocked",
+          "function": "SetDotColor",
+          "reason": "Original native UMG widget receiver class differs",
+          "source_sha256": "1ed894fb9d9f44cdba207defc782127831b0f561a1e8898f0b9e93c3f1cf68ee"
+        },
+        "after": {
+          "status": "translated",
+          "function": "SetDotColor",
+          "reason": null,
+          "source_sha256": "1ed894fb9d9f44cdba207defc782127831b0f561a1e8898f0b9e93c3f1cf68ee"
+        }
+      },
+      {
+        "package": "/Game/Fixers/UI/InventoryV2/WBP_InventoryScreen_V2",
+        "export_index": "138",
+        "before": {
+          "status": "blocked",
+          "function": "SplitSelectedStack",
+          "reason": "Original native math parameter type differs",
+          "source_sha256": "60334fe53b7067d3f364b865f761117cfd486f835d2fb1559d1730dafa882f73"
+        },
+        "after": {
+          "status": "translated",
+          "function": "SplitSelectedStack",
+          "reason": null,
+          "source_sha256": "60334fe53b7067d3f364b865f761117cfd486f835d2fb1559d1730dafa882f73"
+        }
+      },
+      {
+        "package": "/Game/Fixers/UI/InventoryV2/WBP_InventoryScreen_V2",
+        "export_index": "83",
+        "before": {
+          "status": "blocked",
+          "function": "DropHalfSelected",
+          "reason": "Original native math parameter type differs",
+          "source_sha256": "60334fe53b7067d3f364b865f761117cfd486f835d2fb1559d1730dafa882f73"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "DropHalfSelected",
+          "reason": "Untranslated component receiver: /Game/Fixers/Core/Blueprints/Components/Inventory/BPC_Inventory_Fixers:Server_DropItem",
+          "source_sha256": "60334fe53b7067d3f364b865f761117cfd486f835d2fb1559d1730dafa882f73"
+        }
+      },
+      {
+        "package": "/Game/Fixers/UI/InventoryV2/WBP_ItemTooltip_V2",
+        "export_index": "11",
+        "before": {
+          "status": "blocked",
+          "function": "SetItemData",
+          "reason": "Original native math parameter type differs",
+          "source_sha256": "465dee5317a72bc22bac2c2ebba59742899346ffd88fabe73f4f160535396b78"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "SetItemData",
+          "reason": "Unresolved local virtual call: SetVisibility",
+          "source_sha256": "465dee5317a72bc22bac2c2ebba59742899346ffd88fabe73f4f160535396b78"
+        }
+      },
+      {
+        "package": "/Game/Fixers/UI/QuickSlots/WBP_QuickSlots_Fixers",
+        "export_index": "17",
+        "before": {
+          "status": "blocked",
+          "function": "RefreshAllSlots",
+          "reason": "Untranslated function dependency: RefreshSlot_Left",
+          "source_sha256": "2a199775952f799b04afc98951133f65dae31f07f535d4f56542d65fcff0356e"
+        },
+        "after": {
+          "status": "translated",
+          "function": "RefreshAllSlots",
+          "reason": null,
+          "source_sha256": "2a199775952f799b04afc98951133f65dae31f07f535d4f56542d65fcff0356e"
+        }
+      },
+      {
+        "package": "/Game/Fixers/UI/QuickSlots/WBP_QuickSlots_Fixers",
+        "export_index": "18",
+        "before": {
+          "status": "blocked",
+          "function": "RefreshSlot_Down",
+          "reason": "Original native math parameter type differs",
+          "source_sha256": "2a199775952f799b04afc98951133f65dae31f07f535d4f56542d65fcff0356e"
+        },
+        "after": {
+          "status": "translated",
+          "function": "RefreshSlot_Down",
+          "reason": null,
+          "source_sha256": "2a199775952f799b04afc98951133f65dae31f07f535d4f56542d65fcff0356e"
+        }
+      },
+      {
+        "package": "/Game/Fixers/UI/QuickSlots/WBP_QuickSlots_Fixers",
+        "export_index": "19",
+        "before": {
+          "status": "blocked",
+          "function": "RefreshSlot_Left",
+          "reason": "Original native math parameter type differs",
+          "source_sha256": "2a199775952f799b04afc98951133f65dae31f07f535d4f56542d65fcff0356e"
+        },
+        "after": {
+          "status": "translated",
+          "function": "RefreshSlot_Left",
+          "reason": null,
+          "source_sha256": "2a199775952f799b04afc98951133f65dae31f07f535d4f56542d65fcff0356e"
+        }
+      },
+      {
+        "package": "/Game/Fixers/UI/QuickSlots/WBP_QuickSlots_Fixers",
+        "export_index": "20",
+        "before": {
+          "status": "blocked",
+          "function": "RefreshSlot_Right",
+          "reason": "Original native math parameter type differs",
+          "source_sha256": "2a199775952f799b04afc98951133f65dae31f07f535d4f56542d65fcff0356e"
+        },
+        "after": {
+          "status": "translated",
+          "function": "RefreshSlot_Right",
+          "reason": null,
+          "source_sha256": "2a199775952f799b04afc98951133f65dae31f07f535d4f56542d65fcff0356e"
+        }
+      },
+      {
+        "package": "/Game/Fixers/UI/QuickSlots/WBP_QuickSlots_Fixers",
+        "export_index": "21",
+        "before": {
+          "status": "blocked",
+          "function": "RefreshSlot_Up",
+          "reason": "Original native math parameter type differs",
+          "source_sha256": "2a199775952f799b04afc98951133f65dae31f07f535d4f56542d65fcff0356e"
+        },
+        "after": {
+          "status": "translated",
+          "function": "RefreshSlot_Up",
+          "reason": null,
+          "source_sha256": "2a199775952f799b04afc98951133f65dae31f07f535d4f56542d65fcff0356e"
+        }
+      },
+      {
+        "package": "/Game/Fixers/VFX/NiagaraExamples/Gallery/DemoPlatform/Blueprints/BP_DemoDisplay",
+        "export_index": "38",
+        "before": {
+          "status": "blocked",
+          "function": "Scalable Panel",
+          "reason": "Unsupported native math call: MakeRelativeTransform",
+          "source_sha256": "760d410a2b7bcf6af783a860659598ce28accaaa5b06159c4a6e0067415e3f04"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "Scalable Panel",
+          "reason": "Unsupported opcode: EX_Context",
+          "source_sha256": "760d410a2b7bcf6af783a860659598ce28accaaa5b06159c4a6e0067415e3f04"
+        }
+      },
+      {
+        "package": "/Game/Fixers/VFX/NiagaraExamples/Gallery/DemoPlatform/Blueprints/BP_DemoRoom",
+        "export_index": "67",
+        "before": {
+          "status": "blocked",
+          "function": "EndWall",
+          "reason": "Unsupported native math call: MakeRelativeTransform",
+          "source_sha256": "328cabd4692901def84244ece782a6f490b6517ead27f613f29393d7d420cd73"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "EndWall",
+          "reason": "Unsupported opcode: EX_Context",
+          "source_sha256": "328cabd4692901def84244ece782a6f490b6517ead27f613f29393d7d420cd73"
+        }
+      },
+      {
+        "package": "/Game/Fixers/VFX/NiagaraExamples/Gallery/DemoPlatform/Blueprints/BP_DemoRoom",
+        "export_index": "69",
+        "before": {
+          "status": "blocked",
+          "function": "Make BackWall",
+          "reason": "Unsupported native math call: MakeRelativeTransform",
+          "source_sha256": "328cabd4692901def84244ece782a6f490b6517ead27f613f29393d7d420cd73"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "Make BackWall",
+          "reason": "Unsupported native math call: SelectVector",
+          "source_sha256": "328cabd4692901def84244ece782a6f490b6517ead27f613f29393d7d420cd73"
+        }
+      },
+      {
+        "package": "/Game/Fixers/VFX/NiagaraExamples/Gallery/DemoPlatform/Blueprints/BP_DemoRoom",
+        "export_index": "71",
+        "before": {
+          "status": "blocked",
+          "function": "Make Pillar",
+          "reason": "Unsupported native math call: MakeRelativeTransform",
+          "source_sha256": "328cabd4692901def84244ece782a6f490b6517ead27f613f29393d7d420cd73"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "Make Pillar",
+          "reason": "Source switch index is not a verified byte property",
+          "source_sha256": "328cabd4692901def84244ece782a6f490b6517ead27f613f29393d7d420cd73"
+        }
+      },
+      {
+        "package": "/Game/Fixers/VFX/NiagaraExamples/Gallery/DemoPlatform/Blueprints/BP_DemoRoom",
+        "export_index": "72",
+        "before": {
+          "status": "blocked",
+          "function": "Make Rounded End",
+          "reason": "Unsupported native math call: MakeRelativeTransform",
+          "source_sha256": "328cabd4692901def84244ece782a6f490b6517ead27f613f29393d7d420cd73"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "Make Rounded End",
+          "reason": "Unsupported opcode: EX_Context",
+          "source_sha256": "328cabd4692901def84244ece782a6f490b6517ead27f613f29393d7d420cd73"
+        }
+      },
+      {
+        "package": "/Game/Fixers/VFX/NiagaraExamples/Gallery/DemoPlatform/Blueprints/BP_DemoRoom",
+        "export_index": "73",
+        "before": {
+          "status": "blocked",
+          "function": "MetalStrip",
+          "reason": "Unsupported native math call: MakeRelativeTransform",
+          "source_sha256": "328cabd4692901def84244ece782a6f490b6517ead27f613f29393d7d420cd73"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "MetalStrip",
+          "reason": "Unsupported opcode: EX_Context",
+          "source_sha256": "328cabd4692901def84244ece782a6f490b6517ead27f613f29393d7d420cd73"
+        }
+      },
+      {
+        "package": "/Game/Fixers/VFX/NiagaraExamples/Gallery/Widgets/WB_Crosshair",
+        "export_index": "15",
+        "before": {
+          "status": "blocked",
+          "function": "ExecuteUbergraph_WB_Crosshair",
+          "reason": "Original native UMG widget receiver class differs",
+          "source_sha256": "7a836db7884ec8007d9836d21e3a2d92a086f1019b347e7debd5926c6887eeb7"
+        },
+        "after": {
+          "status": "translated",
+          "function": "ExecuteUbergraph_WB_Crosshair",
+          "reason": null,
+          "source_sha256": "7a836db7884ec8007d9836d21e3a2d92a086f1019b347e7debd5926c6887eeb7"
+        }
+      },
+      {
+        "package": "/Game/Fixers/VFX/NiagaraExamples/Gallery/Widgets/WB_Crosshair",
+        "export_index": "17",
+        "before": {
+          "status": "blocked",
+          "function": "OnInitialized",
+          "reason": "Untranslated function dependency: ExecuteUbergraph_WB_Crosshair@83",
+          "source_sha256": "7a836db7884ec8007d9836d21e3a2d92a086f1019b347e7debd5926c6887eeb7"
+        },
+        "after": {
+          "status": "translated",
+          "function": "OnInitialized",
+          "reason": null,
+          "source_sha256": "7a836db7884ec8007d9836d21e3a2d92a086f1019b347e7debd5926c6887eeb7"
+        }
+      }
+    ],
+    "changed_count": 24,
+    "new_translations": [
+      {
+        "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover_ABP",
+        "export_index": "1191",
+        "before": {
+          "status": "blocked",
+          "function": "Get_StrafeWarpDirection",
+          "reason": "Unsupported native math call: VLerp",
+          "source_sha256": "b49213d5e9c6383680786bf7ade1da60ba94702eecb9b7602008ca0dc99180dd"
+        },
+        "after": {
+          "status": "translated",
+          "function": "Get_StrafeWarpDirection",
+          "reason": null,
+          "source_sha256": "b49213d5e9c6383680786bf7ade1da60ba94702eecb9b7602008ca0dc99180dd"
+        }
+      },
+      {
+        "package": "/Game/Fixers/UI/HUD/WBP_TeammateDot",
+        "export_index": "9",
+        "before": {
+          "status": "blocked",
+          "function": "SetDotColor",
+          "reason": "Original native UMG widget receiver class differs",
+          "source_sha256": "1ed894fb9d9f44cdba207defc782127831b0f561a1e8898f0b9e93c3f1cf68ee"
+        },
+        "after": {
+          "status": "translated",
+          "function": "SetDotColor",
+          "reason": null,
+          "source_sha256": "1ed894fb9d9f44cdba207defc782127831b0f561a1e8898f0b9e93c3f1cf68ee"
+        }
+      },
+      {
+        "package": "/Game/Fixers/UI/InventoryV2/WBP_InventoryScreen_V2",
+        "export_index": "138",
+        "before": {
+          "status": "blocked",
+          "function": "SplitSelectedStack",
+          "reason": "Original native math parameter type differs",
+          "source_sha256": "60334fe53b7067d3f364b865f761117cfd486f835d2fb1559d1730dafa882f73"
+        },
+        "after": {
+          "status": "translated",
+          "function": "SplitSelectedStack",
+          "reason": null,
+          "source_sha256": "60334fe53b7067d3f364b865f761117cfd486f835d2fb1559d1730dafa882f73"
+        }
+      },
+      {
+        "package": "/Game/Fixers/UI/QuickSlots/WBP_QuickSlots_Fixers",
+        "export_index": "17",
+        "before": {
+          "status": "blocked",
+          "function": "RefreshAllSlots",
+          "reason": "Untranslated function dependency: RefreshSlot_Left",
+          "source_sha256": "2a199775952f799b04afc98951133f65dae31f07f535d4f56542d65fcff0356e"
+        },
+        "after": {
+          "status": "translated",
+          "function": "RefreshAllSlots",
+          "reason": null,
+          "source_sha256": "2a199775952f799b04afc98951133f65dae31f07f535d4f56542d65fcff0356e"
+        }
+      },
+      {
+        "package": "/Game/Fixers/UI/QuickSlots/WBP_QuickSlots_Fixers",
+        "export_index": "18",
+        "before": {
+          "status": "blocked",
+          "function": "RefreshSlot_Down",
+          "reason": "Original native math parameter type differs",
+          "source_sha256": "2a199775952f799b04afc98951133f65dae31f07f535d4f56542d65fcff0356e"
+        },
+        "after": {
+          "status": "translated",
+          "function": "RefreshSlot_Down",
+          "reason": null,
+          "source_sha256": "2a199775952f799b04afc98951133f65dae31f07f535d4f56542d65fcff0356e"
+        }
+      },
+      {
+        "package": "/Game/Fixers/UI/QuickSlots/WBP_QuickSlots_Fixers",
+        "export_index": "19",
+        "before": {
+          "status": "blocked",
+          "function": "RefreshSlot_Left",
+          "reason": "Original native math parameter type differs",
+          "source_sha256": "2a199775952f799b04afc98951133f65dae31f07f535d4f56542d65fcff0356e"
+        },
+        "after": {
+          "status": "translated",
+          "function": "RefreshSlot_Left",
+          "reason": null,
+          "source_sha256": "2a199775952f799b04afc98951133f65dae31f07f535d4f56542d65fcff0356e"
+        }
+      },
+      {
+        "package": "/Game/Fixers/UI/QuickSlots/WBP_QuickSlots_Fixers",
+        "export_index": "20",
+        "before": {
+          "status": "blocked",
+          "function": "RefreshSlot_Right",
+          "reason": "Original native math parameter type differs",
+          "source_sha256": "2a199775952f799b04afc98951133f65dae31f07f535d4f56542d65fcff0356e"
+        },
+        "after": {
+          "status": "translated",
+          "function": "RefreshSlot_Right",
+          "reason": null,
+          "source_sha256": "2a199775952f799b04afc98951133f65dae31f07f535d4f56542d65fcff0356e"
+        }
+      },
+      {
+        "package": "/Game/Fixers/UI/QuickSlots/WBP_QuickSlots_Fixers",
+        "export_index": "21",
+        "before": {
+          "status": "blocked",
+          "function": "RefreshSlot_Up",
+          "reason": "Original native math parameter type differs",
+          "source_sha256": "2a199775952f799b04afc98951133f65dae31f07f535d4f56542d65fcff0356e"
+        },
+        "after": {
+          "status": "translated",
+          "function": "RefreshSlot_Up",
+          "reason": null,
+          "source_sha256": "2a199775952f799b04afc98951133f65dae31f07f535d4f56542d65fcff0356e"
+        }
+      },
+      {
+        "package": "/Game/Fixers/VFX/NiagaraExamples/Gallery/Widgets/WB_Crosshair",
+        "export_index": "15",
+        "before": {
+          "status": "blocked",
+          "function": "ExecuteUbergraph_WB_Crosshair",
+          "reason": "Original native UMG widget receiver class differs",
+          "source_sha256": "7a836db7884ec8007d9836d21e3a2d92a086f1019b347e7debd5926c6887eeb7"
+        },
+        "after": {
+          "status": "translated",
+          "function": "ExecuteUbergraph_WB_Crosshair",
+          "reason": null,
+          "source_sha256": "7a836db7884ec8007d9836d21e3a2d92a086f1019b347e7debd5926c6887eeb7"
+        }
+      },
+      {
+        "package": "/Game/Fixers/VFX/NiagaraExamples/Gallery/Widgets/WB_Crosshair",
+        "export_index": "17",
+        "before": {
+          "status": "blocked",
+          "function": "OnInitialized",
+          "reason": "Untranslated function dependency: ExecuteUbergraph_WB_Crosshair@83",
+          "source_sha256": "7a836db7884ec8007d9836d21e3a2d92a086f1019b347e7debd5926c6887eeb7"
+        },
+        "after": {
+          "status": "translated",
+          "function": "OnInitialized",
+          "reason": null,
+          "source_sha256": "7a836db7884ec8007d9836d21e3a2d92a086f1019b347e7debd5926c6887eeb7"
+        }
+      }
+    ],
+    "new_translation_count": 10,
+    "regressions": [],
+    "regression_count": 0,
+    "disappeared_functions": [],
+    "disappeared_count": 0,
+    "monotonic_source_compilation": true,
+    "certifiable_gain": true
+  },
+  "visual_play_validation": false
+}

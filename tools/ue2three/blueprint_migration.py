@@ -168,6 +168,18 @@ def native_math_source_type(value, package, owner):
         if native_math_source_type(value.get('Target'), package, owner) != source:
             raise BlueprintTranslationError('Original primitive cast source type differs')
         return result
+    if token == 'EX_StructMemberContext' and package:
+        from blueprint_effects import array_item_schema
+        structure = array_item_schema(value.get('StructExpression'),package,owner,set(),set(),0)
+        pointer = value.get('StructMemberExpression',{})
+        declaring = import_path(package,pointer.get('New',{}).get('ResolvedOwner'))
+        declared = (native_schema(declaring) or getattr(package,'source_structs',{}).get(declaring)) if declaring else None
+        if not structure or structure.get('type') != 'StructProperty' or declared != structure:
+            raise BlueprintTranslationError('Original native math struct-member declaration differs')
+        schema = structure.get('fields',{}).get(field(pointer))
+        if not schema:
+            raise BlueprintTranslationError('Original native math struct member is unavailable')
+        return schema.get('native') if schema.get('type') == 'StructProperty' else schema.get('type')
     if token == 'EX_Context': return native_math_source_type(value.get('ContextExpression'), package, owner)
     if token == 'EX_CallMath':
         from blueprint_objects import NATIVE_OBJECT_CALLS

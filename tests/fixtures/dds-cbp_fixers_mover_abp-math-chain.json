@@ -1,0 +1,529 @@
+{
+  "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover_ABP",
+  "source": {
+    "source_sha256": "b49213d5e9c6383680786bf7ade1da60ba94702eecb9b7602008ca0dc99180dd",
+    "parsed_sha256": "850125cceb476603293207c66d6fc71ab4689823db3f8bae6096415d5d3498e4"
+  },
+  "functions": {
+    "Get_StrafeWarpDirection": {
+      "schema_version": 1,
+      "name": "Get_StrafeWarpDirection",
+      "status": "translated_straight_line",
+      "internal_event_entry": false,
+      "event_entry_offset": null,
+      "memory_size_verified": null,
+      "source_bytecode_sha256": "959258fb8f0fd4a61faa238a235596c688ebc95471cc2f5456f25426281f61c2",
+      "self_reads": [
+        "LastNonZeroVelocity",
+        "Trj_CurrentAngularVelocity",
+        "Trj_NearFutureVelocity"
+      ],
+      "source_owner_index": 54,
+      "self_writes": [],
+      "output_fields": [
+        "ReturnValue"
+      ],
+      "steps": [
+        {
+          "op": "evaluate",
+          "value": {
+            "op": "math_outputs",
+            "name": "BreakVector",
+            "args": [
+              {
+                "op": "get",
+                "scope": "self",
+                "field": "Trj_CurrentAngularVelocity"
+              }
+            ],
+            "components": [
+              "X",
+              "Y",
+              "Z"
+            ],
+            "targets": [
+              {
+                "op": "get",
+                "scope": "local",
+                "field": "CallFunc_BreakVector_X",
+                "type": "DoubleProperty"
+              },
+              {
+                "op": "get",
+                "scope": "local",
+                "field": "CallFunc_BreakVector_Y",
+                "type": "DoubleProperty"
+              },
+              {
+                "op": "get",
+                "scope": "local",
+                "field": "CallFunc_BreakVector_Z",
+                "type": "DoubleProperty"
+              }
+            ]
+          },
+          "source_index": 2
+        },
+        {
+          "op": "set",
+          "field": "CallFunc_Abs_ReturnValue",
+          "scope": "local",
+          "value": {
+            "op": "math",
+            "name": "Abs",
+            "args": [
+              {
+                "op": "get",
+                "scope": "local",
+                "field": "CallFunc_BreakVector_Z"
+              }
+            ]
+          },
+          "boolean": false,
+          "source_index": 3
+        },
+        {
+          "op": "set",
+          "field": "CallFunc_MapRangeClamped_ReturnValue",
+          "scope": "local",
+          "value": {
+            "op": "math",
+            "name": "MapRangeClamped",
+            "args": [
+              {
+                "op": "get",
+                "scope": "local",
+                "field": "CallFunc_Abs_ReturnValue"
+              },
+              {
+                "op": "constant",
+                "value": 20.0
+              },
+              {
+                "op": "constant",
+                "value": 100.0
+              },
+              {
+                "op": "constant",
+                "value": 0.0
+              },
+              {
+                "op": "constant",
+                "value": 1.0
+              }
+            ]
+          },
+          "boolean": false,
+          "source_index": 4
+        },
+        {
+          "op": "set",
+          "field": "CallFunc_VLerp_Alpha_ImplicitCast",
+          "scope": "local",
+          "value": {
+            "op": "primitive_cast",
+            "conversion": 3,
+            "source_type": "DoubleProperty",
+            "return_type": "FloatProperty",
+            "value": {
+              "op": "get",
+              "scope": "local",
+              "field": "CallFunc_MapRangeClamped_ReturnValue"
+            }
+          },
+          "boolean": false,
+          "source_index": 5
+        },
+        {
+          "op": "set",
+          "field": "CallFunc_VLerp_ReturnValue",
+          "scope": "local",
+          "value": {
+            "op": "math",
+            "name": "VLerp",
+            "args": [
+              {
+                "op": "get",
+                "scope": "self",
+                "field": "LastNonZeroVelocity"
+              },
+              {
+                "op": "get",
+                "scope": "self",
+                "field": "Trj_NearFutureVelocity"
+              },
+              {
+                "op": "get",
+                "scope": "local",
+                "field": "CallFunc_VLerp_Alpha_ImplicitCast"
+              }
+            ]
+          },
+          "boolean": false,
+          "source_index": 6
+        },
+        {
+          "op": "set",
+          "field": "ReturnValue",
+          "scope": "local",
+          "value": {
+            "op": "get",
+            "scope": "local",
+            "field": "CallFunc_VLerp_ReturnValue"
+          },
+          "boolean": false,
+          "source_index": 8
+        },
+        {
+          "op": "return",
+          "value": {
+            "op": "get",
+            "scope": "local",
+            "field": "ReturnValue"
+          },
+          "source_index": 10
+        }
+      ],
+      "field_types": {
+        "self": {
+          "LastNonZeroVelocity": "StructProperty",
+          "Trj_CurrentAngularVelocity": "StructProperty",
+          "Trj_NearFutureVelocity": "StructProperty"
+        },
+        "local": {
+          "ReturnValue": "StructProperty",
+          "CallFunc_BreakVector_X": "DoubleProperty",
+          "CallFunc_BreakVector_Y": "DoubleProperty",
+          "CallFunc_BreakVector_Z": "DoubleProperty",
+          "CallFunc_Abs_ReturnValue": "DoubleProperty",
+          "CallFunc_MapRangeClamped_ReturnValue": "DoubleProperty",
+          "CallFunc_VLerp_ReturnValue": "StructProperty",
+          "CallFunc_VLerp_Alpha_ImplicitCast": "FloatProperty"
+        }
+      },
+      "source_property_types": {
+        "ReturnValue": {
+          "$type": "UAssetAPI.FieldTypes.FStructProperty, UAssetAPI",
+          "Struct": -507,
+          "ArrayDim": "TArray",
+          "ElementSize": 24,
+          "PropertyFlags": "CPF_Parm, CPF_OutParm, CPF_ReturnParm",
+          "RepIndex": 0,
+          "RepNotifyFunc": "None",
+          "BlueprintReplicationCondition": "COND_None",
+          "RawValue": null,
+          "SerializedType": "StructProperty",
+          "Name": "ReturnValue",
+          "Flags": "RF_Public",
+          "MetaDataMap": null
+        },
+        "CallFunc_BreakVector_X": {
+          "$type": "UAssetAPI.FieldTypes.FGenericProperty, UAssetAPI",
+          "ArrayDim": "TArray",
+          "ElementSize": 8,
+          "PropertyFlags": "CPF_None",
+          "RepIndex": 0,
+          "RepNotifyFunc": "None",
+          "BlueprintReplicationCondition": "COND_None",
+          "RawValue": null,
+          "SerializedType": "DoubleProperty",
+          "Name": "CallFunc_BreakVector_X",
+          "Flags": "RF_Public",
+          "MetaDataMap": null
+        },
+        "CallFunc_BreakVector_Y": {
+          "$type": "UAssetAPI.FieldTypes.FGenericProperty, UAssetAPI",
+          "ArrayDim": "TArray",
+          "ElementSize": 8,
+          "PropertyFlags": "CPF_None",
+          "RepIndex": 0,
+          "RepNotifyFunc": "None",
+          "BlueprintReplicationCondition": "COND_None",
+          "RawValue": null,
+          "SerializedType": "DoubleProperty",
+          "Name": "CallFunc_BreakVector_Y",
+          "Flags": "RF_Public",
+          "MetaDataMap": null
+        },
+        "CallFunc_BreakVector_Z": {
+          "$type": "UAssetAPI.FieldTypes.FGenericProperty, UAssetAPI",
+          "ArrayDim": "TArray",
+          "ElementSize": 8,
+          "PropertyFlags": "CPF_None",
+          "RepIndex": 0,
+          "RepNotifyFunc": "None",
+          "BlueprintReplicationCondition": "COND_None",
+          "RawValue": null,
+          "SerializedType": "DoubleProperty",
+          "Name": "CallFunc_BreakVector_Z",
+          "Flags": "RF_Public",
+          "MetaDataMap": null
+        },
+        "CallFunc_Abs_ReturnValue": {
+          "$type": "UAssetAPI.FieldTypes.FGenericProperty, UAssetAPI",
+          "ArrayDim": "TArray",
+          "ElementSize": 8,
+          "PropertyFlags": "CPF_None",
+          "RepIndex": 0,
+          "RepNotifyFunc": "None",
+          "BlueprintReplicationCondition": "COND_None",
+          "RawValue": null,
+          "SerializedType": "DoubleProperty",
+          "Name": "CallFunc_Abs_ReturnValue",
+          "Flags": "RF_Public",
+          "MetaDataMap": null
+        },
+        "CallFunc_MapRangeClamped_ReturnValue": {
+          "$type": "UAssetAPI.FieldTypes.FGenericProperty, UAssetAPI",
+          "ArrayDim": "TArray",
+          "ElementSize": 8,
+          "PropertyFlags": "CPF_None",
+          "RepIndex": 0,
+          "RepNotifyFunc": "None",
+          "BlueprintReplicationCondition": "COND_None",
+          "RawValue": null,
+          "SerializedType": "DoubleProperty",
+          "Name": "CallFunc_MapRangeClamped_ReturnValue",
+          "Flags": "RF_Public",
+          "MetaDataMap": null
+        },
+        "CallFunc_VLerp_ReturnValue": {
+          "$type": "UAssetAPI.FieldTypes.FStructProperty, UAssetAPI",
+          "Struct": -507,
+          "ArrayDim": "TArray",
+          "ElementSize": 24,
+          "PropertyFlags": "CPF_None",
+          "RepIndex": 0,
+          "RepNotifyFunc": "None",
+          "BlueprintReplicationCondition": "COND_None",
+          "RawValue": null,
+          "SerializedType": "StructProperty",
+          "Name": "CallFunc_VLerp_ReturnValue",
+          "Flags": "RF_Public",
+          "MetaDataMap": null
+        },
+        "CallFunc_VLerp_Alpha_ImplicitCast": {
+          "$type": "UAssetAPI.FieldTypes.FGenericProperty, UAssetAPI",
+          "ArrayDim": "TArray",
+          "ElementSize": 4,
+          "PropertyFlags": "CPF_None",
+          "RepIndex": 0,
+          "RepNotifyFunc": "None",
+          "BlueprintReplicationCondition": "COND_None",
+          "RawValue": null,
+          "SerializedType": "FloatProperty",
+          "Name": "CallFunc_VLerp_Alpha_ImplicitCast",
+          "Flags": "RF_Public",
+          "MetaDataMap": null
+        }
+      },
+      "schemas": {
+        "local": {
+          "ReturnValue": {
+            "type": "StructProperty",
+            "source": "/Script/CoreUObject",
+            "native": "Vector",
+            "fields": {
+              "X": {
+                "type": "DoubleProperty"
+              },
+              "Y": {
+                "type": "DoubleProperty"
+              },
+              "Z": {
+                "type": "DoubleProperty"
+              }
+            },
+            "default": {
+              "X": 0,
+              "Y": 0,
+              "Z": 0
+            },
+            "member_order": [
+              "X",
+              "Y",
+              "Z"
+            ]
+          },
+          "CallFunc_VLerp_ReturnValue": {
+            "type": "StructProperty",
+            "source": "/Script/CoreUObject",
+            "native": "Vector",
+            "fields": {
+              "X": {
+                "type": "DoubleProperty"
+              },
+              "Y": {
+                "type": "DoubleProperty"
+              },
+              "Z": {
+                "type": "DoubleProperty"
+              }
+            },
+            "default": {
+              "X": 0,
+              "Y": 0,
+              "Z": 0
+            },
+            "member_order": [
+              "X",
+              "Y",
+              "Z"
+            ]
+          }
+        },
+        "self": {
+          "LastNonZeroVelocity": {
+            "type": "StructProperty",
+            "source": "/Script/CoreUObject",
+            "native": "Vector",
+            "fields": {
+              "X": {
+                "type": "DoubleProperty"
+              },
+              "Y": {
+                "type": "DoubleProperty"
+              },
+              "Z": {
+                "type": "DoubleProperty"
+              }
+            },
+            "default": {
+              "X": 0,
+              "Y": 0,
+              "Z": 0
+            },
+            "member_order": [
+              "X",
+              "Y",
+              "Z"
+            ]
+          },
+          "Trj_CurrentAngularVelocity": {
+            "type": "StructProperty",
+            "source": "/Script/CoreUObject",
+            "native": "Vector",
+            "fields": {
+              "X": {
+                "type": "DoubleProperty"
+              },
+              "Y": {
+                "type": "DoubleProperty"
+              },
+              "Z": {
+                "type": "DoubleProperty"
+              }
+            },
+            "default": {
+              "X": 0,
+              "Y": 0,
+              "Z": 0
+            },
+            "member_order": [
+              "X",
+              "Y",
+              "Z"
+            ]
+          },
+          "Trj_NearFutureVelocity": {
+            "type": "StructProperty",
+            "source": "/Script/CoreUObject",
+            "native": "Vector",
+            "fields": {
+              "X": {
+                "type": "DoubleProperty"
+              },
+              "Y": {
+                "type": "DoubleProperty"
+              },
+              "Z": {
+                "type": "DoubleProperty"
+              }
+            },
+            "default": {
+              "X": 0,
+              "Y": 0,
+              "Z": 0
+            },
+            "member_order": [
+              "X",
+              "Y",
+              "Z"
+            ]
+          }
+        }
+      },
+      "persistent_types": {},
+      "persistent_schemas": {},
+      "input_fields": [],
+      "parameters": [],
+      "source_parameters": [],
+      "value_parameters_only": true,
+      "source_defaults": {
+        "LastNonZeroVelocity": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0,
+          "LastNonZeroVelocity": {
+            "X": "+0",
+            "Y": "+0",
+            "Z": "+0"
+          }
+        },
+        "Trj_CurrentAngularVelocity": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0,
+          "Trj_CurrentAngularVelocity": {
+            "X": "+0",
+            "Y": "+0",
+            "Z": "+0"
+          }
+        },
+        "Trj_NearFutureVelocity": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0,
+          "Trj_NearFutureVelocity": {
+            "X": "+0",
+            "Y": "+0",
+            "Z": "+0"
+          }
+        }
+      },
+      "source_export_index": 1191
+    }
+  },
+  "default_state": {
+    "LastNonZeroVelocity": {
+      "X": 0,
+      "Y": 0,
+      "Z": 0,
+      "LastNonZeroVelocity": {
+        "X": "+0",
+        "Y": "+0",
+        "Z": "+0"
+      }
+    },
+    "Trj_CurrentAngularVelocity": {
+      "X": 0,
+      "Y": 0,
+      "Z": 0,
+      "Trj_CurrentAngularVelocity": {
+        "X": "+0",
+        "Y": "+0",
+        "Z": "+0"
+      }
+    },
+    "Trj_NearFutureVelocity": {
+      "X": 0,
+      "Y": 0,
+      "Z": 0,
+      "Trj_NearFutureVelocity": {
+        "X": "+0",
+        "Y": "+0",
+        "Z": "+0"
+      }
+    }
+  }
+}

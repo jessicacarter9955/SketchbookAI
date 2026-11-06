@@ -6,6 +6,19 @@ import { validActorReference, validComponentReference, sourceComponentOwner, sou
     validSourceObjectReference, sourceQueryReceiver, sourceObjectReceiver, sourceObjectValid,
     sourceFindComponent, sourceNativeComponentOwner, sourceActorRole } from './ue2three-objects.mjs';
 const owns = (object, key) => object != null && Object.hasOwn(object, key);
+// Source IR is serialized by Python with sorted object keys. Schema identity
+// must preserve values/types/member_order, independently of JSON key ordering.
+const sameSourceSchema = (a,b) => {
+    if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object')
+        return Object.is(a,b);
+    if (Array.isArray(a) || Array.isArray(b))
+        return Array.isArray(a) && Array.isArray(b) && a.length === b.length
+            && a.every((value,index)=>sameSourceSchema(value,b[index]));
+    const ka=Object.keys(a).sort(),kb=Object.keys(b).sort();
+    return ka.length === kb.length && ka.every((key,index)=>
+        key === kb[index] && sameSourceSchema(a[key],b[key]));
+};
+
 const safeField = key => typeof key === 'string' && key.length > 0 && !['__proto__', 'constructor', 'prototype'].includes(key);
 const nativeContextContracts = new Map([
     [JSON.stringify(['/Script/Engine','SceneCaptureComponent2D','CaptureScene']), {
@@ -509,16 +522,27 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
         }
         return structuredClone(value);
     };
+    const sourceValueSchema = (value,depth=0) => {
+        if (!value || depth>48) return null;
+        if (value.op === 'typed_literal' || value.op === 'struct_literal') return value.schema;
+        if (value.op === 'get') return schemaFor(value);
+        if (value.op === 'member' && safeField(value.field)) {
+            const parent=sourceValueSchema(value.value,depth+1);
+            return parent?.type === 'StructProperty' && Object.hasOwn(parent.fields || {},value.field)
+                ? parent.fields[value.field] : null;
+        }
+        return null;
+    };
     const nativeMathStructType = value => {
-        if (value?.op === 'typed_literal' || value?.op === 'get' || value?.op === 'struct_literal') {
-            const schema=value.op === 'typed_literal' || value.op === 'struct_literal' ? value.schema : schemaFor(value);
+        if (value?.op === 'typed_literal' || value?.op === 'get' || value?.op === 'struct_literal' || value?.op === 'member') {
+            const schema=sourceValueSchema(value);
             if (value.op === 'struct_literal' && schema?.native === 'Key' && value.source_struct_size !== 32) return null;
             if (!['Vector2D','Vector','Rotator','Quat','Transform','Key'].includes(schema?.native)
-                || JSON.stringify(schema) !== JSON.stringify(nativeStruct(schema.native))) return null;
+                || !sameSourceSchema(schema,nativeStruct(schema.native))) return null;
             return schema.native;
         }
         if (value?.op === 'math') return ({MakeVector:'Vector',Conv_DoubleToVector:'Vector',
-            Add_VectorVector:'Vector',Subtract_VectorVector:'Vector',Multiply_VectorVector:'Vector',
+            Add_VectorVector:'Vector',Subtract_VectorVector:'Vector',Multiply_VectorVector:'Vector',VLerp:'Vector',
             MakeRotator:'Rotator',MakeTransform:'Transform',MakeVector2D:'Vector2D',
             Conv_RotatorToVector:'Vector',Conv_VectorToRotator:'Rotator',GreaterGreater_VectorRotator:'Vector',
             GetUpVector:'Vector',ProjectPointOnToPlane:'Vector',SelectTransform:'Transform',RInterpTo:'Rotator'})[value.name] || null;
@@ -921,7 +945,15 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
         if (expression.op === 'native_widget_effect') {
             const identity=expression.identity;
             const method=expression.method;
-            const supported=method === 'SetFocus'
+            const sourceLinearColorMethod = expression.dispatch === 'EX_FinalFunction'
+                && ((method === 'SetColorAndOpacity'
+                        && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','Image',method])
+                        && expression.receiver_schema?.class?.[1] === 'Image')
+                    || (method === 'SetBrushColor'
+                        && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','Border',method])
+                        && expression.receiver_schema?.class?.[1] === 'Border'))
+                && sameSourceSchema(expression.parameter?.schema,nativeStruct('LinearColor'));
+            const supported=sourceLinearColorMethod || method === 'SetFocus'
                 && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','Widget','SetFocus'])
                 && expression.dispatch === 'EX_FinalFunction'
                 || method === 'SetVisibility'
@@ -955,7 +987,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                 && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','TextBlock','SetColorAndOpacity'])
                 && expression.dispatch === 'EX_FinalFunction'
                 && expression.parameter?.schema?.type === 'StructProperty'
-                && JSON.stringify(expression.parameter?.schema) === JSON.stringify(nativeSlateColorSchema())
+                && sameSourceSchema(expression.parameter?.schema,nativeSlateColorSchema())
                 || method === 'SetBrushFromTexture'
                 && JSON.stringify(identity) === JSON.stringify(['/Script/UMG','Image','SetBrushFromTexture'])
                 && expression.dispatch === 'EX_VirtualFunction'
@@ -1008,7 +1040,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
             }
             if (method === 'SetVisibility' && (!Number.isInteger(values[0]) || values[0] < 0 || values[0] > 4))
                 throw new Error('Unverified original ESlateVisibility value');
-            if (method === 'SetColorAndOpacity' && values[0]?.ColorUseRule !== 0)
+            if (method === 'SetColorAndOpacity' && identity[1] === 'TextBlock' && values[0]?.ColorUseRule !== 0)
                 throw new Error('Original FSlateColor style binding is unavailable outside UseColor_Specified');
             const effect={op:'native_widget_effect',identity:[...identity],dispatch:expression.dispatch,
                 widget_id:reference.widget_id,source_field:expression.receiver_field,
@@ -1424,7 +1456,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
                     : program.field_types?.[target.scope]?.[target.field];
                 if (declaredType !== expectedType) throw new Error('Original native math output type differs');
                 if (nativeOutputs && (target.native !== nativeOutputs[index]
-                    || JSON.stringify(schemaFor(target)) !== JSON.stringify(nativeStruct(nativeOutputs[index]))))
+                    || !sameSourceSchema(schemaFor(target),nativeStruct(nativeOutputs[index]))))
                     throw new Error('Original BreakTransform output struct differs');
                 const raw=components[outputNames[index]];
                 checkType(target.scope,target.field,raw,target.frame);
@@ -1442,7 +1474,7 @@ function runBlueprint(program, self, inputs, functions, budget, depth, frames, t
         }
         if (expression.op === 'math' && Array.isArray(expression.args)) {
             const structContracts={
-                Add_VectorVector:['Vector','Vector'],Subtract_VectorVector:['Vector','Vector'],
+                Add_VectorVector:['Vector','Vector'],Subtract_VectorVector:['Vector','Vector'],VLerp:['Vector','Vector',null],
                 Multiply_VectorVector:['Vector','Vector'],Vector_DistanceSquared:['Vector','Vector'],BreakVector:['Vector'],
                 BreakRotator:['Rotator'],MakeTransform:['Vector','Rotator','Vector'],
                 Conv_RotatorToVector:['Rotator'],GetUpVector:['Rotator'],Conv_VectorToRotator:['Vector'],

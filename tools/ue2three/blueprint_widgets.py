@@ -31,6 +31,8 @@ OPERATIONS = {
     ('EX_VirtualFunction', 'SetBrushFromTexture'): {'type': 'ObjectProperty', 'types': ('ObjectProperty', 'BoolProperty'),
                                                     'classes': frozenset(('Image',)),
                                                     'texture_classes': frozenset(('Texture2D',))},
+    ('EX_FinalFunction', 'SetBrushColor'): {'type':'StructProperty', 'native':'LinearColor',
+                                           'classes':frozenset(('Border',))},
     ('EX_FinalFunction', 'SetPercent'): {'type': 'FloatProperty',
                                         'classes': frozenset(('ProgressBar',))},
 }
@@ -46,6 +48,10 @@ def widget_context(value, package, owner, reads, outputs, depth):
     contract = OPERATIONS.get((dispatch, name))
     if contract is None:
         return None
+    # UImage has the same reflected method name as UTextBlock, but takes
+    # FLinearColor rather than FSlateColor. Never merge their signatures.
+    if identity == ('/Script/UMG', 'Image', 'SetColorAndOpacity'):
+        contract = {'type':'StructProperty','native':'LinearColor','classes':frozenset(('Image',))}
     native_class = ('Widget' if name == 'SetVisibility' else
                     'Image' if name == 'SetBrushFromTexture' else
                     identity[1] if identity else 'TextBlock')
@@ -90,6 +96,13 @@ def widget_context(value, package, owner, reads, outputs, depth):
             from blueprint_effects import array_item_schema
             arg_schema = array_item_schema(argument, package, owner, reads, outputs, depth)
             arg = expression(argument, reads, outputs, depth + 1, package, owner)
+        elif (contract.get('native') == 'LinearColor' and token == 'EX_StructConst'):
+            from blueprint_values import native_schema
+            if import_path(package, argument.get('Struct')) != ('/Script/CoreUObject', 'LinearColor'):
+                raise Error('Original UMG color literal is not FLinearColor')
+            memory_size(argument, package=package)
+            arg_schema = native_schema(('/Script/CoreUObject', 'LinearColor'))
+            arg = expression(argument, reads, outputs, depth+1, package, owner)
         elif name == 'SetBrushFromTexture' and index == 1 and token in ('EX_True', 'EX_False'):
             arg = expression(argument, reads, outputs, depth + 1, package, owner)
             arg_schema = {'type': 'BoolProperty', 'default': False}

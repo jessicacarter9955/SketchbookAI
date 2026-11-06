@@ -57,7 +57,135 @@ const makeQuaternion = rotation => {
     return value;
 };
 
+
+// UE5 source relative transform, with FTransform quaternion/scale semantics.
+const relativeQuatMultiply = (a,b) => ({
+    X:a.W*b.X+a.X*b.W+a.Y*b.Z-a.Z*b.Y,
+    Y:a.W*b.Y-a.X*b.Z+a.Y*b.W+a.Z*b.X,
+    Z:a.W*b.Z+a.X*b.Y-a.Y*b.X+a.Z*b.W,
+    W:a.W*b.W-a.X*b.X-a.Y*b.Y-a.Z*b.Z,
+});
+const relativeQuatInverse = q => ({X:-q.X,Y:-q.Y,Z:-q.Z,W:q.W});
+const relativeCross = (a,b) => ({X:a.Y*b.Z-a.Z*b.Y,Y:a.Z*b.X-a.X*b.Z,Z:a.X*b.Y-a.Y*b.X});
+const relativeQuatRotate = (q,v) => {
+    const qvec={X:q.X,Y:q.Y,Z:q.Z},t=relativeCross(qvec,v);
+    const twice={X:2*t.X,Y:2*t.Y,Z:2*t.Z};
+    const other=relativeCross(qvec,twice);
+    return {X:v.X+q.W*twice.X+other.X,
+        Y:v.Y+q.W*twice.Y+other.Y,Z:v.Z+q.W*twice.Z+other.Z};
+};
+const relativeScaleReciprocal = v => Math.abs(v) <= 1e-8 ? 0 : 1/v;
+const relativeTransformMatrix = t => ['X','Y','Z'].map((axis,index) => {
+    const v={X:index===0?1:0,Y:index===1?1:0,Z:index===2?1:0};
+    const rotated=relativeQuatRotate(t.Rotation,v);
+    return ['X','Y','Z'].map(field=>rotated[field]*t.Scale3D[axis]);
+});
+const relativeMatrixInverse = m => {
+    const a=m[0][0],b=m[0][1],c=m[0][2],d=m[1][0],e=m[1][1],f=m[1][2],
+        g=m[2][0],h=m[2][1],i=m[2][2];
+    const cof=[e*i-f*h,c*h-b*i,b*f-c*e,f*g-d*i,a*i-c*g,c*d-a*f,d*h-e*g,b*g-a*h,a*e-b*d];
+    const determinant=a*cof[0]+b*cof[3]+c*cof[6];
+    if (!Number.isFinite(determinant)||Math.abs(determinant)<=1e-12)
+        throw new Error('Degenerate negative-scale relative transform matrix');
+    return [cof.slice(0,3).map(n=>n/determinant),
+        cof.slice(3,6).map(n=>n/determinant),
+        cof.slice(6,9).map(n=>n/determinant)];
+};
+const relativeRowTimesMatrix = (v,m) => [
+    v[0]*m[0][0]+v[1]*m[1][0]+v[2]*m[2][0],
+    v[0]*m[0][1]+v[1]*m[1][1]+v[2]*m[2][1],
+    v[0]*m[0][2]+v[1]*m[1][2]+v[2]*m[2][2],
+];
+const relativeQuaternionFromAxes = rows => {
+    // Unreal's matrix rows represent rotated basis vectors (transpose to
+    // conventional column-vector matrices).
+    const [x,y,z]=rows,m00=x[0],m01=y[0],m02=z[0],m10=x[1],
+        m11=y[1],m12=z[1],m20=x[2],m21=y[2],m22=z[2];
+    let q;
+    const trace=m00+m11+m22;
+    if (trace>0) {
+        const scale=2*Math.sqrt(1+trace);
+        q={W:scale/4,X:(m21-m12)/scale,Y:(m02-m20)/scale,Z:(m10-m01)/scale};
+    } else if (m00>m11&&m00>m22) {
+        const scale=2*Math.sqrt(1+m00-m11-m22);
+        q={W:(m21-m12)/scale,X:scale/4,Y:(m01+m10)/scale,Z:(m02+m20)/scale};
+    } else if (m11>m22) {
+        const scale=2*Math.sqrt(1+m11-m00-m22);
+        q={W:(m02-m20)/scale,X:(m01+m10)/scale,Y:scale/4,Z:(m12+m21)/scale};
+    } else {
+        const scale=2*Math.sqrt(1+m22-m00-m11);
+        q={W:(m10-m01)/scale,X:(m02+m20)/scale,Y:(m12+m21)/scale,Z:scale/4};
+    }
+    const length=Math.hypot(q.X,q.Y,q.Z,q.W);
+    if (!(length>0)) throw new Error('Invalid negative-scale relative rotation');
+    return {X:q.X/length,Y:q.Y/length,Z:q.Z/length,W:q.W/length};
+};
+const sourceMakeRelativeTransform = (a,parent) => {
+    // FTransform::GetSafeScaleReciprocal: a zero parent axis maps to zero.
+    const axes=['X','Y','Z'],inverse=Object.fromEntries(axes.map(k=>[k,relativeScaleReciprocal(parent.Scale3D[k])]));
+    const scale=Object.fromEntries(axes.map(k=>[k,a.Scale3D[k]*inverse[k]]));
+    const invRotation=relativeQuatInverse(parent.Rotation);
+    let rotation,translation;
+    const delta=Object.fromEntries(axes.map(k=>[k,a.Translation[k]-parent.Translation[k]]));
+    if (axes.some(k=>a.Scale3D[k]<0||parent.Scale3D[k]<0)) {
+        // UE's negative-scale fallback multiplies full matrices and extracts
+        // a rotation with the desired source scale signs.
+        const parentInv=relativeMatrixInverse(relativeTransformMatrix(parent));
+        const matrix=relativeTransformMatrix(a).map(row=>relativeRowTimesMatrix(row,parentInv));
+        const rows=matrix.map((row,index)=>{
+            const norm=Math.hypot(...row);
+            const sign=scale[axes[index]]<0?-1:1;
+            if (!(norm>0)) throw new Error('Degenerate negative-scale relative transform axis');
+            return row.map(value=>value*sign/norm);
+        });
+        rotation=relativeQuaternionFromAxes(rows);
+        const t=relativeRowTimesMatrix(axes.map(k=>delta[k]),parentInv);
+        translation={X:t[0],Y:t[1],Z:t[2]};
+    } else {
+        rotation=relativeQuatMultiply(invRotation,a.Rotation);
+        const rotated=relativeQuatRotate(invRotation,delta);
+        translation=Object.fromEntries(axes.map(k=>[k,rotated[k]*inverse[k]]));
+    }
+    const output={Rotation:rotation,Translation:translation,Scale3D:scale};
+    if (!isTransform(output)) throw new Error('Non-finite native MakeRelativeTransform result');
+    return output;
+};
+
 export function evaluateNativeMath(name, args, warning = () => {}) {
+    if (name === 'VLerp') {
+        if (!Array.isArray(args) || args.length !== 3 || !isVector(args[0]) || !isVector(args[1])
+            || !isFiniteNumber(args[2]) || !Number.isFinite(Math.fround(args[2])))
+            throw new Error('Invalid native VLerp parameters');
+        // Original FVector inputs are double; the witnessed Alpha is float32.
+        const alpha=Math.fround(args[2]),a=args[0],b=args[1];
+        const result=Object.fromEntries(['X','Y','Z'].map(k=>[k,a[k]+(b[k]-a[k])*alpha]));
+        if (!isVector(result)) throw new Error('Non-finite native VLerp result');
+        return result;
+    }
+    if (name === 'SelectRotator') {
+        if (!Array.isArray(args) || args.length !== 3 || !isRotator(args[0])
+            || !isRotator(args[1]) || typeof args[2] !== 'boolean')
+            throw new Error('Invalid native SelectRotator parameters');
+        // UKismetMathLibrary: bPickA ? A : B; preserve winding and signed zero.
+        const selected=args[args[2] ? 0 : 1];
+        return {Pitch:selected.Pitch,Yaw:selected.Yaw,Roll:selected.Roll};
+    }
+    if (name === 'Conv_IntToBool') {
+        if (!Array.isArray(args) || args.length !== 1 || !isInt32(args[0]))
+            throw new Error('Invalid native Conv_IntToBool parameters');
+        return args[0] !== 0;
+    }
+    if (name === 'MakeRelativeTransform') {
+        if (!Array.isArray(args) || args.length !== 2 || !args.every(isTransform))
+            throw new Error('Invalid native MakeRelativeTransform parameters');
+        for (const transform of args) {
+            const q=transform.Rotation;
+            const len=q.X*q.X+q.Y*q.Y+q.Z*q.Z+q.W*q.W;
+            if (!Number.isFinite(len) || Math.abs(len-1)>1e-3)
+                throw new Error('Unnormalized original MakeRelativeTransform rotation');
+        }
+        return sourceMakeRelativeTransform(args[0],args[1]);
+    }
     if (name === 'EqualEqual_KeyKey') {
         // UE InputCore FKey::operator== compares FName KeyName (case-insensitive).
         // Restrict to source-authored ASCII input key identities; foreign Unicode
