@@ -1,0 +1,558 @@
+{
+  "new_source_types_read": 67,
+  "types": [
+    {
+      "package": "/Game/Audio/Foley/S_FoleyEventParams",
+      "source_sha256": "9fbeec34d69f1e23f7720973602f17098d1e03e56ea12a6be15dc80b7d359de3",
+      "parsed_sha256": "d32b858a9a85ddcebab82f2d77b5ab71766a8ed957a3ff69fbc589d20d809b77",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Blueprints/AnimNotifies/E_EarlyTransition_Condition",
+      "source_sha256": "ec0b24d9c8244728e413939821c3d964e5b5949c796353e3bdc821063fe1819a",
+      "parsed_sha256": "ce5fd45df3574948f93cdc98b538a6f9a4d3bce26b15035344772653b766757b",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Blueprints/AnimNotifies/E_EarlyTransition_Destination",
+      "source_sha256": "9cb46193f11d83d85731db012b16ab8d9c4c42757cc94f8c11f2a55d9a4d2a87",
+      "parsed_sha256": "316e5bb7203e13be4376a2359555965f42a73cc7041b1a85c28be1105f9d14f9",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Blueprints/AnimNotifies/E_FoleyEventSide",
+      "source_sha256": "b98714847abce333c9c0585be85337292e57cc02b0495fa6afd32f1bea878220",
+      "parsed_sha256": "ade997b4fab8f6bf2c8f701e3b3ca8b9357e1353c1248861f9ea08dc5d93ec64",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Blueprints/AnimNotifies/E_TraversalBlendOutCondition",
+      "source_sha256": "ea67c7302d59e144bf559b96f646d653b11218cb6d81d006bccc274740b80da2",
+      "parsed_sha256": "00efa23f8bfdfba1fcfb7aea65081bbe5be8209900ba881dd3a597463f78e36e",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Blueprints/Cameras/E_CameraMode",
+      "source_sha256": "8931c308aef45d7596518632cafd572a7872a8f87185cb8a86d917bf80655156",
+      "parsed_sha256": "deb4cb6ef3612dccd8185c804727508c5c23e634301cf9b8ad34976df62f4bc3",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Blueprints/Cameras/E_CameraStyle",
+      "source_sha256": "33cf71aabc198782f6229468d1fa3843337ba37439de79794d71557b4455c5d3",
+      "parsed_sha256": "6cd97a281b652d02a12f996f1577b3b1fb2822dc49821246da4cd74e9a4a91c5",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Blueprints/Data/E_ExperimentalStateMachineState",
+      "source_sha256": "d16f336fe4dd1732480287de831896597db21b14414a05964260bb9c0e8a6ea9",
+      "parsed_sha256": "0993dbaa1f1bba922aeacb60341f19fa0ac91310d22cbaef357cda964d0496b1",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Blueprints/Data/E_Gait",
+      "source_sha256": "339f505639df17235699d259324638684049126a8a31e4ae586fcfa14f0b0986",
+      "parsed_sha256": "0dbcc222977a229edb48f61067bc96eea0fcdf0affbebad0930635e45ca4c1e0",
+      "cache_existed": true
+    },
+    {
+      "package": "/Game/Blueprints/Data/E_MovementDirection",
+      "source_sha256": "adcd963d9f7b7601828c2241aaacba6b3477625f52e8765e8a72bf2c0c496928",
+      "parsed_sha256": "9733d821ef0796004690d6766a6d22702bc6fad945b58babb1710e51813798e9",
+      "cache_existed": true
+    },
+    {
+      "package": "/Game/Blueprints/Data/E_MovementMode",
+      "source_sha256": "d695cd71d1f65a6dec4742fc9693412127be2a8d63d4a14cf0e53641e5668794",
+      "parsed_sha256": "80a773550015a2c1e162c846026c224a9778d522f1f073c13533524c0de8694c",
+      "cache_existed": true
+    },
+    {
+      "package": "/Game/Blueprints/Data/E_MovementState",
+      "source_sha256": "b425512ec325a9efb18d1bf3ba971432f12ec789980da662909046c749f78499",
+      "parsed_sha256": "da4dd4956ad0d03bcff601a28b798f577b34ca1f1a0bc9c07762075a8a4fa0f5",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Blueprints/Data/E_RotationMode",
+      "source_sha256": "300113a98fe6ae2a3a3e3e3aae5fee6f3f295efd50019641a00c7598cc8d17d5",
+      "parsed_sha256": "eb4c06843066ba19171765825eb293f30ded5511bc053a49a502c4ed7abb0d1c",
+      "cache_existed": true
+    },
+    {
+      "package": "/Game/Blueprints/Data/E_Stance",
+      "source_sha256": "3d04687eaace0922840315d80f774d975a03701d09d3ba0118b3404cbcb20a63",
+      "parsed_sha256": "4a5f206f673656728bf8dbe73a771fe7bdd4cfd8948de41e229e0e3580fb51ef",
+      "cache_existed": true
+    },
+    {
+      "package": "/Game/Blueprints/Data/E_TraversalActionType",
+      "source_sha256": "2f0973f4fa7fb9ebc0efbaba154520c0f3a163eaa1286baabc03ffb495169b74",
+      "parsed_sha256": "7d7ebc9853d1da6bad6cc5be72b0a4db0505b69478a316cf6687230d6aa74e9a",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Blueprints/Data/S_BlendStackInputs",
+      "source_sha256": "345775ad2fb1448246b50b2e94c1af8129a147fed826bebef4d285369b460f41",
+      "parsed_sha256": "4bf98f533e46a8a2c70fcce82e951e0b5304b97259a55d95fa0d2f65fb74d826",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Blueprints/Data/S_CharacterPropertiesForAnimation",
+      "source_sha256": "7d14cd889b6520a19ba4399f79607fa22af0568d59599cfaf0ec04b49bbdd6f0",
+      "parsed_sha256": "470821885acfc474ea2ef1e57d3f1d7bc66cc9112bcbb9ad06a784038a14058a",
+      "cache_existed": true
+    },
+    {
+      "package": "/Game/Blueprints/Data/S_CharacterPropertiesForCamera",
+      "source_sha256": "d8110676e5084be75818eacad0a86ee8066d06d17f9700c4519865c69bdb229f",
+      "parsed_sha256": "d713dd4f9f075a4b71c11842a6aa3b13277f326deafcdd15906cfac7602dea50",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Blueprints/Data/S_CharacterPropertiesForTraversal",
+      "source_sha256": "ce0e3261c4498c3c6b74781a6069fea78275097d4dbcf4dbf8bba7ad553e6bc2",
+      "parsed_sha256": "d449054b93dae6ffe9e8e97f6956baf8fe297ce0369ff5291fc757ba28c6c058",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Blueprints/Data/S_ChooserOutputs",
+      "source_sha256": "323cfc05f5130b0b7fdd4691e29e31a9be86ee4cffbb5989ecc81a2a79507aba",
+      "parsed_sha256": "9e10f193057da536658f2b32ae1166eceb83c24f8e8125e5215afc64e3a246ad",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Blueprints/Data/S_DebugGraphLineProperties",
+      "source_sha256": "f55d88bdcff1cdb9b4d6c263b7a6e0624c3302841b203c946ebe71823aed4717",
+      "parsed_sha256": "aae8d5522975d75bf85d2b8cf75725461f28bc5bfaa864ce2eefcdf1de0da0b5",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Blueprints/Data/S_MovementDirectionThresholds",
+      "source_sha256": "129e593c7b153bc323e78fe98e2f64fd1d551b7f644eef5c97ca578b94a767c5",
+      "parsed_sha256": "4efe12c5b6fb0543361ac8b471ec32e193daac3d5d10fefaae21b7851b62b164",
+      "cache_existed": true
+    },
+    {
+      "package": "/Game/Blueprints/Data/S_MoverCustomInputs",
+      "source_sha256": "d898c4669d832101a7d23d7278d0f5532ea8a6aa29ec7245dcc0dab8e1a2e48f",
+      "parsed_sha256": "f8673b55c24675ba07cd7286f9c770239dfb6039dcc0b2de152170060ccf5c3f",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Blueprints/Data/S_PlayerInputState",
+      "source_sha256": "322915a3493e15a0d2d60b85371f37671effdfebe2b0b865b40b1d071dcc08b1",
+      "parsed_sha256": "b89577ac66cc593d15c860e93a96d38e8e7a6bebebb276ecd53bf538d4772920",
+      "cache_existed": true
+    },
+    {
+      "package": "/Game/Blueprints/Data/S_RotationOffsetCurveChooser_Inputs",
+      "source_sha256": "eafef150529dcfb59bb96ca1c49f5b90df0fb860472867e9816af3327cf2ae93",
+      "parsed_sha256": "74e2005c140de94c9db6023f5906991c33d4785c2f499f4dd493b1b7dd8b3cbe",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Blueprints/Data/S_TraversalCheckInputs",
+      "source_sha256": "1d8f1aa87794a79b7ffc2370c4c4979114c9506d002b3a175271cabbd4707efa",
+      "parsed_sha256": "46045d419dd493b9f6b3b7af77409ac4c0395412565b995204acff07251feaac",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Blueprints/Data/S_TraversalCheckResult",
+      "source_sha256": "69d3b2d4861e1e39c44554f170e5708941e303edb627a712404cc9a0afc5b52c",
+      "parsed_sha256": "3f4794510981e29db8d7d64065d86a0e28aedf38310849e83d70b2c9bfd9b066",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Blueprints/Data/S_TraversalChooserInputs",
+      "source_sha256": "1cb5ede3408776e8ef42baefe78808ec00b392d1f244c9c568b806d506f402d7",
+      "parsed_sha256": "6b5a60e248c09404f768c4a9255078f4f1ef3d170a9ea8be7371d5f146fb46d6",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Blueprints/Data/S_TraversalChooserOutputs",
+      "source_sha256": "fe1b306db00e093e0448bf278cddc4801e437357e20c9c98a79238d014d01dad",
+      "parsed_sha256": "cc9c781bf5cb2f435855d05d059895af614c66bea53f19af12c29beaf45d903d",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Blueprints/SmartObjects/SmartObjectAnimationPayload",
+      "source_sha256": "c5656fd8f1d927842f88ac472b74ee242bcc23dbd83a4bda2ec5d9c77ff9379f",
+      "parsed_sha256": "a4c0ed68704a20d694fbae9fa61595d83e6c4549ee33f6d1976790e9299348e5",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Blueprints/SmartObjects/SmartObjectSelectionInputs",
+      "source_sha256": "ee0e70f33e0222a58203caf655b515030dbb7c8ba5a5973dcf942d70e2436f73",
+      "parsed_sha256": "db8f3b989e5843c01330f481961808d58edab53c8ceda512f73f2be02ac34343",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Blueprints/SmartObjects/SmartObjectSelectionOutputs",
+      "source_sha256": "4c144c8193c81b53fce82567e5b53f2867bfe59c29f7e65e9b302aef5e6a94ce",
+      "parsed_sha256": "9d96811dc0d4cab22edfb46959c7db454849cab0ef4a2242705fb748ce6a0b15",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Blueprints/SmartObjects/TasksAndConditions/SmartObjectSearchType",
+      "source_sha256": "28532fba5c1b9e82cfa3d529d7b346811a5ad042106070842277940235dd163e",
+      "parsed_sha256": "c7c43c998d1f7032c41e4f07d6d0cc6b8a29c9e051514b99c00aeec742cdfecf",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Appearance/Struct/S_AIPreset",
+      "source_sha256": "624b555f6ce5be77893d8f079648452a0f38969c335e11e8cad3b0065ba0d666",
+      "parsed_sha256": "25e2432edfff63d47db2ceed8d82887dd79a90d3f331bb8b35490773735162d2",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Appearance/Struct/S_CharacterIdentity",
+      "source_sha256": "48593d67ab08f39907e5420d63fcb7f0c9eeaa3484e1a0d776952ab2c165b6d1",
+      "parsed_sha256": "f0bf9f74d07a4f224c16348de8c58970ebdb8ccfa6b860503ccb0311dd53554f",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Appearance/Struct/S_OutfitPiece",
+      "source_sha256": "14e61879558bd99967ac843a55a61c676fd30d391899e91f6adc9ba025024082",
+      "parsed_sha256": "2aceb578a31f28f8f7108391c1d88602296e2099a195888f87ff969d6b0d310d",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Appearance/Struct/S_PlayerAppearance",
+      "source_sha256": "083f5a611cb12b53e65bc81bda16e385ad437edeb7b7df95b5e5c17d33957dcb",
+      "parsed_sha256": "0d90cd592dbc029f9449001616aa266f3a90fb1a9842e242916ed54fa6e55507",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Camera/Struct/S_CameraProfile",
+      "source_sha256": "e793d85aa67b6a18e3b72fd6375d9d173b50c65dd922da4a1c9965583c6e6c8a",
+      "parsed_sha256": "3e1805d611e4bc4e64dc8bdc5202f5f317af1dc21093067d5478f96114f084fc",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_FiringMode",
+      "source_sha256": "3526fb481ee569b3ce91a56eeea6315b0f8f731197175a68b4c9ed8450ccf6d7",
+      "parsed_sha256": "ceb9f11868e2ff5f78c8e856c2bdb40cbea06241fb651e3c60fc2adb7c624dc5",
+      "cache_existed": true
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_GripType",
+      "source_sha256": "dc66e7e5667baaba0dd173c05434ab803afe88db16af52731abc980b80b00219",
+      "parsed_sha256": "1674dabdaefc7d0eb7b366048238f12ed6c82237d94bf0b0a9570bc5c62273a4",
+      "cache_existed": true
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_HitZone",
+      "source_sha256": "e5b80cb88137638240785c1008c41a11ebabbf767e1b811b6c07b9514bd1cf66",
+      "parsed_sha256": "a49a91ed0cb58b7bc7a42e08578a3f1adea60281f1c3c8b267d693d76c4091d5",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_ReloadType",
+      "source_sha256": "d5168b8216d273fbfe1fbdbfcca35ea751eb962de246b02d69f66c83b025b0be",
+      "parsed_sha256": "4996eac163dc15c04c34170107ca579514f42b62f41acc5e1a91814b76e1e22b",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Combat/Emum/E_WeaponState",
+      "source_sha256": "c4d73c1dbb723b484a24758d595b6d42c18198a346339af85b2ee2095bf46dc7",
+      "parsed_sha256": "4ded72887055da08ad3c1b2b7538f3ff1e7d3be98c80a4729b16064ac41578a4",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Identity/Enum/E_CharacterRole",
+      "source_sha256": "64cee66c2eab9f976bc226850360d142c6f09a1ad93a4b0371411edc013671bd",
+      "parsed_sha256": "d3c9567c13859e3867e8cb45a6a9ff41b3e3cfddd700f85f168549e6c82cc280",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Identity/Enum/E_Faction",
+      "source_sha256": "1c3931542b8748881d149a74e380d45bccd6a343e93dd4cb1bba2cadb843b58a",
+      "parsed_sha256": "e669a315f751b6176400104799ca2f25551612326334e3c09b3a20fd2b797fb8",
+      "cache_existed": true
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Identity/Enum/E_Gender",
+      "source_sha256": "389ed924afcc5f6cdce44b5b1f973c16cf9da4a34e6505ea44264c75d2881d2e",
+      "parsed_sha256": "42b52c6ca05cbf818fc7ae1a79f96c0741417d45363d44bb542a96977d6ca12c",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Identity/Enum/E_OutfitSlot",
+      "source_sha256": "873b344afa24e4dbb1d7df93e9e0302333047ace07ea5ad987a29d9d491fbc68",
+      "parsed_sha256": "3202d93e897fc827338b8d3e844e67c4ed5441ed30f0ec43df216c0e8d62f9dd",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Identity/Enum/E_RelationshipType",
+      "source_sha256": "5e67844276887e3d186eb05dd3a3201cace9c8c821821720cc77b050e6e4e4a5",
+      "parsed_sha256": "0e8788b14c83d99569ad767a6a64c5f5ed7a5e6f6361c6139ceaae5d6573815e",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Identity/Struct/S_FactionRelationship",
+      "source_sha256": "38abc36a857a9882da6b99f88ff2f843a6bb48478f246e8525f8fe910cfdddc7",
+      "parsed_sha256": "d5362d409d7323d74d854eabf05be93074d49d2933bdc0ca79dc3c13745b17b1",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Interactions/Interactable/Enum/E_InteractionType_Fixers",
+      "source_sha256": "5a85a4233f43d8124ac48ab28ec176e175a7e5de22cd5ffbdc31f58f8f09f743",
+      "parsed_sha256": "6a841d6d9feb5b33eeb884f00917e364a339cb0d18db6b72a7a975a43d41004a",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_AmmoType",
+      "source_sha256": "96e19243308a0ce985a081caed3c141bb925ca271dbc8f68ca70be04e55af761",
+      "parsed_sha256": "d704d32ddcda69075a2c4dc9c696237ec5011c59158841ceb38a86e27637330c",
+      "cache_existed": true
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_CurrencyType",
+      "source_sha256": "34872495f6847adc4a8469ed0be1dc85a87d824d0d9f65477bce730d63d2f683",
+      "parsed_sha256": "555c5b8a75143b178076b78bab40347ed1ecf75f76739cf1602dd2e902d7f481",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_EncumbranceState_Fixers",
+      "source_sha256": "70a6563818e8d6f34a817089368d823cd9d54a0b5860a9c5b540d21d175da7a3",
+      "parsed_sha256": "e6f1e626a561eaef27a735c460285bbe69bf323d5ba22a9e2a3a1e488800fd9e",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ImplantEffect",
+      "source_sha256": "c502a1f69c816fbf69b03541ed04c3015f7b2e86a62b45050b0d9f4ddbb9ff98",
+      "parsed_sha256": "b9fc0b6b04a7f2c64160ae1226c5d7cb7ea8ccf3ffd2ff552d9ac6dfeb5a3e2f",
+      "cache_existed": true
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InjectorEffect",
+      "source_sha256": "109ca24cd6a61cf3a6f24028de65abadb8b4aec5a2cde5dca1431b837110432a",
+      "parsed_sha256": "439efc12ec7fb02937959956fa31f8af93f83404d787d953ea39dd08202e338d",
+      "cache_existed": true
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventoryError",
+      "source_sha256": "54c9b2ac74812c1709aac0244221103a9c948ab88212f30213e5757ccf1d8377",
+      "parsed_sha256": "aa4c794fae30c93a3a1e3734dc0a1bb3aacd848a1621948046439cd9c3b1834a",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_InventorySlot_Fixers",
+      "source_sha256": "84a04a2d53a3a61f426725b3831d0c0d424aea2202d7863b46d437bfd16e73f5",
+      "parsed_sha256": "fceb7c42027dc7fb48e9bd35ad0aec72fd05b0bfb33d0c902b5db40939551b02",
+      "cache_existed": true
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemCategory_Fixers",
+      "source_sha256": "0560187c3ba1268738966a247bfb2557fdb27c640581e04c8ac82bd9edbbe50b",
+      "parsed_sha256": "be1826c85002a7ce9f306a78cf762276a644c11cee7ef3c3bf2d5a99bc8674ff",
+      "cache_existed": true
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ItemRarity",
+      "source_sha256": "705c9c2241c353820ffdd37ce34d55b7bf7ee917180cee5a40b3328dfe1d7cb8",
+      "parsed_sha256": "1aa53d4752a6384e46923bda4a598b56847fae2695fb62a04f442ff3507ce87d",
+      "cache_existed": true
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/Enum/E_ModSlot",
+      "source_sha256": "376bf58f0536e2cabf63125a4457d41b27226bb976f16ba374031441fd7f4d40",
+      "parsed_sha256": "77ff52f996c8f79a57f25ad324961a12356552816902ff1b323fbeeaac54a053",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ArmorData",
+      "source_sha256": "f7c43586f331cf21470b9db9f42839df3a2452cba15a139a6c6afb9ae1423260",
+      "parsed_sha256": "53db61aec9c2a4f709d8545ab5d6e641f8e536f05619f11a33c21754d3717f0b",
+      "cache_existed": true
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_BackpackData",
+      "source_sha256": "52cd42743d579fb744a3112306f7e1e2d50bd254e6df7a6a79cbb6b207d79436",
+      "parsed_sha256": "d953fa49621ad140b52cfc561f3091b88721e50141cafceb73c32bd307fecee4",
+      "cache_existed": true
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ImplantData",
+      "source_sha256": "61e18f59cd8da639f40b1139d58b17911e0dcdc473e648dbd261ab1296a3be19",
+      "parsed_sha256": "614cc70cfe182b47733a3a6d4fcbdfcbc4e142f2edd59dc373618903ffe182f1",
+      "cache_existed": true
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InjectorData",
+      "source_sha256": "89d3e093bbbf35c855ea959d777e240b6669e47175b564f3fccde1ef837a3266",
+      "parsed_sha256": "91f76942bdbbf41987ee5996a8909f888aada27142367a8404df32c2e6d35357",
+      "cache_existed": true
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_InventorySlot",
+      "source_sha256": "da97dd9f7513d4e56725012c1d01e21ef092763876831d43d58175ac4ffc061e",
+      "parsed_sha256": "e7233320ecb8621e9257463835f2dc01d038b31540eacc6bc4a62270517009d2",
+      "cache_existed": true
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ItemData",
+      "source_sha256": "29dc0cb32d30d11b1c12b92a53f6c659cebcf8e855076b56fac3c2c92657be96",
+      "parsed_sha256": "2758fa79783cbb1ed1fc799ac08c571506bc4a4f04782924de8175c369e6abeb",
+      "cache_existed": true
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_PlayerSnapshot",
+      "source_sha256": "d1862378496743e21ad98ce286e8f72e69a18b5de41a6261b38b6860d3934cfc",
+      "parsed_sha256": "d5c9d1ae34410c8a92d2b6fbecc0e59221e72de190c6ab6cdd318d23f50658ce",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ShieldData",
+      "source_sha256": "9dc7bccf63cd1865e5187ba026b49e0d7af94e1384be86929019deb18b4daa0f",
+      "parsed_sha256": "05d9f5764a467d352a971d14b18cb7131b68a729a3f58564a868b21748d90d48",
+      "cache_existed": true
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_ThrowableData",
+      "source_sha256": "72ba1fdf64d053f6ab8c54d7c5c491daa0952325d8349d68eb6949ece69e005e",
+      "parsed_sha256": "0bca8495963b5674f0700c97fa4c384dc7ab4777dbd4c4b4fb383231e69fb701",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Inventory/Struct/S_WeaponData",
+      "source_sha256": "9664b2d98b728279187911083671d0a0b69abba7e7c09ba787e3ef19cfcd383e",
+      "parsed_sha256": "e594d82d5f12ffbbf68f6cdbc5175111c096295521d8c87c171b4f0fc8243d4b",
+      "cache_existed": true
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Components/Vitality/Enum/E_VitalityState",
+      "source_sha256": "4084db45887f6d3bbaba8938942ab315b4431185fd2fde77d00e86f95aab6bc0",
+      "parsed_sha256": "6ab81d26ef4de14612d9cad7a0a514a4ddce7a73340648ab06cf257a3fe3c25d",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/Loot/Containers/Struct/S_LootEntry",
+      "source_sha256": "5fb6f72703f748f9abad980bdf1bcd3166f9729b89974225686f486864afee85",
+      "parsed_sha256": "0aaab6fc7abaf615e40f819390f798a2d8a6ef5e34250626933364dc564b8aaf",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/NPC/Enum/E_QuestObjectiveType",
+      "source_sha256": "f37b3749349ea42d2bcd1e16d2ea99c85a830133cb3365e4d1d5c99915696266",
+      "parsed_sha256": "cf3107ded91f4c75a26ff47e932dbcbcf5a3c99121904234fc5fe63088126c3f",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/NPC/Struct/S_ActiveQuest",
+      "source_sha256": "f169d188adb6842979425b242fe316d34f1b1640c321a0162ad18e6b0c8c5a98",
+      "parsed_sha256": "f19f0815e3b49ca0c4567fb038ad78f372b3fabbe5f8803b3766fb96e0486e18",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/NPC/Struct/S_FixerData",
+      "source_sha256": "e9487615d6124a5775dbe4d783176e81def74202088b7e95d45a73c06aaab926",
+      "parsed_sha256": "c636af01c1b51c47fe78f65707f3ccf8fca6a973877ee4b43a1aeec2d5731559",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/NPC/Struct/S_QuestData",
+      "source_sha256": "0170e0c97b8a8edf8f62c487a0fdfcda45c36acff96538120c21b2b6434f0974",
+      "parsed_sha256": "ac428266df1aa2bf20546279f1404d2dc35d6e725e6c82bc56d45ed920f550a5",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Blueprints/NPC/Struct/S_ShopEntry",
+      "source_sha256": "46729bd66e2ff0ba1df22d767b68e7a13490915fa22544b3e9163a9be017ba64",
+      "parsed_sha256": "ed354627d6d68c21445e56c7198a00b8620db6725442f3100440a40e94f44484",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Game/Matchmaking/Enum/E_Difficulty",
+      "source_sha256": "5fe5c3ca8a92524eca6dd5c7dd86c9e890ceeddbb31202b1ab9ccecd3644ba17",
+      "parsed_sha256": "58993e4c4cf3f33821d8e5e3d1bc0ad3edce3727bea4cfa05b5bc907c7b1705c",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Game/Matchmaking/Enum/E_MatchmakingState",
+      "source_sha256": "782dcbdd49b5971fc456ce9258831e2a2abca1af4880fedbcf2295e9e2f0a4c8",
+      "parsed_sha256": "cc51819e4e2ec484cea428b19867cafa649d3b6c2ca39b29370ee2554f3bccc8",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Game/Matchmaking/Struct/S_QueuePoolEntry",
+      "source_sha256": "ed2ac089aa2d6dd39c461ba360fc40dd89cde6482f6668a6e080d86eb8163be0",
+      "parsed_sha256": "e7a13f999dae1951aeda0fbc81fa1194e11351a706b15df31b9df21acf8e2309",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Game/Matchmaking/Struct/S_RaidMapEntry",
+      "source_sha256": "d615b3594e399aab7a879a3825fee255d0dad619e87b861e1c58529ee8ffd07d",
+      "parsed_sha256": "ad22ccc2e2701c21d1aef634b0af72b58e8dc68f7b7175acde1b2715bce9580f",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/Core/Game/Matchmaking/Struct/S_RaidServerEntry",
+      "source_sha256": "099f1f47e631058a97d0d44151128b31c41b543c2e294973ce757c62ae2910ab",
+      "parsed_sha256": "f40bd16fa31090f7d912e0424ea8f86107911fb02fa1dc71d6a8fb76d504879b",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/VFX/NiagaraExamples/Blueprints/E_ExplosionSizes",
+      "source_sha256": "fbe4a4945871fd525f39e914d6d536690b98efe055de4f80dddcc32c012a4eb5",
+      "parsed_sha256": "59aecaf62638abcd04b763a91b2d7678f74b517b100d4bdeae7b04c642668cc5",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/VFX/NiagaraExamples/FX_Footstep/E_Footstep_Names",
+      "source_sha256": "a3d1a833ae3835b70dd97ff323b4fd09af7cbc465326c332b969cce27f463cc3",
+      "parsed_sha256": "4821fe237d12a657961467de23598fee4fa7fdf0db495c889aaeedabe72d352f",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/VFX/NiagaraExamples/Gallery/DemoPlatform/Misc/E_EnclosureLevel",
+      "source_sha256": "2bc214eedbea06d7dcc0ba8006efe62c975c679e62e81f50f78093e275f7a61f",
+      "parsed_sha256": "9200021453443bb1d1bf947f46f2bd33c9dc7c038aa34663adf7f8b76d338172",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/VFX/NiagaraExamples/Gallery/DemoPlatform/Misc/E_ExteriorLightingPreset",
+      "source_sha256": "a5678276cc1893e01884f501ce191e3c807e231d5a3e31366ac3793e068dc1ec",
+      "parsed_sha256": "cd0dbda65846c0870da1f57f322a20f25509990ce7fc9af536a790d5456596bb",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/VFX/NiagaraExamples/Gallery/DemoPlatform/Misc/E_RoomLighting",
+      "source_sha256": "2948cde8f2d26cf4b9efc083ae67c74f2a675ff8595294639e7cd827ba7c6ef4",
+      "parsed_sha256": "efb6e200b166ff5d0ff0a25c6b3d19869d1cb28f33b9c7064d22ec3aeb95b004",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/VFX/NiagaraExamples/Gallery/DemoPlatform/Misc/S_Colour",
+      "source_sha256": "ce504136595e6892782729688bd228d942d3ee1f8032807ecd096ddebb8e2877",
+      "parsed_sha256": "c1bc9a7d8156965274e07e957e3cf8452fb0e62cf45f3ba11ebdb48f8818de50",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/VFX/NiagaraExamples/Gallery/DemoPlatform/Misc/S_RoomSettings",
+      "source_sha256": "a864e4954808eb4decd2dfe59c792b9d6c3c5ca116624308db0314fc516faa85",
+      "parsed_sha256": "3bfe30aac2ba3cab1f4eb64774619c043365010dfe1d9fe41c8e60f5a488d800",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Fixers/VFX/NiagaraExamples/Utilities/Blueprints/SupportData/ShuffleChannelsRGBA",
+      "source_sha256": "012524518a597ea28557a9a56d6c3e7fa2a31bdfb59fef479f77e5265b8bbc83",
+      "parsed_sha256": "37d683b6b2a5a7434e3c70347c112d3b8f71fa7223135f00d43b3d509b8772ea",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Levels/LevelPrototyping/Data/S_GridMaterialParams",
+      "source_sha256": "d2cf8b919370bfc94feb4c7dc1d78797e4d7ce07b379de7c547204095cf541bc",
+      "parsed_sha256": "9f8de878690b74383b4681c8632f9d641d17357da4baef4ac6eafa5577f8143d",
+      "cache_existed": false
+    },
+    {
+      "package": "/Game/Levels/LevelPrototyping/Data/S_LevelStyle",
+      "source_sha256": "96820584b6e9b17539470bebd57383a7ef2a953e55260bc3bb41c28e848080c2",
+      "parsed_sha256": "7dd5b06e1ffd821ec0d3e9cec545fcbf84a182d4cd573adb9511b7d91884a5e1",
+      "cache_existed": false
+    }
+  ],
+  "original_assets_modified": false
+}

@@ -1,0 +1,586 @@
+{
+  "date": "2026-11-06",
+  "baseline_commit": "a2790332465636b14383e48732942eca287198bb",
+  "full_python_suite": "passed",
+  "javascript_tests_passed": 243,
+  "python_tests_passed": 552,
+  "original_packages": 276,
+  "original_functions": 1957,
+  "source_replay_audit": {
+    "same_source_snapshot": true,
+    "source_mismatches": {},
+    "before_counts": {
+      "blocked": 1392,
+      "declarations": 185,
+      "empty_event_functions": 122,
+      "event_entries": 147,
+      "no_op_functions": 38,
+      "translated": 565
+    },
+    "after_counts": {
+      "blocked": 1382,
+      "declarations": 185,
+      "empty_event_functions": 122,
+      "event_entries": 149,
+      "no_op_functions": 38,
+      "translated": 575
+    },
+    "changed_functions": [
+      {
+        "package": "/Game/Blueprints/AC_TraversalLogic",
+        "export_index": "45",
+        "before": {
+          "status": "blocked",
+          "function": "PerformTraversalAction_Clients",
+          "reason": "Unresolved persistent source schema: K2Node_CustomEvent_TraversalResult",
+          "source_sha256": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "PerformTraversalAction_Clients",
+          "reason": "Untranslated function dependency: ExecuteUbergraph_AC_TraversalLogic@2521",
+          "source_sha256": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f"
+        }
+      },
+      {
+        "package": "/Game/Blueprints/AC_TraversalLogic",
+        "export_index": "46",
+        "before": {
+          "status": "blocked",
+          "function": "PerformTraversalAction_Server",
+          "reason": "Unresolved persistent source schema: K2Node_CustomEvent_TraversalResult_1",
+          "source_sha256": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "PerformTraversalAction_Server",
+          "reason": "Untranslated function dependency: ExecuteUbergraph_AC_TraversalLogic@2493",
+          "source_sha256": "50c249e07e6e0dd96ebe04d3f4d2e2ecf91cc7195a398838d391fb3c8fe6e82f"
+        }
+      },
+      {
+        "package": "/Game/Blueprints/BPI_SandboxCharacter_Pawn",
+        "export_index": "10",
+        "before": {
+          "status": "blocked",
+          "function": "Get_PropertiesForTraversal",
+          "reason": "Unresolved source array or struct schema",
+          "source_sha256": "dec740d87848c372af5c39185b36b9a00b19acd97f6fe701614f2b3df8d8a02d"
+        },
+        "after": {
+          "status": "translated",
+          "function": "Get_PropertiesForTraversal",
+          "reason": null,
+          "source_sha256": "dec740d87848c372af5c39185b36b9a00b19acd97f6fe701614f2b3df8d8a02d"
+        }
+      },
+      {
+        "package": "/Game/Blueprints/BPI_SandboxCharacter_Pawn",
+        "export_index": "8",
+        "before": {
+          "status": "blocked",
+          "function": "Get_PropertiesForAnimation",
+          "reason": "Unresolved source array or struct schema",
+          "source_sha256": "dec740d87848c372af5c39185b36b9a00b19acd97f6fe701614f2b3df8d8a02d"
+        },
+        "after": {
+          "status": "translated",
+          "function": "Get_PropertiesForAnimation",
+          "reason": null,
+          "source_sha256": "dec740d87848c372af5c39185b36b9a00b19acd97f6fe701614f2b3df8d8a02d"
+        }
+      },
+      {
+        "package": "/Game/Blueprints/BPI_SandboxCharacter_Pawn",
+        "export_index": "9",
+        "before": {
+          "status": "blocked",
+          "function": "Get_PropertiesForCamera",
+          "reason": "Unresolved source array or struct schema",
+          "source_sha256": "dec740d87848c372af5c39185b36b9a00b19acd97f6fe701614f2b3df8d8a02d"
+        },
+        "after": {
+          "status": "translated",
+          "function": "Get_PropertiesForCamera",
+          "reason": null,
+          "source_sha256": "dec740d87848c372af5c39185b36b9a00b19acd97f6fe701614f2b3df8d8a02d"
+        }
+      },
+      {
+        "package": "/Game/Blueprints/SmartObjects/AC_SmartObjectAnimation",
+        "export_index": "24",
+        "before": {
+          "status": "blocked",
+          "function": "ExecuteUbergraph_AC_SmartObjectAnimation",
+          "reason": "Source adapter property schema is unavailable",
+          "source_sha256": "77a9e4a55eb95b14565add0da3a445ce9cd3365dc528f04d0d78f7fb502c16aa"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "ExecuteUbergraph_AC_SmartObjectAnimation",
+          "reason": "Native call is outside Engine.KismetMathLibrary",
+          "source_sha256": "77a9e4a55eb95b14565add0da3a445ce9cd3365dc528f04d0d78f7fb502c16aa"
+        }
+      },
+      {
+        "package": "/Game/Blueprints/SmartObjects/AC_SmartObjectAnimation",
+        "export_index": "35",
+        "before": {
+          "status": "blocked",
+          "function": "OnNotifyBegin_3842BE40445726A60460DAA8B53487C2",
+          "reason": "Untranslated function dependency: ExecuteUbergraph_AC_SmartObjectAnimation@1301",
+          "source_sha256": "77a9e4a55eb95b14565add0da3a445ce9cd3365dc528f04d0d78f7fb502c16aa"
+        },
+        "after": {
+          "status": "translated",
+          "function": "OnNotifyBegin_3842BE40445726A60460DAA8B53487C2",
+          "reason": null,
+          "source_sha256": "77a9e4a55eb95b14565add0da3a445ce9cd3365dc528f04d0d78f7fb502c16aa"
+        }
+      },
+      {
+        "package": "/Game/Blueprints/SmartObjects/AC_SmartObjectAnimation",
+        "export_index": "39",
+        "before": {
+          "status": "blocked",
+          "function": "PlayMontage_Multi",
+          "reason": "Unresolved persistent source schema: K2Node_CustomEvent_Animation_Payload",
+          "source_sha256": "77a9e4a55eb95b14565add0da3a445ce9cd3365dc528f04d0d78f7fb502c16aa"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "PlayMontage_Multi",
+          "reason": "Untranslated function dependency: ExecuteUbergraph_AC_SmartObjectAnimation@2371",
+          "source_sha256": "77a9e4a55eb95b14565add0da3a445ce9cd3365dc528f04d0d78f7fb502c16aa"
+        }
+      },
+      {
+        "package": "/Game/Blueprints/SmartObjects/AC_SmartObjectAnimation",
+        "export_index": "40",
+        "before": {
+          "status": "blocked",
+          "function": "PlaySmartObjectMontage",
+          "reason": "Unresolved persistent source schema: K2Node_CustomEvent_Incoming_Animation_Payload",
+          "source_sha256": "77a9e4a55eb95b14565add0da3a445ce9cd3365dc528f04d0d78f7fb502c16aa"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "PlaySmartObjectMontage",
+          "reason": "Untranslated function dependency: ExecuteUbergraph_AC_SmartObjectAnimation@2509",
+          "source_sha256": "77a9e4a55eb95b14565add0da3a445ce9cd3365dc528f04d0d78f7fb502c16aa"
+        }
+      },
+      {
+        "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover",
+        "export_index": "342",
+        "before": {
+          "status": "blocked",
+          "function": "Server_ConfirmCustomization ",
+          "reason": "Unresolved persistent source schema: K2Node_CustomEvent_NewAppearance",
+          "source_sha256": "6836de8c7be7e1077e7b050cd0cb6e90e6c25ccbd1a1ce4dd0fd33fce5f083ea"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "Server_ConfirmCustomization ",
+          "reason": "Untranslated function dependency: ExecuteUbergraph_CBP_Fixers_Mover@33136",
+          "source_sha256": "6836de8c7be7e1077e7b050cd0cb6e90e6c25ccbd1a1ce4dd0fd33fce5f083ea"
+        }
+      },
+      {
+        "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover_ABP",
+        "export_index": "1064",
+        "before": {
+          "status": "blocked",
+          "function": "EvaluateGraphExposedInputs_ExecuteUbergraph_CBP_Fixers_Mover_ABP_AnimGraphNode_ControlRig_3C9ABB30429E4227171419BA20E2D1F5",
+          "reason": "Untranslated function dependency: ExecuteUbergraph_CBP_Fixers_Mover_ABP@5595",
+          "source_sha256": "b49213d5e9c6383680786bf7ade1da60ba94702eecb9b7602008ca0dc99180dd"
+        },
+        "after": {
+          "status": "translated",
+          "function": "EvaluateGraphExposedInputs_ExecuteUbergraph_CBP_Fixers_Mover_ABP_AnimGraphNode_ControlRig_3C9ABB30429E4227171419BA20E2D1F5",
+          "reason": null,
+          "source_sha256": "b49213d5e9c6383680786bf7ade1da60ba94702eecb9b7602008ca0dc99180dd"
+        }
+      },
+      {
+        "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover_ABP",
+        "export_index": "1176",
+        "before": {
+          "status": "blocked",
+          "function": "Get_LandVelocity",
+          "reason": "Source adapter property schema is unavailable",
+          "source_sha256": "b49213d5e9c6383680786bf7ade1da60ba94702eecb9b7602008ca0dc99180dd"
+        },
+        "after": {
+          "status": "translated",
+          "function": "Get_LandVelocity",
+          "reason": null,
+          "source_sha256": "b49213d5e9c6383680786bf7ade1da60ba94702eecb9b7602008ca0dc99180dd"
+        }
+      },
+      {
+        "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover_ABP",
+        "export_index": "1188",
+        "before": {
+          "status": "blocked",
+          "function": "Get_SlideSlopeOffset",
+          "reason": "Source adapter property schema is unavailable",
+          "source_sha256": "b49213d5e9c6383680786bf7ade1da60ba94702eecb9b7602008ca0dc99180dd"
+        },
+        "after": {
+          "status": "translated",
+          "function": "Get_SlideSlopeOffset",
+          "reason": null,
+          "source_sha256": "b49213d5e9c6383680786bf7ade1da60ba94702eecb9b7602008ca0dc99180dd"
+        }
+      },
+      {
+        "package": "/Game/Fixers/Core/Blueprints/Components/Appearance/BPC_Appearance_Fixers",
+        "export_index": "17",
+        "before": {
+          "status": "blocked",
+          "function": "Server_SetAppearance",
+          "reason": "Unresolved persistent source schema: K2Node_CustomEvent_NewAppearance",
+          "source_sha256": "c911a08df493e4a398116f13f87b9669b620d9fa4b26fa4b581e38145904a8b1"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "Server_SetAppearance",
+          "reason": "Untranslated function dependency: ExecuteUbergraph_BPC_Appearance_Fixers@860",
+          "source_sha256": "c911a08df493e4a398116f13f87b9669b620d9fa4b26fa4b581e38145904a8b1"
+        }
+      },
+      {
+        "package": "/Game/Fixers/Core/Blueprints/Components/Appearance/BPC_Appearance_Fixers",
+        "export_index": "9",
+        "before": {
+          "status": "blocked",
+          "function": "ApplyAIPreset",
+          "reason": "Source adapter property schema is unavailable",
+          "source_sha256": "c911a08df493e4a398116f13f87b9669b620d9fa4b26fa4b581e38145904a8b1"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "ApplyAIPreset",
+          "reason": "Unresolved original table, row type, owner or context offset",
+          "source_sha256": "c911a08df493e4a398116f13f87b9669b620d9fa4b26fa4b581e38145904a8b1"
+        }
+      },
+      {
+        "package": "/Game/Fixers/Core/Blueprints/Components/Appearance/BP_CustomizationStation",
+        "export_index": "22",
+        "before": {
+          "status": "blocked",
+          "function": "CancelCustomization",
+          "reason": "Original component query parameter schema is unavailable",
+          "source_sha256": "200780f323c79958f8a85aea2615fac1eff86c42c7e06346c4db59c1abd7373f"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "CancelCustomization",
+          "reason": "Unsupported opcode: EX_Context",
+          "source_sha256": "200780f323c79958f8a85aea2615fac1eff86c42c7e06346c4db59c1abd7373f"
+        }
+      },
+      {
+        "package": "/Game/Fixers/Core/Blueprints/Components/Appearance/BP_CustomizationStation",
+        "export_index": "28",
+        "before": {
+          "status": "blocked",
+          "function": "OnInteract",
+          "reason": "Original component property schema is unavailable",
+          "source_sha256": "200780f323c79958f8a85aea2615fac1eff86c42c7e06346c4db59c1abd7373f"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "OnInteract",
+          "reason": "Untranslated function dependency: BeginCustomization ",
+          "source_sha256": "200780f323c79958f8a85aea2615fac1eff86c42c7e06346c4db59c1abd7373f"
+        }
+      },
+      {
+        "package": "/Game/Fixers/Core/Blueprints/Components/Combat/BPC_Combat_Fixers",
+        "export_index": "106",
+        "before": {
+          "status": "blocked",
+          "function": "GetThrowableData",
+          "reason": "Source adapter property schema is unavailable",
+          "source_sha256": "0ed9db150534632a0cd02e7321eff11a57375a263c7b0094ce80d5a507834cd0"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "GetThrowableData",
+          "reason": "Unresolved original table, row type, owner or context offset",
+          "source_sha256": "0ed9db150534632a0cd02e7321eff11a57375a263c7b0094ce80d5a507834cd0"
+        }
+      },
+      {
+        "package": "/Game/Fixers/Core/Game/GameInstance/BP_GI_Fixers",
+        "export_index": "36",
+        "before": {
+          "status": "blocked",
+          "function": "GetSavedQuests",
+          "reason": "Unresolved source array or struct schema",
+          "source_sha256": "b4683c7ec463524e4d0bf6d0ae381da5962c48a06d4170bb901a567dd5070235"
+        },
+        "after": {
+          "status": "translated",
+          "function": "GetSavedQuests",
+          "reason": null,
+          "source_sha256": "b4683c7ec463524e4d0bf6d0ae381da5962c48a06d4170bb901a567dd5070235"
+        }
+      },
+      {
+        "package": "/Game/Fixers/Core/Game/GameInstance/BP_GI_Fixers",
+        "export_index": "56",
+        "before": {
+          "status": "blocked",
+          "function": "SaveQuests",
+          "reason": "Unresolved source array or struct schema",
+          "source_sha256": "b4683c7ec463524e4d0bf6d0ae381da5962c48a06d4170bb901a567dd5070235"
+        },
+        "after": {
+          "status": "translated",
+          "function": "SaveQuests",
+          "reason": null,
+          "source_sha256": "b4683c7ec463524e4d0bf6d0ae381da5962c48a06d4170bb901a567dd5070235"
+        }
+      },
+      {
+        "package": "/Game/Fixers/Core/Game/PlayerState_BPS/BPS_Fixers",
+        "export_index": "12",
+        "before": {
+          "status": "blocked",
+          "function": "HasActiveQuestFromFixer",
+          "reason": "Source adapter property schema is unavailable",
+          "source_sha256": "063321e4ebe909ad70e134c121b080711852dbc001826b6442f330588a8464de"
+        },
+        "after": {
+          "status": "translated",
+          "function": "HasActiveQuestFromFixer",
+          "reason": null,
+          "source_sha256": "063321e4ebe909ad70e134c121b080711852dbc001826b6442f330588a8464de"
+        }
+      },
+      {
+        "package": "/Game/Fixers/Core/Game/PlayerState_BPS/BPS_Fixers",
+        "export_index": "18",
+        "before": {
+          "status": "blocked",
+          "function": "Server_RestoreQuests",
+          "reason": "Unresolved persistent source schema: K2Node_CustomEvent_InQuests",
+          "source_sha256": "063321e4ebe909ad70e134c121b080711852dbc001826b6442f330588a8464de"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "Server_RestoreQuests",
+          "reason": "Untranslated function dependency: ExecuteUbergraph_BPS_Fixers@1995",
+          "source_sha256": "063321e4ebe909ad70e134c121b080711852dbc001826b6442f330588a8464de"
+        }
+      },
+      {
+        "package": "/Game/Fixers/UI/Interact/WBP_CharacterCustomization",
+        "export_index": "16",
+        "before": {
+          "status": "blocked",
+          "function": "ExecuteUbergraph_WBP_CharacterCustomization",
+          "reason": "Source adapter property schema is unavailable",
+          "source_sha256": "0cbc7093727d1d0b52890f2b3384a090915300928e9f1746e3488bc3c9235697"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "ExecuteUbergraph_WBP_CharacterCustomization",
+          "reason": "Original table lookup output is not a local out parameter",
+          "source_sha256": "0cbc7093727d1d0b52890f2b3384a090915300928e9f1746e3488bc3c9235697"
+        }
+      },
+      {
+        "package": "/Game/Fixers/UI/Interact/WBP_ShopPanel",
+        "export_index": "22",
+        "before": {
+          "status": "blocked",
+          "function": "ExecuteUbergraph_WBP_ShopPanel",
+          "reason": "Source adapter property schema is unavailable",
+          "source_sha256": "cd41b99d26b035ca3bd230f44485b8e36215537a599762785969ec15fe1f8783"
+        },
+        "after": {
+          "status": "blocked",
+          "function": "ExecuteUbergraph_WBP_ShopPanel",
+          "reason": "Original native object argument requires a typed source property or matching literal",
+          "source_sha256": "cd41b99d26b035ca3bd230f44485b8e36215537a599762785969ec15fe1f8783"
+        }
+      }
+    ],
+    "changed_count": 24,
+    "new_translations": [
+      {
+        "package": "/Game/Blueprints/BPI_SandboxCharacter_Pawn",
+        "export_index": "10",
+        "before": {
+          "status": "blocked",
+          "function": "Get_PropertiesForTraversal",
+          "reason": "Unresolved source array or struct schema",
+          "source_sha256": "dec740d87848c372af5c39185b36b9a00b19acd97f6fe701614f2b3df8d8a02d"
+        },
+        "after": {
+          "status": "translated",
+          "function": "Get_PropertiesForTraversal",
+          "reason": null,
+          "source_sha256": "dec740d87848c372af5c39185b36b9a00b19acd97f6fe701614f2b3df8d8a02d"
+        }
+      },
+      {
+        "package": "/Game/Blueprints/BPI_SandboxCharacter_Pawn",
+        "export_index": "8",
+        "before": {
+          "status": "blocked",
+          "function": "Get_PropertiesForAnimation",
+          "reason": "Unresolved source array or struct schema",
+          "source_sha256": "dec740d87848c372af5c39185b36b9a00b19acd97f6fe701614f2b3df8d8a02d"
+        },
+        "after": {
+          "status": "translated",
+          "function": "Get_PropertiesForAnimation",
+          "reason": null,
+          "source_sha256": "dec740d87848c372af5c39185b36b9a00b19acd97f6fe701614f2b3df8d8a02d"
+        }
+      },
+      {
+        "package": "/Game/Blueprints/BPI_SandboxCharacter_Pawn",
+        "export_index": "9",
+        "before": {
+          "status": "blocked",
+          "function": "Get_PropertiesForCamera",
+          "reason": "Unresolved source array or struct schema",
+          "source_sha256": "dec740d87848c372af5c39185b36b9a00b19acd97f6fe701614f2b3df8d8a02d"
+        },
+        "after": {
+          "status": "translated",
+          "function": "Get_PropertiesForCamera",
+          "reason": null,
+          "source_sha256": "dec740d87848c372af5c39185b36b9a00b19acd97f6fe701614f2b3df8d8a02d"
+        }
+      },
+      {
+        "package": "/Game/Blueprints/SmartObjects/AC_SmartObjectAnimation",
+        "export_index": "35",
+        "before": {
+          "status": "blocked",
+          "function": "OnNotifyBegin_3842BE40445726A60460DAA8B53487C2",
+          "reason": "Untranslated function dependency: ExecuteUbergraph_AC_SmartObjectAnimation@1301",
+          "source_sha256": "77a9e4a55eb95b14565add0da3a445ce9cd3365dc528f04d0d78f7fb502c16aa"
+        },
+        "after": {
+          "status": "translated",
+          "function": "OnNotifyBegin_3842BE40445726A60460DAA8B53487C2",
+          "reason": null,
+          "source_sha256": "77a9e4a55eb95b14565add0da3a445ce9cd3365dc528f04d0d78f7fb502c16aa"
+        }
+      },
+      {
+        "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover_ABP",
+        "export_index": "1064",
+        "before": {
+          "status": "blocked",
+          "function": "EvaluateGraphExposedInputs_ExecuteUbergraph_CBP_Fixers_Mover_ABP_AnimGraphNode_ControlRig_3C9ABB30429E4227171419BA20E2D1F5",
+          "reason": "Untranslated function dependency: ExecuteUbergraph_CBP_Fixers_Mover_ABP@5595",
+          "source_sha256": "b49213d5e9c6383680786bf7ade1da60ba94702eecb9b7602008ca0dc99180dd"
+        },
+        "after": {
+          "status": "translated",
+          "function": "EvaluateGraphExposedInputs_ExecuteUbergraph_CBP_Fixers_Mover_ABP_AnimGraphNode_ControlRig_3C9ABB30429E4227171419BA20E2D1F5",
+          "reason": null,
+          "source_sha256": "b49213d5e9c6383680786bf7ade1da60ba94702eecb9b7602008ca0dc99180dd"
+        }
+      },
+      {
+        "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover_ABP",
+        "export_index": "1176",
+        "before": {
+          "status": "blocked",
+          "function": "Get_LandVelocity",
+          "reason": "Source adapter property schema is unavailable",
+          "source_sha256": "b49213d5e9c6383680786bf7ade1da60ba94702eecb9b7602008ca0dc99180dd"
+        },
+        "after": {
+          "status": "translated",
+          "function": "Get_LandVelocity",
+          "reason": null,
+          "source_sha256": "b49213d5e9c6383680786bf7ade1da60ba94702eecb9b7602008ca0dc99180dd"
+        }
+      },
+      {
+        "package": "/Game/Fixers/Core/Blueprints/Characters/CBP_Fixers_Mover_ABP",
+        "export_index": "1188",
+        "before": {
+          "status": "blocked",
+          "function": "Get_SlideSlopeOffset",
+          "reason": "Source adapter property schema is unavailable",
+          "source_sha256": "b49213d5e9c6383680786bf7ade1da60ba94702eecb9b7602008ca0dc99180dd"
+        },
+        "after": {
+          "status": "translated",
+          "function": "Get_SlideSlopeOffset",
+          "reason": null,
+          "source_sha256": "b49213d5e9c6383680786bf7ade1da60ba94702eecb9b7602008ca0dc99180dd"
+        }
+      },
+      {
+        "package": "/Game/Fixers/Core/Game/GameInstance/BP_GI_Fixers",
+        "export_index": "36",
+        "before": {
+          "status": "blocked",
+          "function": "GetSavedQuests",
+          "reason": "Unresolved source array or struct schema",
+          "source_sha256": "b4683c7ec463524e4d0bf6d0ae381da5962c48a06d4170bb901a567dd5070235"
+        },
+        "after": {
+          "status": "translated",
+          "function": "GetSavedQuests",
+          "reason": null,
+          "source_sha256": "b4683c7ec463524e4d0bf6d0ae381da5962c48a06d4170bb901a567dd5070235"
+        }
+      },
+      {
+        "package": "/Game/Fixers/Core/Game/GameInstance/BP_GI_Fixers",
+        "export_index": "56",
+        "before": {
+          "status": "blocked",
+          "function": "SaveQuests",
+          "reason": "Unresolved source array or struct schema",
+          "source_sha256": "b4683c7ec463524e4d0bf6d0ae381da5962c48a06d4170bb901a567dd5070235"
+        },
+        "after": {
+          "status": "translated",
+          "function": "SaveQuests",
+          "reason": null,
+          "source_sha256": "b4683c7ec463524e4d0bf6d0ae381da5962c48a06d4170bb901a567dd5070235"
+        }
+      },
+      {
+        "package": "/Game/Fixers/Core/Game/PlayerState_BPS/BPS_Fixers",
+        "export_index": "12",
+        "before": {
+          "status": "blocked",
+          "function": "HasActiveQuestFromFixer",
+          "reason": "Source adapter property schema is unavailable",
+          "source_sha256": "063321e4ebe909ad70e134c121b080711852dbc001826b6442f330588a8464de"
+        },
+        "after": {
+          "status": "translated",
+          "function": "HasActiveQuestFromFixer",
+          "reason": null,
+          "source_sha256": "063321e4ebe909ad70e134c121b080711852dbc001826b6442f330588a8464de"
+        }
+      }
+    ],
+    "new_translation_count": 10,
+    "regressions": [],
+    "regression_count": 0,
+    "disappeared_functions": [],
+    "disappeared_count": 0,
+    "monotonic_source_compilation": true,
+    "certifiable_gain": true
+  },
+  "visual_play_validation": false
+}

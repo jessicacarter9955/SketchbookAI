@@ -172,6 +172,24 @@ def serialized_value(package, prop, schema, value):
     if type_name == 'StructProperty':
         values = value.get('Value')
         if schema.get('native'):
+            if schema.get('native') == 'Transform':
+                # Original UAssetAPI FTransform tag contains three tagged
+                # native members, not one flat numeric native payload.
+                if value.get('StructType') != 'Transform' or not isinstance(values,list) or len(values) != 3:
+                    raise ValueError('Missing complete original FTransform fields')
+                expected = {'Rotation':'Quat','Translation':'Vector','Scale3D':'Vector'}
+                result = {};seen = set()
+                for child in values:
+                    name = child.get('Name')
+                    if (name not in expected or name in seen
+                            or child.get('StructType') != expected[name]
+                            or child.get('ArrayIndex',0) != 0):
+                        raise ValueError('Unknown, duplicate or incompatible original FTransform field')
+                    seen.add(name)
+                    result[name] = serialized_value(package,{},schema['fields'][name],child)
+                if seen != set(expected):
+                    raise ValueError('Incomplete original FTransform fields')
+                return result
             if schema.get('native') == 'SlateColor':
                 if not isinstance(values,list) or len(values)!=2:
                     raise ValueError('Missing complete original FSlateColor fields')

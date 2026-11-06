@@ -5,6 +5,2130 @@
     "parsed_sha256": "850125cceb476603293207c66d6fc71ab4689823db3f8bae6096415d5d3498e4"
   },
   "functions": {
+    "Get_LandVelocity": {
+      "schema_version": 1,
+      "name": "Get_LandVelocity",
+      "status": "translated_straight_line",
+      "internal_event_entry": false,
+      "event_entry_offset": null,
+      "memory_size_verified": null,
+      "source_bytecode_sha256": "210d463a06cecdca02622b80dd1acc296939eae0f3fb8bc625d4ad5ea5100f6b",
+      "self_reads": [
+        "CharacterProperties"
+      ],
+      "source_owner_index": 54,
+      "self_writes": [],
+      "output_fields": [
+        "ReturnValue"
+      ],
+      "steps": [
+        {
+          "op": "evaluate",
+          "value": {
+            "op": "math_outputs",
+            "name": "BreakVector",
+            "args": [
+              {
+                "op": "member",
+                "field": "LandVelocity_40_AD6ED73D49EE6F5998ECD7ACB2D5D7EB",
+                "value": {
+                  "op": "get",
+                  "scope": "self",
+                  "field": "CharacterProperties"
+                }
+              }
+            ],
+            "components": [
+              "X",
+              "Y",
+              "Z"
+            ],
+            "targets": [
+              {
+                "op": "get",
+                "scope": "local",
+                "field": "CallFunc_BreakVector_X",
+                "type": "DoubleProperty"
+              },
+              {
+                "op": "get",
+                "scope": "local",
+                "field": "CallFunc_BreakVector_Y",
+                "type": "DoubleProperty"
+              },
+              {
+                "op": "get",
+                "scope": "local",
+                "field": "CallFunc_BreakVector_Z",
+                "type": "DoubleProperty"
+              }
+            ]
+          },
+          "source_index": 2
+        },
+        {
+          "op": "set",
+          "field": "ReturnValue",
+          "scope": "local",
+          "value": {
+            "op": "get",
+            "scope": "local",
+            "field": "CallFunc_BreakVector_Z"
+          },
+          "boolean": false,
+          "source_index": 4
+        },
+        {
+          "op": "return",
+          "value": {
+            "op": "get",
+            "scope": "local",
+            "field": "ReturnValue"
+          },
+          "source_index": 6
+        }
+      ],
+      "field_types": {
+        "self": {
+          "CharacterProperties": "StructProperty"
+        },
+        "local": {
+          "ReturnValue": "DoubleProperty",
+          "CallFunc_BreakVector_X": "DoubleProperty",
+          "CallFunc_BreakVector_Y": "DoubleProperty",
+          "CallFunc_BreakVector_Z": "DoubleProperty"
+        }
+      },
+      "source_property_types": {
+        "ReturnValue": {
+          "$type": "UAssetAPI.FieldTypes.FGenericProperty, UAssetAPI",
+          "ArrayDim": "TArray",
+          "ElementSize": 8,
+          "PropertyFlags": "CPF_Parm, CPF_OutParm, CPF_ReturnParm",
+          "RepIndex": 0,
+          "RepNotifyFunc": "None",
+          "BlueprintReplicationCondition": "COND_None",
+          "RawValue": null,
+          "SerializedType": "DoubleProperty",
+          "Name": "ReturnValue",
+          "Flags": "RF_Public",
+          "MetaDataMap": null
+        },
+        "CallFunc_BreakVector_X": {
+          "$type": "UAssetAPI.FieldTypes.FGenericProperty, UAssetAPI",
+          "ArrayDim": "TArray",
+          "ElementSize": 8,
+          "PropertyFlags": "CPF_None",
+          "RepIndex": 0,
+          "RepNotifyFunc": "None",
+          "BlueprintReplicationCondition": "COND_None",
+          "RawValue": null,
+          "SerializedType": "DoubleProperty",
+          "Name": "CallFunc_BreakVector_X",
+          "Flags": "RF_Public",
+          "MetaDataMap": null
+        },
+        "CallFunc_BreakVector_Y": {
+          "$type": "UAssetAPI.FieldTypes.FGenericProperty, UAssetAPI",
+          "ArrayDim": "TArray",
+          "ElementSize": 8,
+          "PropertyFlags": "CPF_None",
+          "RepIndex": 0,
+          "RepNotifyFunc": "None",
+          "BlueprintReplicationCondition": "COND_None",
+          "RawValue": null,
+          "SerializedType": "DoubleProperty",
+          "Name": "CallFunc_BreakVector_Y",
+          "Flags": "RF_Public",
+          "MetaDataMap": null
+        },
+        "CallFunc_BreakVector_Z": {
+          "$type": "UAssetAPI.FieldTypes.FGenericProperty, UAssetAPI",
+          "ArrayDim": "TArray",
+          "ElementSize": 8,
+          "PropertyFlags": "CPF_None",
+          "RepIndex": 0,
+          "RepNotifyFunc": "None",
+          "BlueprintReplicationCondition": "COND_None",
+          "RawValue": null,
+          "SerializedType": "DoubleProperty",
+          "Name": "CallFunc_BreakVector_Z",
+          "Flags": "RF_Public",
+          "MetaDataMap": null
+        }
+      },
+      "schemas": {
+        "local": {},
+        "self": {
+          "CharacterProperties": {
+            "type": "StructProperty",
+            "source": "/Game/Blueprints/Data/S_CharacterPropertiesForAnimation",
+            "fields": {
+              "InputState_32_04D997924898849E2B907292D8F9311E": {
+                "type": "StructProperty",
+                "source": "/Game/Blueprints/Data/S_PlayerInputState",
+                "fields": {
+                  "WantsToSprint_1_840C190D4B23289C5C46E0B5A4C5C936": {
+                    "type": "BoolProperty",
+                    "default": false
+                  },
+                  "WantsToWalk_3_78963B154975E3BDE244A3BE438473E3": {
+                    "type": "BoolProperty",
+                    "default": false
+                  },
+                  "WantsToStrafe_5_64E842184F7691CD179DFCBA7158A4D9": {
+                    "type": "BoolProperty",
+                    "default": false
+                  },
+                  "WantsToAim_7_3A4AA0AA4DE529A3B213E68BECD246F8": {
+                    "type": "BoolProperty",
+                    "default": false
+                  },
+                  "WantsToCrouch_9_47D0791142F36BB93FFD9EA12F96F2B9": {
+                    "type": "BoolProperty",
+                    "default": false
+                  }
+                },
+                "default": {
+                  "WantsToSprint_1_840C190D4B23289C5C46E0B5A4C5C936": false,
+                  "WantsToWalk_3_78963B154975E3BDE244A3BE438473E3": false,
+                  "WantsToStrafe_5_64E842184F7691CD179DFCBA7158A4D9": false,
+                  "WantsToAim_7_3A4AA0AA4DE529A3B213E68BECD246F8": false,
+                  "WantsToCrouch_9_47D0791142F36BB93FFD9EA12F96F2B9": false
+                },
+                "properties": {
+                  "WantsToSprint_1_840C190D4B23289C5C46E0B5A4C5C936": {
+                    "SerializedType": "BoolProperty",
+                    "Name": "WantsToSprint_1_840C190D4B23289C5C46E0B5A4C5C936"
+                  },
+                  "WantsToWalk_3_78963B154975E3BDE244A3BE438473E3": {
+                    "SerializedType": "BoolProperty",
+                    "Name": "WantsToWalk_3_78963B154975E3BDE244A3BE438473E3"
+                  },
+                  "WantsToStrafe_5_64E842184F7691CD179DFCBA7158A4D9": {
+                    "SerializedType": "BoolProperty",
+                    "Name": "WantsToStrafe_5_64E842184F7691CD179DFCBA7158A4D9"
+                  },
+                  "WantsToAim_7_3A4AA0AA4DE529A3B213E68BECD246F8": {
+                    "SerializedType": "BoolProperty",
+                    "Name": "WantsToAim_7_3A4AA0AA4DE529A3B213E68BECD246F8"
+                  },
+                  "WantsToCrouch_9_47D0791142F36BB93FFD9EA12F96F2B9": {
+                    "SerializedType": "BoolProperty",
+                    "Name": "WantsToCrouch_9_47D0791142F36BB93FFD9EA12F96F2B9"
+                  }
+                },
+                "member_order": [
+                  "WantsToSprint_1_840C190D4B23289C5C46E0B5A4C5C936",
+                  "WantsToWalk_3_78963B154975E3BDE244A3BE438473E3",
+                  "WantsToStrafe_5_64E842184F7691CD179DFCBA7158A4D9",
+                  "WantsToAim_7_3A4AA0AA4DE529A3B213E68BECD246F8",
+                  "WantsToCrouch_9_47D0791142F36BB93FFD9EA12F96F2B9"
+                ]
+              },
+              "MovementMode_2_5EAAF2DE40EEFFC0CEB680A055920D1F": {
+                "type": "ByteProperty",
+                "default": 0,
+                "enum_values": {
+                  "E_MovementMode::NewEnumerator4": 0,
+                  "E_MovementMode::NewEnumerator5": 1,
+                  "E_MovementMode::NewEnumerator6": 2,
+                  "E_MovementMode::NewEnumerator7": 3,
+                  "E_MovementMode::E_0_MAX": 4
+                }
+              },
+              "Stance_9_1D5931DB4C5B00938B77A7B2C5B74DD6": {
+                "type": "ByteProperty",
+                "default": 0,
+                "enum_values": {
+                  "E_Stance::NewEnumerator0": 0,
+                  "E_Stance::NewEnumerator1": 1,
+                  "E_Stance::E_0_MAX": 2
+                }
+              },
+              "RotationMode_5_09FB56C54CBB02C7BA2238AF05967717": {
+                "type": "ByteProperty",
+                "default": 0,
+                "enum_values": {
+                  "E_RotationMode::NewEnumerator0": 0,
+                  "E_RotationMode::NewEnumerator1": 1,
+                  "E_RotationMode::NewEnumerator2": 2,
+                  "E_RotationMode::E_0_MAX": 3
+                }
+              },
+              "Gait_12_F5E602A54C3D796AEF369F97F8840DFA": {
+                "type": "ByteProperty",
+                "default": 0,
+                "enum_values": {
+                  "E_Gait::NewEnumerator0": 0,
+                  "E_Gait::NewEnumerator1": 1,
+                  "E_Gait::NewEnumerator2": 2,
+                  "E_Gait::NewEnumerator4": 3,
+                  "E_Gait::E_MAX": 4
+                }
+              },
+              "MovementDirection_55_F23BA6D2439A1D901351DFB2829190CD": {
+                "type": "ByteProperty",
+                "default": 0,
+                "enum_values": {
+                  "E_MovementDirection::NewEnumerator0": 0,
+                  "E_MovementDirection::NewEnumerator1": 1,
+                  "E_MovementDirection::NewEnumerator3": 2,
+                  "E_MovementDirection::NewEnumerator2": 3,
+                  "E_MovementDirection::NewEnumerator4": 4,
+                  "E_MovementDirection::NewEnumerator5": 5,
+                  "E_MovementDirection::E_0_MAX": 6
+                }
+              },
+              "ActorTransform_16_F865FEEB42A03F0C9D1B7F8D29ACD19F": {
+                "type": "StructProperty",
+                "source": "/Script/CoreUObject",
+                "native": "Transform",
+                "fields": {
+                  "Rotation": {
+                    "type": "StructProperty",
+                    "source": "/Script/CoreUObject",
+                    "native": "Quat",
+                    "fields": {
+                      "X": {
+                        "type": "DoubleProperty"
+                      },
+                      "Y": {
+                        "type": "DoubleProperty"
+                      },
+                      "Z": {
+                        "type": "DoubleProperty"
+                      },
+                      "W": {
+                        "type": "DoubleProperty"
+                      }
+                    },
+                    "default": {
+                      "X": 0,
+                      "Y": 0,
+                      "Z": 0,
+                      "W": 1
+                    },
+                    "member_order": [
+                      "X",
+                      "Y",
+                      "Z",
+                      "W"
+                    ]
+                  },
+                  "Translation": {
+                    "type": "StructProperty",
+                    "source": "/Script/CoreUObject",
+                    "native": "Vector",
+                    "fields": {
+                      "X": {
+                        "type": "DoubleProperty"
+                      },
+                      "Y": {
+                        "type": "DoubleProperty"
+                      },
+                      "Z": {
+                        "type": "DoubleProperty"
+                      }
+                    },
+                    "default": {
+                      "X": 0,
+                      "Y": 0,
+                      "Z": 0
+                    },
+                    "member_order": [
+                      "X",
+                      "Y",
+                      "Z"
+                    ]
+                  },
+                  "Scale3D": {
+                    "type": "StructProperty",
+                    "source": "/Script/CoreUObject",
+                    "native": "Vector",
+                    "fields": {
+                      "X": {
+                        "type": "DoubleProperty"
+                      },
+                      "Y": {
+                        "type": "DoubleProperty"
+                      },
+                      "Z": {
+                        "type": "DoubleProperty"
+                      }
+                    },
+                    "default": {
+                      "X": 0,
+                      "Y": 0,
+                      "Z": 0
+                    },
+                    "member_order": [
+                      "X",
+                      "Y",
+                      "Z"
+                    ]
+                  }
+                },
+                "default": {
+                  "Rotation": {
+                    "X": 0,
+                    "Y": 0,
+                    "Z": 0,
+                    "W": 1
+                  },
+                  "Translation": {
+                    "X": 0,
+                    "Y": 0,
+                    "Z": 0
+                  },
+                  "Scale3D": {
+                    "X": 1,
+                    "Y": 1,
+                    "Z": 1
+                  }
+                },
+                "member_order": [
+                  "Rotation",
+                  "Translation",
+                  "Scale3D"
+                ]
+              },
+              "Velocity_19_E4BA1C9D46E4A6BAC5DD63A4A1A93BE0": {
+                "type": "StructProperty",
+                "source": "/Script/CoreUObject",
+                "native": "Vector",
+                "fields": {
+                  "X": {
+                    "type": "DoubleProperty"
+                  },
+                  "Y": {
+                    "type": "DoubleProperty"
+                  },
+                  "Z": {
+                    "type": "DoubleProperty"
+                  }
+                },
+                "default": {
+                  "X": 0,
+                  "Y": 0,
+                  "Z": 0
+                },
+                "member_order": [
+                  "X",
+                  "Y",
+                  "Z"
+                ]
+              },
+              "InputAcceleration_21_5C93A8BB46763C31AC835FA9A3C9FE88": {
+                "type": "StructProperty",
+                "source": "/Script/CoreUObject",
+                "native": "Vector",
+                "fields": {
+                  "X": {
+                    "type": "DoubleProperty"
+                  },
+                  "Y": {
+                    "type": "DoubleProperty"
+                  },
+                  "Z": {
+                    "type": "DoubleProperty"
+                  }
+                },
+                "default": {
+                  "X": 0,
+                  "Y": 0,
+                  "Z": 0
+                },
+                "member_order": [
+                  "X",
+                  "Y",
+                  "Z"
+                ]
+              },
+              "CurrentMaxAcceleration_24_A51F19184F2BACEE0F3F85A780F122D6": {
+                "type": "DoubleProperty",
+                "default": 0
+              },
+              "CurrentMaxDeceleration_26_F675EA284CC1A5123C84449BAA351B9A": {
+                "type": "DoubleProperty",
+                "default": 0
+              },
+              "OrientationIntent_49_38FB872B46ADBB0ED766758157174BB1": {
+                "type": "StructProperty",
+                "source": "/Script/CoreUObject",
+                "native": "Rotator",
+                "fields": {
+                  "Pitch": {
+                    "type": "DoubleProperty"
+                  },
+                  "Yaw": {
+                    "type": "DoubleProperty"
+                  },
+                  "Roll": {
+                    "type": "DoubleProperty"
+                  }
+                },
+                "default": {
+                  "Pitch": 0,
+                  "Yaw": 0,
+                  "Roll": 0
+                },
+                "member_order": [
+                  "Pitch",
+                  "Yaw",
+                  "Roll"
+                ]
+              },
+              "AimingRotation_29_9817B3384AC40E67F1E5E39238ADEEEA": {
+                "type": "StructProperty",
+                "source": "/Script/CoreUObject",
+                "native": "Rotator",
+                "fields": {
+                  "Pitch": {
+                    "type": "DoubleProperty"
+                  },
+                  "Yaw": {
+                    "type": "DoubleProperty"
+                  },
+                  "Roll": {
+                    "type": "DoubleProperty"
+                  }
+                },
+                "default": {
+                  "Pitch": 0,
+                  "Yaw": 0,
+                  "Roll": 0
+                },
+                "member_order": [
+                  "Pitch",
+                  "Yaw",
+                  "Roll"
+                ]
+              },
+              "JustLanded_35_E546D46D4B451FBD122127908CFF5899": {
+                "type": "BoolProperty",
+                "default": false
+              },
+              "LandVelocity_40_AD6ED73D49EE6F5998ECD7ACB2D5D7EB": {
+                "type": "StructProperty",
+                "source": "/Script/CoreUObject",
+                "native": "Vector",
+                "fields": {
+                  "X": {
+                    "type": "DoubleProperty"
+                  },
+                  "Y": {
+                    "type": "DoubleProperty"
+                  },
+                  "Z": {
+                    "type": "DoubleProperty"
+                  }
+                },
+                "default": {
+                  "X": 0,
+                  "Y": 0,
+                  "Z": 0
+                },
+                "member_order": [
+                  "X",
+                  "Y",
+                  "Z"
+                ]
+              },
+              "SteeringTime_52_52974A7846AA82FF163EDF9D48AAC336": {
+                "type": "DoubleProperty",
+                "default": 0
+              },
+              "GroundNormal_58_F7B6873B4C61B0EC85BAA2B8F1340DDA": {
+                "type": "StructProperty",
+                "source": "/Script/CoreUObject",
+                "native": "Vector",
+                "fields": {
+                  "X": {
+                    "type": "DoubleProperty"
+                  },
+                  "Y": {
+                    "type": "DoubleProperty"
+                  },
+                  "Z": {
+                    "type": "DoubleProperty"
+                  }
+                },
+                "default": {
+                  "X": 0,
+                  "Y": 0,
+                  "Z": 0
+                },
+                "member_order": [
+                  "X",
+                  "Y",
+                  "Z"
+                ]
+              },
+              "GroundLocation_62_08A0EA404C60B46793D1378218DC1180": {
+                "type": "StructProperty",
+                "source": "/Script/CoreUObject",
+                "native": "Vector",
+                "fields": {
+                  "X": {
+                    "type": "DoubleProperty"
+                  },
+                  "Y": {
+                    "type": "DoubleProperty"
+                  },
+                  "Z": {
+                    "type": "DoubleProperty"
+                  }
+                },
+                "default": {
+                  "X": 0,
+                  "Y": 0,
+                  "Z": 0
+                },
+                "member_order": [
+                  "X",
+                  "Y",
+                  "Z"
+                ]
+              }
+            },
+            "default": {
+              "InputState_32_04D997924898849E2B907292D8F9311E": {
+                "WantsToSprint_1_840C190D4B23289C5C46E0B5A4C5C936": false,
+                "WantsToWalk_3_78963B154975E3BDE244A3BE438473E3": false,
+                "WantsToStrafe_5_64E842184F7691CD179DFCBA7158A4D9": false,
+                "WantsToAim_7_3A4AA0AA4DE529A3B213E68BECD246F8": false,
+                "WantsToCrouch_9_47D0791142F36BB93FFD9EA12F96F2B9": false
+              },
+              "MovementMode_2_5EAAF2DE40EEFFC0CEB680A055920D1F": 0,
+              "Stance_9_1D5931DB4C5B00938B77A7B2C5B74DD6": 0,
+              "RotationMode_5_09FB56C54CBB02C7BA2238AF05967717": 0,
+              "Gait_12_F5E602A54C3D796AEF369F97F8840DFA": 0,
+              "MovementDirection_55_F23BA6D2439A1D901351DFB2829190CD": 0,
+              "ActorTransform_16_F865FEEB42A03F0C9D1B7F8D29ACD19F": {
+                "Rotation": {
+                  "X": 0.0,
+                  "Y": -0.0,
+                  "Z": 0.0,
+                  "W": 1.0
+                },
+                "Translation": {
+                  "X": 0.0,
+                  "Y": 0.0,
+                  "Z": 0.0
+                },
+                "Scale3D": {
+                  "X": 1.0,
+                  "Y": 1.0,
+                  "Z": 1.0
+                }
+              },
+              "Velocity_19_E4BA1C9D46E4A6BAC5DD63A4A1A93BE0": {
+                "X": 0.0,
+                "Y": 0.0,
+                "Z": 0.0
+              },
+              "InputAcceleration_21_5C93A8BB46763C31AC835FA9A3C9FE88": {
+                "X": 0.0,
+                "Y": 0.0,
+                "Z": 0.0
+              },
+              "CurrentMaxAcceleration_24_A51F19184F2BACEE0F3F85A780F122D6": 0.0,
+              "CurrentMaxDeceleration_26_F675EA284CC1A5123C84449BAA351B9A": 0.0,
+              "OrientationIntent_49_38FB872B46ADBB0ED766758157174BB1": {
+                "Pitch": 0.0,
+                "Yaw": 0.0,
+                "Roll": 0.0
+              },
+              "AimingRotation_29_9817B3384AC40E67F1E5E39238ADEEEA": {
+                "Pitch": 0.0,
+                "Yaw": 0.0,
+                "Roll": 0.0
+              },
+              "JustLanded_35_E546D46D4B451FBD122127908CFF5899": false,
+              "LandVelocity_40_AD6ED73D49EE6F5998ECD7ACB2D5D7EB": {
+                "X": 0.0,
+                "Y": 0.0,
+                "Z": 0.0
+              },
+              "SteeringTime_52_52974A7846AA82FF163EDF9D48AAC336": 0.0,
+              "GroundNormal_58_F7B6873B4C61B0EC85BAA2B8F1340DDA": {
+                "X": 0.0,
+                "Y": 0.0,
+                "Z": 0.0
+              },
+              "GroundLocation_62_08A0EA404C60B46793D1378218DC1180": {
+                "X": 0.0,
+                "Y": 0.0,
+                "Z": 0.0
+              }
+            },
+            "properties": {
+              "InputState_32_04D997924898849E2B907292D8F9311E": {
+                "Struct": -19,
+                "SerializedType": "StructProperty",
+                "Name": "InputState_32_04D997924898849E2B907292D8F9311E"
+              },
+              "MovementMode_2_5EAAF2DE40EEFFC0CEB680A055920D1F": {
+                "Enum": -16,
+                "SerializedType": "ByteProperty",
+                "Name": "MovementMode_2_5EAAF2DE40EEFFC0CEB680A055920D1F"
+              },
+              "Stance_9_1D5931DB4C5B00938B77A7B2C5B74DD6": {
+                "Enum": -18,
+                "SerializedType": "ByteProperty",
+                "Name": "Stance_9_1D5931DB4C5B00938B77A7B2C5B74DD6"
+              },
+              "RotationMode_5_09FB56C54CBB02C7BA2238AF05967717": {
+                "Enum": -17,
+                "SerializedType": "ByteProperty",
+                "Name": "RotationMode_5_09FB56C54CBB02C7BA2238AF05967717"
+              },
+              "Gait_12_F5E602A54C3D796AEF369F97F8840DFA": {
+                "Enum": -14,
+                "SerializedType": "ByteProperty",
+                "Name": "Gait_12_F5E602A54C3D796AEF369F97F8840DFA"
+              },
+              "MovementDirection_55_F23BA6D2439A1D901351DFB2829190CD": {
+                "Enum": -15,
+                "SerializedType": "ByteProperty",
+                "Name": "MovementDirection_55_F23BA6D2439A1D901351DFB2829190CD"
+              },
+              "ActorTransform_16_F865FEEB42A03F0C9D1B7F8D29ACD19F": {
+                "Struct": -12,
+                "SerializedType": "StructProperty",
+                "Name": "ActorTransform_16_F865FEEB42A03F0C9D1B7F8D29ACD19F"
+              },
+              "Velocity_19_E4BA1C9D46E4A6BAC5DD63A4A1A93BE0": {
+                "Struct": -13,
+                "SerializedType": "StructProperty",
+                "Name": "Velocity_19_E4BA1C9D46E4A6BAC5DD63A4A1A93BE0"
+              },
+              "InputAcceleration_21_5C93A8BB46763C31AC835FA9A3C9FE88": {
+                "Struct": -13,
+                "SerializedType": "StructProperty",
+                "Name": "InputAcceleration_21_5C93A8BB46763C31AC835FA9A3C9FE88"
+              },
+              "CurrentMaxAcceleration_24_A51F19184F2BACEE0F3F85A780F122D6": {
+                "SerializedType": "DoubleProperty",
+                "Name": "CurrentMaxAcceleration_24_A51F19184F2BACEE0F3F85A780F122D6"
+              },
+              "CurrentMaxDeceleration_26_F675EA284CC1A5123C84449BAA351B9A": {
+                "SerializedType": "DoubleProperty",
+                "Name": "CurrentMaxDeceleration_26_F675EA284CC1A5123C84449BAA351B9A"
+              },
+              "OrientationIntent_49_38FB872B46ADBB0ED766758157174BB1": {
+                "Struct": -11,
+                "SerializedType": "StructProperty",
+                "Name": "OrientationIntent_49_38FB872B46ADBB0ED766758157174BB1"
+              },
+              "AimingRotation_29_9817B3384AC40E67F1E5E39238ADEEEA": {
+                "Struct": -11,
+                "SerializedType": "StructProperty",
+                "Name": "AimingRotation_29_9817B3384AC40E67F1E5E39238ADEEEA"
+              },
+              "JustLanded_35_E546D46D4B451FBD122127908CFF5899": {
+                "SerializedType": "BoolProperty",
+                "Name": "JustLanded_35_E546D46D4B451FBD122127908CFF5899"
+              },
+              "LandVelocity_40_AD6ED73D49EE6F5998ECD7ACB2D5D7EB": {
+                "Struct": -13,
+                "SerializedType": "StructProperty",
+                "Name": "LandVelocity_40_AD6ED73D49EE6F5998ECD7ACB2D5D7EB"
+              },
+              "SteeringTime_52_52974A7846AA82FF163EDF9D48AAC336": {
+                "SerializedType": "DoubleProperty",
+                "Name": "SteeringTime_52_52974A7846AA82FF163EDF9D48AAC336"
+              },
+              "GroundNormal_58_F7B6873B4C61B0EC85BAA2B8F1340DDA": {
+                "Struct": -13,
+                "SerializedType": "StructProperty",
+                "Name": "GroundNormal_58_F7B6873B4C61B0EC85BAA2B8F1340DDA"
+              },
+              "GroundLocation_62_08A0EA404C60B46793D1378218DC1180": {
+                "Struct": -13,
+                "SerializedType": "StructProperty",
+                "Name": "GroundLocation_62_08A0EA404C60B46793D1378218DC1180"
+              }
+            },
+            "member_order": [
+              "InputState_32_04D997924898849E2B907292D8F9311E",
+              "MovementMode_2_5EAAF2DE40EEFFC0CEB680A055920D1F",
+              "Stance_9_1D5931DB4C5B00938B77A7B2C5B74DD6",
+              "RotationMode_5_09FB56C54CBB02C7BA2238AF05967717",
+              "Gait_12_F5E602A54C3D796AEF369F97F8840DFA",
+              "MovementDirection_55_F23BA6D2439A1D901351DFB2829190CD",
+              "ActorTransform_16_F865FEEB42A03F0C9D1B7F8D29ACD19F",
+              "Velocity_19_E4BA1C9D46E4A6BAC5DD63A4A1A93BE0",
+              "InputAcceleration_21_5C93A8BB46763C31AC835FA9A3C9FE88",
+              "CurrentMaxAcceleration_24_A51F19184F2BACEE0F3F85A780F122D6",
+              "CurrentMaxDeceleration_26_F675EA284CC1A5123C84449BAA351B9A",
+              "OrientationIntent_49_38FB872B46ADBB0ED766758157174BB1",
+              "AimingRotation_29_9817B3384AC40E67F1E5E39238ADEEEA",
+              "JustLanded_35_E546D46D4B451FBD122127908CFF5899",
+              "LandVelocity_40_AD6ED73D49EE6F5998ECD7ACB2D5D7EB",
+              "SteeringTime_52_52974A7846AA82FF163EDF9D48AAC336",
+              "GroundNormal_58_F7B6873B4C61B0EC85BAA2B8F1340DDA",
+              "GroundLocation_62_08A0EA404C60B46793D1378218DC1180"
+            ]
+          }
+        }
+      },
+      "persistent_types": {},
+      "persistent_schemas": {},
+      "input_fields": [],
+      "parameters": [],
+      "source_parameters": [],
+      "value_parameters_only": true,
+      "source_defaults": {
+        "CharacterProperties": {
+          "InputState_32_04D997924898849E2B907292D8F9311E": {
+            "WantsToSprint_1_840C190D4B23289C5C46E0B5A4C5C936": false,
+            "WantsToWalk_3_78963B154975E3BDE244A3BE438473E3": false,
+            "WantsToStrafe_5_64E842184F7691CD179DFCBA7158A4D9": false,
+            "WantsToAim_7_3A4AA0AA4DE529A3B213E68BECD246F8": false,
+            "WantsToCrouch_9_47D0791142F36BB93FFD9EA12F96F2B9": false
+          },
+          "MovementMode_2_5EAAF2DE40EEFFC0CEB680A055920D1F": 0,
+          "Stance_9_1D5931DB4C5B00938B77A7B2C5B74DD6": 0,
+          "RotationMode_5_09FB56C54CBB02C7BA2238AF05967717": 0,
+          "Gait_12_F5E602A54C3D796AEF369F97F8840DFA": 0,
+          "MovementDirection_55_F23BA6D2439A1D901351DFB2829190CD": 0,
+          "ActorTransform_16_F865FEEB42A03F0C9D1B7F8D29ACD19F": {
+            "Rotation": {
+              "X": 0.0,
+              "Y": -0.0,
+              "Z": 0.0,
+              "W": 1.0
+            },
+            "Translation": {
+              "X": 0.0,
+              "Y": 0.0,
+              "Z": 0.0
+            },
+            "Scale3D": {
+              "X": 1.0,
+              "Y": 1.0,
+              "Z": 1.0
+            }
+          },
+          "Velocity_19_E4BA1C9D46E4A6BAC5DD63A4A1A93BE0": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0
+          },
+          "InputAcceleration_21_5C93A8BB46763C31AC835FA9A3C9FE88": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0
+          },
+          "CurrentMaxAcceleration_24_A51F19184F2BACEE0F3F85A780F122D6": 0.0,
+          "CurrentMaxDeceleration_26_F675EA284CC1A5123C84449BAA351B9A": 0.0,
+          "OrientationIntent_49_38FB872B46ADBB0ED766758157174BB1": {
+            "Pitch": 0.0,
+            "Yaw": 0.0,
+            "Roll": 0.0
+          },
+          "AimingRotation_29_9817B3384AC40E67F1E5E39238ADEEEA": {
+            "Pitch": 0.0,
+            "Yaw": 0.0,
+            "Roll": 0.0
+          },
+          "JustLanded_35_E546D46D4B451FBD122127908CFF5899": false,
+          "LandVelocity_40_AD6ED73D49EE6F5998ECD7ACB2D5D7EB": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0
+          },
+          "SteeringTime_52_52974A7846AA82FF163EDF9D48AAC336": 0.0,
+          "GroundNormal_58_F7B6873B4C61B0EC85BAA2B8F1340DDA": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0
+          },
+          "GroundLocation_62_08A0EA404C60B46793D1378218DC1180": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0
+          }
+        }
+      },
+      "source_export_index": 1176
+    },
+    "Get_SlideSlopeOffset": {
+      "schema_version": 1,
+      "name": "Get_SlideSlopeOffset",
+      "status": "translated_straight_line",
+      "internal_event_entry": false,
+      "event_entry_offset": null,
+      "memory_size_verified": null,
+      "source_bytecode_sha256": "30781ecdb76b09a8ca938bfc7623df776b19ccac7a3912852b7e52953c3db3f6",
+      "self_reads": [
+        "CharacterProperties",
+        "RootTransform",
+        "SmoothedGroundNormal"
+      ],
+      "source_owner_index": 54,
+      "self_writes": [],
+      "output_fields": [
+        "ReturnValue"
+      ],
+      "steps": [
+        {
+          "op": "evaluate",
+          "value": {
+            "op": "math_outputs",
+            "name": "BreakTransform",
+            "args": [
+              {
+                "op": "get",
+                "scope": "self",
+                "field": "RootTransform"
+              }
+            ],
+            "components": [
+              "Location",
+              "Rotation",
+              "Scale"
+            ],
+            "targets": [
+              {
+                "op": "get",
+                "scope": "local",
+                "field": "CallFunc_BreakTransform_Location",
+                "type": "StructProperty",
+                "native": "Vector"
+              },
+              {
+                "op": "get",
+                "scope": "local",
+                "field": "CallFunc_BreakTransform_Rotation",
+                "type": "StructProperty",
+                "native": "Rotator"
+              },
+              {
+                "op": "get",
+                "scope": "local",
+                "field": "CallFunc_BreakTransform_Scale",
+                "type": "StructProperty",
+                "native": "Vector"
+              }
+            ]
+          },
+          "source_index": 2
+        },
+        {
+          "op": "set",
+          "field": "CallFunc_ProjectPointOnToPlane_ReturnValue",
+          "scope": "local",
+          "value": {
+            "op": "math",
+            "name": "ProjectPointOnToPlane",
+            "args": [
+              {
+                "op": "get",
+                "scope": "local",
+                "field": "CallFunc_BreakTransform_Location"
+              },
+              {
+                "op": "member",
+                "field": "GroundLocation_62_08A0EA404C60B46793D1378218DC1180",
+                "value": {
+                  "op": "get",
+                  "scope": "self",
+                  "field": "CharacterProperties"
+                }
+              },
+              {
+                "op": "get",
+                "scope": "self",
+                "field": "SmoothedGroundNormal"
+              }
+            ]
+          },
+          "boolean": false,
+          "source_index": 3
+        },
+        {
+          "op": "set",
+          "field": "CallFunc_Subtract_VectorVector_ReturnValue",
+          "scope": "local",
+          "value": {
+            "op": "math",
+            "name": "Subtract_VectorVector",
+            "args": [
+              {
+                "op": "get",
+                "scope": "local",
+                "field": "CallFunc_ProjectPointOnToPlane_ReturnValue"
+              },
+              {
+                "op": "get",
+                "scope": "local",
+                "field": "CallFunc_BreakTransform_Location"
+              }
+            ]
+          },
+          "boolean": false,
+          "source_index": 4
+        },
+        {
+          "op": "set",
+          "field": "ReturnValue",
+          "scope": "local",
+          "value": {
+            "op": "get",
+            "scope": "local",
+            "field": "CallFunc_Subtract_VectorVector_ReturnValue"
+          },
+          "boolean": false,
+          "source_index": 6
+        },
+        {
+          "op": "return",
+          "value": {
+            "op": "get",
+            "scope": "local",
+            "field": "ReturnValue"
+          },
+          "source_index": 8
+        }
+      ],
+      "field_types": {
+        "self": {
+          "CharacterProperties": "StructProperty",
+          "RootTransform": "StructProperty",
+          "SmoothedGroundNormal": "StructProperty"
+        },
+        "local": {
+          "ReturnValue": "StructProperty",
+          "CallFunc_BreakTransform_Location": "StructProperty",
+          "CallFunc_BreakTransform_Rotation": "StructProperty",
+          "CallFunc_BreakTransform_Scale": "StructProperty",
+          "CallFunc_ProjectPointOnToPlane_ReturnValue": "StructProperty",
+          "CallFunc_Subtract_VectorVector_ReturnValue": "StructProperty"
+        }
+      },
+      "source_property_types": {
+        "ReturnValue": {
+          "$type": "UAssetAPI.FieldTypes.FStructProperty, UAssetAPI",
+          "Struct": -507,
+          "ArrayDim": "TArray",
+          "ElementSize": 24,
+          "PropertyFlags": "CPF_Parm, CPF_OutParm, CPF_ReturnParm",
+          "RepIndex": 0,
+          "RepNotifyFunc": "None",
+          "BlueprintReplicationCondition": "COND_None",
+          "RawValue": null,
+          "SerializedType": "StructProperty",
+          "Name": "ReturnValue",
+          "Flags": "RF_Public",
+          "MetaDataMap": null
+        },
+        "CallFunc_BreakTransform_Location": {
+          "$type": "UAssetAPI.FieldTypes.FStructProperty, UAssetAPI",
+          "Struct": -507,
+          "ArrayDim": "TArray",
+          "ElementSize": 24,
+          "PropertyFlags": "CPF_None",
+          "RepIndex": 0,
+          "RepNotifyFunc": "None",
+          "BlueprintReplicationCondition": "COND_None",
+          "RawValue": null,
+          "SerializedType": "StructProperty",
+          "Name": "CallFunc_BreakTransform_Location",
+          "Flags": "RF_Public",
+          "MetaDataMap": null
+        },
+        "CallFunc_BreakTransform_Rotation": {
+          "$type": "UAssetAPI.FieldTypes.FStructProperty, UAssetAPI",
+          "Struct": -505,
+          "ArrayDim": "TArray",
+          "ElementSize": 24,
+          "PropertyFlags": "CPF_None",
+          "RepIndex": 0,
+          "RepNotifyFunc": "None",
+          "BlueprintReplicationCondition": "COND_None",
+          "RawValue": null,
+          "SerializedType": "StructProperty",
+          "Name": "CallFunc_BreakTransform_Rotation",
+          "Flags": "RF_Public",
+          "MetaDataMap": null
+        },
+        "CallFunc_BreakTransform_Scale": {
+          "$type": "UAssetAPI.FieldTypes.FStructProperty, UAssetAPI",
+          "Struct": -507,
+          "ArrayDim": "TArray",
+          "ElementSize": 24,
+          "PropertyFlags": "CPF_None",
+          "RepIndex": 0,
+          "RepNotifyFunc": "None",
+          "BlueprintReplicationCondition": "COND_None",
+          "RawValue": null,
+          "SerializedType": "StructProperty",
+          "Name": "CallFunc_BreakTransform_Scale",
+          "Flags": "RF_Public",
+          "MetaDataMap": null
+        },
+        "CallFunc_ProjectPointOnToPlane_ReturnValue": {
+          "$type": "UAssetAPI.FieldTypes.FStructProperty, UAssetAPI",
+          "Struct": -507,
+          "ArrayDim": "TArray",
+          "ElementSize": 24,
+          "PropertyFlags": "CPF_None",
+          "RepIndex": 0,
+          "RepNotifyFunc": "None",
+          "BlueprintReplicationCondition": "COND_None",
+          "RawValue": null,
+          "SerializedType": "StructProperty",
+          "Name": "CallFunc_ProjectPointOnToPlane_ReturnValue",
+          "Flags": "RF_Public",
+          "MetaDataMap": null
+        },
+        "CallFunc_Subtract_VectorVector_ReturnValue": {
+          "$type": "UAssetAPI.FieldTypes.FStructProperty, UAssetAPI",
+          "Struct": -507,
+          "ArrayDim": "TArray",
+          "ElementSize": 24,
+          "PropertyFlags": "CPF_None",
+          "RepIndex": 0,
+          "RepNotifyFunc": "None",
+          "BlueprintReplicationCondition": "COND_None",
+          "RawValue": null,
+          "SerializedType": "StructProperty",
+          "Name": "CallFunc_Subtract_VectorVector_ReturnValue",
+          "Flags": "RF_Public",
+          "MetaDataMap": null
+        }
+      },
+      "schemas": {
+        "local": {
+          "ReturnValue": {
+            "type": "StructProperty",
+            "source": "/Script/CoreUObject",
+            "native": "Vector",
+            "fields": {
+              "X": {
+                "type": "DoubleProperty"
+              },
+              "Y": {
+                "type": "DoubleProperty"
+              },
+              "Z": {
+                "type": "DoubleProperty"
+              }
+            },
+            "default": {
+              "X": 0,
+              "Y": 0,
+              "Z": 0
+            },
+            "member_order": [
+              "X",
+              "Y",
+              "Z"
+            ]
+          },
+          "CallFunc_BreakTransform_Location": {
+            "type": "StructProperty",
+            "source": "/Script/CoreUObject",
+            "native": "Vector",
+            "fields": {
+              "X": {
+                "type": "DoubleProperty"
+              },
+              "Y": {
+                "type": "DoubleProperty"
+              },
+              "Z": {
+                "type": "DoubleProperty"
+              }
+            },
+            "default": {
+              "X": 0,
+              "Y": 0,
+              "Z": 0
+            },
+            "member_order": [
+              "X",
+              "Y",
+              "Z"
+            ]
+          },
+          "CallFunc_BreakTransform_Rotation": {
+            "type": "StructProperty",
+            "source": "/Script/CoreUObject",
+            "native": "Rotator",
+            "fields": {
+              "Pitch": {
+                "type": "DoubleProperty"
+              },
+              "Yaw": {
+                "type": "DoubleProperty"
+              },
+              "Roll": {
+                "type": "DoubleProperty"
+              }
+            },
+            "default": {
+              "Pitch": 0,
+              "Yaw": 0,
+              "Roll": 0
+            },
+            "member_order": [
+              "Pitch",
+              "Yaw",
+              "Roll"
+            ]
+          },
+          "CallFunc_BreakTransform_Scale": {
+            "type": "StructProperty",
+            "source": "/Script/CoreUObject",
+            "native": "Vector",
+            "fields": {
+              "X": {
+                "type": "DoubleProperty"
+              },
+              "Y": {
+                "type": "DoubleProperty"
+              },
+              "Z": {
+                "type": "DoubleProperty"
+              }
+            },
+            "default": {
+              "X": 0,
+              "Y": 0,
+              "Z": 0
+            },
+            "member_order": [
+              "X",
+              "Y",
+              "Z"
+            ]
+          },
+          "CallFunc_ProjectPointOnToPlane_ReturnValue": {
+            "type": "StructProperty",
+            "source": "/Script/CoreUObject",
+            "native": "Vector",
+            "fields": {
+              "X": {
+                "type": "DoubleProperty"
+              },
+              "Y": {
+                "type": "DoubleProperty"
+              },
+              "Z": {
+                "type": "DoubleProperty"
+              }
+            },
+            "default": {
+              "X": 0,
+              "Y": 0,
+              "Z": 0
+            },
+            "member_order": [
+              "X",
+              "Y",
+              "Z"
+            ]
+          },
+          "CallFunc_Subtract_VectorVector_ReturnValue": {
+            "type": "StructProperty",
+            "source": "/Script/CoreUObject",
+            "native": "Vector",
+            "fields": {
+              "X": {
+                "type": "DoubleProperty"
+              },
+              "Y": {
+                "type": "DoubleProperty"
+              },
+              "Z": {
+                "type": "DoubleProperty"
+              }
+            },
+            "default": {
+              "X": 0,
+              "Y": 0,
+              "Z": 0
+            },
+            "member_order": [
+              "X",
+              "Y",
+              "Z"
+            ]
+          }
+        },
+        "self": {
+          "CharacterProperties": {
+            "type": "StructProperty",
+            "source": "/Game/Blueprints/Data/S_CharacterPropertiesForAnimation",
+            "fields": {
+              "InputState_32_04D997924898849E2B907292D8F9311E": {
+                "type": "StructProperty",
+                "source": "/Game/Blueprints/Data/S_PlayerInputState",
+                "fields": {
+                  "WantsToSprint_1_840C190D4B23289C5C46E0B5A4C5C936": {
+                    "type": "BoolProperty",
+                    "default": false
+                  },
+                  "WantsToWalk_3_78963B154975E3BDE244A3BE438473E3": {
+                    "type": "BoolProperty",
+                    "default": false
+                  },
+                  "WantsToStrafe_5_64E842184F7691CD179DFCBA7158A4D9": {
+                    "type": "BoolProperty",
+                    "default": false
+                  },
+                  "WantsToAim_7_3A4AA0AA4DE529A3B213E68BECD246F8": {
+                    "type": "BoolProperty",
+                    "default": false
+                  },
+                  "WantsToCrouch_9_47D0791142F36BB93FFD9EA12F96F2B9": {
+                    "type": "BoolProperty",
+                    "default": false
+                  }
+                },
+                "default": {
+                  "WantsToSprint_1_840C190D4B23289C5C46E0B5A4C5C936": false,
+                  "WantsToWalk_3_78963B154975E3BDE244A3BE438473E3": false,
+                  "WantsToStrafe_5_64E842184F7691CD179DFCBA7158A4D9": false,
+                  "WantsToAim_7_3A4AA0AA4DE529A3B213E68BECD246F8": false,
+                  "WantsToCrouch_9_47D0791142F36BB93FFD9EA12F96F2B9": false
+                },
+                "properties": {
+                  "WantsToSprint_1_840C190D4B23289C5C46E0B5A4C5C936": {
+                    "SerializedType": "BoolProperty",
+                    "Name": "WantsToSprint_1_840C190D4B23289C5C46E0B5A4C5C936"
+                  },
+                  "WantsToWalk_3_78963B154975E3BDE244A3BE438473E3": {
+                    "SerializedType": "BoolProperty",
+                    "Name": "WantsToWalk_3_78963B154975E3BDE244A3BE438473E3"
+                  },
+                  "WantsToStrafe_5_64E842184F7691CD179DFCBA7158A4D9": {
+                    "SerializedType": "BoolProperty",
+                    "Name": "WantsToStrafe_5_64E842184F7691CD179DFCBA7158A4D9"
+                  },
+                  "WantsToAim_7_3A4AA0AA4DE529A3B213E68BECD246F8": {
+                    "SerializedType": "BoolProperty",
+                    "Name": "WantsToAim_7_3A4AA0AA4DE529A3B213E68BECD246F8"
+                  },
+                  "WantsToCrouch_9_47D0791142F36BB93FFD9EA12F96F2B9": {
+                    "SerializedType": "BoolProperty",
+                    "Name": "WantsToCrouch_9_47D0791142F36BB93FFD9EA12F96F2B9"
+                  }
+                },
+                "member_order": [
+                  "WantsToSprint_1_840C190D4B23289C5C46E0B5A4C5C936",
+                  "WantsToWalk_3_78963B154975E3BDE244A3BE438473E3",
+                  "WantsToStrafe_5_64E842184F7691CD179DFCBA7158A4D9",
+                  "WantsToAim_7_3A4AA0AA4DE529A3B213E68BECD246F8",
+                  "WantsToCrouch_9_47D0791142F36BB93FFD9EA12F96F2B9"
+                ]
+              },
+              "MovementMode_2_5EAAF2DE40EEFFC0CEB680A055920D1F": {
+                "type": "ByteProperty",
+                "default": 0,
+                "enum_values": {
+                  "E_MovementMode::NewEnumerator4": 0,
+                  "E_MovementMode::NewEnumerator5": 1,
+                  "E_MovementMode::NewEnumerator6": 2,
+                  "E_MovementMode::NewEnumerator7": 3,
+                  "E_MovementMode::E_0_MAX": 4
+                }
+              },
+              "Stance_9_1D5931DB4C5B00938B77A7B2C5B74DD6": {
+                "type": "ByteProperty",
+                "default": 0,
+                "enum_values": {
+                  "E_Stance::NewEnumerator0": 0,
+                  "E_Stance::NewEnumerator1": 1,
+                  "E_Stance::E_0_MAX": 2
+                }
+              },
+              "RotationMode_5_09FB56C54CBB02C7BA2238AF05967717": {
+                "type": "ByteProperty",
+                "default": 0,
+                "enum_values": {
+                  "E_RotationMode::NewEnumerator0": 0,
+                  "E_RotationMode::NewEnumerator1": 1,
+                  "E_RotationMode::NewEnumerator2": 2,
+                  "E_RotationMode::E_0_MAX": 3
+                }
+              },
+              "Gait_12_F5E602A54C3D796AEF369F97F8840DFA": {
+                "type": "ByteProperty",
+                "default": 0,
+                "enum_values": {
+                  "E_Gait::NewEnumerator0": 0,
+                  "E_Gait::NewEnumerator1": 1,
+                  "E_Gait::NewEnumerator2": 2,
+                  "E_Gait::NewEnumerator4": 3,
+                  "E_Gait::E_MAX": 4
+                }
+              },
+              "MovementDirection_55_F23BA6D2439A1D901351DFB2829190CD": {
+                "type": "ByteProperty",
+                "default": 0,
+                "enum_values": {
+                  "E_MovementDirection::NewEnumerator0": 0,
+                  "E_MovementDirection::NewEnumerator1": 1,
+                  "E_MovementDirection::NewEnumerator3": 2,
+                  "E_MovementDirection::NewEnumerator2": 3,
+                  "E_MovementDirection::NewEnumerator4": 4,
+                  "E_MovementDirection::NewEnumerator5": 5,
+                  "E_MovementDirection::E_0_MAX": 6
+                }
+              },
+              "ActorTransform_16_F865FEEB42A03F0C9D1B7F8D29ACD19F": {
+                "type": "StructProperty",
+                "source": "/Script/CoreUObject",
+                "native": "Transform",
+                "fields": {
+                  "Rotation": {
+                    "type": "StructProperty",
+                    "source": "/Script/CoreUObject",
+                    "native": "Quat",
+                    "fields": {
+                      "X": {
+                        "type": "DoubleProperty"
+                      },
+                      "Y": {
+                        "type": "DoubleProperty"
+                      },
+                      "Z": {
+                        "type": "DoubleProperty"
+                      },
+                      "W": {
+                        "type": "DoubleProperty"
+                      }
+                    },
+                    "default": {
+                      "X": 0,
+                      "Y": 0,
+                      "Z": 0,
+                      "W": 1
+                    },
+                    "member_order": [
+                      "X",
+                      "Y",
+                      "Z",
+                      "W"
+                    ]
+                  },
+                  "Translation": {
+                    "type": "StructProperty",
+                    "source": "/Script/CoreUObject",
+                    "native": "Vector",
+                    "fields": {
+                      "X": {
+                        "type": "DoubleProperty"
+                      },
+                      "Y": {
+                        "type": "DoubleProperty"
+                      },
+                      "Z": {
+                        "type": "DoubleProperty"
+                      }
+                    },
+                    "default": {
+                      "X": 0,
+                      "Y": 0,
+                      "Z": 0
+                    },
+                    "member_order": [
+                      "X",
+                      "Y",
+                      "Z"
+                    ]
+                  },
+                  "Scale3D": {
+                    "type": "StructProperty",
+                    "source": "/Script/CoreUObject",
+                    "native": "Vector",
+                    "fields": {
+                      "X": {
+                        "type": "DoubleProperty"
+                      },
+                      "Y": {
+                        "type": "DoubleProperty"
+                      },
+                      "Z": {
+                        "type": "DoubleProperty"
+                      }
+                    },
+                    "default": {
+                      "X": 0,
+                      "Y": 0,
+                      "Z": 0
+                    },
+                    "member_order": [
+                      "X",
+                      "Y",
+                      "Z"
+                    ]
+                  }
+                },
+                "default": {
+                  "Rotation": {
+                    "X": 0,
+                    "Y": 0,
+                    "Z": 0,
+                    "W": 1
+                  },
+                  "Translation": {
+                    "X": 0,
+                    "Y": 0,
+                    "Z": 0
+                  },
+                  "Scale3D": {
+                    "X": 1,
+                    "Y": 1,
+                    "Z": 1
+                  }
+                },
+                "member_order": [
+                  "Rotation",
+                  "Translation",
+                  "Scale3D"
+                ]
+              },
+              "Velocity_19_E4BA1C9D46E4A6BAC5DD63A4A1A93BE0": {
+                "type": "StructProperty",
+                "source": "/Script/CoreUObject",
+                "native": "Vector",
+                "fields": {
+                  "X": {
+                    "type": "DoubleProperty"
+                  },
+                  "Y": {
+                    "type": "DoubleProperty"
+                  },
+                  "Z": {
+                    "type": "DoubleProperty"
+                  }
+                },
+                "default": {
+                  "X": 0,
+                  "Y": 0,
+                  "Z": 0
+                },
+                "member_order": [
+                  "X",
+                  "Y",
+                  "Z"
+                ]
+              },
+              "InputAcceleration_21_5C93A8BB46763C31AC835FA9A3C9FE88": {
+                "type": "StructProperty",
+                "source": "/Script/CoreUObject",
+                "native": "Vector",
+                "fields": {
+                  "X": {
+                    "type": "DoubleProperty"
+                  },
+                  "Y": {
+                    "type": "DoubleProperty"
+                  },
+                  "Z": {
+                    "type": "DoubleProperty"
+                  }
+                },
+                "default": {
+                  "X": 0,
+                  "Y": 0,
+                  "Z": 0
+                },
+                "member_order": [
+                  "X",
+                  "Y",
+                  "Z"
+                ]
+              },
+              "CurrentMaxAcceleration_24_A51F19184F2BACEE0F3F85A780F122D6": {
+                "type": "DoubleProperty",
+                "default": 0
+              },
+              "CurrentMaxDeceleration_26_F675EA284CC1A5123C84449BAA351B9A": {
+                "type": "DoubleProperty",
+                "default": 0
+              },
+              "OrientationIntent_49_38FB872B46ADBB0ED766758157174BB1": {
+                "type": "StructProperty",
+                "source": "/Script/CoreUObject",
+                "native": "Rotator",
+                "fields": {
+                  "Pitch": {
+                    "type": "DoubleProperty"
+                  },
+                  "Yaw": {
+                    "type": "DoubleProperty"
+                  },
+                  "Roll": {
+                    "type": "DoubleProperty"
+                  }
+                },
+                "default": {
+                  "Pitch": 0,
+                  "Yaw": 0,
+                  "Roll": 0
+                },
+                "member_order": [
+                  "Pitch",
+                  "Yaw",
+                  "Roll"
+                ]
+              },
+              "AimingRotation_29_9817B3384AC40E67F1E5E39238ADEEEA": {
+                "type": "StructProperty",
+                "source": "/Script/CoreUObject",
+                "native": "Rotator",
+                "fields": {
+                  "Pitch": {
+                    "type": "DoubleProperty"
+                  },
+                  "Yaw": {
+                    "type": "DoubleProperty"
+                  },
+                  "Roll": {
+                    "type": "DoubleProperty"
+                  }
+                },
+                "default": {
+                  "Pitch": 0,
+                  "Yaw": 0,
+                  "Roll": 0
+                },
+                "member_order": [
+                  "Pitch",
+                  "Yaw",
+                  "Roll"
+                ]
+              },
+              "JustLanded_35_E546D46D4B451FBD122127908CFF5899": {
+                "type": "BoolProperty",
+                "default": false
+              },
+              "LandVelocity_40_AD6ED73D49EE6F5998ECD7ACB2D5D7EB": {
+                "type": "StructProperty",
+                "source": "/Script/CoreUObject",
+                "native": "Vector",
+                "fields": {
+                  "X": {
+                    "type": "DoubleProperty"
+                  },
+                  "Y": {
+                    "type": "DoubleProperty"
+                  },
+                  "Z": {
+                    "type": "DoubleProperty"
+                  }
+                },
+                "default": {
+                  "X": 0,
+                  "Y": 0,
+                  "Z": 0
+                },
+                "member_order": [
+                  "X",
+                  "Y",
+                  "Z"
+                ]
+              },
+              "SteeringTime_52_52974A7846AA82FF163EDF9D48AAC336": {
+                "type": "DoubleProperty",
+                "default": 0
+              },
+              "GroundNormal_58_F7B6873B4C61B0EC85BAA2B8F1340DDA": {
+                "type": "StructProperty",
+                "source": "/Script/CoreUObject",
+                "native": "Vector",
+                "fields": {
+                  "X": {
+                    "type": "DoubleProperty"
+                  },
+                  "Y": {
+                    "type": "DoubleProperty"
+                  },
+                  "Z": {
+                    "type": "DoubleProperty"
+                  }
+                },
+                "default": {
+                  "X": 0,
+                  "Y": 0,
+                  "Z": 0
+                },
+                "member_order": [
+                  "X",
+                  "Y",
+                  "Z"
+                ]
+              },
+              "GroundLocation_62_08A0EA404C60B46793D1378218DC1180": {
+                "type": "StructProperty",
+                "source": "/Script/CoreUObject",
+                "native": "Vector",
+                "fields": {
+                  "X": {
+                    "type": "DoubleProperty"
+                  },
+                  "Y": {
+                    "type": "DoubleProperty"
+                  },
+                  "Z": {
+                    "type": "DoubleProperty"
+                  }
+                },
+                "default": {
+                  "X": 0,
+                  "Y": 0,
+                  "Z": 0
+                },
+                "member_order": [
+                  "X",
+                  "Y",
+                  "Z"
+                ]
+              }
+            },
+            "default": {
+              "InputState_32_04D997924898849E2B907292D8F9311E": {
+                "WantsToSprint_1_840C190D4B23289C5C46E0B5A4C5C936": false,
+                "WantsToWalk_3_78963B154975E3BDE244A3BE438473E3": false,
+                "WantsToStrafe_5_64E842184F7691CD179DFCBA7158A4D9": false,
+                "WantsToAim_7_3A4AA0AA4DE529A3B213E68BECD246F8": false,
+                "WantsToCrouch_9_47D0791142F36BB93FFD9EA12F96F2B9": false
+              },
+              "MovementMode_2_5EAAF2DE40EEFFC0CEB680A055920D1F": 0,
+              "Stance_9_1D5931DB4C5B00938B77A7B2C5B74DD6": 0,
+              "RotationMode_5_09FB56C54CBB02C7BA2238AF05967717": 0,
+              "Gait_12_F5E602A54C3D796AEF369F97F8840DFA": 0,
+              "MovementDirection_55_F23BA6D2439A1D901351DFB2829190CD": 0,
+              "ActorTransform_16_F865FEEB42A03F0C9D1B7F8D29ACD19F": {
+                "Rotation": {
+                  "X": 0.0,
+                  "Y": -0.0,
+                  "Z": 0.0,
+                  "W": 1.0
+                },
+                "Translation": {
+                  "X": 0.0,
+                  "Y": 0.0,
+                  "Z": 0.0
+                },
+                "Scale3D": {
+                  "X": 1.0,
+                  "Y": 1.0,
+                  "Z": 1.0
+                }
+              },
+              "Velocity_19_E4BA1C9D46E4A6BAC5DD63A4A1A93BE0": {
+                "X": 0.0,
+                "Y": 0.0,
+                "Z": 0.0
+              },
+              "InputAcceleration_21_5C93A8BB46763C31AC835FA9A3C9FE88": {
+                "X": 0.0,
+                "Y": 0.0,
+                "Z": 0.0
+              },
+              "CurrentMaxAcceleration_24_A51F19184F2BACEE0F3F85A780F122D6": 0.0,
+              "CurrentMaxDeceleration_26_F675EA284CC1A5123C84449BAA351B9A": 0.0,
+              "OrientationIntent_49_38FB872B46ADBB0ED766758157174BB1": {
+                "Pitch": 0.0,
+                "Yaw": 0.0,
+                "Roll": 0.0
+              },
+              "AimingRotation_29_9817B3384AC40E67F1E5E39238ADEEEA": {
+                "Pitch": 0.0,
+                "Yaw": 0.0,
+                "Roll": 0.0
+              },
+              "JustLanded_35_E546D46D4B451FBD122127908CFF5899": false,
+              "LandVelocity_40_AD6ED73D49EE6F5998ECD7ACB2D5D7EB": {
+                "X": 0.0,
+                "Y": 0.0,
+                "Z": 0.0
+              },
+              "SteeringTime_52_52974A7846AA82FF163EDF9D48AAC336": 0.0,
+              "GroundNormal_58_F7B6873B4C61B0EC85BAA2B8F1340DDA": {
+                "X": 0.0,
+                "Y": 0.0,
+                "Z": 0.0
+              },
+              "GroundLocation_62_08A0EA404C60B46793D1378218DC1180": {
+                "X": 0.0,
+                "Y": 0.0,
+                "Z": 0.0
+              }
+            },
+            "properties": {
+              "InputState_32_04D997924898849E2B907292D8F9311E": {
+                "Struct": -19,
+                "SerializedType": "StructProperty",
+                "Name": "InputState_32_04D997924898849E2B907292D8F9311E"
+              },
+              "MovementMode_2_5EAAF2DE40EEFFC0CEB680A055920D1F": {
+                "Enum": -16,
+                "SerializedType": "ByteProperty",
+                "Name": "MovementMode_2_5EAAF2DE40EEFFC0CEB680A055920D1F"
+              },
+              "Stance_9_1D5931DB4C5B00938B77A7B2C5B74DD6": {
+                "Enum": -18,
+                "SerializedType": "ByteProperty",
+                "Name": "Stance_9_1D5931DB4C5B00938B77A7B2C5B74DD6"
+              },
+              "RotationMode_5_09FB56C54CBB02C7BA2238AF05967717": {
+                "Enum": -17,
+                "SerializedType": "ByteProperty",
+                "Name": "RotationMode_5_09FB56C54CBB02C7BA2238AF05967717"
+              },
+              "Gait_12_F5E602A54C3D796AEF369F97F8840DFA": {
+                "Enum": -14,
+                "SerializedType": "ByteProperty",
+                "Name": "Gait_12_F5E602A54C3D796AEF369F97F8840DFA"
+              },
+              "MovementDirection_55_F23BA6D2439A1D901351DFB2829190CD": {
+                "Enum": -15,
+                "SerializedType": "ByteProperty",
+                "Name": "MovementDirection_55_F23BA6D2439A1D901351DFB2829190CD"
+              },
+              "ActorTransform_16_F865FEEB42A03F0C9D1B7F8D29ACD19F": {
+                "Struct": -12,
+                "SerializedType": "StructProperty",
+                "Name": "ActorTransform_16_F865FEEB42A03F0C9D1B7F8D29ACD19F"
+              },
+              "Velocity_19_E4BA1C9D46E4A6BAC5DD63A4A1A93BE0": {
+                "Struct": -13,
+                "SerializedType": "StructProperty",
+                "Name": "Velocity_19_E4BA1C9D46E4A6BAC5DD63A4A1A93BE0"
+              },
+              "InputAcceleration_21_5C93A8BB46763C31AC835FA9A3C9FE88": {
+                "Struct": -13,
+                "SerializedType": "StructProperty",
+                "Name": "InputAcceleration_21_5C93A8BB46763C31AC835FA9A3C9FE88"
+              },
+              "CurrentMaxAcceleration_24_A51F19184F2BACEE0F3F85A780F122D6": {
+                "SerializedType": "DoubleProperty",
+                "Name": "CurrentMaxAcceleration_24_A51F19184F2BACEE0F3F85A780F122D6"
+              },
+              "CurrentMaxDeceleration_26_F675EA284CC1A5123C84449BAA351B9A": {
+                "SerializedType": "DoubleProperty",
+                "Name": "CurrentMaxDeceleration_26_F675EA284CC1A5123C84449BAA351B9A"
+              },
+              "OrientationIntent_49_38FB872B46ADBB0ED766758157174BB1": {
+                "Struct": -11,
+                "SerializedType": "StructProperty",
+                "Name": "OrientationIntent_49_38FB872B46ADBB0ED766758157174BB1"
+              },
+              "AimingRotation_29_9817B3384AC40E67F1E5E39238ADEEEA": {
+                "Struct": -11,
+                "SerializedType": "StructProperty",
+                "Name": "AimingRotation_29_9817B3384AC40E67F1E5E39238ADEEEA"
+              },
+              "JustLanded_35_E546D46D4B451FBD122127908CFF5899": {
+                "SerializedType": "BoolProperty",
+                "Name": "JustLanded_35_E546D46D4B451FBD122127908CFF5899"
+              },
+              "LandVelocity_40_AD6ED73D49EE6F5998ECD7ACB2D5D7EB": {
+                "Struct": -13,
+                "SerializedType": "StructProperty",
+                "Name": "LandVelocity_40_AD6ED73D49EE6F5998ECD7ACB2D5D7EB"
+              },
+              "SteeringTime_52_52974A7846AA82FF163EDF9D48AAC336": {
+                "SerializedType": "DoubleProperty",
+                "Name": "SteeringTime_52_52974A7846AA82FF163EDF9D48AAC336"
+              },
+              "GroundNormal_58_F7B6873B4C61B0EC85BAA2B8F1340DDA": {
+                "Struct": -13,
+                "SerializedType": "StructProperty",
+                "Name": "GroundNormal_58_F7B6873B4C61B0EC85BAA2B8F1340DDA"
+              },
+              "GroundLocation_62_08A0EA404C60B46793D1378218DC1180": {
+                "Struct": -13,
+                "SerializedType": "StructProperty",
+                "Name": "GroundLocation_62_08A0EA404C60B46793D1378218DC1180"
+              }
+            },
+            "member_order": [
+              "InputState_32_04D997924898849E2B907292D8F9311E",
+              "MovementMode_2_5EAAF2DE40EEFFC0CEB680A055920D1F",
+              "Stance_9_1D5931DB4C5B00938B77A7B2C5B74DD6",
+              "RotationMode_5_09FB56C54CBB02C7BA2238AF05967717",
+              "Gait_12_F5E602A54C3D796AEF369F97F8840DFA",
+              "MovementDirection_55_F23BA6D2439A1D901351DFB2829190CD",
+              "ActorTransform_16_F865FEEB42A03F0C9D1B7F8D29ACD19F",
+              "Velocity_19_E4BA1C9D46E4A6BAC5DD63A4A1A93BE0",
+              "InputAcceleration_21_5C93A8BB46763C31AC835FA9A3C9FE88",
+              "CurrentMaxAcceleration_24_A51F19184F2BACEE0F3F85A780F122D6",
+              "CurrentMaxDeceleration_26_F675EA284CC1A5123C84449BAA351B9A",
+              "OrientationIntent_49_38FB872B46ADBB0ED766758157174BB1",
+              "AimingRotation_29_9817B3384AC40E67F1E5E39238ADEEEA",
+              "JustLanded_35_E546D46D4B451FBD122127908CFF5899",
+              "LandVelocity_40_AD6ED73D49EE6F5998ECD7ACB2D5D7EB",
+              "SteeringTime_52_52974A7846AA82FF163EDF9D48AAC336",
+              "GroundNormal_58_F7B6873B4C61B0EC85BAA2B8F1340DDA",
+              "GroundLocation_62_08A0EA404C60B46793D1378218DC1180"
+            ]
+          },
+          "RootTransform": {
+            "type": "StructProperty",
+            "source": "/Script/CoreUObject",
+            "native": "Transform",
+            "fields": {
+              "Rotation": {
+                "type": "StructProperty",
+                "source": "/Script/CoreUObject",
+                "native": "Quat",
+                "fields": {
+                  "X": {
+                    "type": "DoubleProperty"
+                  },
+                  "Y": {
+                    "type": "DoubleProperty"
+                  },
+                  "Z": {
+                    "type": "DoubleProperty"
+                  },
+                  "W": {
+                    "type": "DoubleProperty"
+                  }
+                },
+                "default": {
+                  "X": 0,
+                  "Y": 0,
+                  "Z": 0,
+                  "W": 1
+                },
+                "member_order": [
+                  "X",
+                  "Y",
+                  "Z",
+                  "W"
+                ]
+              },
+              "Translation": {
+                "type": "StructProperty",
+                "source": "/Script/CoreUObject",
+                "native": "Vector",
+                "fields": {
+                  "X": {
+                    "type": "DoubleProperty"
+                  },
+                  "Y": {
+                    "type": "DoubleProperty"
+                  },
+                  "Z": {
+                    "type": "DoubleProperty"
+                  }
+                },
+                "default": {
+                  "X": 0,
+                  "Y": 0,
+                  "Z": 0
+                },
+                "member_order": [
+                  "X",
+                  "Y",
+                  "Z"
+                ]
+              },
+              "Scale3D": {
+                "type": "StructProperty",
+                "source": "/Script/CoreUObject",
+                "native": "Vector",
+                "fields": {
+                  "X": {
+                    "type": "DoubleProperty"
+                  },
+                  "Y": {
+                    "type": "DoubleProperty"
+                  },
+                  "Z": {
+                    "type": "DoubleProperty"
+                  }
+                },
+                "default": {
+                  "X": 0,
+                  "Y": 0,
+                  "Z": 0
+                },
+                "member_order": [
+                  "X",
+                  "Y",
+                  "Z"
+                ]
+              }
+            },
+            "default": {
+              "Rotation": {
+                "X": 0,
+                "Y": 0,
+                "Z": 0,
+                "W": 1
+              },
+              "Translation": {
+                "X": 0,
+                "Y": 0,
+                "Z": 0
+              },
+              "Scale3D": {
+                "X": 1,
+                "Y": 1,
+                "Z": 1
+              }
+            },
+            "member_order": [
+              "Rotation",
+              "Translation",
+              "Scale3D"
+            ]
+          },
+          "SmoothedGroundNormal": {
+            "type": "StructProperty",
+            "source": "/Script/CoreUObject",
+            "native": "Vector",
+            "fields": {
+              "X": {
+                "type": "DoubleProperty"
+              },
+              "Y": {
+                "type": "DoubleProperty"
+              },
+              "Z": {
+                "type": "DoubleProperty"
+              }
+            },
+            "default": {
+              "X": 0,
+              "Y": 0,
+              "Z": 0
+            },
+            "member_order": [
+              "X",
+              "Y",
+              "Z"
+            ]
+          }
+        }
+      },
+      "persistent_types": {},
+      "persistent_schemas": {},
+      "input_fields": [],
+      "parameters": [],
+      "source_parameters": [],
+      "value_parameters_only": true,
+      "source_defaults": {
+        "CharacterProperties": {
+          "InputState_32_04D997924898849E2B907292D8F9311E": {
+            "WantsToSprint_1_840C190D4B23289C5C46E0B5A4C5C936": false,
+            "WantsToWalk_3_78963B154975E3BDE244A3BE438473E3": false,
+            "WantsToStrafe_5_64E842184F7691CD179DFCBA7158A4D9": false,
+            "WantsToAim_7_3A4AA0AA4DE529A3B213E68BECD246F8": false,
+            "WantsToCrouch_9_47D0791142F36BB93FFD9EA12F96F2B9": false
+          },
+          "MovementMode_2_5EAAF2DE40EEFFC0CEB680A055920D1F": 0,
+          "Stance_9_1D5931DB4C5B00938B77A7B2C5B74DD6": 0,
+          "RotationMode_5_09FB56C54CBB02C7BA2238AF05967717": 0,
+          "Gait_12_F5E602A54C3D796AEF369F97F8840DFA": 0,
+          "MovementDirection_55_F23BA6D2439A1D901351DFB2829190CD": 0,
+          "ActorTransform_16_F865FEEB42A03F0C9D1B7F8D29ACD19F": {
+            "Rotation": {
+              "X": 0.0,
+              "Y": -0.0,
+              "Z": 0.0,
+              "W": 1.0
+            },
+            "Translation": {
+              "X": 0.0,
+              "Y": 0.0,
+              "Z": 0.0
+            },
+            "Scale3D": {
+              "X": 1.0,
+              "Y": 1.0,
+              "Z": 1.0
+            }
+          },
+          "Velocity_19_E4BA1C9D46E4A6BAC5DD63A4A1A93BE0": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0
+          },
+          "InputAcceleration_21_5C93A8BB46763C31AC835FA9A3C9FE88": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0
+          },
+          "CurrentMaxAcceleration_24_A51F19184F2BACEE0F3F85A780F122D6": 0.0,
+          "CurrentMaxDeceleration_26_F675EA284CC1A5123C84449BAA351B9A": 0.0,
+          "OrientationIntent_49_38FB872B46ADBB0ED766758157174BB1": {
+            "Pitch": 0.0,
+            "Yaw": 0.0,
+            "Roll": 0.0
+          },
+          "AimingRotation_29_9817B3384AC40E67F1E5E39238ADEEEA": {
+            "Pitch": 0.0,
+            "Yaw": 0.0,
+            "Roll": 0.0
+          },
+          "JustLanded_35_E546D46D4B451FBD122127908CFF5899": false,
+          "LandVelocity_40_AD6ED73D49EE6F5998ECD7ACB2D5D7EB": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0
+          },
+          "SteeringTime_52_52974A7846AA82FF163EDF9D48AAC336": 0.0,
+          "GroundNormal_58_F7B6873B4C61B0EC85BAA2B8F1340DDA": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0
+          },
+          "GroundLocation_62_08A0EA404C60B46793D1378218DC1180": {
+            "X": 0.0,
+            "Y": 0.0,
+            "Z": 0.0
+          }
+        },
+        "RootTransform": {
+          "Rotation": {
+            "Rotation": {
+              "X": "+0",
+              "Y": "+0",
+              "Z": "+0",
+              "W": 1.0
+            }
+          },
+          "Translation": {
+            "Translation": {
+              "X": "+0",
+              "Y": "+0",
+              "Z": "+0"
+            }
+          },
+          "Scale3D": {
+            "Scale3D": {
+              "X": 1.0,
+              "Y": 1.0,
+              "Z": 1.0
+            }
+          }
+        },
+        "SmoothedGroundNormal": {
+          "X": 0,
+          "Y": 0,
+          "Z": 0,
+          "SmoothedGroundNormal": {
+            "X": "+0",
+            "Y": "+0",
+            "Z": "+0"
+          }
+        }
+      },
+      "source_export_index": 1188
+    },
     "Get_StrafeWarpDirection": {
       "schema_version": 1,
       "name": "Get_StrafeWarpDirection",
@@ -495,6 +2619,111 @@
     }
   },
   "default_state": {
+    "CharacterProperties": {
+      "InputState_32_04D997924898849E2B907292D8F9311E": {
+        "WantsToSprint_1_840C190D4B23289C5C46E0B5A4C5C936": false,
+        "WantsToWalk_3_78963B154975E3BDE244A3BE438473E3": false,
+        "WantsToStrafe_5_64E842184F7691CD179DFCBA7158A4D9": false,
+        "WantsToAim_7_3A4AA0AA4DE529A3B213E68BECD246F8": false,
+        "WantsToCrouch_9_47D0791142F36BB93FFD9EA12F96F2B9": false
+      },
+      "MovementMode_2_5EAAF2DE40EEFFC0CEB680A055920D1F": 0,
+      "Stance_9_1D5931DB4C5B00938B77A7B2C5B74DD6": 0,
+      "RotationMode_5_09FB56C54CBB02C7BA2238AF05967717": 0,
+      "Gait_12_F5E602A54C3D796AEF369F97F8840DFA": 0,
+      "MovementDirection_55_F23BA6D2439A1D901351DFB2829190CD": 0,
+      "ActorTransform_16_F865FEEB42A03F0C9D1B7F8D29ACD19F": {
+        "Rotation": {
+          "X": 0.0,
+          "Y": -0.0,
+          "Z": 0.0,
+          "W": 1.0
+        },
+        "Translation": {
+          "X": 0.0,
+          "Y": 0.0,
+          "Z": 0.0
+        },
+        "Scale3D": {
+          "X": 1.0,
+          "Y": 1.0,
+          "Z": 1.0
+        }
+      },
+      "Velocity_19_E4BA1C9D46E4A6BAC5DD63A4A1A93BE0": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "InputAcceleration_21_5C93A8BB46763C31AC835FA9A3C9FE88": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "CurrentMaxAcceleration_24_A51F19184F2BACEE0F3F85A780F122D6": 0.0,
+      "CurrentMaxDeceleration_26_F675EA284CC1A5123C84449BAA351B9A": 0.0,
+      "OrientationIntent_49_38FB872B46ADBB0ED766758157174BB1": {
+        "Pitch": 0.0,
+        "Yaw": 0.0,
+        "Roll": 0.0
+      },
+      "AimingRotation_29_9817B3384AC40E67F1E5E39238ADEEEA": {
+        "Pitch": 0.0,
+        "Yaw": 0.0,
+        "Roll": 0.0
+      },
+      "JustLanded_35_E546D46D4B451FBD122127908CFF5899": false,
+      "LandVelocity_40_AD6ED73D49EE6F5998ECD7ACB2D5D7EB": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "SteeringTime_52_52974A7846AA82FF163EDF9D48AAC336": 0.0,
+      "GroundNormal_58_F7B6873B4C61B0EC85BAA2B8F1340DDA": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      },
+      "GroundLocation_62_08A0EA404C60B46793D1378218DC1180": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      }
+    },
+    "RootTransform": {
+      "Rotation": {
+        "Rotation": {
+          "X": "+0",
+          "Y": "+0",
+          "Z": "+0",
+          "W": 1.0
+        }
+      },
+      "Translation": {
+        "Translation": {
+          "X": "+0",
+          "Y": "+0",
+          "Z": "+0"
+        }
+      },
+      "Scale3D": {
+        "Scale3D": {
+          "X": 1.0,
+          "Y": 1.0,
+          "Z": 1.0
+        }
+      }
+    },
+    "SmoothedGroundNormal": {
+      "X": 0,
+      "Y": 0,
+      "Z": 0,
+      "SmoothedGroundNormal": {
+        "X": "+0",
+        "Y": "+0",
+        "Z": "+0"
+      }
+    },
     "LastNonZeroVelocity": {
       "X": 0,
       "Y": 0,
